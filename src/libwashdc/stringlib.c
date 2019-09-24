@@ -70,20 +70,20 @@ void string_set(struct string *str, char const *txt) {
     }
 }
 
-void string_load_stdio(struct string *str, FILE *fp) {
+void string_load_hostfile(struct string *str, washdc_hostfile fp) {
     long file_sz, buf_sz;
 
-    if (fseek(fp, 0, SEEK_END) != 0) {
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_END) != 0) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
     }
 
-    if ((file_sz = ftell(fp)) < 0) {
+    if ((file_sz = washdc_hostfile_tell(fp)) < 0) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
     }
 
-    if (fseek(fp, 0, SEEK_SET) != 0) {
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_BEG) != 0) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
     }
@@ -95,7 +95,7 @@ void string_load_stdio(struct string *str, FILE *fp) {
         RAISE_ERROR(ERROR_FAILED_ALLOC);
     }
 
-    if (fread(str->c_str, sizeof(char), file_sz, fp) != file_sz) {
+    if (washdc_hostfile_read(fp, str->c_str, file_sz) != file_sz) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
     }

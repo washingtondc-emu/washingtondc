@@ -30,16 +30,21 @@
 #include "gfx/gfx_il.h"
 #include "log.h"
 
-static int do_save_screenshot(FILE *stream, char const *path);
+static int do_save_screenshot(washdc_hostfile stream, char const *path);
 static int grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
                        unsigned *fb_height_out, bool *do_flip_out);
 
+static void write_wrapper_png(png_structp png, png_bytep dat, png_size_t len);
+static void flush_wrapper_png(png_structp png);
+
 int save_screenshot(char const *path) {
-    FILE *stream = fopen(path, "wb");
-    if (!stream)
+    washdc_hostfile stream =
+        washdc_hostfile_open(path,
+                             WASHDC_HOSTFILE_WRITE | WASHDC_HOSTFILE_BINARY);
+    if (stream == WASHDC_HOSTFILE_INVALID)
         return -1;
     int ret = do_save_screenshot(stream, path);
-    fclose(stream);
+    washdc_hostfile_close(stream);
     return ret;
 }
 
@@ -61,27 +66,30 @@ int save_screenshot_dir(void) {
     static char filename[PATH_LEN];
     static char path[PATH_LEN];
     snprintf(filename, PATH_LEN, "%s.png", timestr);
-    FILE *stream;
+    washdc_hostfile stream;
     int idx;
     for (idx = 0; idx < 16; idx++) {
         strncpy(path, screenshot_dir, PATH_LEN);
         path[PATH_LEN - 1] = '\0';
         washdc_hostfile_path_append(path, filename, PATH_LEN);
-        stream = fopen(path, "wbx");
-        if (stream)
+        stream =
+            washdc_hostfile_open(path, WASHDC_HOSTFILE_WRITE |
+                                 WASHDC_HOSTFILE_BINARY |
+                                 WASHDC_HOSTFILE_DONT_OVERWRITE);
+        if (stream != WASHDC_HOSTFILE_INVALID)
             break;
         else
             snprintf(filename, PATH_LEN, "%s_%d.png", timestr, idx);
     }
-    if (!stream)
+    if (stream == WASHDC_HOSTFILE_INVALID)
         return -1;
 
     int ret = do_save_screenshot(stream, path);
-    fclose(stream);
+    washdc_hostfile_close(stream);
     return ret;
 }
 
-static int do_save_screenshot(FILE *stream, char const *path) {
+static int do_save_screenshot(washdc_hostfile stream, char const *path) {
     int err_val = 0;
     uint32_t *fb_tmp = NULL;
     unsigned fb_width, fb_height;
@@ -118,7 +126,7 @@ static int do_save_screenshot(FILE *stream, char const *path) {
         goto cleanup_png;
     }
 
-    png_init_io(png_ptr, stream);
+    png_set_write_fn(png_ptr, stream, write_wrapper_png, flush_wrapper_png);
 
     png_bytepp row_pointers = (png_bytepp)calloc(fb_height, sizeof(png_bytep));
     if (!row_pointers)
@@ -188,3 +196,12 @@ static int grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
     return -1;
 }
 
+static void write_wrapper_png(png_structp png, png_bytep dat, png_size_t len) {
+    washdc_hostfile fp = (washdc_hostfile)png_get_io_ptr(png);
+    washdc_hostfile_write(fp, dat, len);
+}
+
+static void flush_wrapper_png(png_structp png) {
+    washdc_hostfile fp = (washdc_hostfile)png_get_io_ptr(png);
+    washdc_hostfile_flush(fp);
+}

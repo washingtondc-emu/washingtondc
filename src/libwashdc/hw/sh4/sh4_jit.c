@@ -20,8 +20,6 @@
  *
  ******************************************************************************/
 
-#include <stdio.h>
-
 #include "sh4asm_core/disas.h"
 
 #include "jit/jit_il.h"
@@ -40,6 +38,8 @@
 #ifdef ENABLE_JIT_X86_64
 #include "jit/x86_64/native_dispatch.h"
 #endif
+
+#include "washdc/hostfile.h"
 
 static jit_hash sh4_jit_hash_wrapper(void *sh4, uint32_t addr);
 
@@ -121,7 +121,7 @@ static unsigned
 reg_slot_noload(Sh4 *sh4, struct il_code_block *block, unsigned reg_no);
 
 #ifdef JIT_PROFILE
-static void sh4_jit_profile_disas(FILE *out, uint32_t addr, void const *instp);
+static void sh4_jit_profile_disas(washdc_hostfile out, uint32_t addr, void const *instp);
 static void sh4_jit_profile_emit_fn(char ch);
 #endif
 
@@ -159,10 +159,12 @@ void sh4_jit_init(struct Sh4 *sh4) {
 
 void sh4_jit_cleanup(struct Sh4 *sh4) {
 #ifdef JIT_PROFILE
-    FILE *outfile = fopen("sh4_profile.txt", "w");
-    if (outfile) {
+    washdc_hostfile outfile =
+        washdc_hostfile_open("sh4_profile.txt",
+                             WASHDC_HOSTFILE_WRITE | WASHDC_HOSTFILE_TEXT);
+    if (outfile != WASHDC_HOSTFILE_INVALID) {
         jit_profile_print(&sh4->jit_profile, outfile);
-        fclose(outfile);
+        washdc_hostfile_close(outfile);
     } else {
         LOG_ERROR("Failure to open sh4_profile.txt for writing\n");
     }
@@ -171,9 +173,10 @@ void sh4_jit_cleanup(struct Sh4 *sh4) {
 }
 
 #ifdef JIT_PROFILE
-static FILE *jit_profile_out;
+static washdc_hostfile jit_profile_out;
 
-static void sh4_jit_profile_disas(FILE *out, uint32_t addr, void const *instp) {
+static void
+sh4_jit_profile_disas(washdc_hostfile out, uint32_t addr, void const *instp) {
     jit_profile_out = out;
 
     uint16_t inst;
@@ -183,7 +186,7 @@ static void sh4_jit_profile_disas(FILE *out, uint32_t addr, void const *instp) {
 }
 
 static void sh4_jit_profile_emit_fn(char ch) {
-    fputc(ch, jit_profile_out);
+    washdc_hostfile_putc(jit_profile_out, ch);
 }
 #endif
 
@@ -260,7 +263,7 @@ sh4_jit_delay_slot(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
          * can return true, and those all should have been filtered out by the
          * pc_relative check above.
          */
-        printf("inst is 0x%04x\n", (unsigned)inst);
+        LOG_ERROR("inst is 0x%04x\n", (unsigned)inst);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
     ctx->in_delay_slot = false;

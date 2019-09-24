@@ -31,6 +31,7 @@
 #include "washdc/MemoryMap.h"
 #include "dc_sched.h"
 #include "log.h"
+#include "washdc/hostfile.h"
 
 #include "aica_rtc.h"
 
@@ -61,12 +62,15 @@ void aica_rtc_init(struct aica_rtc *rtc, struct dc_clock *clock,
     if (strlen(rtc->aica_rtc_path)) {
         LOG_INFO("Attempting to open existing real-time clock state at \"%s\"\n",
                  rtc->aica_rtc_path);
-        FILE *rtc_file = fopen(rtc->aica_rtc_path, "r");
-        if (rtc_file) {
+        washdc_hostfile rtc_file =
+            washdc_hostfile_open(rtc->aica_rtc_path,
+                                 WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_TEXT);
+        if (rtc_file != WASHDC_HOSTFILE_INVALID) {
             char rtc_str[16] = { 0 };
             int n_chars = 0;
             int ch;
-            while (n_chars < 15 && (ch = fgetc(rtc_file)) != EOF && !isspace(ch))
+            while (n_chars < 15 &&
+                   (ch = washdc_hostfile_getc(rtc_file)) != EOF && !isspace(ch))
                 rtc_str[n_chars++] = ch;
             rtc_str[15] = '\0';
             if (n_chars > 0 && n_chars < 15) {
@@ -80,7 +84,7 @@ void aica_rtc_init(struct aica_rtc *rtc, struct dc_clock *clock,
                     have_clock = true;
                 }
             }
-            fclose(rtc_file);
+            washdc_hostfile_close(rtc_file);
         }
     }
     if (!have_clock) {
@@ -101,10 +105,12 @@ void aica_rtc_cleanup(struct aica_rtc *rtc) {
         LOG_INFO("For the record, the final RTC value is %u\n",
                  (unsigned)rtc->cur_rtc_val);
 
-        FILE *rtc_file = fopen(rtc->aica_rtc_path, "w");
-        if (rtc_file) {
-            fprintf(rtc_file, "%u\n", rtc->cur_rtc_val);
-            fclose(rtc_file);
+        washdc_hostfile rtc_file =
+            washdc_hostfile_open(rtc->aica_rtc_path,
+                                 WASHDC_HOSTFILE_WRITE | WASHDC_HOSTFILE_TEXT);
+        if (rtc_file != WASHDC_HOSTFILE_INVALID) {
+            washdc_hostfile_printf(rtc_file, "%u\n", rtc->cur_rtc_val);
+            washdc_hostfile_close(rtc_file);
         } else {
             LOG_INFO("Unable to save real-time clockstate\n");
         }

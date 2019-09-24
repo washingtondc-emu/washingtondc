@@ -1145,22 +1145,23 @@ static void dc_sigint_handler(int param) {
 }
 
 static void *load_file(char const *path, long *len) {
-    FILE *fp = fopen(path, "rb");
+    washdc_hostfile fp = washdc_hostfile_open(path, WASHDC_HOSTFILE_READ |
+                                              WASHDC_HOSTFILE_BINARY);
     long file_sz;
     void *dat = NULL;
 
-    if (!fp)
+    if (fp == WASHDC_HOSTFILE_INVALID)
         return NULL;
 
-    if (fseek(fp, 0, SEEK_END) < 0)
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_END) < 0)
         goto close_fp;
-    if ((file_sz = ftell(fp)) < 0)
+    if ((file_sz = washdc_hostfile_tell(fp)) < 0)
         goto close_fp;
-    if (fseek(fp, 0, SEEK_SET) < 0)
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_BEG) < 0)
         goto close_fp;
 
     dat = malloc(file_sz);
-    if (fread(dat, file_sz, 1, fp) != 1)
+    if (washdc_hostfile_read(fp, dat, file_sz) != file_sz)
         goto free_dat;
 
     *len = file_sz;
@@ -1172,7 +1173,7 @@ free_dat:
     free(dat);
     dat = NULL;
 close_fp:
-    fclose(fp);
+    washdc_hostfile_close(fp);
     return dat;
 }
 

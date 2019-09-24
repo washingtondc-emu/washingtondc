@@ -61,6 +61,17 @@ char const *cfg_dir(void);
 char const *cfg_file(void);
 void create_screenshot_dir(void);
 
+static washdc_hostfile file_open(char const *path,
+                                 enum washdc_hostfile_mode mode);
+static void file_close(washdc_hostfile file);
+static int file_seek(washdc_hostfile file,
+                     long disp,
+                     enum washdc_hostfile_seek_origin origin);
+static long file_tell(washdc_hostfile file);
+static size_t file_read(washdc_hostfile file, void *outp, size_t len);
+static size_t file_write(washdc_hostfile file, void const *inp, size_t len);
+static int file_flush(washdc_hostfile file);
+
 static struct washdc_sound_intf snd_intf = {
     .init = sound::init,
     .cleanup = sound::cleanup,
@@ -72,7 +83,14 @@ static struct washdc_hostfile_api const hostfile_api = {
     .cfg_file = cfg_file,
     .data_dir = data_dir,
     .screenshot_dir = screenshot_dir,
-    .path_append = path_append
+    .path_append = path_append,
+    .open = file_open,
+    .close = file_close,
+    .seek = file_seek,
+    .tell = file_tell,
+    .read = file_read,
+    .write = file_write,
+    .flush = file_flush
 };
 
 static void print_usage(char const *cmd) {
@@ -578,4 +596,62 @@ void create_data_dir(void) {
     if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
         errno != EEXIST)
         fprintf(stderr, "%s - failure to create %s\n", __func__, the_data_dir);
+}
+
+static washdc_hostfile file_open(char const *path,
+                                 enum washdc_hostfile_mode mode) {
+    char modestr[4] = { 0 };
+    int top = 0;
+    if (mode & WASHDC_HOSTFILE_WRITE)
+        modestr[top++] = 'w';
+    else if (mode & WASHDC_HOSTFILE_READ)
+        modestr[top++] = 'r';
+    else
+        return WASHDC_HOSTFILE_INVALID;
+
+    if (mode & WASHDC_HOSTFILE_BINARY)
+        modestr[top++] = 'b';
+    if (mode & WASHDC_HOSTFILE_DONT_OVERWRITE)
+        modestr[top++] = 'x';
+
+    return fopen(path, modestr);
+}
+
+static void file_close(washdc_hostfile file) {
+    fclose((FILE*)file);
+}
+
+static int file_seek(washdc_hostfile file, long disp,
+                     enum washdc_hostfile_seek_origin origin) {
+    int whence;
+    switch (origin) {
+    case WASHDC_HOSTFILE_SEEK_BEG:
+        whence = SEEK_SET;
+        break;
+    case WASHDC_HOSTFILE_SEEK_CUR:
+        whence = SEEK_CUR;
+        break;
+    case WASHDC_HOSTFILE_SEEK_END:
+        whence = SEEK_END;
+        break;
+    default:
+        return -1;
+    }
+    return fseek((FILE*)file, disp, whence);
+}
+
+static long file_tell(washdc_hostfile file) {
+    return ftell((FILE*)file);
+}
+
+static size_t file_read(washdc_hostfile file, void *outp, size_t len) {
+    return fread(outp, 1, len, (FILE*)file);
+}
+
+static size_t file_write(washdc_hostfile file, void const *inp, size_t len) {
+    return fwrite(inp, 1, len, (FILE*)file);
+}
+
+static int file_flush(washdc_hostfile file) {
+    return fflush((FILE*)file);
 }

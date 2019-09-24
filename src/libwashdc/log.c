@@ -21,12 +21,14 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
 
 #include "log.h"
 #include "washdc/log.h"
+#include "washdc/hostfile.h"
 
-static FILE *logfile;
+static washdc_hostfile logfile;
 static bool also_stdout;
 static bool verbose_mode;
 
@@ -34,18 +36,20 @@ static void log_do_write_vararg(enum log_severity lvl,
                                 char const *fmt, va_list args);
 
 void log_init(bool to_stdout, bool verbose) {
-    logfile = fopen("wash.log", "w");
+    logfile =
+        washdc_hostfile_open("wash.log",
+                             WASHDC_HOSTFILE_WRITE | WASHDC_HOSTFILE_TEXT);
     also_stdout = to_stdout;
     verbose_mode = verbose;
 }
 
 void log_cleanup(void) {
-    fclose(logfile);
+    washdc_hostfile_close(logfile);
     logfile = NULL;
 }
 
 void log_flush(void) {
-    fflush(logfile);
+    washdc_hostfile_flush(logfile);
 }
 
 void log_do_write(enum log_severity lvl, char const *fmt, ...) {
@@ -58,10 +62,13 @@ void log_do_write(enum log_severity lvl, char const *fmt, ...) {
 
 static void log_do_write_vararg(enum log_severity lvl,
                                 char const *fmt, va_list args) {
+    static char buf[1024];
     if (verbose_mode || lvl >= log_severity_info) {
         va_list args2;
         va_copy(args2, args);
-        vfprintf(logfile, fmt, args);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        buf[sizeof(buf) - 1] = '\0';
+        washdc_hostfile_write(logfile, buf, strlen(buf));
 
         if (also_stdout || lvl >= log_severity_error)
             vprintf(fmt, args2);

@@ -29,6 +29,7 @@
 #include "mem_code.h"
 #include "washdc/error.h"
 #include "washdc/types.h"
+#include "washdc/hostfile.h"
 #include "log.h"
 
 #include "flash_mem.h"
@@ -116,10 +117,13 @@ void flash_mem_init(struct flash_mem *mem, char const *path, bool writeable) {
 void flash_mem_cleanup(struct flash_mem *mem) {
     if (mem->writeable) {
         LOG_INFO("Saving flash memory to %s\n", mem->file_path);
-        FILE *backing_file = fopen(mem->file_path, "wb");
-        if (backing_file) {
-            fwrite(mem->flash_mem, 1, FLASH_MEM_SZ, backing_file);
-            fclose(backing_file);
+        washdc_hostfile backing_file =
+            washdc_hostfile_open(mem->file_path,
+                                 WASHDC_HOSTFILE_WRITE |
+                                 WASHDC_HOSTFILE_BINARY);
+        if (backing_file != WASHDC_HOSTFILE_INVALID) {
+            washdc_hostfile_write(backing_file, mem->flash_mem, FLASH_MEM_SZ);
+            washdc_hostfile_close(backing_file);
         } else {
             LOG_ERROR("Unable to open %s\n", mem->file_path);
         }
@@ -129,33 +133,35 @@ void flash_mem_cleanup(struct flash_mem *mem) {
 static void flash_mem_load(struct flash_mem *mem) {
     char const *path = mem->file_path;
 
-    FILE *fp = fopen(path, "rb");
-    if (!fp) {
+    washdc_hostfile fp =
+        washdc_hostfile_open(path,
+                             WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_BINARY);
+    if (fp == WASHDC_HOSTFILE_INVALID) {
         LOG_ERROR("Unable to open \"%s\"\n", path);
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
         return;
     }
 
-    if (fseek(fp, 0, SEEK_END) < 0) {
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_END) < 0) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
-    long file_len = ftell(fp);
+    long file_len = washdc_hostfile_tell(fp);
     if (file_len <= 0) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
-    if (fseek(fp, 0, SEEK_SET) < 0) {
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_BEG) < 0) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
@@ -169,14 +175,14 @@ static void flash_mem_load(struct flash_mem *mem) {
     if (file_len > FLASH_MEM_SZ || file_len < 0)
         file_len = FLASH_MEM_SZ;
 
-    if (fread(mem->flash_mem, sizeof(uint8_t), file_len, fp) != file_len) {
+    if (washdc_hostfile_read(fp, mem->flash_mem, file_len) != file_len) {
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
-    fclose(fp);
+    washdc_hostfile_close(fp);
 }
 
 float flash_mem_read_float(addr32_t addr, void *ctxt) {

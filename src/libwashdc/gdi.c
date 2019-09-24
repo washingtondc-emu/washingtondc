@@ -24,7 +24,6 @@
  ***************************************************************************/
 
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -40,7 +39,7 @@
 
 struct gdi_mount {
     struct gdi_info meta;
-    FILE **track_streams;
+    washdc_hostfile *track_streams;
     size_t *track_lengths; // length of each track, in bytes
 };
 
@@ -98,17 +97,18 @@ static void parse_gdi(struct gdi_info *outp, char const *path) {
     struct string whole_file_txt;
     struct gdi_track *tracks = NULL;
 
-    FILE *stream = fopen(path, "r");
-    if (!stream) {
+    washdc_hostfile stream = washdc_hostfile_open(path, WASHDC_HOSTFILE_READ |
+                                                  WASHDC_HOSTFILE_TEXT);
+    if (stream == WASHDC_HOSTFILE_INVALID) {
         error_set_file_path(path);
         error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
     }
 
     string_init(&whole_file_txt);
-    string_load_stdio(&whole_file_txt, stream);
+    string_load_hostfile(&whole_file_txt, stream);
 
-    fclose(stream);
+    washdc_hostfile_close(stream);
 
     struct string_curs line_curs;
     struct string cur_line;
@@ -263,7 +263,7 @@ void mount_gdi(char const *path) {
     if (!gdi_validate_fmt(&mount->meta))
         RAISE_ERROR(ERROR_INVALID_PARAM);
 
-    mount->track_streams = (FILE**)calloc(mount->meta.n_tracks, sizeof(FILE*));
+    mount->track_streams = (washdc_hostfile*)calloc(mount->meta.n_tracks, sizeof(washdc_hostfile));
     if (!mount->track_streams)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
@@ -278,20 +278,23 @@ void mount_gdi(char const *path) {
     for (track_no = 0; track_no < mount->meta.n_tracks; track_no++) {
         struct string const *track_path =
             &mount->meta.tracks[track_no].abs_path;
-        mount->track_streams[track_no] = fopen(string_get(track_path), "rb");
+        mount->track_streams[track_no] =
+            washdc_hostfile_open(string_get(track_path),
+                                 WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_BINARY);
         if (!mount->track_streams[track_no]) {
             error_set_file_path(string_get(track_path));
             error_set_errno_val(errno);
             RAISE_ERROR(ERROR_FILE_IO);
         }
 
-        if (fseek(mount->track_streams[track_no], 0, SEEK_END) != 0) {
+        if (washdc_hostfile_seek(mount->track_streams[track_no], 0,
+                                 WASHDC_HOSTFILE_SEEK_END) != 0) {
             error_set_file_path(string_get(track_path));
             error_set_errno_val(errno);
             RAISE_ERROR(ERROR_FILE_IO);
         }
 
-        long len = ftell(mount->track_streams[track_no]);
+        long len = washdc_hostfile_tell(mount->track_streams[track_no]);
         if (len < 0) {
             error_set_file_path(string_get(track_path));
             error_set_errno_val(errno);
@@ -309,7 +312,7 @@ static void mount_gdi_cleanup(struct mount *mount) {
 
     unsigned track_no;
     for (track_no = 0; track_no < state->meta.n_tracks; track_no++)
-        fclose(state->track_streams[track_no]);
+        washdc_hostfile_close(state->track_streams[track_no]);
     free(state->track_streams);
 
     cleanup_gdi_info(&state->meta);
@@ -405,12 +408,14 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
             LOG_DBG("read 1 sector starting at byte %u\n", byte_offset);
 
             // TODO: don't ignore the offset
-            if (fseek(gdi_mount->track_streams[track_idx],
-                      byte_offset, SEEK_SET) != 0) {
+            if (washdc_hostfile_seek(gdi_mount->track_streams[track_idx],
+                                     byte_offset,
+                                     WASHDC_HOSTFILE_SEEK_BEG) != 0) {
                 goto return_err;
             }
 
-            if (fread(buf, 2048, 1, gdi_mount->track_streams[track_idx]) != 1)
+            if (washdc_hostfile_read(gdi_mount->track_streams[track_idx], buf,
+                                     2048) != 2048)
                 goto return_err;
 
             return 0;
@@ -429,10 +434,12 @@ static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta) {
     if (info->n_tracks < 3)
         return -1;
 
-    if (fseek(gdi_mount->track_streams[2], 16, SEEK_SET))
+    if (washdc_hostfile_seek(gdi_mount->track_streams[2], 16,
+                             WASHDC_HOSTFILE_SEEK_BEG))
         return -1;
 
-    if (fread(buffer, sizeof(buffer), 1, gdi_mount->track_streams[2]) != 1)
+    if (washdc_hostfile_read(gdi_mount->track_streams[2], buffer,
+                             sizeof(buffer)) != sizeof(buffer))
         return -1;
 
     memset(meta, 0, sizeof(*meta));

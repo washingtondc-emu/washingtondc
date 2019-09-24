@@ -202,17 +202,19 @@ static void cfg_create_default_config(void) {
         }
     }
 
-    FILE *cfg_file = fopen(cfg_file_path, "w");
-    if (!cfg_file) {
+    washdc_hostfile cfg_file = washdc_hostfile_open(cfg_file_path,
+                                                    WASHDC_HOSTFILE_WRITE |
+                                                    WASHDC_HOSTFILE_TEXT);
+    if (cfg_file == WASHDC_HOSTFILE_INVALID) {
         LOG_ERROR("unable to create %s: %s\n", cfg_file_path, strerror(errno));
         return;
     }
 
-    if (fputs(cfg_default, cfg_file) == EOF) {
+    if (washdc_hostfile_puts(cfg_file, cfg_default) == WASHDC_HOSTFILE_EOF) {
         LOG_ERROR("Unable to write default config to %s\n", cfg_file_path);
     }
 
-    fclose(cfg_file);
+    washdc_hostfile_close(cfg_file);
 }
 
 void cfg_init(void) {
@@ -234,23 +236,27 @@ void cfg_init(void) {
 
     fifo_init(&cfg_state.cfg_nodes);
 
-    FILE *cfg_file = fopen(cfg_file_path, "r");
+    washdc_hostfile cfg_file =
+        washdc_hostfile_open(cfg_file_path,
+                             WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_TEXT);
 
-    if (!cfg_file) {
+    if (cfg_file == WASHDC_HOSTFILE_INVALID) {
         cfg_create_default_config();
-        cfg_file = fopen(cfg_file_path, "r");
+        cfg_file =
+            washdc_hostfile_open(cfg_file_path,
+                                 WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_TEXT);
     }
 
-    if (cfg_file) {
+    if (cfg_file != WASHDC_HOSTFILE_INVALID) {
         LOG_INFO("Parsing wash.cfg\n");
         for (;;) {
-            int ch = fgetc(cfg_file);
-            if (ch == EOF)
+            int ch = washdc_hostfile_getc(cfg_file);
+            if (ch == WASHDC_HOSTFILE_EOF)
                 break;
             cfg_put_char(ch);
         }
         cfg_put_char('\n'); // in case the last line doesn't end with newline
-        fclose(cfg_file);
+        washdc_hostfile_close(cfg_file);
     } else {
         LOG_INFO("Unable to open wash.cfg; does it even exist?\n");
     }

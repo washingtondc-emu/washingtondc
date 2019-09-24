@@ -18,7 +18,6 @@
  */
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <fcntl.h>
@@ -28,6 +27,7 @@
 
 #include "cdi.h"
 #include "washdc/error.h"
+#include "washdc/hostfile.h"
 #include "log.h"
 #include "mount.h"
 #include "cdrom.h"
@@ -38,7 +38,7 @@
 
 struct cdi_info;
 
-static bool cdi_image_is_valid( FILE *f );
+static bool cdi_image_is_valid( washdc_hostfile f );
 static int parse_cdi(struct cdi_info *outp, char const *path);
 static unsigned cdi_get_session_count(struct mount *mount);
 static void cdi_cleanup(struct mount *mount);
@@ -75,7 +75,7 @@ struct cdi_session {
 };
 
 struct cdi_info {
-    FILE *fp;
+    washdc_hostfile fp;
     unsigned n_sessions;
     struct cdi_session *sessions;
 };
@@ -143,19 +143,19 @@ static void cdi_cleanup(struct mount *mount) {
         free(cdi_mount->meta.sessions[session_no].tracks);
     }
 
-    fclose(cdi_mount->meta.fp);
+    washdc_hostfile_close(cdi_mount->meta.fp);
 
     free(cdi_mount);
 }
 
-bool cdi_image_is_valid( FILE *f )
+bool cdi_image_is_valid( washdc_hostfile f )
 {
     int len;
     struct cdi_trailer trail;
 
-    fseek( f, -8, SEEK_END );
-    len = ftell(f)+8;
-    if (fread( &trail, sizeof(trail), 1, f ) != 1)
+    washdc_hostfile_seek( f, -8, WASHDC_HOSTFILE_SEEK_END );
+    len = washdc_hostfile_tell(f)+8;
+    if (washdc_hostfile_read(f, &trail, sizeof(trail)) != sizeof(trail))
         return false;
     if( trail.header_offset >= len ||
             trail.header_offset == 0 )
@@ -202,16 +202,18 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
 
     memset(outp, 0, sizeof(*outp));
 
-    FILE *f = fopen(path, "rb");
+    washdc_hostfile f =
+        washdc_hostfile_open(path,
+                             WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_BINARY);
 
     if (!cdi_image_is_valid(f))
         goto on_error;
 
     if (!f)
         return -1;
-    fseek( f, -8, SEEK_END );
-    len = ftell(f)+8;
-    if (fread( &trail, sizeof(trail), 1, f ) != 1)
+    washdc_hostfile_seek(f, -8, WASHDC_HOSTFILE_SEEK_END);
+    len = washdc_hostfile_tell(f)+8;
+    if (washdc_hostfile_read(f, &trail, sizeof(trail)) != sizeof(trail))
         goto on_error;
     if( trail.header_offset >= len ||
         trail.header_offset == 0 )
@@ -222,11 +224,13 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
         goto on_error;
 
     if( trail.cdi_version == CDI_V35_ID ) {
-        fseek( f, -(long)trail.header_offset, SEEK_END );
+        washdc_hostfile_seek(f, -(long)trail.header_offset,
+                             WASHDC_HOSTFILE_SEEK_END);
     } else {
-        fseek( f, trail.header_offset, SEEK_SET );
+        washdc_hostfile_seek(f, trail.header_offset, WASHDC_HOSTFILE_SEEK_BEG);
     }
-    if (fread( &session_count, sizeof(session_count), 1, f ) != 1)
+    if (washdc_hostfile_read(f, &session_count, sizeof(session_count)) !=
+        sizeof(session_count))
         goto on_error;
 
     outp->sessions = calloc(session_count, sizeof(outp->sessions[0]));
@@ -234,8 +238,9 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
         goto on_error;
     outp->n_sessions = session_count;
 
-    for( i=0; i< session_count; i++ ) {        
-        if (fread( &track_count, sizeof(track_count), 1, f ) != 1)
+    for( i=0; i< session_count; i++ ) {
+        if (washdc_hostfile_read(f, &track_count, sizeof(track_count)) !=
+            sizeof(track_count))
             goto on_error;
         if( (i != session_count-1 && track_count < 1) || track_count > 99 )
             goto on_error;
@@ -252,30 +257,35 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
             struct cdi_track_data trk;
             uint32_t new_fmt = 0;
             uint8_t fnamelen = 0;
-            if (fread( &new_fmt, sizeof(new_fmt), 1, f ) != 1)
+            if (washdc_hostfile_read(f, &new_fmt, sizeof(new_fmt)) !=
+                sizeof(new_fmt))
                 goto on_error;
             if( new_fmt != 0 ) { /* Additional data 3.00.780+ ?? */
-                fseek( f, 8, SEEK_CUR ); /* Skip */
+                washdc_hostfile_seek(f, 8, WASHDC_HOSTFILE_SEEK_CUR); /* Skip */
             }
-            if (fread( marker, 20, 1, f ) != 1)
+            if (washdc_hostfile_read(f, &marker, 20) != 20)
                 goto on_error;
             if( memcmp( marker, TRACK_START_MARKER, 20) != 0 ) {
                 LOG_ERROR( "Track start marker not found, error reading cdi image" );
                 goto on_error;
             }
-            fseek( f, 4, SEEK_CUR );
-            if (fread( &fnamelen, 1, 1, f ) != 1)
+            washdc_hostfile_seek(f, 4, WASHDC_HOSTFILE_SEEK_CUR);
+            if (washdc_hostfile_read(f, &fnamelen, 1) != 1)
                 goto on_error;
-            fseek( f, (int)fnamelen, SEEK_CUR ); /* skip over the filename */
-            fseek( f, 19, SEEK_CUR );
-            if (fread( &new_fmt, sizeof(new_fmt), 1, f ) != 1)
+
+            /* skip over the filename */
+            washdc_hostfile_seek(f, (int)fnamelen, WASHDC_HOSTFILE_SEEK_CUR);
+            washdc_hostfile_seek(f, 19, WASHDC_HOSTFILE_SEEK_CUR );
+
+            if (washdc_hostfile_read(f, &new_fmt, sizeof(new_fmt)) !=
+                sizeof(new_fmt))
                 goto on_error;
             if( new_fmt == 0x80000000 ) {
-                fseek( f, 10, SEEK_CUR );
+                washdc_hostfile_seek(f, 10, WASHDC_HOSTFILE_SEEK_CUR);
             } else {
-                fseek( f, 2, SEEK_CUR );
+                washdc_hostfile_seek(f, 2, WASHDC_HOSTFILE_SEEK_CUR);
             }
-            if (fread( &trk, sizeof(trk), 1, f ) != 1)
+            if (washdc_hostfile_read(f, &trk, sizeof(trk)) != sizeof(trk))
                 goto on_error;
             outp->sessions[i].tracks[j].lba= trk.start_lba;
             unsigned sector_count = trk.length;
@@ -287,7 +297,7 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
                 outp->sessions[i].tracks[j].flags = 0x01;
                 if( trk.sector_size != 2 ) {
                     LOG_ERROR( "Invalid combination of mode %d with size %d", trk.mode, trk.sector_size );
-                    fclose(f);
+                    washdc_hostfile_close(f);
                     return -1;
                 }
                 break;
@@ -296,7 +306,7 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
                 outp->sessions[i].tracks[j].flags = 0x41;
                 if( trk.sector_size != 0 ) {
                     LOG_ERROR( "Invalid combination of mode %d with size %d", trk.mode, trk.sector_size );
-                    fclose(f);
+                    washdc_hostfile_close(f);
                     return -1;
                 }
                 break;
@@ -312,13 +322,13 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
                 case 2:
                 default:
                     LOG_ERROR( "Invalid combination of mode %d with size %d", trk.mode, trk.sector_size );
-                    fclose(f);
+                    washdc_hostfile_close(f);
                     return -1;
                 }
                 break;
             default:
                 LOG_ERROR( "Unsupported track mode %d", trk.mode );
-                fclose(f);
+                washdc_hostfile_close(f);
                 return -1;
             }
             outp->sessions[i].tracks[j].mode = mode;
@@ -329,17 +339,18 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
             total_tracks++;
             if( trail.cdi_version != CDI_V2_ID ) {
                 uint32_t extmarker;
-                fseek( f, 5, SEEK_CUR );
-                if (fread( &extmarker, sizeof(extmarker), 1, f) != 1)
+                washdc_hostfile_seek(f, 5, WASHDC_HOSTFILE_SEEK_CUR);
+                if (washdc_hostfile_read(f, &extmarker, sizeof(extmarker)) !=
+                    sizeof(extmarker))
                     goto on_error;
                 if( extmarker == 0xFFFFFFFF )  {
-                    fseek( f, 78, SEEK_CUR );
+                    washdc_hostfile_seek(f, 78, WASHDC_HOSTFILE_SEEK_CUR);
                 }
             }
         }
-        fseek( f, 12, SEEK_CUR );
+        washdc_hostfile_seek(f, 12, WASHDC_HOSTFILE_SEEK_CUR);
         if( trail.cdi_version != CDI_V2_ID ) {
-            fseek( f, 1, SEEK_CUR );
+            washdc_hostfile_seek(f, 1, WASHDC_HOSTFILE_SEEK_CUR);
         }
     }
 
@@ -357,7 +368,7 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
         free(outp->sessions[sess_idx].tracks);
 
     free(outp->sessions);
-    fclose(f);
+    washdc_hostfile_close(f);
     return -1;
 }
 
@@ -490,8 +501,8 @@ static int cdi_read_sector(struct mount *mount, void *buf, unsigned fad) {
                 LOG_INFO("\tbyte_offset is %X\n", byte_offset);
                 LOG_INFO("\tmode is %X\n", track->mode);
 
-                fseek(info->fp, byte_offset, SEEK_SET);
-                if (fread(buf, 2048, 1, info->fp) != 1)
+                washdc_hostfile_seek(info->fp, byte_offset, WASHDC_HOSTFILE_SEEK_BEG);
+                if (washdc_hostfile_read(info->fp, buf, 2048) != 2048)
                     return -1;
                 return 0;
             }

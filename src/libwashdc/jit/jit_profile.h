@@ -23,10 +23,10 @@
 #ifndef WASHDC_JIT_PROFILE_H_
 #define WASHDC_JIT_PROFILE_H_
 
-#include <stdio.h>
 #include <stdint.h>
 
 #include "jit_il.h"
+#include "washdc/hostfile.h"
 
 #ifndef JIT_PROFILE
 #error this file should only be included in -DJIT_PROFILE=On builds
@@ -61,7 +61,7 @@ struct jit_profile_per_block {
     void *native_dat;
 };
 
-typedef void(*jit_profile_disas_fn)(FILE *out, uint32_t addr, void const *instp);
+typedef void(*jit_profile_disas_fn)(washdc_hostfile out, uint32_t addr, void const *instp);
 
 struct jit_profile_ctxt {
     /*
@@ -101,7 +101,7 @@ void jit_profile_push_il_inst(struct jit_profile_ctxt *ctxt,
                               struct jit_profile_per_block *blk,
                               struct jit_inst const *inst);
 
-void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout);
+void jit_profile_print(struct jit_profile_ctxt *ctxt, washdc_hostfile fout);
 
 void jit_profile_set_native_insts(struct jit_profile_ctxt *ctxt,
                                   struct jit_profile_per_block *blk,

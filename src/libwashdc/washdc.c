@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include <stdarg.h>
+
 #include "washdc/washdc.h"
 
 #include "config.h"
@@ -273,4 +275,70 @@ char const *washdc_hostfile_data_dir(void) {
 
 char const *washdc_hostfile_screenshot_dir(void) {
     return hostfile_api->screenshot_dir();
+}
+
+washdc_hostfile washdc_hostfile_open(char const *path,
+                                     enum washdc_hostfile_mode mode) {
+    return hostfile_api->open(path, mode);
+}
+
+void washdc_hostfile_close(washdc_hostfile file) {
+    hostfile_api->close(file);
+}
+
+int washdc_hostfile_seek(washdc_hostfile file, long disp,
+                         enum washdc_hostfile_seek_origin origin) {
+    return hostfile_api->seek(file, disp, origin);
+}
+
+long washdc_hostfile_tell(washdc_hostfile file) {
+    return hostfile_api->tell(file);
+}
+
+size_t washdc_hostfile_read(washdc_hostfile file, void *outp, size_t len) {
+    return hostfile_api->read(file, outp, len);
+}
+
+size_t washdc_hostfile_write(washdc_hostfile file, void const *inp, size_t len) {
+    return hostfile_api->write(file, inp, len);
+}
+
+int washdc_hostfile_flush(washdc_hostfile file) {
+    return hostfile_api->flush(file);
+}
+
+int washdc_hostfile_putc(washdc_hostfile file, char ch) {
+    if (hostfile_api->write(file, &ch, sizeof(ch)) == sizeof(ch))
+        return ch;
+    return WASHDC_HOSTFILE_EOF;
+}
+
+int washdc_hostfile_puts(washdc_hostfile file, char const *str) {
+    int n_chars = 0;
+    while (*str) {
+        if (washdc_hostfile_putc(file, *str++) == WASHDC_HOSTFILE_EOF)
+            return WASHDC_HOSTFILE_EOF;
+        n_chars++;
+    }
+    return n_chars;
+}
+
+int washdc_hostfile_getc(washdc_hostfile file) {
+    char ch;
+
+    if (washdc_hostfile_read(file, &ch, sizeof(ch)) != sizeof(ch))
+        return WASHDC_HOSTFILE_EOF;
+    return ch;
+}
+
+void washdc_hostfile_printf(washdc_hostfile file, char const *fmt, ...) {
+    static char buf[256];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    buf[sizeof(buf) - 1] = '\0';
+
+    washdc_hostfile_puts(file, buf);
 }

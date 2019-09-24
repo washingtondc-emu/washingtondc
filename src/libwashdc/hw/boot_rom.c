@@ -29,6 +29,7 @@
 #include "mem_code.h"
 #include "washdc/error.h"
 #include "log.h"
+#include "washdc/hostfile.h"
 
 #include "boot_rom.h"
 
@@ -86,34 +87,32 @@ struct memory_interface boot_rom_intf = {
 };
 
 void boot_rom_init(struct boot_rom *rom, char const *path) {
-    FILE *fp = fopen(path, "rb");
+    washdc_hostfile fp =
+        washdc_hostfile_open(path,
+                             WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_BINARY);
 
-    if (!fp) {
-        error_set_errno_val(errno);
+    if (fp == WASHDC_HOSTFILE_INVALID) {
         RAISE_ERROR(ERROR_FILE_IO);
         return;
     }
 
-    if (fseek(fp, 0, SEEK_END) < 0) {
-        error_set_errno_val(errno);
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_END) < 0) {
         RAISE_ERROR(ERROR_FILE_IO);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
-    long file_len = ftell(fp);
+    long file_len = washdc_hostfile_tell(fp);
 
     if (file_len <= 0) {
-        error_set_errno_val(errno);
         RAISE_ERROR(ERROR_FILE_IO);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
-    if (fseek(fp, 0, SEEK_SET) < 0) {
-        error_set_errno_val(errno);
+    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_BEG) < 0) {
         RAISE_ERROR(ERROR_FILE_IO);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
@@ -123,15 +122,14 @@ void boot_rom_init(struct boot_rom *rom, char const *path) {
         return;
     }
 
-    if (fread(rom->dat, sizeof(uint8_t), file_len, fp) != file_len) {
-        error_set_errno_val(errno);
+    if (washdc_hostfile_read(fp, rom->dat, file_len) != file_len) {
         RAISE_ERROR(ERROR_FILE_IO);
         free(rom->dat);
-        fclose(fp);
+        washdc_hostfile_close(fp);
         return;
     }
 
-    fclose(fp);
+    washdc_hostfile_close(fp);
 
     rom->dat_len = file_len;
 

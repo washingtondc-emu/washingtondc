@@ -26,7 +26,8 @@
 #include <stdio.h>
 
 #include "jit_il.h"
+#include "washdc/hostfile.h"
 
-void jit_disas_il(FILE *out, struct jit_inst const *inst, int idx);
+void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx);
 
 #endif

@@ -33,6 +33,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "washdc/hostfile.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -78,7 +80,7 @@ void string_set(struct string *str, char const *txt);
  *
  * the file position after calling this function is undefined
  */
-void string_load_stdio(struct string *str, FILE *fp);
+void string_load_hostfile(struct string *str, washdc_hostfile fp);
 
 /*
  * copy src into dst.

@@ -140,52 +140,54 @@ void jit_profile_push_il_inst(struct jit_profile_ctxt *ctxt,
     blk->il_insts = new_il_insts;
 }
 
-void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout) {
+void jit_profile_print(struct jit_profile_ctxt *ctxt, washdc_hostfile fout) {
     unsigned n_blocks = 0;
     unsigned idx;
     for (idx = 0; idx < JIT_PROFILE_N_BLOCKS; idx++)
         if (ctxt->high_score[idx])
             n_blocks++;
-    fprintf(fout, "showing the top %u code-blocks\n", n_blocks);
+    washdc_hostfile_printf(fout, "showing the top %u code-blocks\n", n_blocks);
 
     unsigned rank = 0;
     for (idx = 0; idx < JIT_PROFILE_N_BLOCKS; idx++) {
         struct jit_profile_per_block *profile = ctxt->high_score[idx];
         if (!profile)
             continue;
-        fputs("\n=========================================================="
-              "======================\n", fout);
-        fprintf(fout, "rank %u\n", ++rank);
-        fprintf(fout, "\taddress: 0x%08x\n", (unsigned)profile->first_addr);
-        fprintf(fout, "\tinstruction count: %u\n", profile->inst_count);
-        fprintf(fout, "\taccess count: %llu\n",
+        washdc_hostfile_puts(fout, "\n========================================="
+                             "=======================================\n");
+        washdc_hostfile_printf(fout, "rank %u\n", ++rank);
+        washdc_hostfile_printf(fout, "\taddress: 0x%08x\n",
+                               (unsigned)profile->first_addr);
+        washdc_hostfile_printf(fout, "\tinstruction count: %u\n",
+                               profile->inst_count);
+        washdc_hostfile_printf(fout, "\taccess count: %llu\n",
                 (unsigned long long)profile->hit_count);
-        fputs("\n", fout);
+        washdc_hostfile_puts(fout, "\n");
 
         if (ctxt->disas) {
-            fputs("Disassembly:\n", fout);
+            washdc_hostfile_puts(fout, "Disassembly:\n");
             unsigned inst_no;
             unsigned bytes_per_inst = ctxt->bytes_per_inst;
             for (inst_no = 0; inst_no < profile->inst_count; inst_no++) {
                 size_t byte_offs = inst_no * bytes_per_inst;
                 uint32_t addr = profile->first_addr + byte_offs;
-                fprintf(fout, "\t0x%08x: ", (unsigned)addr);
+                washdc_hostfile_printf(fout, "\t0x%08x: ", (unsigned)addr);
                 ctxt->disas(fout, addr,
                             ((uint8_t*)profile->instructions) + byte_offs);
-                fputs("\n", fout);
+                washdc_hostfile_puts(fout, "\n");
             }
-            fputs("\n", fout);
+            washdc_hostfile_puts(fout, "\n");
         }
 
         if (profile->il_inst_count) {
-            fputs("IL instructions:\n", fout);
+            washdc_hostfile_puts(fout, "IL instructions:\n");
             unsigned inst_no;
             for (inst_no = 0; inst_no < profile->il_inst_count; inst_no++)
                 jit_disas_il(fout, profile->il_insts + inst_no, inst_no);
         }
 
-        fputc('\n', fout);
-        fprintf(fout, "%u bytes of native executable code:\n", profile->native_bytes);
+        washdc_hostfile_putc(fout, '\n');
+        washdc_hostfile_printf(fout, "%u bytes of native executable code:\n", profile->native_bytes);
 
         if (!profile->native_bytes)
             continue;
@@ -193,8 +195,8 @@ void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout) {
         csh capstone_handle;
         cs_err cs_err_val = cs_open(CS_ARCH_X86, CS_MODE_64, &capstone_handle);
         if (cs_err_val != CS_ERR_OK) {
-            fprintf(fout, "unable to disassemble due to capstone error %08X\n",
-                    (int)cs_err_val);
+            washdc_hostfile_printf(fout, "unable to disassemble due to "
+                                   "capstone error %08X\n", (int)cs_err_val);
             continue;
         }
 
@@ -204,16 +206,17 @@ void jit_profile_print(struct jit_profile_ctxt *ctxt, FILE *fout) {
                                       (uint64_t)profile->native_dat,
                                       0, &insn);
         if (!inst_count) {
-            fprintf(fout, "unable to disassemble due to capstone error %08X\n",
-                    cs_errno(capstone_handle));
+            washdc_hostfile_printf(fout, "unable to disassemble due to "
+                                   "capstone error %08X\n",
+                                   cs_errno(capstone_handle));
             cs_close(&capstone_handle);
             continue;
         }
 
         for (size_t inst_no = 0; inst_no < inst_count; inst_no++) {
-            fprintf(fout, "%016llX: %s %s\n",
-                    (unsigned long long)insn[inst_no].address,
-                    insn[inst_no].mnemonic, insn[inst_no].op_str);
+            washdc_hostfile_printf(fout, "%016llX: %s %s\n",
+                                   (unsigned long long)insn[inst_no].address,
+                                   insn[inst_no].mnemonic, insn[inst_no].op_str);
         }
 
         cs_free(insn, inst_count);
