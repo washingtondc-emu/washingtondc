@@ -166,6 +166,51 @@ static void emit_mod_reg_rm(unsigned rex, unsigned opcode, unsigned mod,
     }
 }
 
+static void emit_mod_reg_rm_8bit(unsigned rex, unsigned opcode, unsigned mod,
+                                 unsigned reg, unsigned rm) {
+    if (reg >= R8) {
+        rex |= REX_R;
+        reg -= R8;
+    }
+    if (rm >= R8) {
+        rex |= REX_B;
+        rm -= R8;
+    }
+
+    bool sib_rsp = (rm == RSP) && (mod != 3);
+    bool sib_rbp = (rm == RBP) && (mod == 0);
+
+    if (reg == RDI || reg == RSI || reg == RBP || reg == RSP ||
+        (mod == 3 && (rm == RDI || rm == RSI || rm == RBP || rm == RSP)))
+        rex |= 0x40;
+
+    if (rex)
+        put8(rex | 0x40);
+    put8(opcode);
+
+    if (sib_rbp) {
+        /*
+         * Special case - having a mod of 0 and an R/M of 5 replaces R/M with a
+         * 32-bit displacement (from RIP, i think), so we need to set the mod
+         * to 1 or 2, which adds an 8 or 32 bit displacement relative to the
+         * given register.  Then set that displacement to 0.
+         */
+        unsigned mod_reg_rm = (1 << 6) | (reg << 3) | rm;
+        put8(mod_reg_rm);
+        put8(0);
+    } else {
+        unsigned mod_reg_rm = (mod << 6) | (reg << 3) | rm;
+        put8(mod_reg_rm);
+        if (sib_rsp) {
+            /*
+             * Special case - using RSP for the R/M puts the x86 in SIB mode,
+             * so we need to craft a SIB byte for (%RSP).
+             */
+            put8((RSP << 3) | RSP); // using RSP as an index counts as 0
+        }
+    }
+}
+
 /*
  * Special version of emit_mod_reg_rm which assumes the next byte will be a
  * SIB.  You have to emit the SIB in yourself after calling this function.
@@ -180,6 +225,29 @@ static void emit_mod_reg_rm_sib(unsigned rex, unsigned opcode, unsigned mod,
         rex |= REX_B;
         rm -= R8;
     }
+
+    if (rex)
+        put8(rex | 0x40);
+    put8(opcode);
+
+    unsigned mod_reg_rm = (mod << 6) | (reg << 3) | rm;
+    put8(mod_reg_rm);
+}
+
+static void emit_mod_reg_rm_sib_8bit(unsigned rex, unsigned opcode, unsigned mod,
+                                     unsigned reg, unsigned rm) {
+    if (reg >= R8) {
+        rex |= REX_R;
+        reg -= R8;
+    }
+    if (rm >= R8) {
+        rex |= REX_B;
+        rm -= R8;
+    }
+
+    if (reg == RDI || reg == RSI || reg == RBP || reg == RSP ||
+        (mod == 3 && (rm == RDI || rm == RSI || rm == RBP || rm == RSP)))
+        rex |= 0x40;
 
     if (rex)
         put8(rex | 0x40);
@@ -225,6 +293,52 @@ static void emit_mod_reg_rm_2(unsigned rex, unsigned opcode1,
 
     bool sib_rsp = (rm == RSP) && (mod != 3);
     bool sib_rbp = (rm == RBP) && (mod != 3);
+
+    if (rex)
+        put8(rex | 0x40);
+    put8(opcode1);
+    put8(opcode2);
+    if (sib_rbp) {
+        /*
+         * Special case - having a mod of 0 and an R/M of 5 replaces R/M with a
+         * 32-bit displacement (from RIP, i think), so we need to set the mod
+         * to 1 or 2, which adds an 8 or 32 bit displacement relative to the
+         * given register.  Then set that displacement to 0.
+         */
+        unsigned mod_reg_rm = (1 << 6) | (reg << 3) | rm;
+        put8(mod_reg_rm);
+        put8(0);
+    } else {
+        unsigned mod_reg_rm = (mod << 6) | (reg << 3) | rm;
+        put8(mod_reg_rm);
+        if (sib_rsp) {
+            /*
+             * Special case - using RSP for the R/M puts the x86 in SIB mode,
+             * so we need to craft a SIB byte for (%RSP).
+             */
+            put8((RSP << 3) | RSP); // using RSP as an index counts as 0
+        }
+    }
+}
+
+static void emit_mod_reg_rm_2_8bit(unsigned rex, unsigned opcode1,
+                                   unsigned opcode2, unsigned mod,
+                                   unsigned reg, unsigned rm) {
+    if (reg >= R8) {
+        rex |= REX_R;
+        reg -= R8;
+    }
+    if (rm >= R8) {
+        rex |= REX_B;
+        rm -= R8;
+    }
+
+    bool sib_rsp = (rm == RSP) && (mod != 3);
+    bool sib_rbp = (rm == RBP) && (mod != 3);
+
+    if (reg == RDI || reg == RSI || reg == RBP || reg == RSP ||
+        (mod == 3 && (rm == RDI || rm == RSI || rm == RBP || rm == RSP)))
+        rex |= 0x40;
 
     if (rex)
         put8(rex | 0x40);
@@ -598,7 +712,7 @@ void x86asm_movb_sib_reg(unsigned reg_base, unsigned scale,
 
     /* put8(0x66); */
 
-    emit_mod_reg_rm_sib(rex, 0x8a, 0, reg_dst, SIB);
+    emit_mod_reg_rm_sib_8bit(rex, 0x8a, 0, reg_dst, SIB);
 
     unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
     put8(sib);
@@ -711,7 +825,7 @@ void x86asm_movb_reg_sib(unsigned reg_src, unsigned reg_base,
 
     /* put8(0x66); */
 
-    emit_mod_reg_rm_sib(rex, 0x88, 0, reg_src, SIB);
+    emit_mod_reg_rm_sib_8bit(rex, 0x88, 0, reg_src, SIB);
 
     unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
     put8(sib);
@@ -730,13 +844,13 @@ void x86asm_mov_indreg16_reg16(unsigned reg_src, unsigned reg_dst) {
 
 // movb <disp8>(%<reg_src>), <reg_dst>
 void x86asm_movb_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst) {
-    emit_mod_reg_rm(0, 0x8a, 1, reg_dst, reg_src);
+    emit_mod_reg_rm_8bit(0, 0x8a, 1, reg_dst, reg_src);
     put8(disp8);
 }
 
 // movb %<reg_src>, <disp8>(%<reg_dst>)
 void x86asm_movb_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst) {
-    emit_mod_reg_rm(0, 0x88, 1, reg_src, reg_dst);
+    emit_mod_reg_rm_8bit(0, 0x88, 1, reg_src, reg_dst);
     put8(disp8);
 }
 
@@ -1118,7 +1232,7 @@ void x86asm_jns_lbl8(struct x86asm_lbl8 *lbl) {
 
 // movsx <%reg8>, %<reg32>
 void x86asm_movsx_reg8_reg32(unsigned reg_src, unsigned reg_dst) {
-    emit_mod_reg_rm_2(0, 0x0f, 0xbe, 3, reg_dst, reg_src);
+    emit_mod_reg_rm_2_8bit(0, 0x0f, 0xbe, 3, reg_dst, reg_src);
 }
 
 // movsx %<reg16>, %<reg32>
