@@ -49,20 +49,6 @@ enum washdc_hostfile_seek_origin {
 #define WASHDC_HOSTFILE_EOF 0xfeedface
 
 struct washdc_hostfile_api {
-    char const*(*cfg_dir)(void);
-    char const*(*cfg_file)(void);
-    char const*(*data_dir)(void);
-    char const*(*screenshot_dir)(void);
-
-    /*
-     * join two paths together.
-     *
-     * first parameter: the destination and also the left side of the path
-     * second parameter: the right side of the path
-     * third parameter: the length of the first parameter.
-     */
-    void(*path_append)(char *, char const*, size_t);
-
     washdc_hostfile(*open)(char const *path, enum washdc_hostfile_mode mode);
     void(*close)(washdc_hostfile file);
     int(*seek)(washdc_hostfile file, long disp,
@@ -71,17 +57,14 @@ struct washdc_hostfile_api {
     size_t(*read)(washdc_hostfile file, void *outp, size_t len);
     size_t(*write)(washdc_hostfile file, void const *inp, size_t len);
     int(*flush)(washdc_hostfile file);
+
+    washdc_hostfile(*open_cfg_file)(enum washdc_hostfile_mode mode);
+    washdc_hostfile(*open_screenshot)(char const *name, enum washdc_hostfile_mode mode);
 };
 
-char const *washdc_hostfile_cfg_dir(void);
-
-char const *washdc_hostfile_cfg_file(void);
-
-char const *washdc_hostfile_data_dir(void);
-
-char const *washdc_hostfile_screenshot_dir(void);
-
-void washdc_hostfile_path_append(char *dst, char const *src, size_t dst_sz);
+washdc_hostfile washdc_hostfile_open_cfg_file(enum washdc_hostfile_mode mode);
+washdc_hostfile washdc_hostfile_open_screenshot(char const *name,
+                                                enum washdc_hostfile_mode mode);
 
 washdc_hostfile washdc_hostfile_open(char const *path,
                                      enum washdc_hostfile_mode mode);

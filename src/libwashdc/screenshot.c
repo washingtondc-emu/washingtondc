@@ -62,20 +62,15 @@ int save_screenshot_dir(void) {
     strftime(timestr, TIMESTR_LEN, "%F-%H-%M-%S", timeinfo);
     timestr[TIMESTR_LEN - 1] = '\0';
 
-    char const *screenshot_dir = washdc_hostfile_screenshot_dir();
     static char filename[PATH_LEN];
-    static char path[PATH_LEN];
     snprintf(filename, PATH_LEN, "%s.png", timestr);
     washdc_hostfile stream;
     int idx;
     for (idx = 0; idx < 16; idx++) {
-        strncpy(path, screenshot_dir, PATH_LEN);
-        path[PATH_LEN - 1] = '\0';
-        washdc_hostfile_path_append(path, filename, PATH_LEN);
         stream =
-            washdc_hostfile_open(path, WASHDC_HOSTFILE_WRITE |
-                                 WASHDC_HOSTFILE_BINARY |
-                                 WASHDC_HOSTFILE_DONT_OVERWRITE);
+            washdc_hostfile_open_screenshot(filename, WASHDC_HOSTFILE_WRITE |
+                                            WASHDC_HOSTFILE_BINARY |
+                                            WASHDC_HOSTFILE_DONT_OVERWRITE);
         if (stream != WASHDC_HOSTFILE_INVALID)
             break;
         else
@@ -84,7 +79,7 @@ int save_screenshot_dir(void) {
     if (stream == WASHDC_HOSTFILE_INVALID)
         return -1;
 
-    int ret = do_save_screenshot(stream, path);
+    int ret = do_save_screenshot(stream, filename);
     washdc_hostfile_close(stream);
     return ret;
 }

@@ -48,14 +48,18 @@
 #include "frontend_io/serial_server.hpp"
 #endif
 
-void create_screenshot_dir(void);
+static void create_screenshot_dir(void);
 void create_cfg_dir(void);
-void create_data_dir(void);
 
-char const* screenshot_dir(void);
-char const* data_dir(void);
+static char const* screenshot_dir(void);
+static char const* data_dir(void);
+static void create_data_dir(void);
 char const *cfg_dir(void);
 char const *cfg_file(void);
+
+static washdc_hostfile open_screenshot(char const *name,
+                                       enum washdc_hostfile_mode mode);
+static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode);
 
 void path_append(char *dst, char const *src, size_t dst_sz);
 
@@ -81,18 +85,15 @@ static size_t file_write(washdc_hostfile file, void const *inp, size_t len);
 static int file_flush(washdc_hostfile file);
 
 static struct washdc_hostfile_api const hostfile_api = {
-    .cfg_dir = cfg_dir,
-    .cfg_file = cfg_file,
-    .data_dir = data_dir,
-    .screenshot_dir = screenshot_dir,
-    .path_append = path_append,
     .open = file_open,
     .close = file_close,
     .seek = file_seek,
     .tell = file_tell,
     .read = file_read,
     .write = file_write,
-    .flush = file_flush
+    .flush = file_flush,
+    .open_cfg_file = open_cfg_file,
+    .open_screenshot = open_screenshot
 };
 
 static washdc_hostfile file_open(char const *path,
@@ -474,7 +475,7 @@ char const *cfg_file(void) {
     return path;
 }
 
-char const* screenshot_dir(void) {
+static char const* screenshot_dir(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *the_data_dir = data_dir();
     if (!the_data_dir)
@@ -485,7 +486,7 @@ char const* screenshot_dir(void) {
     return path;
 }
 
-char const* data_dir(void) {
+static char const* data_dir(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *data_root = getenv("XDG_DATA_HOME");
     if (data_root) {
@@ -525,7 +526,7 @@ char const *cfg_dir(void) {
     return path;
 }
 
-void create_screenshot_dir(void) {
+static void create_screenshot_dir(void) {
     create_data_dir();
 
     char const *the_screenshot_dir = screenshot_dir();
@@ -545,7 +546,7 @@ void create_cfg_dir(void) {
     }
 }
 
-void create_data_dir(void) {
+static void create_data_dir(void) {
     char const *the_data_dir = data_dir();
     if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
         errno != EEXIST) {
@@ -720,4 +721,22 @@ static void null_win_update_title(void) {
 
 static int file_flush(washdc_hostfile file) {
     return fflush((FILE*)file);
+}
+
+static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
+    char const *cfg_file_dir = cfg_dir();
+    if (mkdir(cfg_file_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
+        if (errno != EEXIST) {
+            fprintf(stderr, "Unable to create %s: %s\n", cfg_file_dir, strerror(errno));
+            return WASHDC_HOSTFILE_INVALID;
+        }
+    }
+
+    return file_open(cfg_file(), mode);
+}
+
+static washdc_hostfile open_screenshot(char const *name,
+                                       enum washdc_hostfile_mode mode) {
+    std::string path = std::string(screenshot_dir()) + "/" + name;
+    return file_open(path.c_str(), mode);
 }

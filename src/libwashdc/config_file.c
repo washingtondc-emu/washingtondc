@@ -67,9 +67,6 @@ static void cfg_handle_newline(void);
 static int cfg_parse_bool(char const *val, bool *outp);
 
 static void cfg_create_default_config(void) {
-    char const *cfg_file_path = washdc_hostfile_cfg_file();
-    char const *cfg_file_dir = washdc_hostfile_cfg_dir();
-
     static char const *cfg_default =
         ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
         ";;;;;;;;;;\n"
@@ -190,28 +187,16 @@ static void cfg_create_default_config(void) {
         "dc.ctrl.p1.btn-y(1)       kbd.keypad8\n"
         "dc.ctrl.p1.btn-start(1)   kbd.space\n";
 
-    LOG_INFO("Attempting to create configuration directory \"%s\"\n",
-             cfg_file_dir);
-    if (mkdir(cfg_file_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
-        if (errno == EEXIST) {
-            LOG_INFO("The directory already exists, I'm going to assume that's "
-                     "a good thing...\n");
-        } else {
-            LOG_ERROR("Unable to create %s: %s\n", cfg_file_dir, strerror(errno));
-            return;
-        }
-    }
-
-    washdc_hostfile cfg_file = washdc_hostfile_open(cfg_file_path,
-                                                    WASHDC_HOSTFILE_WRITE |
-                                                    WASHDC_HOSTFILE_TEXT);
+    washdc_hostfile cfg_file =
+        washdc_hostfile_open_cfg_file(WASHDC_HOSTFILE_WRITE |
+                                      WASHDC_HOSTFILE_TEXT);
     if (cfg_file == WASHDC_HOSTFILE_INVALID) {
-        LOG_ERROR("unable to create %s: %s\n", cfg_file_path, strerror(errno));
+        LOG_ERROR("unable to open cfg file\n");
         return;
     }
 
     if (washdc_hostfile_puts(cfg_file, cfg_default) == WASHDC_HOSTFILE_EOF) {
-        LOG_ERROR("Unable to write default config to %s\n", cfg_file_path);
+        LOG_ERROR("Unable to write default config to cfg file\n");
     }
 
     washdc_hostfile_close(cfg_file);
@@ -221,30 +206,17 @@ void cfg_init(void) {
     memset(&cfg_state, 0, sizeof(cfg_state));
     cfg_state.state = CFG_PARSE_PRE_KEY;
 
-    char const *cfg_file_path = washdc_hostfile_cfg_file();
-    char const *cfg_file_dir = washdc_hostfile_cfg_dir();
-
-    if (cfg_file_dir)
-        LOG_INFO("cfg directory is \"%s\"\n", cfg_file_dir);
-    else
-        LOG_ERROR("unable to determine cfg directory\n");
-
-    if (cfg_file_path)
-        LOG_INFO("Using cfg file \"%s\"\n", cfg_file_path);
-    else
-        LOG_ERROR("Unable to determine location of cfg file\n");
-
     fifo_init(&cfg_state.cfg_nodes);
 
     washdc_hostfile cfg_file =
-        washdc_hostfile_open(cfg_file_path,
-                             WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_TEXT);
+        washdc_hostfile_open_cfg_file(WASHDC_HOSTFILE_READ |
+                                      WASHDC_HOSTFILE_TEXT);
 
     if (cfg_file == WASHDC_HOSTFILE_INVALID) {
         cfg_create_default_config();
         cfg_file =
-            washdc_hostfile_open(cfg_file_path,
-                                 WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_TEXT);
+            washdc_hostfile_open_cfg_file(WASHDC_HOSTFILE_READ |
+                                          WASHDC_HOSTFILE_TEXT);
     }
 
     if (cfg_file != WASHDC_HOSTFILE_INVALID) {

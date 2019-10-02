@@ -55,11 +55,15 @@
 #define CFG_FILE_NAME "wash.cfg"
 
 void path_append(char *dst, char const *src, size_t dst_sz);
-char const *screenshot_dir(void);
-char const *data_dir(void);
+static char const *screenshot_dir(void);
+static char const *data_dir(void);
+static void create_data_dir(void);
 char const *cfg_dir(void);
 char const *cfg_file(void);
-void create_screenshot_dir(void);
+static void create_screenshot_dir(void);
+static washdc_hostfile open_screenshot(char const *name,
+                                       enum washdc_hostfile_mode mode);
+static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode);
 
 static washdc_hostfile file_open(char const *path,
                                  enum washdc_hostfile_mode mode);
@@ -79,18 +83,15 @@ static struct washdc_sound_intf snd_intf = {
 };
 
 static struct washdc_hostfile_api const hostfile_api = {
-    .cfg_dir = cfg_dir,
-    .cfg_file = cfg_file,
-    .data_dir = data_dir,
-    .screenshot_dir = screenshot_dir,
-    .path_append = path_append,
     .open = file_open,
     .close = file_close,
     .seek = file_seek,
     .tell = file_tell,
     .read = file_read,
     .write = file_write,
-    .flush = file_flush
+    .flush = file_flush,
+    .open_cfg_file = open_cfg_file,
+    .open_screenshot = open_screenshot
 };
 
 static void print_usage(char const *cmd) {
@@ -513,7 +514,7 @@ void path_append(char *dst, char const *src, size_t dst_sz) {
     dst[dst_sz - 1] = '\0';
 }
 
-char const *screenshot_dir(void) {
+static char const *screenshot_dir(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *the_data_dir = data_dir();
     if (!the_data_dir)
@@ -524,7 +525,7 @@ char const *screenshot_dir(void) {
     return path;
 }
 
-char const *data_dir(void) {
+static char const *data_dir(void) {
     static char path[HOSTFILE_PATH_LEN];
     char const *data_root = getenv("XDG_DATA_HOME");
     if (data_root) {
@@ -575,13 +576,19 @@ char const *cfg_file(void) {
     return path;
 }
 
-void create_screenshot_dir(void) {
+static void create_screenshot_dir(void) {
     create_data_dir();
 
     char const *the_screenshot_dir = screenshot_dir();
     if (mkdir(the_screenshot_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
         errno != EEXIST)
         fprintf(stderr, "%s - failure to create %s\n", __func__, the_screenshot_dir);
+}
+
+static washdc_hostfile open_screenshot(char const *name,
+                                       enum washdc_hostfile_mode mode) {
+    std::string path = std::string(screenshot_dir()) + "/" + name;
+    return file_open(path.c_str(), mode);
 }
 
 void create_cfg_dir(void) {
@@ -591,7 +598,11 @@ void create_cfg_dir(void) {
         fprintf(stderr, "%s - failure to create %s\n", __func__, the_cfg_dir);
 }
 
-void create_data_dir(void) {
+static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
+    return file_open(cfg_file(), mode);
+}
+
+static void create_data_dir(void) {
     char const *the_data_dir = data_dir();
     if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
         errno != EEXIST)

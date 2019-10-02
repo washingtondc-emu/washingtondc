@@ -257,26 +257,6 @@ unsigned washdc_get_frame_count(void) {
     return dc_get_frame_count();
 }
 
-void washdc_hostfile_path_append(char *dst, char const *src, size_t dst_sz) {
-    return hostfile_api->path_append(dst, src, dst_sz);
-}
-
-char const *washdc_hostfile_cfg_dir(void) {
-    return hostfile_api->cfg_dir();
-}
-
-char const *washdc_hostfile_cfg_file(void) {
-    return hostfile_api->cfg_file();
-}
-
-char const *washdc_hostfile_data_dir(void) {
-    return hostfile_api->data_dir();
-}
-
-char const *washdc_hostfile_screenshot_dir(void) {
-    return hostfile_api->screenshot_dir();
-}
-
 washdc_hostfile washdc_hostfile_open(char const *path,
                                      enum washdc_hostfile_mode mode) {
     return hostfile_api->open(path, mode);
@@ -341,4 +321,17 @@ void washdc_hostfile_printf(washdc_hostfile file, char const *fmt, ...) {
     buf[sizeof(buf) - 1] = '\0';
 
     washdc_hostfile_puts(file, buf);
+}
+
+washdc_hostfile washdc_hostfile_open_cfg_file(enum washdc_hostfile_mode mode) {
+    if (hostfile_api->open_cfg_file)
+        return hostfile_api->open_cfg_file(mode);
+    return WASHDC_HOSTFILE_INVALID;
+}
+
+washdc_hostfile washdc_hostfile_open_screenshot(char const *name,
+                                                enum washdc_hostfile_mode mode) {
+    if (hostfile_api->open_screenshot)
+        return hostfile_api->open_screenshot(name, mode);
+    return WASHDC_HOSTFILE_INVALID;
 }

@@ -26,13 +26,8 @@
 #define HOSTFILE_PATH_LEN 4096
 
 void path_append(char *dst, char const *src, size_t dst_sz);
-char const *screenshot_dir(void);
-char const *data_dir(void);
 char const *cfg_dir(void);
 char const *cfg_file(void);
-void create_screenshot_dir(void);
-
 void create_cfg_dir(void);
-void create_data_dir(void);
 
 #endif
