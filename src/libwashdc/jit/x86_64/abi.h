@@ -25,7 +25,7 @@
 
 #include "emit_x86_64.h"
 
-#ifdef __CYGWIN__
+#if defined(__CYGWIN__) || defined(_WIN32)
 #define ABI_MICROSOFT
 #endif
 
