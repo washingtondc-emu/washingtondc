@@ -115,7 +115,9 @@ static dc_cycle_stamp_t last_frame_virttime;
 static struct memory_interface sh4_unmapped_mem;
 static struct memory_interface arm7_unmapped_mem;
 
+#ifdef ENABLE_JIT_X86_64
 static struct native_dispatch_meta sh4_native_dispatch_meta;
+#endif
 
 enum TermReason {
     TERM_REASON_NORM,   // normal program exit

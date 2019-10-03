@@ -36,10 +36,14 @@
 #include "sh4.h"
 #include "sh4_read_inst.h"
 #include "sh4_jit.h"
+
+#ifdef ENABLE_JIT_X86_64
 #include "jit/x86_64/native_dispatch.h"
+#endif
 
 static jit_hash sh4_jit_hash_wrapper(void *sh4, uint32_t addr);
 
+#ifdef ENABLE_JIT_X86_64
 void sh4_jit_set_native_dispatch_meta(struct native_dispatch_meta *meta) {
 #ifdef JIT_PROFILE
     meta->profile_notify = sh4_jit_profile_notify;
@@ -47,6 +51,7 @@ void sh4_jit_set_native_dispatch_meta(struct native_dispatch_meta *meta) {
     meta->on_compile = sh4_jit_compile_native;
     meta->hash_func = sh4_jit_hash_wrapper;
 }
+#endif
 
 enum reg_status {
     // the register resides in the sh4's reg array

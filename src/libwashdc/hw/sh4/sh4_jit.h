@@ -201,7 +201,9 @@ sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
 void sh4_jit_init(struct Sh4 *sh4);
 void sh4_jit_cleanup(struct Sh4 *sh4);
 
+#ifdef ENABLE_JIT_X86_64
 void sh4_jit_set_native_dispatch_meta(struct native_dispatch_meta *meta);
+#endif
 
 /*
  * disassembly function that emits a function call to the instruction's

@@ -97,7 +97,11 @@ static struct avl_node*
 cache_entry_ctor(avl_key_type key) {
     struct cache_entry *ent = calloc(1, sizeof(struct cache_entry));
 
+#ifdef ENABLE_JIT_X86_64
     jit_code_block_init(&ent->blk, key, native_mode);
+#else
+    jit_code_block_init(&ent->blk, key, false);
+#endif
 
     n_entries++;
     if (n_entries >= MAX_ENTRIES)
@@ -109,7 +113,11 @@ static void
 cache_entry_dtor(struct avl_node *node) {
     struct cache_entry *ent = &AVL_DEREF(node, struct cache_entry, node);
 
+#ifdef ENABLE_JIT_X86_64
     jit_code_block_cleanup(&ent->blk, native_mode);
+#else
+    jit_code_block_cleanup(&ent->blk, false);
+#endif
 
     free(ent);
 }
