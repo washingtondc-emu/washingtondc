@@ -25,6 +25,12 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/stat.h>
+#endif
+
 #include "washdc/hostfile.h"
 #include "washdc/washdc.h"
 #include "washdc/sound_intf.h"
@@ -526,33 +532,27 @@ char const *cfg_dir(void) {
     return path;
 }
 
+void create_directory(char const *name) {
+#ifdef _WIN32
+    if (!CreateDirectoryA(name, NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, name);
+#else
+    if (mkdir(name, S_IRUSR | S_IWUSR | S_IXUSR) != 0 && errno != EEXIST)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, name);
+#endif
+}
+
 static void create_screenshot_dir(void) {
     create_data_dir();
-
-    char const *the_screenshot_dir = screenshot_dir();
-    if (mkdir(the_screenshot_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST) {
-        std::cerr << __func__ << " - failure to create " <<
-            the_screenshot_dir << std::endl;
-    }
+    create_directory(screenshot_dir());
 }
 
 void create_cfg_dir(void) {
-    char const *the_cfg_dir = cfg_dir();
-    if (mkdir(the_cfg_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST) {
-        std::cerr << __func__ << " - failure to create " <<
-            the_cfg_dir << std::endl;
-    }
+    create_directory(cfg_dir());
 }
 
 static void create_data_dir(void) {
-    char const *the_data_dir = data_dir();
-    if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST) {
-        std::cerr << __func__ << " - failure to create " <<
-            the_data_dir << std::endl;
-    }
+    create_directory(data_dir());
 }
 
 
@@ -724,14 +724,7 @@ static int file_flush(washdc_hostfile file) {
 }
 
 static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
-    char const *cfg_file_dir = cfg_dir();
-    if (mkdir(cfg_file_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0) {
-        if (errno != EEXIST) {
-            fprintf(stderr, "Unable to create %s: %s\n", cfg_file_dir, strerror(errno));
-            return WASHDC_HOSTFILE_INVALID;
-        }
-    }
-
+    create_directory(cfg_dir());
     return file_open(cfg_file(), mode);
 }
 

@@ -27,7 +27,12 @@
 #include <cstring>
 #include <string>
 #include <iostream>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/stat.h>
+#endif
 
 #include "washdc/washdc.h"
 #include "washdc/buildconfig.h"
@@ -576,13 +581,19 @@ char const *cfg_file(void) {
     return path;
 }
 
+void create_directory(char const *name) {
+#ifdef _WIN32
+    if (!CreateDirectoryA(name, NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, name);
+#else
+    if (mkdir(name, S_IRUSR | S_IWUSR | S_IXUSR) != 0 && errno != EEXIST)
+        fprintf(stderr, "%s - failure to create %s\n", __func__, name);
+#endif
+}
+
 static void create_screenshot_dir(void) {
     create_data_dir();
-
-    char const *the_screenshot_dir = screenshot_dir();
-    if (mkdir(the_screenshot_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, the_screenshot_dir);
+    create_directory(screenshot_dir());
 }
 
 static washdc_hostfile open_screenshot(char const *name,
@@ -592,10 +603,7 @@ static washdc_hostfile open_screenshot(char const *name,
 }
 
 void create_cfg_dir(void) {
-    char const *the_cfg_dir = cfg_dir();
-    if (mkdir(the_cfg_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, the_cfg_dir);
+    create_directory(cfg_dir());
 }
 
 static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
@@ -603,10 +611,7 @@ static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
 }
 
 static void create_data_dir(void) {
-    char const *the_data_dir = data_dir();
-    if (mkdir(the_data_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, the_data_dir);
+    create_directory(data_dir());
 }
 
 static washdc_hostfile file_open(char const *path,

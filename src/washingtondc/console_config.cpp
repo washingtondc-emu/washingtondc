@@ -41,11 +41,7 @@ static char const* consoles_dir(void) {
 
 static void create_consoles_dir(void) {
     create_cfg_dir();
-
-    char const *the_consoles_dir = consoles_dir();
-    if (mkdir(the_consoles_dir, S_IRUSR | S_IWUSR | S_IXUSR) != 0 &&
-        errno != EEXIST)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, the_consoles_dir);
+    create_directory(consoles_dir());
 }
 
 char const *console_get_dir(char const *console_name) {
@@ -61,11 +57,7 @@ char const *console_get_dir(char const *console_name) {
 
 void create_console_dir(char const *console_name) {
     create_consoles_dir();
-
-    char const *dir_path = console_get_dir(console_name);
-
-    if (mkdir(dir_path, S_IRUSR | S_IWUSR | S_IXUSR) != 0 && errno != EEXIST)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, dir_path);
+    create_directory(console_get_dir(console_name));
 }
 
 char const *console_get_rtc_path(char const *console_name) {
