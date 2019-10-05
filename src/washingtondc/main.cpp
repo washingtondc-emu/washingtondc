@@ -40,9 +40,9 @@
 #include "overlay.hpp"
 #include "sound.hpp"
 #include "washdc/hostfile.h"
-#include "hostfile.hpp"
 #include "console_config.hpp"
 #include "opengl/opengl_renderer.h"
+#include "stdio_hostfile.hpp"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -59,27 +59,8 @@
 
 #define CFG_FILE_NAME "wash.cfg"
 
-void path_append(char *dst, char const *src, size_t dst_sz);
-static char const *screenshot_dir(void);
-static char const *data_dir(void);
-static void create_data_dir(void);
-char const *cfg_dir(void);
-char const *cfg_file(void);
-static void create_screenshot_dir(void);
-static washdc_hostfile open_screenshot(char const *name,
-                                       enum washdc_hostfile_mode mode);
-static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode);
-
-static washdc_hostfile file_open(char const *path,
-                                 enum washdc_hostfile_mode mode);
-static void file_close(washdc_hostfile file);
-static int file_seek(washdc_hostfile file,
-                     long disp,
-                     enum washdc_hostfile_seek_origin origin);
-static long file_tell(washdc_hostfile file);
-static size_t file_read(washdc_hostfile file, void *outp, size_t len);
-static size_t file_write(washdc_hostfile file, void const *inp, size_t len);
-static int file_flush(washdc_hostfile file);
+#include "stdio_hostfile.hpp"
+#include "paths.hpp"
 
 static struct washdc_sound_intf snd_intf = {
     .init = sound::init,
@@ -88,16 +69,19 @@ static struct washdc_sound_intf snd_intf = {
 };
 
 static struct washdc_hostfile_api const hostfile_api = {
-    .open = file_open,
-    .close = file_close,
-    .seek = file_seek,
-    .tell = file_tell,
-    .read = file_read,
-    .write = file_write,
-    .flush = file_flush,
+    .open = file_stdio_open,
+    .close = file_stdio_close,
+    .seek = file_stdio_seek,
+    .tell = file_stdio_tell,
+    .read = file_stdio_read,
+    .write = file_stdio_write,
+    .flush = file_stdio_flush,
     .open_cfg_file = open_cfg_file,
     .open_screenshot = open_screenshot
 };
+
+static void wizard(path_string console_name, path_string dc_bios_path,
+                   path_string dc_flash_path);
 
 static void print_usage(char const *cmd) {
     fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
@@ -130,25 +114,28 @@ struct washdc_overlay_intf overlay_intf;
 
 struct washdc_gameconsole const *console;
 
-static void wizard(std::string const& console_name, char const *dc_bios_path, char const *dc_flash_path) {
-    std::string firmware_path, flash_path;
+static void wizard(path_string console_name, path_string dc_bios_path,
+                   path_string dc_flash_path) {
+    path_string firmware_path, flash_path;
 
-    if (dc_bios_path) {
+    if (dc_bios_path.size()) {
         firmware_path = dc_bios_path;
     } else {
         std::cout << "Please enter the path to your Dreamcast firmware image:" << std::endl;
         std::cin >> firmware_path;
     }
 
-    if (dc_flash_path) {
+    if (dc_flash_path.size()) {
         flash_path = dc_flash_path;
     } else {
         std::cout << "Please enter the path to your Dreamcast flash image:" << std::endl;
         std::cin >> flash_path;
     }
 
-    std::string firmware_out_path = console_get_firmware_path(console_name.c_str());
-    std::string flash_out_path = console_get_flashrom_path(console_name.c_str());
+    path_string firmware_out_path =
+        console_get_firmware_path(console_name.c_str());
+    path_string flash_out_path =
+        console_get_flashrom_path(console_name.c_str());
 
     create_console_dir(console_name.c_str());
 
@@ -301,7 +288,12 @@ int main(int argc, char **argv) {
     if (launch_wizard) {
         if (!console_name)
             console_name = "default_dc";
-        wizard(console_name, dc_bios_path, dc_flash_path);
+        path_string bios_str, flash_str;
+        if (dc_bios_path)
+            bios_str = dc_bios_path;
+        if (dc_flash_path)
+            flash_str = dc_flash_path;
+        wizard(console_name, bios_str, flash_str);
     }
 
     argv += optind;
@@ -471,203 +463,4 @@ void do_run_one_frame(void) {
 
 void do_pause(void) {
     washdc_pause();
-}
-
-void path_append(char *dst, char const *src, size_t dst_sz) {
-    if (!src[0])
-        return; // nothing to append
-
-    // get the index of the null terminator
-    unsigned zero_idx = 0;
-    while (dst[zero_idx])
-        zero_idx++;
-
-    if (!zero_idx) {
-        // special case - dst is empty so copy src over
-        strncpy(dst, src, dst_sz);
-        dst[dst_sz - 1] = '\0';
-        return;
-    }
-
-    /*
-     * If there's a trailing / on dst and a leading / on src then get rid of
-     * the leading slash on src.
-     *
-     * If there is not a trailing / on dst and there is not a leading slash on
-     * src then give dst a trailing /.
-     */
-    if (dst[zero_idx - 1] == '/' && src[0] == '/') {
-        // remove leading / from src
-        src = src + 1;
-        if (!src[0])
-            return; // nothing to append
-    } else if (dst[zero_idx - 1] != '/' && src[0] != '/') {
-        // add trailing / to dst
-        if (zero_idx < dst_sz - 1) {
-            dst[zero_idx++] = '/';
-            dst[zero_idx] = '\0';
-        } else {
-            return; // out of space
-        }
-    }
-
-    // there's no more space
-    if (zero_idx >= dst_sz -1 )
-        return;
-
-    strncpy(dst + zero_idx, src, dst_sz - zero_idx);
-    dst[dst_sz - 1] = '\0';
-}
-
-static char const *screenshot_dir(void) {
-    static char path[HOSTFILE_PATH_LEN];
-    char const *the_data_dir = data_dir();
-    if (!the_data_dir)
-        return NULL;
-    strncpy(path, the_data_dir, HOSTFILE_PATH_LEN);
-    path[HOSTFILE_PATH_LEN - 1] = '\0';
-    path_append(path, "/screenshots", HOSTFILE_PATH_LEN);
-    return path;
-}
-
-static char const *data_dir(void) {
-    static char path[HOSTFILE_PATH_LEN];
-    char const *data_root = getenv("XDG_DATA_HOME");
-    if (data_root) {
-        strncpy(path, data_root, HOSTFILE_PATH_LEN);
-        path[HOSTFILE_PATH_LEN - 1] = '\0';
-    } else {
-        char const *home_dir = getenv("HOME");
-        if (home_dir) {
-            strncpy(path, home_dir, HOSTFILE_PATH_LEN);
-            path[HOSTFILE_PATH_LEN - 1] = '\0';
-        } else {
-            return NULL;
-        }
-        path_append(path, "/.local/share", HOSTFILE_PATH_LEN);
-    }
-    path_append(path, "washdc", HOSTFILE_PATH_LEN);
-    return path;
-}
-
-char const *cfg_dir(void) {
-    static char path[HOSTFILE_PATH_LEN];
-    char const *config_root = getenv("XDG_CONFIG_HOME");
-    if (config_root) {
-        strncpy(path, config_root, HOSTFILE_PATH_LEN);
-        path[HOSTFILE_PATH_LEN - 1] = '\0';
-    } else {
-        char const *home_dir = getenv("HOME");
-        if (home_dir) {
-            strncpy(path, home_dir, HOSTFILE_PATH_LEN);
-            path[HOSTFILE_PATH_LEN - 1] = '\0';
-        } else {
-            return NULL;
-        }
-        path_append(path, "/.config", HOSTFILE_PATH_LEN);
-    }
-    path_append(path, "washdc", HOSTFILE_PATH_LEN);
-    return path;
-}
-
-char const *cfg_file(void) {
-    static char path[HOSTFILE_PATH_LEN];
-    char const *the_cfg_dir = cfg_dir();
-    if (!the_cfg_dir)
-        return NULL;
-    strncpy(path, the_cfg_dir, HOSTFILE_PATH_LEN);
-    path[HOSTFILE_PATH_LEN - 1] = '\0';
-    path_append(path, "wash.cfg", HOSTFILE_PATH_LEN);
-    return path;
-}
-
-void create_directory(char const *name) {
-#ifdef _WIN32
-    if (!CreateDirectoryA(name, NULL) && GetLastError() != ERROR_ALREADY_EXISTS)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, name);
-#else
-    if (mkdir(name, S_IRUSR | S_IWUSR | S_IXUSR) != 0 && errno != EEXIST)
-        fprintf(stderr, "%s - failure to create %s\n", __func__, name);
-#endif
-}
-
-static void create_screenshot_dir(void) {
-    create_data_dir();
-    create_directory(screenshot_dir());
-}
-
-static washdc_hostfile open_screenshot(char const *name,
-                                       enum washdc_hostfile_mode mode) {
-    std::string path = std::string(screenshot_dir()) + "/" + name;
-    return file_open(path.c_str(), mode);
-}
-
-void create_cfg_dir(void) {
-    create_directory(cfg_dir());
-}
-
-static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
-    return file_open(cfg_file(), mode);
-}
-
-static void create_data_dir(void) {
-    create_directory(data_dir());
-}
-
-static washdc_hostfile file_open(char const *path,
-                                 enum washdc_hostfile_mode mode) {
-    char modestr[4] = { 0 };
-    int top = 0;
-    if (mode & WASHDC_HOSTFILE_WRITE)
-        modestr[top++] = 'w';
-    else if (mode & WASHDC_HOSTFILE_READ)
-        modestr[top++] = 'r';
-    else
-        return WASHDC_HOSTFILE_INVALID;
-
-    if (mode & WASHDC_HOSTFILE_BINARY)
-        modestr[top++] = 'b';
-    if (mode & WASHDC_HOSTFILE_DONT_OVERWRITE)
-        modestr[top++] = 'x';
-
-    return fopen(path, modestr);
-}
-
-static void file_close(washdc_hostfile file) {
-    fclose((FILE*)file);
-}
-
-static int file_seek(washdc_hostfile file, long disp,
-                     enum washdc_hostfile_seek_origin origin) {
-    int whence;
-    switch (origin) {
-    case WASHDC_HOSTFILE_SEEK_BEG:
-        whence = SEEK_SET;
-        break;
-    case WASHDC_HOSTFILE_SEEK_CUR:
-        whence = SEEK_CUR;
-        break;
-    case WASHDC_HOSTFILE_SEEK_END:
-        whence = SEEK_END;
-        break;
-    default:
-        return -1;
-    }
-    return fseek((FILE*)file, disp, whence);
-}
-
-static long file_tell(washdc_hostfile file) {
-    return ftell((FILE*)file);
-}
-
-static size_t file_read(washdc_hostfile file, void *outp, size_t len) {
-    return fread(outp, 1, len, (FILE*)file);
-}
-
-static size_t file_write(washdc_hostfile file, void const *inp, size_t len) {
-    return fwrite(inp, 1, len, (FILE*)file);
-}
-
-static int file_flush(washdc_hostfile file) {
-    return fflush((FILE*)file);
 }

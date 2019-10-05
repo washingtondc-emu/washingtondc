@@ -32,7 +32,6 @@
  * several different consoles with different settings just like in real life.
  */
 
-char const *console_get_dir(char const *console_name);
 void create_console_dir(char const *console_name);
 
 char const *console_get_rtc_path(char const *console_name);

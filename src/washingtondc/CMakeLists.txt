@@ -87,7 +87,6 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/sound.cpp"
                          "${PROJECT_SOURCE_DIR}/console_config.hpp"
                          "${PROJECT_SOURCE_DIR}/console_config.cpp"
-                         "${PROJECT_SOURCE_DIR}/hostfile.hpp"
                          "${gfxgl_sources}")
 
 if (ENABLE_TCP_SERIAL)
@@ -183,6 +182,7 @@ if (need_capstone STREQUAL "TRUE")
 endif()
 
 target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include"
+                                                "${CMAKE_SOURCE_DIR}/src/common"
                                                 "${CMAKE_SOURCE_DIR}/src/libwashdc/include"
                                                 "${PROJECT_SOURCE_DIR}/ui"
                                                 "${IMGUI_SOURCE_DIR}"

@@ -26,17 +26,12 @@
 #include <cerrno>
 #include <cstdio>
 
-#include "hostfile.hpp"
+#include "paths.hpp"
 
-static char const* consoles_dir(void) {
-    static char dir_path[HOSTFILE_PATH_LEN];
-    char const *the_cfg_dir = cfg_dir();
+#define HOSTFILE_PATH_LEN 4096
 
-    strncpy(dir_path, the_cfg_dir, sizeof(dir_path));
-    dir_path[HOSTFILE_PATH_LEN - 1] = '\0';
-    path_append(dir_path, "consoles", HOSTFILE_PATH_LEN);
-
-    return dir_path;
+static path_string consoles_dir(void) {
+    return path_append(cfg_dir(), "consoles");
 }
 
 static void create_consoles_dir(void) {
@@ -44,15 +39,8 @@ static void create_consoles_dir(void) {
     create_directory(consoles_dir());
 }
 
-char const *console_get_dir(char const *console_name) {
-    char const *the_consoles_dir = consoles_dir();
-    static char dir_path[HOSTFILE_PATH_LEN];
-
-    strncpy(dir_path, the_consoles_dir, sizeof(dir_path));
-    dir_path[HOSTFILE_PATH_LEN - 1] = '\0';
-    path_append(dir_path, console_name, HOSTFILE_PATH_LEN);
-
-    return dir_path;
+static path_string console_get_dir(char const *console_name) {
+    return path_append(consoles_dir(), console_name);
 }
 
 void create_console_dir(char const *console_name) {
@@ -60,38 +48,29 @@ void create_console_dir(char const *console_name) {
     create_directory(console_get_dir(console_name));
 }
 
-char const *console_get_rtc_path(char const *console_name) {
-    char const *dir_path = console_get_dir(console_name);
+char const* console_get_rtc_path(char const *console_name) {
+    path_string path(path_append(console_get_dir(console_name), "rtc.txt"));
 
-    static char console_path[HOSTFILE_PATH_LEN];
-
-    strncpy(console_path, dir_path, sizeof(console_path));
-    console_path[HOSTFILE_PATH_LEN - 1] = '\0';
-    path_append(console_path, "rtc.txt", sizeof(console_path));
-
-    return console_path;
+    static char c_path[HOSTFILE_PATH_LEN];
+    strncpy(c_path, path.c_str(), sizeof(c_path));
+    c_path[sizeof(c_path) - 1] = '\0';
+    return c_path;
 }
 
 char const *console_get_firmware_path(char const *console_name) {
-    char const *dir_path = console_get_dir(console_name);
+    path_string path(path_append(console_get_dir(console_name), "dc_bios.bin"));
 
-    static char console_path[HOSTFILE_PATH_LEN];
-
-    strncpy(console_path, dir_path, sizeof(console_path));
-    console_path[HOSTFILE_PATH_LEN - 1] = '\0';
-    path_append(console_path, "dc_bios.bin", sizeof(console_path));
-
-    return console_path;
+    static char c_path[HOSTFILE_PATH_LEN];
+    strncpy(c_path, path.c_str(), sizeof(c_path));
+    c_path[sizeof(c_path) - 1] = '\0';
+    return c_path;
 }
 
 char const *console_get_flashrom_path(char const *console_name) {
-    char const *dir_path = console_get_dir(console_name);
+    path_string path(path_append(console_get_dir(console_name), "dc_flash.bin"));
 
-    static char console_path[HOSTFILE_PATH_LEN];
-
-    strncpy(console_path, dir_path, sizeof(console_path));
-    console_path[HOSTFILE_PATH_LEN - 1] = '\0';
-    path_append(console_path, "dc_flash.bin", sizeof(console_path));
-
-    return console_path;
+    static char c_path[HOSTFILE_PATH_LEN];
+    strncpy(c_path, path.c_str(), sizeof(c_path));
+    c_path[sizeof(c_path) - 1] = '\0';
+    return c_path;
 }

@@ -58,7 +58,6 @@ set(serial_sources "${IO_SOURCE_DIR}/serial_server.hpp"
 set(washdc_headless_sources "main.cpp"
                             "console_config.hpp"
                             "console_config.cpp"
-			    "hostfile.hpp"
 			    "gfx_null.hpp"
 			    "gfx_null.cpp")
 
@@ -132,6 +131,7 @@ add_executable(washdc-headless "${washdc_headless_sources}")
 
 target_include_directories(washdc-headless PRIVATE
                                            "${CMAKE_SOURCE_DIR}/src/libwashdc/include"
+                                           "${CMAKE_SOURCE_DIR}/src/common"
                                            "${CMAKE_SOURCE_DIR}/external/capstone/include"
                                            "${CMAKE_SOURCE_DIR}/external/sh4asm"
                                            "${CMAKE_SOURCE_DIR}/external/libevent/include")
