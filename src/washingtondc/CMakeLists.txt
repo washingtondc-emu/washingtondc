@@ -87,7 +87,8 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/sound.cpp"
                          "${PROJECT_SOURCE_DIR}/console_config.hpp"
                          "${PROJECT_SOURCE_DIR}/console_config.cpp"
-                         "${PROJECT_SOURCE_DIR}/hostfile.hpp")
+                         "${PROJECT_SOURCE_DIR}/hostfile.hpp"
+                         "${gfxgl_sources}")
 
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)
@@ -98,9 +99,11 @@ if (ENABLE_TCP_SERIAL)
 endif()
 
 set(need_capstone "FALSE")
+set(need_sh4asm "FALSE")
 
 if (JIT_PROFILE)
     set(need_capstone "TRUE")
+    set(need_sh4asm "TRUE")
 endif()
 
 if (ENABLE_DEBUGGER)
@@ -109,8 +112,9 @@ if (ENABLE_DEBUGGER)
     endif()
 
     set(need_capstone "TRUE")
+    set(need_sh4asm "TRUE")
 
-    set(washingtondc_sources ${washingtondc_sources} ${sh4asm_sources} ${debug_sources} ${gfxgl_sources})
+    set(washingtondc_sources ${washingtondc_sources} ${debug_sources})
 
     add_definitions(-DENABLE_DEBUGGER)
     if (ENABLE_WATCHPOINTS)
@@ -120,6 +124,10 @@ if (ENABLE_DEBUGGER)
     if (ENABLE_DBG_COND)
         add_definitions(-DENABLE_DBG_COND)
     endif()
+endif()
+
+if (need_sh4asm STREQUAL "TRUE")
+    set(washingtondc_sources ${washingtondc_sources} ${sh4asm_sources})
 endif()
 
 if (need_capstone STREQUAL "TRUE")
