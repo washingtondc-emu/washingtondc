@@ -104,6 +104,7 @@ add_library(png "${libpng_path}/png.h"
 target_include_directories(png PRIVATE "${zlib_path}")
 
 # glew version 2.1.0
+add_definitions(-DGLEW_STATIC)
 set(glew_path "${CMAKE_SOURCE_DIR}/external/glew")
 add_library(glew "${glew_path}/src/glew.c"
                  "${glew_path}/include/GL/glew.h"

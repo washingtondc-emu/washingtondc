@@ -158,14 +158,19 @@ endif()
 add_executable(washingtondc ${washingtondc_sources} ${ui_sources}
                             ${imgui_sources})
 
+add_definitions(-DGLEW_STATIC)
+
+set(vid_libs "glfw" "glew" "${OPENGL_gl_LIBRARY}")
+
+if (NOT WIN32)
+    set(vid_libs "rt" "${vid_libs}")
+endif()
+
 set(washingtondc_libs "m"
                       "washdc"
-                      "rt"
                       "png"
+                      "${vid_libs}"
                       "zlib"
-                      "glfw"
-                      "glew"
-                      "${OPENGL_gl_LIBRARY}"
                       "pthread"
                       "portaudio_static")
 
