@@ -20,7 +20,7 @@
 #
 ################################################################################
 
-set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
+#set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 cmake_minimum_required(VERSION 2.6)
 
 project(WashingtonDC CXX)
@@ -170,7 +170,7 @@ set(washingtondc_libs "m"
                       "portaudio_static")
 
 if (USE_LIBEVENT)
-    set(washingtondc_libs "${washingtondc_libs}" "${LIBEVENT_LIB_PATH}/lib/libevent.a")
+    set(washingtondc_libs "${washingtondc_libs}" "event" "event_pthreads")
 endif()
 
 if (need_capstone STREQUAL "TRUE")
@@ -184,5 +184,5 @@ target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include"
                                                 "${CMAKE_SOURCE_DIR}/external/sh4asm"
                                                 "${CMAKE_SOURCE_DIR}/external/capstone/include"
                                                 "${CMAKE_SOURCE_DIR}/external/glew/include"
-                                                "${LIBEVENT_LIB_PATH}/include")
+                                                "${CMAKE_SOURCE_DIR}/external/libevent/include")
 target_link_libraries(washingtondc "${washingtondc_libs}")

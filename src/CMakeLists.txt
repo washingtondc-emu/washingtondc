@@ -53,38 +53,16 @@ endif()
 
 if (USE_LIBEVENT)
     add_definitions(-DUSE_LIBEVENT)
-    ExternalProject_Add(libevent
-                        PREFIX washingtondc-libevent
-                        GIT_REPOSITORY https://github.com/libevent/libevent
-                        GIT_TAG release-2.1.8-stable
-                        INSTALL_DIR ${LIBEVENT_LIB_PATH}
-                        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBEVENT_LIB_PATH} -DEVENT__DISABLE_TESTS=On -DEVENT__DISABLE_REGRESS=On -DEVENT__DISABLE_BENCHMARK=On -DEVENT__DISABLE_OPENSSL=On -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                        BUILD_IN_SOURCE 1)
-endif()
-
-if (USE_LIBEVENT)
-    set(include_dirs "${include_dirs}"
-                     "${CMAKE_BINARY_DIR}/washingtondc-libevent/src/libevent/include")
 endif()
 
 add_subdirectory(libwashdc)
 
 if (BUILD_WASHINGTONDC)
     add_subdirectory(washingtondc)
-    if (USE_LIBEVENT)
-        add_dependencies(washingtondc libevent)
-    endif()
     add_dependencies(washingtondc washdc)
 endif()
 
 if (BUILD_WASHDC_HEADLESS)
     add_subdirectory(washdc-headless)
-    if (USE_LIBEVENT)
-        add_dependencies(washdc-headless libevent)
-    endif()
     add_dependencies(washdc-headless washdc)
-endif()
-
-if (USE_LIBEVENT)
-    add_dependencies(washdc libevent)
 endif()

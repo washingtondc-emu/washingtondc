@@ -21,6 +21,7 @@
 ################################################################################
 
 cmake_minimum_required(VERSION 2.8.4)
+set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 
 enable_testing()
 
@@ -130,8 +131,19 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
-add_subdirectory("${PROJECT_SOURCE_DIR}/external/glfw")
+# XXX It's important that glfw comes after libevent because they both define a
+# target called "uninstall".  libevent defines its uninstall target
+# unconditionally; glfw defines its target only if that target does not exist
+# yet.
 add_subdirectory(external/portaudio)
+if (USE_LIBEVENT)
+    set(EVENT__DISABLE_TESTS ON CACHE BOOL "" FORCE)
+    set(EVENT__DISABLE_REGRESS ON CACHE BOOL "" FORCE)
+    set(EVENT__DISABLE_BENCHMARK ON CACHE BOOL "" FORCE)
+    set(EVENT__DISABLE_OPENSSL ON CACHE BOOL "" FORCE)
+    add_subdirectory(external/libevent)
+endif()
+add_subdirectory(external/glfw)
 
 if (ENABLE_DEBUGGER)
     set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
