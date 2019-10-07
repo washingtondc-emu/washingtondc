@@ -73,33 +73,9 @@ void string_set(struct string *str, char const *txt) {
 void string_load_hostfile(struct string *str, washdc_hostfile fp) {
     long file_sz, buf_sz;
 
-    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_END) != 0) {
-        error_set_errno_val(errno);
-        RAISE_ERROR(ERROR_FILE_IO);
-    }
-
-    if ((file_sz = washdc_hostfile_tell(fp)) < 0) {
-        error_set_errno_val(errno);
-        RAISE_ERROR(ERROR_FILE_IO);
-    }
-
-    if (washdc_hostfile_seek(fp, 0, WASHDC_HOSTFILE_SEEK_BEG) != 0) {
-        error_set_errno_val(errno);
-        RAISE_ERROR(ERROR_FILE_IO);
-    }
-
-    buf_sz = file_sz + 1;
-    str->c_str = (char*)realloc(str->c_str, sizeof(char) * buf_sz);
-    if (!str->c_str) {
-        error_set_errno_val(errno);
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-    }
-
-    if (washdc_hostfile_read(fp, str->c_str, file_sz) != file_sz) {
-        error_set_errno_val(errno);
-        RAISE_ERROR(ERROR_FILE_IO);
-    }
-    str->c_str[buf_sz - 1] = '\0';
+    int ch;
+    while ((ch = washdc_hostfile_getc(fp)) != WASHDC_HOSTFILE_EOF)
+      string_append_char(str, ch);
 }
 
 size_t string_length(struct string const *str) {
