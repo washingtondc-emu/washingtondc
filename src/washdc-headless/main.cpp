@@ -68,7 +68,12 @@ static struct washdc_hostfile_api const hostfile_api = {
     .write = file_stdio_write,
     .flush = file_stdio_flush,
     .open_cfg_file = open_cfg_file,
-    .open_screenshot = open_screenshot
+    .open_screenshot = open_screenshot,
+#ifdef _WIN32
+    .pathsep = '\\'
+#else
+    .pathsep = '/'
+#endif
 };
 
 static struct washdc_sound_intf snd_intf = {

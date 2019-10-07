@@ -60,6 +60,8 @@ struct washdc_hostfile_api {
 
     washdc_hostfile(*open_cfg_file)(enum washdc_hostfile_mode mode);
     washdc_hostfile(*open_screenshot)(char const *name, enum washdc_hostfile_mode mode);
+
+    char pathsep;
 };
 
 washdc_hostfile washdc_hostfile_open_cfg_file(enum washdc_hostfile_mode mode);
@@ -81,6 +83,7 @@ int washdc_hostfile_putc(washdc_hostfile file, char ch);
 int washdc_hostfile_puts(washdc_hostfile file, char const *str);
 int washdc_hostfile_getc(washdc_hostfile file);
 void washdc_hostfile_printf(washdc_hostfile file, char const *fmt, ...);
+char washdc_hostfile_pathsep(void);
 
 #ifdef __cplusplus
 }

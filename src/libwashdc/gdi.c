@@ -196,7 +196,7 @@ static void parse_gdi(struct gdi_info *outp, char const *path) {
             // get absolute path
             string_init(&trackp->abs_path);
             string_dirname(&trackp->abs_path, path);
-            string_append_char(&trackp->abs_path, '/');
+            string_append_char(&trackp->abs_path, washdc_hostfile_pathsep());
             string_append(&trackp->abs_path, string_get(&trackp->rel_path));
 
             n_tracks_loaded++;

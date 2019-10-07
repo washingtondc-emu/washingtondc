@@ -335,3 +335,7 @@ washdc_hostfile washdc_hostfile_open_screenshot(char const *name,
         return hostfile_api->open_screenshot(name, mode);
     return WASHDC_HOSTFILE_INVALID;
 }
+
+char washdc_hostfile_pathsep(void) {
+    return hostfile_api->pathsep;
+}
