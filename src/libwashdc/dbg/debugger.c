@@ -20,10 +20,11 @@
  *
  ******************************************************************************/
 
+#include "threading.h"
+
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <pthread.h>
 #include <stdlib.h>
 
 #include "log.h"
@@ -594,22 +595,19 @@ static void dbg_state_transition(enum debug_state new_state) {
     ctx->cur_state = new_state;
 }
 
-static pthread_mutex_t debug_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t debug_cond = PTHREAD_COND_INITIALIZER;
+static washdc_mutex debug_mutex = WASHDC_MUTEX_STATIC_INIT;
+static washdc_cvar debug_cond = WASHDC_CVAR_STATIC_INIT;
 
 void debug_lock(void) {
-    if (pthread_mutex_lock(&debug_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_lock(&debug_mutex);
 }
 
 void debug_unlock(void) {
-    if (pthread_mutex_unlock(&debug_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_unlock(&debug_mutex);
 }
 
 void debug_signal(void) {
-    if (pthread_cond_signal(&debug_cond) < 0)
-        abort();
+    washdc_cvar_signal(&debug_cond);
 }
 
 void debug_run_once(void) {

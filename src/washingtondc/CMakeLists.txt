@@ -170,11 +170,13 @@ set(washingtondc_libs "m"
                       "png"
                       "${vid_libs}"
                       "zlib"
-                      "pthread"
                       "portaudio_static")
 
 if (USE_LIBEVENT)
-    set(washingtondc_libs "${washingtondc_libs}" "event" "event_pthreads")
+    set(washingtondc_libs "${washingtondc_libs}" "event")
+    if (NOT WIN32)
+       set(washingtondc_libs "${washingtondc_libs}" "pthread" "event_pthreads")
+    endif()
 endif()
 
 if (need_capstone STREQUAL "TRUE")
@@ -189,5 +191,6 @@ target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include"
                                                 "${CMAKE_SOURCE_DIR}/external/sh4asm"
                                                 "${CMAKE_SOURCE_DIR}/external/capstone/include"
                                                 "${CMAKE_SOURCE_DIR}/external/glew/include"
-                                                "${CMAKE_SOURCE_DIR}/external/libevent/include")
+                                                "${CMAKE_SOURCE_DIR}/external/libevent/include"
+                                                "${CMAKE_BINARY_DIR}/external/libevent/include")
 target_link_libraries(washingtondc "${washingtondc_libs}")

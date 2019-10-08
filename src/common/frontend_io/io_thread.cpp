@@ -20,7 +20,8 @@
  *
  ******************************************************************************/
 
-#include <pthread.h>
+#include "threading.h"
+
 #include <cstdlib>
 #include <iostream>
 #include <atomic>
@@ -57,12 +58,12 @@ struct event_base *event_base;
  */
 static struct event *work_event;
 
-static pthread_t td;
+static washdc_thread td;
 
-static pthread_mutex_t create_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t create_condition = PTHREAD_COND_INITIALIZER;
+static washdc_mutex create_mutex = WASHDC_MUTEX_STATIC_INIT;
+static washdc_cvar create_condition = WASHDC_CVAR_STATIC_INIT;
 
-static void* io_main(void *arg);
+static void io_main(void *arg);
 static void work_callback(evutil_socket_t fd, short ev, void *arg);
 
 static std::atomic_bool alive;
@@ -71,24 +72,17 @@ void init() {
     int err_code;
     alive = true;
 
-    if (pthread_mutex_lock(&create_mutex) != 0)
-        abort(); // TODO: error handling
+    washdc_mutex_lock(&create_mutex);
 
-    if ((err_code = pthread_create(&td, NULL, io_main, NULL)) != 0) {
-        fprintf(stderr, "Unable to launch io thread: %s\n", strerror(errno));
-        exit(1);
-    }
+    washdc_thread_create(&td, io_main, NULL);
 
-    if (pthread_cond_wait(&create_condition, &create_mutex) != 0) {
-            abort(); // TODO: error handling
-    }
+    washdc_cvar_wait(&create_condition, &create_mutex);
 
-    if (pthread_mutex_unlock(&create_mutex) != 0)
-        abort(); // TODO: error handling
+    washdc_mutex_unlock(&create_mutex);
 }
 
 void cleanup() {
-    pthread_join(td, NULL);
+    washdc_thread_join(&td);
 }
 
 void kick() {
@@ -96,11 +90,14 @@ void kick() {
         event_active(work_event, 0, 0);
 }
 
-static void* io_main(void *arg) {
-    if (pthread_mutex_lock(&create_mutex) != 0)
-        abort(); // TODO: error handling
+static void io_main(void *arg) {
+    washdc_mutex_lock(&create_mutex);
 
+#ifdef _WIN32
+    evthread_use_windows_threads();
+#else
     evthread_use_pthreads();
+#endif
 
     event_base = event_base_new();
     if (!event_base) {
@@ -124,12 +121,8 @@ static void* io_main(void *arg) {
     washdbg_tcp_init();
 #endif
 
-
-    if (pthread_cond_signal(&create_condition) != 0)
-        abort(); // TODO: error handling
-
-    if (pthread_mutex_unlock(&create_mutex) != 0)
-        abort(); // TODO: error handling
+    washdc_cvar_signal(&create_condition);
+    washdc_mutex_unlock(&create_mutex);
 
     int const evflags = EVLOOP_NO_EXIT_ON_EMPTY;
     while (event_base_loop(event_base, evflags) >= 0) {
@@ -158,9 +151,6 @@ static void* io_main(void *arg) {
 #endif
 
     event_base_free(event_base);
-
-    pthread_exit(NULL);
-    return NULL; // this line never executes
 }
 
 static void work_callback(evutil_socket_t fd, short ev, void *arg) {

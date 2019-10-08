@@ -126,8 +126,6 @@ if (ENABLE_DEBUGGER)
                    "${PROJECT_SOURCE_DIR}/external/capstone/include")
 endif()
 
-add_subdirectory(src)
-
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -151,3 +149,5 @@ if (ENABLE_DEBUGGER)
     set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "" FORCE)
     add_subdirectory("${PROJECT_SOURCE_DIR}/external/capstone")
 endif()
+
+add_subdirectory(src)

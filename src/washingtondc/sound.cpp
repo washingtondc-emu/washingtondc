@@ -20,6 +20,16 @@
  *
  ******************************************************************************/
 
+#ifdef _WIN32
+#ifndef WINVER
+#define WINVER 0x0600
+#endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600
+#endif
+#include <windows.h>
+#endif
+
 #include <cmath>
 #include <mutex>
 #include <condition_variable>
@@ -29,6 +39,7 @@
 #include "washdc/error.h"
 #include "sound.hpp"
 #include "washdc/config_file.h"
+#include "threading.h"
 
 namespace sound {
 
@@ -43,8 +54,9 @@ static int snd_cb(const void *input, void *output,
                   PaStreamCallbackFlags flags,
                   void *argp);
 
-static std::mutex buffer_lock;
-static std::condition_variable samples_submitted;
+
+static washdc_mutex buffer_lock;
+static washdc_cvar samples_submitted;
 
 // 1/10 of a second
 static const unsigned BUF_LEN = 4410;
@@ -54,6 +66,9 @@ static bool do_mute, have_sound_dev;
 static enum sync_mode audio_sync_mode;
 
 void init(void) {
+    washdc_mutex_init(&buffer_lock);
+    washdc_cvar_init(&samples_submitted);
+
     do_mute = false;
     have_sound_dev = true;
     audio_sync_mode = SYNC_MODE_NORM;
@@ -101,6 +116,9 @@ void cleanup(void) {
             RAISE_ERROR(ERROR_EXT_FAILURE);
         }
     }
+
+    washdc_cvar_cleanup(&samples_submitted);
+    washdc_mutex_cleanup(&buffer_lock);
 }
 
 static int snd_cb(const void *input, void *output,
@@ -108,7 +126,8 @@ static int snd_cb(const void *input, void *output,
                   PaStreamCallbackTimeInfo const *ti,
                   PaStreamCallbackFlags flags,
                   void *argp) {
-    std::unique_lock<std::mutex> lck(buffer_lock);
+    washdc_mutex_lock(&buffer_lock);
+
     washdc_sample_type *outbuf = (washdc_sample_type*)output;
     int frame_no;
     for (frame_no = 0; frame_no < n_frames; frame_no++) {
@@ -123,7 +142,9 @@ static int snd_cb(const void *input, void *output,
         *outbuf++ = sample;
         *outbuf++ = sample;
     }
-    samples_submitted.notify_one();
+    washdc_cvar_signal(&samples_submitted);
+
+    washdc_mutex_unlock(&buffer_lock);
     return 0;
 }
 
@@ -150,14 +171,13 @@ static washdc_sample_type scale_sample(washdc_sample_type sample) {
 void submit_samples(washdc_sample_type *samples, unsigned count) {
     if (!have_sound_dev)
         return;
-    std::unique_lock<std::mutex> lck(buffer_lock);
+    washdc_mutex_lock(&buffer_lock);
 
     while (count) {
         unsigned next_write_buf_idx = (1 + write_buf_idx) % BUF_LEN;
         if (audio_sync_mode == SYNC_MODE_NORM)
-            while (next_write_buf_idx == read_buf_idx) {
-                samples_submitted.wait(lck);
-            }
+            while (next_write_buf_idx == read_buf_idx)
+                washdc_cvar_wait(&samples_submitted, &buffer_lock);
         if (do_mute)
             sample_buf[write_buf_idx] = 0;
         else
@@ -165,6 +185,8 @@ void submit_samples(washdc_sample_type *samples, unsigned count) {
         write_buf_idx = next_write_buf_idx;
         count--;
     }
+
+    washdc_mutex_unlock(&buffer_lock);
 }
 
 void mute(bool en_mute) {

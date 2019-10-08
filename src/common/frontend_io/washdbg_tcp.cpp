@@ -20,11 +20,12 @@
  *
  ******************************************************************************/
 
+#include "threading.h"
+
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <pthread.h>
 #include <iostream>
 
 #include <event2/event.h>
@@ -61,8 +62,8 @@ static enum washdbg_state {
 #define WASHDBG_READ_BUF_LEN_SHIFT 10
 #define WASHDBG_READ_BUF_LEN (1 << WASHDBG_READ_BUF_LEN_SHIFT)
 
-static pthread_mutex_t listener_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t listener_cond = PTHREAD_COND_INITIALIZER;
+static washdc_mutex listener_mutex = WASHDC_MUTEX_STATIC_INIT;
+static washdc_cvar listener_cond = WASHDC_CVAR_STATIC_INIT;
 
 static struct evconnlistener *listener;
 
@@ -374,21 +375,17 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 }
 
 static void listener_lock(void) {
-    if (pthread_mutex_lock(&listener_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_lock(&listener_mutex);
 }
 
 static void listener_unlock(void) {
-    if (pthread_mutex_unlock(&listener_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_unlock(&listener_mutex);
 }
 
 static void listener_wait(void) {
-    if (pthread_cond_wait(&listener_cond, &listener_mutex) < 0)
-        abort(); // TODO: error handling
+    washdc_cvar_wait(&listener_cond, &listener_mutex);
 }
 
 static void listener_signal(void) {
-    if (pthread_cond_signal(&listener_cond) < 0)
-        abort(); // TODO error handling
+    washdc_cvar_signal(&listener_cond);
 }

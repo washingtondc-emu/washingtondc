@@ -70,7 +70,7 @@ endif()
 set(WASHDC_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
 set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
-		      "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.h"
+                      "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.h"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_excp.h"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_excp.c"
                       "${WASHDC_SOURCE_DIR}/hw/sh4/sh4_inst.h"
@@ -290,4 +290,4 @@ endif()
 
 add_library(washdc ${libwashdc_sources})
 
-target_include_directories(washdc PRIVATE "${include_dirs}" "${WASHDC_SOURCE_DIR}/" "${WASHDC_SOURCE_DIR}/hw/sh4" "${WASHDC_SOURCE_DIR}/include")
+target_include_directories(washdc PRIVATE "${include_dirs}" "${WASHDC_SOURCE_DIR}/" "${WASHDC_SOURCE_DIR}/hw/sh4" "${WASHDC_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/common")

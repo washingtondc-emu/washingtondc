@@ -20,12 +20,13 @@
  *
  ******************************************************************************/
 
+#include "threading.h"
+
 #include <cerrno>
 #include <unistd.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
-#include <pthread.h>
 #include <cstring>
 #include <iostream>
 
@@ -82,9 +83,9 @@ struct gdb_stub {
      * operations are not a single atomic unit, there needs to be a lock held
      * during the interim.
      */
-    pthread_mutex_t lock;
+    washdc_mutex lock;
 
-    pthread_cond_t cond;
+    washdc_cvar cond;
 
     enum gdb_state state;
 
@@ -247,8 +248,8 @@ static size_t deserialize_data(struct string const *input_str,
 }
 
 void gdb_init(void) {
-    pthread_mutex_init(&stub.lock, NULL);
-    pthread_cond_init(&stub.cond, NULL);
+    washdc_mutex_init(&stub.lock);
+    washdc_cvar_init(&stub.cond);
     stub.state = GDB_STATE_DISABLED;
 
     gdb_request_listen_event = event_new(io::event_base, -1, EV_PERSIST,
@@ -317,8 +318,8 @@ void gdb_cleanup(void) {
     event_free(gdb_inform_break_event);
     event_free(gdb_request_listen_event);
 
-    pthread_cond_destroy(&stub.cond);
-    pthread_mutex_destroy(&stub.lock);
+    washdc_cvar_cleanup(&stub.cond);
+    washdc_mutex_cleanup(&stub.lock);
 }
 
 static void gdb_callback_attach(void *argptr) {
@@ -1389,23 +1390,19 @@ static void handle_read(struct bufferevent *bev, void *arg) {
 }
 
 static void gdb_stub_lock(void) {
-    if (pthread_mutex_lock(&stub.lock) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_lock(&stub.lock);
 }
 
 static void gdb_stub_unlock(void) {
-    if (pthread_mutex_unlock(&stub.lock) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_unlock(&stub.lock);
 }
 
 static void gdb_stub_wait(void) {
-    if (pthread_cond_wait(&stub.cond, &stub.lock) < 0)
-        abort(); // TODO error handling
+    washdc_cvar_wait(&stub.cond, &stub.lock);
 }
 
 static void gdb_stub_signal(void) {
-    if (pthread_cond_signal(&stub.cond) < 0)
-        abort(); // TODO error handling
+    washdc_cvar_signal(&stub.cond);
 }
 
 static void gdb_state_transition(enum gdb_state new_state) {
@@ -1634,29 +1631,25 @@ static void deferred_cmd_init(struct deferred_cmd *cmd) {
     cmd->status = DEFERRED_CMD_IN_PROGRESS;
 }
 
-static pthread_mutex_t deferred_cmd_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t deferred_cmd_cond = PTHREAD_COND_INITIALIZER;
+static washdc_mutex deferred_cmd_mutex = WASHDC_MUTEX_STATIC_INIT;
+static washdc_cvar deferred_cmd_cond = WASHDC_CVAR_STATIC_INIT;
 static struct fifo_head deferred_cmd_fifo =
     FIFO_HEAD_INITIALIZER(deferred_cmd_fifo);
 
 static void deferred_cmd_lock(void) {
-    if (pthread_mutex_lock(&deferred_cmd_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_lock(&deferred_cmd_mutex);
 }
 
 static void deferred_cmd_unlock(void) {
-    if (pthread_mutex_unlock(&deferred_cmd_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_unlock(&deferred_cmd_mutex);
 }
 
 static void deferred_cmd_wait(void) {
-    if (pthread_cond_wait(&deferred_cmd_cond, &deferred_cmd_mutex) != 0)
-        abort(); // TODO error handling
+    washdc_cvar_wait(&deferred_cmd_cond, &deferred_cmd_mutex);
 }
 
 static void deferred_cmd_signal(void) {
-    if (pthread_cond_signal(&deferred_cmd_cond) != 0)
-        abort(); // TODO error handling
+    washdc_cvar_signal(&deferred_cmd_cond);
 }
 
 static void deferred_cmd_push_nolock(struct deferred_cmd *cmd) {

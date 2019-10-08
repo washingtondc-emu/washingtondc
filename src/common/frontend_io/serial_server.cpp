@@ -28,11 +28,11 @@
 #error recompile with -DENABLE_TCP_SERIAL=On
 #endif
 
+#include "threading.h"
+
 #include <cstdio>
-#include <sys/socket.h>
 #include <unistd.h>
 #include <cstdlib>
-#include <pthread.h>
 #include <atomic>
 #include <cstring>
 #include <iostream>
@@ -78,9 +78,8 @@ struct serial_server_intf const sersrv_intf = {
     serial_server_notify_tx_ready // notify_tx_ready
 };
 
-static pthread_mutex_t srv_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static pthread_cond_t listener_condition = PTHREAD_COND_INITIALIZER;
+static washdc_mutex srv_mutex = WASHDC_MUTEX_STATIC_INIT;
+static washdc_cvar listener_condition = WASHDC_CVAR_STATIC_INIT;
 
 static void
 listener_cb(struct evconnlistener *listener,
@@ -240,13 +239,11 @@ static void handle_events(struct bufferevent *bev, short events, void *arg) {
 }
 
 static void ser_srv_lock(void) {
-    if (pthread_mutex_lock(&srv_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_lock(&srv_mutex);
 }
 
 static void ser_srv_unlock(void) {
-    if (pthread_mutex_unlock(&srv_mutex) < 0)
-        abort(); // TODO error handling
+    washdc_mutex_unlock(&srv_mutex);
 }
 
 static void wait_for_connection(void) {
@@ -254,16 +251,14 @@ static void wait_for_connection(void) {
 
     do {
         std::cout << "still waiting..." << std::endl;
-        if (pthread_cond_wait(&listener_condition, &srv_mutex) < 0)
-            abort(); // TODO: error handling
+        washdc_cvar_wait(&listener_condition, &srv_mutex);
 
         // TODO: handle case where dreamcast_is_running() is now false?
     } while (atomic_load(&srv.is_listening));
 }
 
 static void signal_connection(void) {
-    if (pthread_cond_signal(&listener_condition) < 0)
-        abort(); // TODO error handling
+    washdc_cvar_signal(&listener_condition);
 }
 
 void serial_server_run(void) {

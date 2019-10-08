@@ -124,7 +124,10 @@ endif()
 
 if (USE_LIBEVENT)
   set(washdc_headless_sources "${washdc_headless_sources}" "${io_sources}")
-  set(washdc_headless_libs "${washdc_headless_libs}" "event_pthreads" "event" "pthread")
+  set(washdc_headless_libs "${washdc_headless_libs}" "event")
+    if (NOT WIN32)
+       set(washdc_headless_libs "${washdc_headless_libs}" "pthread" "event_pthreads")
+    endif()
 endif()
 
 add_executable(washdc-headless "${washdc_headless_sources}")
@@ -134,6 +137,6 @@ target_include_directories(washdc-headless PRIVATE
                                            "${CMAKE_SOURCE_DIR}/src/common"
                                            "${CMAKE_SOURCE_DIR}/external/capstone/include"
                                            "${CMAKE_SOURCE_DIR}/external/sh4asm"
-                                           "${CMAKE_SOURCE_DIR}/external/libevent/include")
-
+                                           "${CMAKE_SOURCE_DIR}/external/libevent/include"
+                                           "${CMAKE_BINARY_DIR}/external/libevent/include")
 target_link_libraries(washdc-headless "${washdc_headless_libs}")
