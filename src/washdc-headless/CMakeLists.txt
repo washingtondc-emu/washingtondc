@@ -27,7 +27,7 @@ project(washdc_headless CXX)
 set(washdc_headless_VERSION_MAJOR 0)
 set(washdc_headless_VERSION_MINOR 1)
 
-set(IO_SOURCE_DIR "${PROJECT_SOURCE_DIR}/frontend_io")
+set(IO_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/common/frontend_io")
 set(io_sources "${IO_SOURCE_DIR}/io_thread.hpp"
                "${IO_SOURCE_DIR}/io_thread.cpp")
 
