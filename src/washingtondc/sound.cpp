@@ -20,15 +20,7 @@
  *
  ******************************************************************************/
 
-#ifdef _WIN32
-#ifndef WINVER
-#define WINVER 0x0600
-#endif
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
-#endif
-#include <windows.h>
-#endif
+#include "i_hate_windows.h"
 
 #include <cmath>
 #include <mutex>

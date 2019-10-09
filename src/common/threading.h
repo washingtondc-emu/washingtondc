@@ -27,14 +27,8 @@ typedef void(*washdc_thread_main)(void*);
 
 #ifdef _WIN32
 
-#ifndef WINVER
-#define WINVER 0x0600
-#endif
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
-#endif
+#include "i_hate_windows.h"
 
-#include <windows.h>
 #include <synchapi.h>
 #include <stdlib.h>
 #include <stdio.h>

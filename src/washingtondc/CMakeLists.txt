@@ -28,6 +28,9 @@ set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 
 find_package(OpenGL REQUIRED)
+if (WIN32)
+    find_library(WS2_32_LIBRARY ws2_32)
+endif()
 
 set(UI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ui")
 set(ui_sources "${UI_SOURCE_DIR}/overlay.hpp"
@@ -173,9 +176,11 @@ set(washingtondc_libs "m"
                       "portaudio_static")
 
 if (USE_LIBEVENT)
-    set(washingtondc_libs "${washingtondc_libs}" "event")
-    if (NOT WIN32)
-       set(washingtondc_libs "${washingtondc_libs}" "pthread" "event_pthreads")
+    set(washingtondc_libs "${washingtondc_libs}" "event_core")
+    if (WIN32)
+         set(washingtondc_libs "${washingtondc_libs}" "${WS2_32_LIBRARY}")
+    else()
+        set(washingtondc_libs "${washingtondc_libs}" "pthread" "event_pthreads")
     endif()
 endif()
 

@@ -24,15 +24,7 @@
 #define PATHS_HPP_
 
 #ifdef _WIN32
-#ifndef WINVER
-#define WINVER 0x0600
-#endif
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
-#endif
-#include <windows.h>
-#include <KnownFolders.h>
-#include <Shlobj.h>
+#include "i_hate_windows.h"
 #else
 #include <sys/stat.h>
 #endif

@@ -27,6 +27,10 @@ project(washdc_headless CXX)
 set(washdc_headless_VERSION_MAJOR 0)
 set(washdc_headless_VERSION_MINOR 1)
 
+if (WIN32)
+    find_library(WS2_32_LIBRARY ws2_32)
+endif()
+
 set(IO_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/common/frontend_io")
 set(io_sources "${IO_SOURCE_DIR}/io_thread.hpp"
                "${IO_SOURCE_DIR}/io_thread.cpp")
@@ -124,8 +128,10 @@ endif()
 
 if (USE_LIBEVENT)
   set(washdc_headless_sources "${washdc_headless_sources}" "${io_sources}")
-  set(washdc_headless_libs "${washdc_headless_libs}" "event")
-    if (NOT WIN32)
+  set(washdc_headless_libs "${washdc_headless_libs}" "event_core")
+    if (WIN32)
+         set(washdc_headless_libs "${washdc_headless_libs}" "${WS2_32_LIBRARY}")
+    else()
        set(washdc_headless_libs "${washdc_headless_libs}" "pthread" "event_pthreads")
     endif()
 endif()

@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include "i_hate_windows.h"
+
 #include <string>
 #include <cstring>
 #include <sys/stat.h>
