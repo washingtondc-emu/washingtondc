@@ -20,6 +20,8 @@
  *
  ******************************************************************************/
 
+#include "real_ticks.h"
+
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
@@ -109,7 +111,7 @@ static bool end_of_frame;
 
 static bool using_debugger;
 
-static struct timespec last_frame_realtime;
+static washdc_real_time last_frame_realtime;
 static dc_cycle_stamp_t last_frame_virttime;
 
 static struct memory_interface sh4_unmapped_mem;
@@ -664,7 +666,7 @@ void dreamcast_cleanup() {
  * this is used to store the irl timestamp right before execution begins.
  * This exists for performance profiling purposes only.
  */
-static struct timespec start_time;
+static washdc_real_time start_time;
 
 static void run_one_frame(void) {
     while (!end_of_frame) {
@@ -760,8 +762,8 @@ void dreamcast_run() {
     if (dc_get_state() == DC_STATE_NOT_RUNNING)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
-    clock_gettime(CLOCK_MONOTONIC, &last_frame_realtime);
+    washdc_get_real_time(&start_time);
+    washdc_get_real_time(&last_frame_realtime);
 
     sh4_clock.dispatch = select_sh4_backend();
     sh4_clock.dispatch_ctxt = &cpu;
@@ -1056,46 +1058,21 @@ static bool run_to_next_sh4_event_jit(void *ctxt) {
     return false;
 }
 
-static void time_diff(struct timespec *delta,
-                      struct timespec const *end,
-                      struct timespec const *start) {
-    /* subtract delta_time = end_time - start_time */
-    if (end->tv_nsec < start->tv_nsec) {
-        delta->tv_nsec = 1000000000 - start->tv_nsec + end->tv_nsec;
-        delta->tv_sec = end->tv_sec - 1 - start->tv_sec;
-    } else {
-        delta->tv_nsec = end->tv_nsec - start->tv_nsec;
-        delta->tv_sec = end->tv_sec - start->tv_sec;
-    }
-}
-
-static void timespec_from_seconds(struct timespec *outp, double seconds) {
-    double int_part;
-    double frac_part = modf(seconds, &int_part);
-
-    outp->tv_sec = int_part;
-    outp->tv_nsec = frac_part * 1000000000.0;
-}
-
 void dc_print_perf_stats(void) {
     if (init_complete) {
-        struct timespec end_time, delta_time;
-        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        washdc_real_time end_time, delta_time;
+        washdc_get_real_time(&end_time);
 
-        time_diff(&delta_time, &end_time, &start_time);
+        washdc_real_time_diff(&delta_time, &end_time, &start_time);
 
-        LOG_INFO("Total elapsed time: %u seconds and %u nanoseconds\n",
-                 (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
-        printf("Total elapsed time: %u seconds and %u nanoseconds\n",
-               (unsigned)delta_time.tv_sec, (unsigned)delta_time.tv_nsec);
+        double seconds = washdc_real_time_to_seconds(&delta_time);
+        LOG_INFO("Total elapsed time: %f seconds\n", seconds);
 
         LOG_INFO("%u SH4 CPU cycles executed\n",
                  (unsigned)sh4_get_cycles(&cpu));
         printf("%u SH4 CPU cycles executed\n",
                (unsigned)sh4_get_cycles(&cpu));
 
-        double seconds = delta_time.tv_sec +
-            ((double)delta_time.tv_nsec) / 1000000000.0;
         double hz = (double)sh4_get_cycles(&cpu) / seconds;
         double hz_ratio = hz / (double)(200 * 1000 * 1000);
 
@@ -1231,7 +1208,7 @@ static void periodic_event_handler(struct SchedEvent *event) {
 }
 
 void dc_end_frame(void) {
-    struct timespec timestamp, delta, virt_frametime_ns;
+    washdc_real_time timestamp, delta, virt_frametime_ns;
     dc_cycle_stamp_t virt_timestamp = clock_cycle_stamp(&sh4_clock);
     double framerate, virt_framerate, virt_frametime;
 
@@ -1239,12 +1216,12 @@ void dc_end_frame(void) {
 
     virt_frametime = (double)(virt_timestamp - last_frame_virttime);
     double virt_frametime_seconds = virt_frametime / (double)SCHED_FREQUENCY;
-    timespec_from_seconds(&virt_frametime_ns, virt_frametime_seconds);
+    washdc_real_time_from_seconds(&virt_frametime_ns, virt_frametime_seconds);
 
-    clock_gettime(CLOCK_MONOTONIC, &timestamp);
-    time_diff(&delta, &timestamp, &last_frame_realtime);
+    washdc_get_real_time(&timestamp);
+    washdc_real_time_diff(&delta, &timestamp, &last_frame_realtime);
 
-    framerate = 1.0 / (delta.tv_sec + delta.tv_nsec / 1000000000.0);
+    framerate = 1.0 / washdc_real_time_to_seconds(&delta);
     virt_framerate = (double)SCHED_FREQUENCY / virt_frametime;
 
     last_frame_realtime = timestamp;
