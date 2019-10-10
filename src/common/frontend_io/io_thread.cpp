@@ -94,6 +94,15 @@ static void io_main(void *arg) {
     washdc_mutex_lock(&create_mutex);
 
 #ifdef _WIN32
+    /*
+     * I have no idea what this is, but you have to do it to initialize
+     * winsock for some stupid reason.
+     */
+    WSADATA wsa_data;
+    WSAStartup(MAKEWORD(2, 2), &wsa_data);
+#endif
+
+#ifdef _WIN32
     evthread_use_windows_threads();
 #else
     evthread_use_pthreads();
