@@ -24,10 +24,16 @@
 #error this file should not be built when the x86_64 JIT backend is disabled
 #endif
 
+#ifdef _WIN32
+#include "i_hate_windows.h"
+#include <Memoryapi.h>
+#else
+#include <sys/mman.h>
+#endif
+
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <sys/mman.h>
 
 #include "log.h"
 #include "washdc/error.h"
@@ -70,10 +76,20 @@ unsigned largest_alloc, smallest_alloc;
 static void *get_alloc_start(void *alloc_ptr);
 
 void exec_mem_init(void) {
+#ifdef _WIN32
+    native = VirtualAlloc(NULL, X86_64_ALLOC_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    if (!native)
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    DWORD garbage;
+    if (!VirtualProtect(native, X86_64_ALLOC_SIZE,
+                        PAGE_EXECUTE_READWRITE, &garbage))
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+#else
     native = mmap(NULL, X86_64_ALLOC_SIZE, PROT_WRITE | PROT_EXEC | PROT_READ,
                   MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     if (native == MAP_FAILED)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
+#endif
 
     free_mem = native;
     free_mem->next = NULL;
@@ -86,7 +102,11 @@ void exec_mem_init(void) {
 }
 
 void exec_mem_cleanup(void) {
+#ifdef _WIN32
+    VirtualFree(native, 0, MEM_RELEASE);
+#else
     munmap(native, X86_64_ALLOC_SIZE);
+#endif
     native = NULL;
 }
 
