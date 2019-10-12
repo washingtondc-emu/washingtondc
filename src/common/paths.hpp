@@ -165,7 +165,12 @@ static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
 
 static washdc_hostfile open_screenshot(char const *name,
                                        enum washdc_hostfile_mode mode) {
-    path_string path = screenshot_dir() + "/" + name;
+#ifdef _WIN32
+    static char const pathsep = '\\';
+#else
+    static char const pathsep = '/';
+#endif
+    path_string path = screenshot_dir() + pathsep + name;
     return washdc_hostfile_open(path.c_str(), mode);
 }
 
