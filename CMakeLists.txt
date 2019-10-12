@@ -134,7 +134,7 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # target called "uninstall".  libevent defines its uninstall target
 # unconditionally; glfw defines its target only if that target does not exist
 # yet.
-add_subdirectory(external/portaudio)
+add_subdirectory(external/portaudio EXCLUDE_FROM_ALL)
 if (USE_LIBEVENT)
     set(EVENT__DISABLE_TESTS ON CACHE BOOL "" FORCE)
     set(EVENT__DISABLE_REGRESS ON CACHE BOOL "" FORCE)
@@ -142,14 +142,14 @@ if (USE_LIBEVENT)
     set(EVENT__DISABLE_OPENSSL ON CACHE BOOL "" FORCE)
     set(EVENT__LIBRARY_TYPE STATIC CACHE STRING "" FORCE)
     set(EVENT__DISABLE_SAMPLES ON CACHE BOOL "" FORCE)
-    add_subdirectory(external/libevent)
+    add_subdirectory(external/libevent EXCLUDE_FROM_ALL)
 endif()
-add_subdirectory(external/glfw)
+add_subdirectory(external/glfw EXCLUDE_FROM_ALL)
 
 if (ENABLE_DEBUGGER)
     set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "" FORCE)
-    add_subdirectory("${PROJECT_SOURCE_DIR}/external/capstone")
+    add_subdirectory("${PROJECT_SOURCE_DIR}/external/capstone" EXCLUDE_FROM_ALL)
 endif()
 
 add_subdirectory(src)
