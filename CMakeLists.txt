@@ -134,6 +134,11 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 # target called "uninstall".  libevent defines its uninstall target
 # unconditionally; glfw defines its target only if that target does not exist
 # yet.
+if (WIN32)
+    # don't let portaudio use DirectX Sound as its backend - it will fail to
+    # compile on MinGW
+    set(PA_USE_DS OFF CACHE BOOL "" FORCE)
+endif()
 add_subdirectory(external/portaudio EXCLUDE_FROM_ALL)
 if (USE_LIBEVENT)
     set(EVENT__DISABLE_TESTS ON CACHE BOOL "" FORCE)
