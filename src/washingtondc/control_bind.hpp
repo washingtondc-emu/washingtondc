@@ -32,19 +32,19 @@
 
 #define CTRL_BIND_NAME_LEN 64
 
-struct host_gamepad_btn {
+struct host_joystick_btn {
     // glfw joystick identifier
     int js;
     unsigned btn;
 };
 
-struct host_gamepad_axis {
+struct host_joystick_axis {
     int js;
     int axis_no;
     int sign; // +1 for positive axis movement, -1 for negative axis movement
 };
 
-struct host_gamepad_hat {
+struct host_joystick_hat {
     int js;
     int hat;
     int mask; // GLFW_HAT_UP, GLFW_HAT_DOWN, GLFW_HAT_LEFT, or GLFW_HAT_RIGHT
@@ -57,17 +57,17 @@ struct host_kbd_ctrl {
 };
 
 union host_ctrl {
-    struct host_gamepad_btn gamepad;
-    struct host_gamepad_axis axis;
+    struct host_joystick_btn joystick;
+    struct host_joystick_axis axis;
     struct host_kbd_ctrl kbd;
-    struct host_gamepad_hat hat;
+    struct host_joystick_hat hat;
 };
 
 enum HOST_CTRL_TP {
-    HOST_CTRL_TP_GAMEPAD,
-    HOST_CTRL_TP_AXIS,
-    HOST_CTRL_TP_KBD,
-    HOST_CTRL_TP_HAT
+    HOST_CTRL_TP_JOYSTICK_BTN,
+    HOST_CTRL_TP_JOYSTICK_AXIS,
+    HOST_CTRL_TP_JOYSTICK_HAT,
+    HOST_CTRL_TP_KBD
 };
 
 struct host_ctrl_bind {

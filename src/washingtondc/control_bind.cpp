@@ -36,16 +36,16 @@ static struct bind_state {
     std::list<ctrl_bind> bind_list;
 } bind_state;
 
-static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn);
+static bool ctrl_get_joystick_button_state(struct host_joystick_btn const *btn);
 static bool ctrl_get_kbd_button_state(struct host_kbd_ctrl const *btn);
-static bool ctrl_get_axis_button_state(struct host_gamepad_axis const *btn);
-static bool ctrl_get_gamepad_hat_state(struct host_gamepad_hat const *btn);
+static bool ctrl_get_axis_button_state(struct host_joystick_axis const *btn);
+static bool ctrl_get_joystick_hat_state(struct host_joystick_hat const *btn);
 
-static float ctrl_get_gamepad_axis_state(struct host_gamepad_btn const *btn);
+static float ctrl_get_joystick_axis_state(struct host_joystick_btn const *btn);
 static float ctrl_get_kbd_axis_state(struct host_kbd_ctrl const *btn);
-static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn);
+static float ctrl_get_axis_axis_state(struct host_joystick_axis const *btn);
 static float
-ctrl_get_gamepad_hat_axis_state(struct host_gamepad_hat const *btn);
+ctrl_get_joystick_hat_axis_state(struct host_joystick_hat const *btn);
 
 int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind);
 
@@ -94,14 +94,14 @@ ctrl_bind_key(char const bind[CTRL_BIND_NAME_LEN], struct host_ctrl_bind key) {
 
 bool ctrl_get_bind_button_state(struct host_ctrl_bind const *key) {
     switch(key->tp) {
-    case HOST_CTRL_TP_GAMEPAD:
-        return ctrl_get_gamepad_button_state(&key->ctrl.gamepad);
+    case HOST_CTRL_TP_JOYSTICK_BTN:
+        return ctrl_get_joystick_button_state(&key->ctrl.joystick);
     case HOST_CTRL_TP_KBD:
         return ctrl_get_kbd_button_state(&key->ctrl.kbd);
-    case HOST_CTRL_TP_AXIS:
+    case HOST_CTRL_TP_JOYSTICK_AXIS:
         return ctrl_get_axis_button_state(&key->ctrl.axis);
-    case HOST_CTRL_TP_HAT:
-        return ctrl_get_gamepad_hat_state(&key->ctrl.hat);
+    case HOST_CTRL_TP_JOYSTICK_HAT:
+        return ctrl_get_joystick_hat_state(&key->ctrl.hat);
     default:
         return false;
     }
@@ -109,25 +109,25 @@ bool ctrl_get_bind_button_state(struct host_ctrl_bind const *key) {
 
 float ctrl_get_axis_state(struct host_ctrl_bind const *axis) {
     switch (axis->tp) {
-    case HOST_CTRL_TP_GAMEPAD:
-        return ctrl_get_gamepad_axis_state(&axis->ctrl.gamepad);
+    case HOST_CTRL_TP_JOYSTICK_BTN:
+        return ctrl_get_joystick_axis_state(&axis->ctrl.joystick);
     case HOST_CTRL_TP_KBD:
         return ctrl_get_kbd_axis_state(&axis->ctrl.kbd);
-    case HOST_CTRL_TP_AXIS:
+    case HOST_CTRL_TP_JOYSTICK_AXIS:
         return ctrl_get_axis_axis_state(&axis->ctrl.axis);
-    case HOST_CTRL_TP_HAT:
-        return ctrl_get_gamepad_hat_axis_state(&axis->ctrl.hat);
+    case HOST_CTRL_TP_JOYSTICK_HAT:
+        return ctrl_get_joystick_hat_axis_state(&axis->ctrl.hat);
     default:
         return -1.0f;
     }
 }
 
-static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn) {
+static bool ctrl_get_joystick_button_state(struct host_joystick_btn const *btn) {
     int len;
     unsigned btn_idx = btn->btn;
-    const unsigned char *gamepad_state = glfwGetJoystickButtons(btn->js, &len);
-    if (gamepad_state && len > btn_idx)
-        return gamepad_state[btn_idx] == GLFW_PRESS;
+    const unsigned char *joystick_state = glfwGetJoystickButtons(btn->js, &len);
+    if (joystick_state && len > btn_idx)
+        return joystick_state[btn_idx] == GLFW_PRESS;
     return false;
 }
 
@@ -135,7 +135,7 @@ static bool ctrl_get_kbd_button_state(struct host_kbd_ctrl const *btn) {
     return glfwGetKey(btn->win, btn->key) == GLFW_PRESS;
 }
 
-static bool ctrl_get_gamepad_hat_state(struct host_gamepad_hat const *btn) {
+static bool ctrl_get_joystick_hat_state(struct host_joystick_hat const *btn) {
     int len;
     unsigned hat_idx = btn->hat;
     const unsigned char *hat_state = glfwGetJoystickHats(btn->js, &len);
@@ -146,7 +146,7 @@ static bool ctrl_get_gamepad_hat_state(struct host_gamepad_hat const *btn) {
 
 #define AXIS_BUTTON_THRESH 0.5f
 
-static bool ctrl_get_axis_button_state(struct host_gamepad_axis const *btn) {
+static bool ctrl_get_axis_button_state(struct host_joystick_axis const *btn) {
     int axis_cnt;
     const float *axis_state = glfwGetJoystickAxes(btn->js, &axis_cnt);
 
@@ -159,11 +159,11 @@ static bool ctrl_get_axis_button_state(struct host_gamepad_axis const *btn) {
     return false;
 }
 
-static float ctrl_get_gamepad_axis_state(struct host_gamepad_btn const *btn) {
+static float ctrl_get_joystick_axis_state(struct host_joystick_btn const *btn) {
     int len;
     unsigned btn_idx = btn->btn;
-    const unsigned char *gamepad_state = glfwGetJoystickButtons(btn->js, &len);
-    if (gamepad_state && len > btn_idx && gamepad_state[btn_idx] == GLFW_PRESS)
+    const unsigned char *joystick_state = glfwGetJoystickButtons(btn->js, &len);
+    if (joystick_state && len > btn_idx && joystick_state[btn_idx] == GLFW_PRESS)
         return 1.0f;
     return -1.0f;
 }
@@ -174,7 +174,7 @@ static float ctrl_get_kbd_axis_state(struct host_kbd_ctrl const *btn) {
     return -1.0f;
 }
 
-static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn) {
+static float ctrl_get_axis_axis_state(struct host_joystick_axis const *btn) {
     int axis_cnt;
     const float *axis_state = glfwGetJoystickAxes(btn->js, &axis_cnt);
 
@@ -189,7 +189,7 @@ static float ctrl_get_axis_axis_state(struct host_gamepad_axis const *btn) {
 }
 
 static float
-ctrl_get_gamepad_hat_axis_state(struct host_gamepad_hat const *btn) {
+ctrl_get_joystick_hat_axis_state(struct host_joystick_hat const *btn) {
     int len;
     unsigned hat_idx = btn->hat;
     const unsigned char *hat_state = glfwGetJoystickHats(btn->js, &len);
@@ -239,7 +239,7 @@ int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind) {
 
     int jsno = dev[2] - '0';
 
-    // have a gamepad binding - either an axis or a button
+    // have a joystick binding - either an axis or a button
     bool have_intf = false;
     char intf[BINDSTR_COMPONENT_MAX] = { 0 };
     unsigned intf_len = 0;
@@ -262,9 +262,9 @@ int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind) {
 
     if (intf_len == 4 && intf[0] == 'b' && intf[1] == 't' &&
         intf[2] == 'n' && isdigit(intf[3])) {
-        bind->tp = HOST_CTRL_TP_GAMEPAD;
-        bind->ctrl.gamepad.js = jsno;
-        bind->ctrl.gamepad.btn = intf[3] - '0';
+        bind->tp = HOST_CTRL_TP_JOYSTICK_BTN;
+        bind->ctrl.joystick.js = jsno;
+        bind->ctrl.joystick.btn = intf[3] - '0';
         return 0;
     } else if ((intf_len == 5 && intf[0] == 'a' && intf[1] == 'x' &&
                 intf[2] == 'i' && intf[3] == 's' && isdigit(intf[4])) ||
@@ -284,7 +284,7 @@ int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind) {
 
         int axis = intf[4] - '0';
 
-        bind->tp = HOST_CTRL_TP_AXIS;
+        bind->tp = HOST_CTRL_TP_JOYSTICK_AXIS;
         bind->ctrl.axis.js = jsno;
         bind->ctrl.axis.axis_no = axis;
         bind->ctrl.axis.sign = sign;
@@ -320,7 +320,7 @@ int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind) {
         else
             return -1;
 
-        bind->tp = HOST_CTRL_TP_HAT;
+        bind->tp = HOST_CTRL_TP_JOYSTICK_HAT;
         bind->ctrl.hat.js = jsno;
         bind->ctrl.hat.hat = intf[3] - '0';
         return 0;

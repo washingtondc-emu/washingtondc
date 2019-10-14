@@ -99,16 +99,16 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
         bind.ctrl.kbd.win = win;
         ctrl_bind_key(name, bind);
         return 0;
-    } else if (bind.tp == HOST_CTRL_TP_GAMEPAD) {
-        bind.ctrl.gamepad.js += GLFW_JOYSTICK_1;
+    } else if (bind.tp == HOST_CTRL_TP_JOYSTICK_BTN) {
+        bind.ctrl.joystick.js += GLFW_JOYSTICK_1;
         ctrl_bind_key(name, bind);
         return 0;
-    } else if (bind.tp == HOST_CTRL_TP_AXIS) {
-        bind.ctrl.gamepad.js += GLFW_JOYSTICK_1;
+    } else if (bind.tp == HOST_CTRL_TP_JOYSTICK_AXIS) {
+        bind.ctrl.joystick.js += GLFW_JOYSTICK_1;
         ctrl_bind_key(name, bind);
         return 0;
-    } else if (bind.tp == HOST_CTRL_TP_HAT) {
-        bind.ctrl.gamepad.js += GLFW_JOYSTICK_1;
+    } else if (bind.tp == HOST_CTRL_TP_JOYSTICK_HAT) {
+        bind.ctrl.joystick.js += GLFW_JOYSTICK_1;
         ctrl_bind_key(name, bind);
         return 0;
     }
@@ -286,7 +286,7 @@ enum gamepad_btn {
     GAMEPAD_BTN_COUNT
 };
 
-enum gamepad_hat {
+enum joystick_hat {
     GAMEPAD_HAT_UP,
     GAMEPAD_HAT_DOWN,
     GAMEPAD_HAT_LEFT,
