@@ -95,25 +95,35 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     if ((err = ctrl_parse_bind(bindstr, &bind)) < 0) {
         return err;
     }
-    if (bind.tp == HOST_CTRL_TP_KBD) {
+
+    switch (bind.tp) {
+    case HOST_CTRL_TP_KBD:
         bind.ctrl.kbd.win = win;
         ctrl_bind_key(name, bind);
         return 0;
-    } else if (bind.tp == HOST_CTRL_TP_JOYSTICK_BTN) {
+    case HOST_CTRL_TP_JOYSTICK_BTN:
         bind.ctrl.joystick.js += GLFW_JOYSTICK_1;
         ctrl_bind_key(name, bind);
         return 0;
-    } else if (bind.tp == HOST_CTRL_TP_JOYSTICK_AXIS) {
-        bind.ctrl.joystick.js += GLFW_JOYSTICK_1;
+    case HOST_CTRL_TP_JOYSTICK_AXIS:
+        bind.ctrl.axis.js += GLFW_JOYSTICK_1;
         ctrl_bind_key(name, bind);
         return 0;
-    } else if (bind.tp == HOST_CTRL_TP_JOYSTICK_HAT) {
-        bind.ctrl.joystick.js += GLFW_JOYSTICK_1;
+    case HOST_CTRL_TP_JOYSTICK_HAT:
+        bind.ctrl.hat.js += GLFW_JOYSTICK_1;
         ctrl_bind_key(name, bind);
         return 0;
+    case HOST_CTRL_TP_GAMEPAD_BTN:
+        bind.ctrl.gp_btn.js += GLFW_JOYSTICK_1;
+        ctrl_bind_key(name, bind);
+        return 0;
+    case HOST_CTRL_TP_GAMEPAD_AXIS:
+        bind.ctrl.gp_axis.js += GLFW_JOYSTICK_1;
+        ctrl_bind_key(name, bind);
+        return 0;
+    default:
+        return -1;
     }
-
-    return -1;
 }
 
 static void win_glfw_init(unsigned width, unsigned height) {

@@ -47,6 +47,14 @@ static float ctrl_get_axis_axis_state(struct host_joystick_axis const *btn);
 static float
 ctrl_get_joystick_hat_axis_state(struct host_joystick_hat const *btn);
 
+static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn);
+static float
+ctrl_get_gamepad_button_axis_state(struct host_gamepad_btn const *btn);
+static float
+ctrl_get_gamepad_axis_axis_state(struct host_gamepad_axis const *axis);
+static bool
+ctrl_get_gamepad_axis_button_state(struct host_gamepad_axis const *axis);
+
 int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind);
 
 static int get_glfw3_key(char const *keystr, int *key);
@@ -102,6 +110,10 @@ bool ctrl_get_bind_button_state(struct host_ctrl_bind const *key) {
         return ctrl_get_axis_button_state(&key->ctrl.axis);
     case HOST_CTRL_TP_JOYSTICK_HAT:
         return ctrl_get_joystick_hat_state(&key->ctrl.hat);
+    case HOST_CTRL_TP_GAMEPAD_BTN:
+        return ctrl_get_gamepad_button_state(&key->ctrl.gp_btn);
+    case HOST_CTRL_TP_GAMEPAD_AXIS:
+        return ctrl_get_gamepad_axis_button_state(&key->ctrl.gp_axis);
     default:
         return false;
     }
@@ -117,6 +129,10 @@ float ctrl_get_axis_state(struct host_ctrl_bind const *axis) {
         return ctrl_get_axis_axis_state(&axis->ctrl.axis);
     case HOST_CTRL_TP_JOYSTICK_HAT:
         return ctrl_get_joystick_hat_axis_state(&axis->ctrl.hat);
+    case HOST_CTRL_TP_GAMEPAD_BTN:
+        return ctrl_get_gamepad_button_axis_state(&axis->ctrl.gp_btn);
+    case HOST_CTRL_TP_GAMEPAD_AXIS:
+        return ctrl_get_gamepad_axis_axis_state(&axis->ctrl.gp_axis);
     default:
         return -1.0f;
     }
@@ -133,6 +149,17 @@ static bool ctrl_get_joystick_button_state(struct host_joystick_btn const *btn) 
 
 static bool ctrl_get_kbd_button_state(struct host_kbd_ctrl const *btn) {
     return glfwGetKey(btn->win, btn->key) == GLFW_PRESS;
+}
+
+static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn) {
+    int len;
+    unsigned btn_idx = btn->btn;
+    GLFWgamepadstate gp_state;
+    if ((btn_idx <= GLFW_GAMEPAD_BUTTON_LAST) &&
+        glfwGetGamepadState(btn->js, &gp_state)) {
+        return gp_state.buttons[btn_idx] == GLFW_PRESS;
+    }
+    return false;
 }
 
 static bool ctrl_get_joystick_hat_state(struct host_joystick_hat const *btn) {
@@ -159,6 +186,22 @@ static bool ctrl_get_axis_button_state(struct host_joystick_axis const *btn) {
     return false;
 }
 
+static bool
+ctrl_get_gamepad_axis_button_state(struct host_gamepad_axis const *axis) {
+    int axis_no = axis->axis_no;
+    GLFWgamepadstate gp_state;
+
+    if ((axis_no <= GLFW_GAMEPAD_AXIS_LAST) &&
+        glfwGetGamepadState(axis->js, &gp_state)) {
+        if (axis->sign >= 0) {
+            return gp_state.axes[axis_no] > AXIS_BUTTON_THRESH;
+        } else if (axis->sign < 0) {
+            return gp_state.axes[axis_no] < -AXIS_BUTTON_THRESH;
+        }
+    }
+    return false;
+}
+
 static float ctrl_get_joystick_axis_state(struct host_joystick_btn const *btn) {
     int len;
     unsigned btn_idx = btn->btn;
@@ -167,6 +210,20 @@ static float ctrl_get_joystick_axis_state(struct host_joystick_btn const *btn) {
         return 1.0f;
     return -1.0f;
 }
+
+static float
+ctrl_get_gamepad_button_axis_state(struct host_gamepad_btn const *btn) {
+    int len;
+    unsigned btn_idx = btn->btn;
+    GLFWgamepadstate gp_state;
+    if ((btn_idx <= GLFW_GAMEPAD_BUTTON_LAST) &&
+        glfwGetGamepadState(btn->js, &gp_state) &&
+        (gp_state.buttons[btn_idx] == GLFW_PRESS)) {
+        return 1.0f;
+    }
+    return -1.0f;
+}
+
 
 static float ctrl_get_kbd_axis_state(struct host_kbd_ctrl const *btn) {
     if (glfwGetKey(btn->win, btn->key) == GLFW_PRESS)
@@ -183,6 +240,22 @@ static float ctrl_get_axis_axis_state(struct host_joystick_axis const *btn) {
                 return axis_state[btn->axis_no];
         } else if (btn->sign < 0) {
                 return -axis_state[btn->axis_no];
+        }
+    }
+    return -1.0f;
+}
+
+static float
+ctrl_get_gamepad_axis_axis_state(struct host_gamepad_axis const *axis) {
+    int axis_no = axis->axis_no;
+    GLFWgamepadstate gp_state;
+
+    if ((axis_no <= GLFW_GAMEPAD_AXIS_LAST) &&
+        glfwGetGamepadState(axis->js, &gp_state)) {
+        if (axis->sign >= 0) {
+            return gp_state.axes[axis_no];
+        } else if (axis->sign < 0) {
+            return -gp_state.axes[axis_no];
         }
     }
     return -1.0f;
@@ -234,99 +307,226 @@ int ctrl_parse_bind(char const *bindstr, struct host_ctrl_bind *bind) {
         return 0;
     }
 
-    if (dev_len != 3 || dev[0] != 'j' || dev[1] != 's' || !isdigit(dev[2]))
-        return -1;
+    if (dev_len == 3 && dev[0] == 'j' && dev[1] == 's' && isdigit(dev[2])) {
+        int jsno = dev[2] - '0';
 
-    int jsno = dev[2] - '0';
-
-    // have a joystick binding - either an axis or a button
-    bool have_intf = false;
-    char intf[BINDSTR_COMPONENT_MAX] = { 0 };
-    unsigned intf_len = 0;
-
-    while (*bindstr) {
-        have_intf = true;
-        if (*bindstr == '.') {
-            bindstr++;
-            break;
-        }
-        if (intf_len >= BINDSTR_COMPONENT_MAX - 1)
-            return -1;
-        intf[intf_len++] = *bindstr++;
-    }
-
-    if (!have_intf)
-        return -1;
-
-    intf[intf_len] = '\0';
-
-    if (intf_len == 4 && intf[0] == 'b' && intf[1] == 't' &&
-        intf[2] == 'n' && isdigit(intf[3])) {
-        bind->tp = HOST_CTRL_TP_JOYSTICK_BTN;
-        bind->ctrl.joystick.js = jsno;
-        bind->ctrl.joystick.btn = intf[3] - '0';
-        return 0;
-    } else if ((intf_len == 5 && intf[0] == 'a' && intf[1] == 'x' &&
-                intf[2] == 'i' && intf[3] == 's' && isdigit(intf[4])) ||
-               (intf_len == 6 && intf[0] == 'a' && intf[1] == 'x' &&
-                intf[2] == 'i' && intf[3] == 's' && isdigit(intf[4]) &&
-                (intf[5] == '+' || intf[5] == '-'))) {
-        // axis
-        int sign;
-        if (intf_len == 5)
-            sign = 0;
-        else if (intf_len == 6 && intf[5] == '+')
-            sign = 1;
-        else if (intf_len == 6 && intf[5] == '-')
-            sign = -1;
-        else
-            return -1;
-
-        int axis = intf[4] - '0';
-
-        bind->tp = HOST_CTRL_TP_JOYSTICK_AXIS;
-        bind->ctrl.axis.js = jsno;
-        bind->ctrl.axis.axis_no = axis;
-        bind->ctrl.axis.sign = sign;
-        return 0;
-    } else if (intf_len == 4 && intf[0] == 'h' && intf[1] == 'a' &&
-               intf[2] == 't' && isdigit(intf[3])) {
-        char dir[BINDSTR_COMPONENT_MAX] = { 0 };
-        bool have_dir = false;
-        unsigned dir_len = 0;
+        // have a joystick binding - either an axis or a button or a hat
+        bool have_intf = false;
+        char intf[BINDSTR_COMPONENT_MAX] = { 0 };
+        unsigned intf_len = 0;
 
         while (*bindstr) {
-            have_dir = true;
+            have_intf = true;
             if (*bindstr == '.') {
                 bindstr++;
                 break;
             }
-            if (dir_len >= BINDSTR_COMPONENT_MAX - 1)
+            if (intf_len >= BINDSTR_COMPONENT_MAX - 1)
                 return -1;
-            dir[dir_len++] = *bindstr++;
+            intf[intf_len++] = *bindstr++;
         }
 
-        if (!have_dir)
-            return false;
-
-        if (strcmp(dir, "up") == 0)
-            bind->ctrl.hat.mask = GLFW_HAT_UP;
-        else if (strcmp(dir, "left") == 0)
-            bind->ctrl.hat.mask = GLFW_HAT_LEFT;
-        else if (strcmp(dir, "down") == 0)
-            bind->ctrl.hat.mask = GLFW_HAT_DOWN;
-        else if (strcmp(dir, "right") == 0)
-            bind->ctrl.hat.mask = GLFW_HAT_RIGHT;
-        else
+        if (!have_intf)
             return -1;
 
-        bind->tp = HOST_CTRL_TP_JOYSTICK_HAT;
-        bind->ctrl.hat.js = jsno;
-        bind->ctrl.hat.hat = intf[3] - '0';
-        return 0;
-    }
+        intf[intf_len] = '\0';
 
-    return -1;
+        if (intf_len == 4 && intf[0] == 'b' && intf[1] == 't' &&
+            intf[2] == 'n' && isdigit(intf[3])) {
+            bind->tp = HOST_CTRL_TP_JOYSTICK_BTN;
+            bind->ctrl.joystick.js = jsno;
+            bind->ctrl.joystick.btn = intf[3] - '0';
+            return 0;
+        } else if ((intf_len == 5 && intf[0] == 'a' && intf[1] == 'x' &&
+                    intf[2] == 'i' && intf[3] == 's' && isdigit(intf[4])) ||
+                   (intf_len == 6 && intf[0] == 'a' && intf[1] == 'x' &&
+                    intf[2] == 'i' && intf[3] == 's' && isdigit(intf[4]) &&
+                    (intf[5] == '+' || intf[5] == '-'))) {
+            // axis
+            int sign;
+            if (intf_len == 5)
+                sign = 0;
+            else if (intf_len == 6 && intf[5] == '+')
+                sign = 1;
+            else if (intf_len == 6 && intf[5] == '-')
+                sign = -1;
+            else
+                return -1;
+
+            int axis = intf[4] - '0';
+
+            bind->tp = HOST_CTRL_TP_JOYSTICK_AXIS;
+            bind->ctrl.axis.js = jsno;
+            bind->ctrl.axis.axis_no = axis;
+            bind->ctrl.axis.sign = sign;
+            return 0;
+        } else if (intf_len == 4 && intf[0] == 'h' && intf[1] == 'a' &&
+                   intf[2] == 't' && isdigit(intf[3])) {
+            char dir[BINDSTR_COMPONENT_MAX] = { 0 };
+            bool have_dir = false;
+            unsigned dir_len = 0;
+
+            while (*bindstr) {
+                have_dir = true;
+                if (*bindstr == '.') {
+                    bindstr++;
+                    break;
+                }
+                if (dir_len >= BINDSTR_COMPONENT_MAX - 1)
+                    return -1;
+                dir[dir_len++] = *bindstr++;
+            }
+
+            if (!have_dir)
+                return false;
+
+            if (strcmp(dir, "up") == 0)
+                bind->ctrl.hat.mask = GLFW_HAT_UP;
+            else if (strcmp(dir, "left") == 0)
+                bind->ctrl.hat.mask = GLFW_HAT_LEFT;
+            else if (strcmp(dir, "down") == 0)
+                bind->ctrl.hat.mask = GLFW_HAT_DOWN;
+            else if (strcmp(dir, "right") == 0)
+                bind->ctrl.hat.mask = GLFW_HAT_RIGHT;
+            else
+                return -1;
+
+            bind->tp = HOST_CTRL_TP_JOYSTICK_HAT;
+            bind->ctrl.hat.js = jsno;
+            bind->ctrl.hat.hat = intf[3] - '0';
+            return 0;
+        }
+
+        return -1;
+    } else if (dev_len == 3 && dev[0] == 'g' && dev[1] == 'p' && isdigit(dev[2])) {
+        int jsno = dev[2] - '0';
+
+        // have a gamepad binding - either an axis or a button
+        bool have_intf = false;
+        char intf[BINDSTR_COMPONENT_MAX] = { 0 };
+        unsigned intf_len = 0;
+
+        while (*bindstr) {
+            have_intf = true;
+            if (*bindstr == '.') {
+                bindstr++;
+                break;
+            }
+            if (intf_len >= BINDSTR_COMPONENT_MAX - 1)
+                return -1;
+            intf[intf_len++] = *bindstr++;
+        }
+
+        if (!have_intf)
+            return -1;
+
+        intf[intf_len] = '\0';
+
+        if (strcmp(intf, "btn") == 0) {
+            bool have_btn = false;
+            char btn[BINDSTR_COMPONENT_MAX] = { 0 };
+            unsigned btn_len = 0;
+
+            while (*bindstr) {
+                have_btn = true;
+                if (btn_len >= BINDSTR_COMPONENT_MAX - 1)
+                    return -1;
+                btn[btn_len++] = toupper(*bindstr++);
+            }
+
+            if (!have_btn)
+                return -1;
+            btn[btn_len] = '\0';
+
+            unsigned button;
+            if (strcmp(btn, "A") == 0)
+                button = GLFW_GAMEPAD_BUTTON_A;
+            else if (strcmp(btn, "B") == 0)
+                button = GLFW_GAMEPAD_BUTTON_B;
+            else if (strcmp(btn, "X") == 0)
+                button = GLFW_GAMEPAD_BUTTON_X;
+            else if (strcmp(btn, "Y") == 0)
+                button = GLFW_GAMEPAD_BUTTON_Y;
+            else if (strcmp(btn, "L1") == 0)
+                button = GLFW_GAMEPAD_BUTTON_LEFT_BUMPER;
+            else if (strcmp(btn, "R1") == 0)
+                button = GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER;
+            else if (strcmp(btn, "BACK") == 0)
+                button = GLFW_GAMEPAD_BUTTON_BACK;
+            else if (strcmp(btn, "START") == 0)
+                button = GLFW_GAMEPAD_BUTTON_START;
+            else if (strcmp(btn, "GUIDE") == 0)
+                button = GLFW_GAMEPAD_BUTTON_GUIDE;
+            else if (strcmp(btn, "L3") == 0)
+                button = GLFW_GAMEPAD_BUTTON_LEFT_THUMB;
+            else if (strcmp(btn, "R3") == 0)
+                button = GLFW_GAMEPAD_BUTTON_RIGHT_THUMB;
+            else if (strcmp(btn, "UP") == 0)
+                button = GLFW_GAMEPAD_BUTTON_DPAD_UP;
+            else if (strcmp(btn, "RIGHT") == 0)
+                button = GLFW_GAMEPAD_BUTTON_DPAD_RIGHT;
+            else if (strcmp(btn, "DOWN") == 0)
+                button = GLFW_GAMEPAD_BUTTON_DPAD_DOWN;
+            else if (strcmp(btn, "LEFT") == 0)
+                button = GLFW_GAMEPAD_BUTTON_DPAD_LEFT;
+            else
+                return -1;
+
+            bind->tp = HOST_CTRL_TP_GAMEPAD_BTN;
+            bind->ctrl.gp_btn.js = jsno;
+            bind->ctrl.gp_btn.btn = button;
+            return 0;
+        } else if (strcmp(intf, "axis") == 0) {
+            bool have_axis = false;
+            char axis[BINDSTR_COMPONENT_MAX] = { 0 };
+            unsigned axis_len = 0;
+            int sign;
+            unsigned axis_no;
+
+            while (*bindstr && *bindstr != '+' && *bindstr != '-') {
+                have_axis = true;
+                if (axis_len >= BINDSTR_COMPONENT_MAX - 1)
+                    return -1;
+                axis[axis_len++] = toupper(*bindstr++);
+            }
+
+            if (!have_axis)
+                return -1;
+            axis[axis_len] = '\0';
+
+            if (*bindstr == '-')
+                sign = -1;
+            else if (*bindstr == '+')
+                sign = 1;
+            else
+                sign = 0;
+
+            if (strcmp(axis, "LHOR") == 0)
+                axis_no = GLFW_GAMEPAD_AXIS_LEFT_X;
+            else if (strcmp(axis, "LVERT") == 0)
+                axis_no = GLFW_GAMEPAD_AXIS_LEFT_Y;
+            else if (strcmp(axis, "RHOR") == 0)
+                axis_no = GLFW_GAMEPAD_AXIS_RIGHT_X;
+            else if (strcmp(axis, "RVERT") == 0)
+                axis_no = GLFW_GAMEPAD_AXIS_RIGHT_Y;
+            else if (strcmp(axis, "L2") == 0)
+                axis_no = GLFW_GAMEPAD_AXIS_LEFT_TRIGGER;
+            else if (strcmp(axis, "R2") == 0)
+                axis_no = GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER;
+            else
+                return -1;
+
+            bind->tp = HOST_CTRL_TP_GAMEPAD_AXIS;
+            bind->ctrl.gp_axis.js = jsno;
+            bind->ctrl.gp_axis.axis_no = axis_no;
+            bind->ctrl.gp_axis.sign = sign;
+            return 0;
+        } else {
+            return -1;
+        }
+    } else {
+        return -1;
+    }
 }
 
 static struct keystr_map {

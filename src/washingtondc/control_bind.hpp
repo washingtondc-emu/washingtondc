@@ -50,6 +50,18 @@ struct host_joystick_hat {
     int mask; // GLFW_HAT_UP, GLFW_HAT_DOWN, GLFW_HAT_LEFT, or GLFW_HAT_RIGHT
 };
 
+struct host_gamepad_btn {
+    // glfw joystick identifier
+    int js;
+    unsigned btn; // gamepad button index, NOT joystick button index
+};
+
+struct host_gamepad_axis {
+    int js; // glfw joystick identifier
+    int axis_no; // gamepad axis index, NOT joystick axis index
+    int sign;
+};
+
 struct host_kbd_ctrl {
     GLFWwindow *win;
     // glfw key identifier
@@ -59,14 +71,20 @@ struct host_kbd_ctrl {
 union host_ctrl {
     struct host_joystick_btn joystick;
     struct host_joystick_axis axis;
-    struct host_kbd_ctrl kbd;
     struct host_joystick_hat hat;
+
+    struct host_gamepad_btn gp_btn;
+    struct host_gamepad_axis gp_axis;
+
+    struct host_kbd_ctrl kbd;
 };
 
 enum HOST_CTRL_TP {
     HOST_CTRL_TP_JOYSTICK_BTN,
     HOST_CTRL_TP_JOYSTICK_AXIS,
     HOST_CTRL_TP_JOYSTICK_HAT,
+    HOST_CTRL_TP_GAMEPAD_BTN,
+    HOST_CTRL_TP_GAMEPAD_AXIS,
     HOST_CTRL_TP_KBD
 };
 
