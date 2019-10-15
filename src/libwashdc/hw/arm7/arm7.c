@@ -202,11 +202,11 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_RSB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_RSB (3 << 21)
 
-#define MASK_CMP (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_CMP (10 << 21)
+#define MASK_CMP (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
+#define VAL_CMP ((10 << 21) | (1 << 20))
 
-#define MASK_TST (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_TST (8 << 21)
+#define MASK_TST (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
+#define VAL_TST ((8 << 21) | (1 << 20))
 
 #define MASK_AND (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_AND 0
@@ -217,8 +217,8 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MVN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_MVN (15 << 21)
 
-#define MASK_CMN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_CMN (11 << 21)
+#define MASK_CMN (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
+#define VAL_CMN ((11 << 21) | (1 << 20))
 
 #define MASK_BLOCK_XFER BIT_RANGE(25, 27)
 #define VAL_BLOCK_XFER (4 << 25)
