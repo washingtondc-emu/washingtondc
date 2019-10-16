@@ -23,14 +23,6 @@
 cmake_minimum_required(VERSION 2.8.4)
 set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 
-enable_testing()
-
-configure_file("regression_tests/sh4div_test.pl" "sh4div_test.pl" COPYONLY)
-add_test(NAME sh4div_test COMMAND ./sh4div_test.pl)
-
-configure_file("regression_tests/sh4tmu_test.pl" "sh4tmu_test.pl" COPYONLY)
-add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
-
 option(ENABLE_DEBUGGER "Enable the debugger" ON)
 option(ENABLE_WATCHPOINTS "Enable debugger watchpoints" OFF)
 option(ENABLE_DBG_COND "enable debugger conditions" OFF)
@@ -46,6 +38,17 @@ option(USE_LIBEVENT "use libevent for asynchronous I/O processing" ON)
 option(JIT_PROFILE "Profile JIT code blocks based on frequency" OFF)
 option(BUILD_WASHINGTONDC "Build the washingtondc frontend program" ON)
 option(BUILD_WASHDC_HEADLESS "Build the washdc-headless frontend program" ON)
+option(ENABLE_TESTS "enable automatic testing" OFF)
+
+if (ENABLE_TESTS)
+    # TODO tests are disabled by default for now until there's some sort of HLE
+    # firmware that will allow us to ship everything they need with WashingtonDC
+    enable_testing()
+    configure_file("regression_tests/sh4div_test.pl" "sh4div_test.pl" COPYONLY)
+    add_test(NAME sh4div_test COMMAND ./sh4div_test.pl)
+    configure_file("regression_tests/sh4tmu_test.pl" "sh4tmu_test.pl" COPYONLY)
+    add_test(NAME sh4tmu_test COMMAND ./sh4tmu_test.pl)
+endif()
 
 # zlib version 1.2.11
 set(zlib_path "${CMAKE_SOURCE_DIR}/external/zlib")
