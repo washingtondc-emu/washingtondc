@@ -804,15 +804,15 @@ static bool run_to_next_arm7_event(void *ctxt) {
             arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
             arm7_op_fn handler = arm7_decode(&arm7, inst);
             unsigned inst_cycles = handler(&arm7, inst);
-            cycles_after = clock_cycle_stamp(&arm7_clock) +
+            dc_cycle_stamp_t cycles_adv =
                 (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
-            tgt_stamp = clock_target_stamp(&arm7_clock);
-            if (tgt_stamp <= cycles_after) {
-                cycles_after = tgt_stamp;
+            if (cycles_adv >= clock_countdown(&arm7_clock)) {
+                cycles_after = clock_target_stamp(&arm7_clock);
                 break;
             }
-            clock_set_cycle_stamp(&arm7_clock, cycles_after);
+
+            clock_countdown_sub(&arm7_clock, cycles_adv);
         }
         clock_set_cycle_stamp(&arm7_clock, cycles_after);
     } else {
@@ -847,18 +847,17 @@ static bool run_to_next_arm7_event_debugger(void *ctxt) {
             arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
             arm7_op_fn handler = arm7_decode(&arm7, inst);
             unsigned inst_cycles = handler(&arm7, inst);
-            cycles_after = clock_cycle_stamp(&arm7_clock) +
+            dc_cycle_stamp_t cycles_adv =
                 (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
-            tgt_stamp = clock_target_stamp(&arm7_clock);
-            if (tgt_stamp <= cycles_after) {
-                cycles_after = tgt_stamp;
+            if (cycles_adv >= clock_countdown(&arm7_clock)) {
+                cycles_after = clock_target_stamp(&arm7_clock);
                 break;
             }
-            clock_set_cycle_stamp(&arm7_clock, cycles_after);
 
+            clock_countdown_sub(&arm7_clock, cycles_adv);
 #ifdef ENABLE_DBG_COND
-        debug_check_conditions(DEBUG_CONTEXT_ARM7);
+            debug_check_conditions(DEBUG_CONTEXT_ARM7);
 #endif
         }
         clock_set_cycle_stamp(&arm7_clock, cycles_after);

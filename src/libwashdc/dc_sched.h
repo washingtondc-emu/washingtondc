@@ -123,6 +123,18 @@ static inline dc_cycle_stamp_t clock_countdown(struct dc_clock *clock) {
     return clock->ptrs_priv[WASHDC_CLOCK_IDX_COUNTDOWN];
 }
 
+/*
+ * subtract n_cycles from the countdown.
+ *
+ * THIS FUNCTION DOES NOT CHECK FOR UNDERFLOWS.  YOU MUST ENSURE THAT
+ * n_cycles <= clock_countdown(clock) PRIOR TO CALLING THIS FUNCTION.
+ * OTHERWISE, YOU WILL REGRET IT.
+ */
+static inline void clock_countdown_sub(struct dc_clock *clock,
+                                       dc_cycle_stamp_t n_cycles) {
+    clock->ptrs_priv[WASHDC_CLOCK_IDX_COUNTDOWN] -= n_cycles;
+}
+
 void clock_set_ptrs_priv(struct dc_clock *clock, dc_cycle_stamp_t *ptrs);
 
 #endif
