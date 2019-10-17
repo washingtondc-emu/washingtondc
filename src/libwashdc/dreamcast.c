@@ -912,50 +912,36 @@ static bool run_to_next_sh4_event_debugger(void *ctxt) {
     cpu_inst_param inst;
     InstOpcode const *op;
     unsigned inst_cycles;
-    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
     bool exit_now;
 
     debug_set_context(DEBUG_CONTEXT_SH4);
 
-    /*
-     * TODO: what if tgt_stamp <= clock_cycle_stamp(&sh4_clock) on first
-     * iteration?
-     */
+    if ((exit_now = dreamcast_check_debugger()))
+        return exit_now;
 
-    while (!(exit_now = dreamcast_check_debugger()) &&
-           tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
+    dc_cycle_stamp_t cycles_after = clock_target_stamp(&sh4_clock);
+    while (!(exit_now = dreamcast_check_debugger())) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
-        /*
-         * Advance the cycle counter based on how many cycles this instruction
-         * will take.  If this would take us past the target stamp, that means
-         * the next event should occur while this instruction is executing.
-         * Instead of trying to implement that, I execute the instruction
-         * without advancing the cycle count beyond dc_sched_target_stamp.  This
-         * way, the CPU may appear to be a little faster than it should be from
-         * a guest program's perspective, but the passage of time will still be
-         * consistent.
-         */
-        dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
-            inst_cycles * SH4_CLOCK_SCALE;
+        dc_cycle_stamp_t cycles_adv = inst_cycles * SH4_CLOCK_SCALE;
 
         sh4_do_exec_inst(sh4, inst, op);
 
-        /*
-         * advance the cycles, being careful not to skip over any new events
-         * which may have been added
-         */
-        tgt_stamp = clock_target_stamp(&sh4_clock);
-        if (cycles_after > tgt_stamp)
-            cycles_after = tgt_stamp;
-        clock_set_cycle_stamp(&sh4_clock, cycles_after);
+        if (cycles_adv >= clock_countdown(&sh4_clock)) {
+            cycles_after = clock_target_stamp(&sh4_clock);
+            break;
+        }
+
+        clock_countdown_sub(&sh4_clock, cycles_adv);
 
 #ifdef ENABLE_DBG_COND
         debug_check_conditions(DEBUG_CONTEXT_SH4);
 #endif
     }
+
+    clock_set_cycle_stamp(&sh4_clock, cycles_after);
 
     return exit_now;
 }
@@ -966,39 +952,28 @@ static bool run_to_next_sh4_event(void *ctxt) {
     cpu_inst_param inst;
     InstOpcode const *op;
     unsigned inst_cycles;
-    dc_cycle_stamp_t tgt_stamp = clock_target_stamp(&sh4_clock);
+    dc_cycle_stamp_t cycles_after;
 
     Sh4 *sh4 = (void*)ctxt;
 
-    while (tgt_stamp > clock_cycle_stamp(&sh4_clock)) {
+    for (;;) {
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
-        /*
-         * Advance the cycle counter based on how many cycles this instruction
-         * will take.  If this would take us past the target stamp, that means
-         * the next event should occur while this instruction is executing.
-         * Instead of trying to implement that, I execute the instruction
-         * without advancing the cycle count beyond dc_sched_target_stamp.  This
-         * way, the CPU may appear to be a little faster than it should be from
-         * a guest program's perspective, but the passage of time will still be
-         * consistent.
-         */
-        dc_cycle_stamp_t cycles_after = clock_cycle_stamp(&sh4_clock) +
-            inst_cycles * SH4_CLOCK_SCALE;
+        dc_cycle_stamp_t cycles_adv = inst_cycles * SH4_CLOCK_SCALE;
 
         sh4_do_exec_inst(sh4, inst, op);
 
-        /*
-         * advance the cycles, being careful not to skip over any new events
-         * which may have been added
-         */
-        tgt_stamp = clock_target_stamp(&sh4_clock);
-        if (cycles_after > tgt_stamp)
-            cycles_after = tgt_stamp;
-        clock_set_cycle_stamp(&sh4_clock, cycles_after);
+        if (cycles_adv >= clock_countdown(&sh4_clock)) {
+            cycles_after = clock_target_stamp(&sh4_clock);
+            break;
+        }
+
+        clock_countdown_sub(&sh4_clock, cycles_adv);
     }
+
+    clock_set_cycle_stamp(&sh4_clock, cycles_after);
 
     return false;
 }
