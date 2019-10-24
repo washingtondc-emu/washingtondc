@@ -159,7 +159,7 @@ if (BUILD_WASHINGTONDC)
     add_subdirectory(external/glfw EXCLUDE_FROM_ALL)
 endif()
 
-if (ENABLE_DEBUGGER)
+if (ENABLE_DEBUGGER OR JIT_PROFILE)
     set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "" FORCE)
     add_subdirectory("${PROJECT_SOURCE_DIR}/external/capstone" EXCLUDE_FROM_ALL)
