@@ -106,14 +106,16 @@ add_library(png "${libpng_path}/png.h"
 
 target_include_directories(png PRIVATE "${zlib_path}")
 
-# glew version 2.1.0
-add_definitions(-DGLEW_STATIC)
-set(glew_path "${CMAKE_SOURCE_DIR}/external/glew")
-add_library(glew "${glew_path}/src/glew.c"
-                 "${glew_path}/include/GL/glew.h"
-                 "${glew_path}/include/GL/wglew.h"
-                 "${glew_path}/include/GL/glxew.h")
-target_include_directories(glew PRIVATE "${glew_path}/include")
+if (BUILD_WASHINGTONDC)
+    # glew version 2.1.0
+    add_definitions(-DGLEW_STATIC)
+    set(glew_path "${CMAKE_SOURCE_DIR}/external/glew")
+    add_library(glew "${glew_path}/src/glew.c"
+                     "${glew_path}/include/GL/glew.h"
+                     "${glew_path}/include/GL/wglew.h"
+                     "${glew_path}/include/GL/glxew.h")
+    target_include_directories(glew PRIVATE "${glew_path}/include")
+endif()
 
 set(include_dirs "${OPENGL_INCLUDE_DIR}"
                  "${CMAKE_SOURCE_DIR}/external/glew/include"
@@ -152,7 +154,10 @@ if (USE_LIBEVENT)
     set(EVENT__DISABLE_SAMPLES ON CACHE BOOL "" FORCE)
     add_subdirectory(external/libevent EXCLUDE_FROM_ALL)
 endif()
-add_subdirectory(external/glfw EXCLUDE_FROM_ALL)
+
+if (BUILD_WASHINGTONDC)
+    add_subdirectory(external/glfw EXCLUDE_FROM_ALL)
+endif()
 
 if (ENABLE_DEBUGGER)
     set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
