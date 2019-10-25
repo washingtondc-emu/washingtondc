@@ -526,7 +526,7 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
 done:
     if (bytes_transmitted)
         GDROM_TRACE("GD-ROM DMA transfer %u bytes to %08X\n",
-                    bytes_transmitted, addr_orig);
+                    bytes_transmitted, gdrom->dma_start_addr_reg);
 
 
     // set GD_LEND, etc here
