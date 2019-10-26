@@ -60,8 +60,15 @@
 
 /*
  * delay that specifies how long a DMA transaction should take.
- * this value is arbitrary.
- * TODO: it probably should not be 0 since that would be instant.
+ *
+ * This value has been confirmed on real hardware; it is slightly faster than
+ * it should be but still within an acceptable tolerance (its only off by
+ * approx 60us).
+ *
+ * The test used to confirm this value was a little hacky and incorrect (it used
+ * a non-atomic int across irqs) so I would like to revisit this someday.  Also
+ * I'd like to see if the response time changes for different packet types, or
+ * if it can be effected by what maple devices are plugged in.
  */
 #define MAPLE_DMA_COMPLETE_DELAY (SCHED_FREQUENCY / 1024)
 
