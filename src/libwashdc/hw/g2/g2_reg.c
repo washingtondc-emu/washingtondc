@@ -38,18 +38,91 @@
 
 #include "g2_reg.h"
 
+
 /*
- * TODO: this definitely should not be 0.
+ * The below table details the amount of time it takes for DMA transfers of
+ * various sizes to complete.  The time given is the amount of time until the
+ * interrupt occurred.  These measurements were taken on a real Dreamcast, while
+ * performing DMA transfers from main sh4 system memory to AICA memory.
  *
- * Some games react positively when this is non-zero, but I've never been able
- * to completely fix a game with this (for example Ecco the Dolphin can get
- * in-game when this is SCHED_FREQUENCY / (1024*5) but it still hangs
- * eventually).
+ * I did 3 trials for each transfer size.  The reason for this is that in the
+ * first two trials i made minor mistakes in the way i configured the dma
+ * transaction.  I was afraid they would impact the measurements, but that
+ * doesn't seem to be the case.  The third timing for each transfer size is the
+ * most "correct" one, but really they're all within margin of error of each
+ * other so i consider them all to be equally valid.
  *
- * More research is needed to figure out how long this should take and how it
- * interacts with other interrupts.
+ * 32b   | 8 us
+ *       | 8 us
+ *       | 9 us
+ * 64b   | 14 us
+ *       | 14 us
+ *       | 13 us
+ * 128b  | 24 us
+ *       | 24 us
+ *       | 25 us
+ * 256b  | 46 us
+ *       | 48 us
+ *       | 47 us
+ * 512b  | 92 us
+ *       | 90 us
+ *       | 91 us
+ * 1kb   | 182 us
+ *       | 181 us
+ *       | 182 us
+ * 2kb   | 359 us
+ *       | 357 us
+ *       | 360 us
+ * 4kb   | 713 us
+ *       | 715 us
+ *       | 715 us
+ * 8kb   | 1423 us
+ *       | 1424 us
+ *       | 1424 us
+ * 16kb  | 2843 us
+ *       | 2846 us
+ *       | 2843 us
+ * 32kb  | 5680 us
+ *       | 5690 us
+ *       | 5686 us
+ * 64kb  | 11358 us
+ *       | 11382 us
+ *       | 11371 us
+ * 128kb | 22721 us
+ *       | 22746 us
+ *       | 22740 us
+ * 256kb | 45441 us
+ *       | 45516 us
+ *       | 45442 us
+ * 512kb | 90880 us
+ *       | 90987 us
+ *       | 90877 us
+ * 1mb   | 181732 us
+ *       | 182010 us
+ *       | 181770 us
+ * 2mb   | 363418 us
+ *       | 364040 us
+ *       | 363534 us
+ *
+ * *** NOTE: the below case was done by accident because i had
+ *           words confused with bytes (so i thought they were 512kb and 1mb,
+ *           respectively).  I think the result is still valid because the
+ *           overflow would have gone into a mirror of AICA's memory.
+ *
+ * 4mb   | 727969 us
+ *       | 728047 us
+ *       | 726985 us
  */
-#define AICA_DMA_COMPLETE_INT_DELAY 0
+static dc_cycle_stamp_t aica_dma_complete_int_delay(size_t n_bytes) {
+    double linear = n_bytes * 0.17347222;
+    double constant = 7.64459071;
+    if (constant >= linear)
+        return 0;
+    double us = linear - constant;
+    dc_cycle_stamp_t ret =  (dc_cycle_stamp_t)(us * (double)SCHED_FREQUENCY / 1000000.0);
+    return ret;
+}
+#define AICA_DMA_COMPLETE_INT_DELAY aica_dma_complete_int_delay
 
 #define N_G2_REGS (ADDR_G2_LAST - ADDR_G2_FIRST + 1)
 
@@ -150,7 +223,7 @@ static void sb_adst_reg_mmio_write(struct mmio_region_g2_reg_32 *region,
 
         aica_dma_raise_event.handler = post_delay_aica_dma_int;
         aica_dma_raise_event.when =
-            clock_cycle_stamp(&sh4_clock) + AICA_DMA_COMPLETE_INT_DELAY;
+            clock_cycle_stamp(&sh4_clock) + AICA_DMA_COMPLETE_INT_DELAY(n_bytes);
         sched_event(&sh4_clock, &aica_dma_raise_event);
     }
     adst = val;
