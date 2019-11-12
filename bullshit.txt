@@ -27,3 +27,13 @@ Street Fighter Alpha 3:
     * In WashingtonDC's case it displays an error message at the initial
       loading screen but continues to load and run successfully anyways; the
       cause of this is not yet known.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~ UNKNOWN/UNDER INVESTIGATION ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Zero Gunner 2:
+    * Currently hangs at the loading screen just after highlighting the letter L
+    * root-cause appears to be related to the game's polling of the GDLEND
+      register; this register is supposed to count up the number of bytes
+      successfully DMA'd from the GD-ROM.  Game is polling it and will attempt
+      to do other things in the background (such as MMU configuration) if it
+      increments gradually.
