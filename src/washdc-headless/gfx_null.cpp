@@ -54,7 +54,8 @@ static int null_render_get_fb(int *obj_handle_out, unsigned *width_out,
 static void null_render_present(void);
 static void null_render_new_framebuffer(int obj_handle,
                                         unsigned fb_new_width,
-                                        unsigned fb_new_height, bool do_flip);
+                                        unsigned fb_new_height,
+                                        bool do_flip, bool interlaced);
 static void null_render_toggle_filter(void);
 
 static void null_render_obj_read(struct gfx_obj *obj, void *out,
@@ -172,7 +173,7 @@ static void null_render_present(void) {
 
 static void null_render_new_framebuffer(int obj_handle,
                                         unsigned fb_new_width,
-                                        unsigned fb_new_height, bool do_flip) {
+                                        unsigned fb_new_height, bool do_flip, bool interlaced) {
     flip_screen = do_flip;
     if (obj_handle < 0)
         return;

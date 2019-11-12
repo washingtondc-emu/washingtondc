@@ -863,9 +863,17 @@ submit_the_fb:
     cmd.arg.post_framebuffer.obj_handle = fb_heap[fb_idx].obj_handle;
     cmd.arg.post_framebuffer.width = fb_heap[fb_idx].fb_read_width;
     cmd.arg.post_framebuffer.height = fb_heap[fb_idx].fb_read_height;
+    cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].flags.vert_flip;
+    cmd.arg.post_framebuffer.interlaced = interlace;
+
+    /*
+     * double the height for interlace mode because we submit both fields
+     * together on every frame.  Real hardware would submit each field every
+     * other frame, but I don't think there's any good way to emulate that on
+     * top of OpenGL.
+     */
     if (interlace)
         cmd.arg.post_framebuffer.height *= 2;
-    cmd.arg.post_framebuffer.vert_flip = fb_heap[fb_idx].flags.vert_flip;
 
     title_set_resolution(cmd.arg.post_framebuffer.width,
                          cmd.arg.post_framebuffer.height);

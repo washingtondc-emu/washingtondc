@@ -82,6 +82,7 @@ static struct fb_poly {
 
 static int bound_obj_handle;
 static double bound_obj_w, bound_obj_h;
+static bool bound_obj_interlace;
 static GLenum min_filter = GL_NEAREST, mag_filter = GL_NEAREST;
 
 static GLfloat trans_mat[16] = {
@@ -104,7 +105,8 @@ static void set_flip(bool flip);
 static void
 opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_width,
-                                unsigned fb_read_height);
+                                unsigned fb_read_height,
+                                bool interlace);
 
 void opengl_video_output_init(void) {
     char const *filter_str;
@@ -173,9 +175,11 @@ void opengl_video_output_cleanup(void) {
 
 void opengl_video_new_framebuffer(int obj_handle,
                                   unsigned fb_new_width,
-                                  unsigned fb_new_height, bool do_flip) {
+                                  unsigned fb_new_height,
+                                  bool do_flip,
+                                  bool interlace) {
     set_flip(do_flip);
-    opengl_video_update_framebuffer(obj_handle, fb_new_width, fb_new_height);
+    opengl_video_update_framebuffer(obj_handle, fb_new_width, fb_new_height, interlace);
 }
 
 static void set_flip(bool flip) {
@@ -185,7 +189,8 @@ static void set_flip(bool flip) {
 static void
 opengl_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_width,
-                                unsigned fb_read_height) {
+                                unsigned fb_read_height,
+                                bool interlace) {
     if (obj_handle < 0)
         return;
 
@@ -219,6 +224,7 @@ opengl_video_update_framebuffer(int obj_handle,
     bound_obj_handle = obj_handle;
     bound_obj_w = (double)fb_read_width;
     bound_obj_h = (double)fb_read_height;
+    bound_obj_interlace = interlace;
 }
 
 void opengl_video_present(void) {
@@ -235,19 +241,30 @@ void opengl_video_present(void) {
     double xres_dbl = (double)xres;
     double yres_dbl = (double)yres;
 
+    /*
+     * double up the height for progressive-scans.
+     *
+     * For interlace-scans, this would have already happened in the PowerVR2
+     * emulation because the total scanline count including both fields is
+     * actually twice the height of each individual field.  Progressive scans
+     * are vertically stretched out by the TV, which is why the height gets
+     * doubled here and not in the PowerVR2 emulation code.
+     */
+    double y_scale = bound_obj_interlace ? 1.0 : 2.0;
+
     double xratio = xres_dbl / bound_obj_w;
-    double yratio = yres_dbl / bound_obj_h;
+    double yratio = yres_dbl / (y_scale * bound_obj_h);
 
     double clip_width, clip_height;
 
     if (xratio > yratio) {
         // output height is window height, and output width is scaled accordingly
         clip_height = 1.0;
-        clip_width = (bound_obj_w / bound_obj_h) * (yres_dbl / xres_dbl);
+        clip_width = (bound_obj_w / (y_scale * bound_obj_h)) * (yres_dbl / xres_dbl);
     } else {
         // output width is window width, and output height is scaled accordingly
         clip_width = 1.0;
-        clip_height = (bound_obj_h / bound_obj_w) * (xres_dbl / yres_dbl);
+        clip_height = (y_scale * bound_obj_h / bound_obj_w) * (xres_dbl / yres_dbl);
     }
 
     trans_mat[0] = clip_width;

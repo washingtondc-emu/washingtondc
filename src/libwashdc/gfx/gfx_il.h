@@ -190,6 +190,7 @@ union gfx_il_arg {
         int obj_handle;
         unsigned width, height;
         bool vert_flip;
+        bool interlaced;
     } post_framebuffer;
 
     struct {

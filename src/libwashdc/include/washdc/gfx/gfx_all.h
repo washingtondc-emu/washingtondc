@@ -79,7 +79,8 @@ struct rend_if {
 
     void (*video_new_framebuffer)(int obj_handle,
                                   unsigned fb_new_width,
-                                  unsigned fb_new_height, bool do_flip);
+                                  unsigned fb_new_height,
+                                  bool do_flip, bool interlaced);
 
     void (*video_toggle_filter)(void);
 };
