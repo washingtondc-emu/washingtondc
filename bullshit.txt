@@ -20,3 +20,10 @@ Guilty Gear X:
     * Here is where the memory access at 0xfffffffc happens:
           0x8c025ece:	add    #-8,r4
           0x8c025ed0:	mov.l  @(4,r4),r3
+
+Street Fighter Alpha 3:
+    * needs realistic AICA DMA timings or else it will hang before displaying
+      the CAPCOM logo
+    * In WashingtonDC's case it displays an error message at the initial
+      loading screen but continues to load and run successfully anyways; the
+      cause of this is not yet known.
