@@ -175,6 +175,7 @@ struct gdrom_ctxt {
     uint32_t gdlend_reg;
     uint32_t gdlend_final;
     dc_cycle_stamp_t dma_start_stamp;
+    dc_cycle_stamp_t dma_delay;
 
     uint32_t drive_sel_reg;
 

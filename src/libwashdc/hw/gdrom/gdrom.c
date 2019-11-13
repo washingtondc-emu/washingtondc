@@ -66,7 +66,7 @@ static DEF_ERROR_INT_ATTR(gdrom_seek_seek_pt)
 #define ATA_REG_R_STATUS       GDROM_REG_IDX(0x5f709c)
 #define ATA_REG_W_CMD          GDROM_REG_IDX(0x5f709c)
 
-static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom);
+static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom, dc_cycle_stamp_t delay);
 
 static void post_delay_gdrom_delayed_processing(struct SchedEvent *event);
 
@@ -80,11 +80,11 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event);
 /*     .handler = post_delay_gdrom_delayed_processing */
 /* }; */
 
-static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom) {
+static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom, dc_cycle_stamp_t delay) {
     if (!gdrom->gdrom_int_scheduled) {
         gdrom->gdrom_int_scheduled = true;
         gdrom->gdrom_int_raise_event.when =
-            clock_cycle_stamp(gdrom->clk) + GDROM_INT_DELAY;
+            clock_cycle_stamp(gdrom->clk) + delay;
         sched_event(gdrom->clk, &gdrom->gdrom_int_raise_event);
     }
 }
@@ -545,6 +545,30 @@ done:
     gdrom->gdlend_reg = 0;
     gdrom->dma_start_stamp = clock_cycle_stamp(gdrom->clk);
     gdrom->dma_start_reg = 0;
+
+    /*
+     * According to SegaRetro, the Dreamcast's GD-ROM drive can transmit data
+     * at approx 1.8 mb/s.
+     *
+     * The actual delay on real hardware would probably be slower than this due
+     * to seek times, as well as any up-front latency just from sending the
+     * drive commands.  I am not sure how to model this since an accurate
+     * simulation of drive delays is effectively a newtonian mechanics problem.
+     *
+     * HOWEVER, I currently have the delay coded to 4 mb/s because
+     * Street Fighter Alpha 3 won't work with anything slower than that.  This
+     * may mean my source for the specs were wrong, or it may mean that the
+     * reason why sfa3 wouldn't work is that the GD-ROM's interrupt delay needs
+     * to be proportional to some other interrupt delay which it is not
+     * currently proportional to.
+     */
+    gdrom->dma_delay = bytes_transmitted * ((double)SCHED_FREQUENCY / (double)(1024*1024*4));
+
+    gdrom->state = GDROM_STATE_DMA_READING;
+    gdrom->stat_reg.check = false;
+    gdrom_clear_error(gdrom);
+
+    gdrom_delayed_processing(gdrom, gdrom->dma_delay);
 }
 
 static void
@@ -557,7 +581,7 @@ gdrom_state_transfer_pio_read(struct gdrom_ctxt *gdrom, unsigned byte_count) {
     gdrom->stat_reg.check = false;
     gdrom_clear_error(gdrom);
 
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
 
 static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
@@ -626,6 +650,12 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
         // wait for them to write 1 to GDST before doing something
         GDROM_TRACE("DMA READ ACCESS\n");
     } else {
+        /*
+         * TODO: limit based on read bandwidth.  Currently this is implemented
+         * for DMA (see gdrom_complete_dma) but not for PIO.  Most large
+         * transfers are probably done through DMA anyways so I don't think
+         * this matters too much, but it should still be done for PIO.
+         */
         gdrom_state_transfer_pio_read(gdrom, byte_count);
     }
 }
@@ -646,7 +676,7 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
     case GDROM_PKT_REQ_STAT:
         GDROM_TRACE("REQ_STAT command received!\n");
         gdrom->state = GDROM_STATE_NORM; // TODO: implement
-        gdrom_delayed_processing(gdrom);
+        gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         break;
     case GDROM_PKT_REQ_MODE:
         gdrom_input_req_mode_packet(gdrom);
@@ -753,7 +783,7 @@ void gdrom_cmd_set_features(struct gdrom_ctxt *gdrom) {
     gdrom_clear_error(gdrom);
     gdrom->int_reason_reg.cod = true; // is this correct ?
 
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
 
 void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
@@ -764,7 +794,7 @@ void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.bsy = false;
     gdrom->stat_reg.drq = true;
 
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 
     bufq_clear(gdrom);
 
@@ -812,7 +842,7 @@ static void gdrom_input_test_unit_packet(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.drq = false;
 
     // raise interrupt if it is enabled
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 
     gdrom->state = GDROM_STATE_NORM;
 
@@ -942,7 +972,7 @@ static void gdrom_input_start_disk_packet(struct gdrom_ctxt *gdrom) {
 
     gdrom->stat_reg.check = false;
     gdrom_clear_error(gdrom);
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
 
 /*
@@ -1007,7 +1037,7 @@ static void gdrom_input_set_mode_packet(struct gdrom_ctxt *gdrom) {
 
     gdrom->state = GDROM_STATE_SET_MODE;
 
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
 
 static void gdrom_input_req_mode_packet(struct gdrom_ctxt *gdrom) {
@@ -1131,7 +1161,7 @@ static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom) {
     LOG_INFO("\tparam_tp = %s (%u)\n", param_tp_str, param_tp);
     LOG_INFO("\tseek_pt = %06X\n", seek_pt);
 
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
 
 static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom) {
@@ -1144,7 +1174,7 @@ static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom) {
         (((unsigned)gdrom->pkt_buf[9]) << 8) |
         (((unsigned)gdrom->pkt_buf[10]) << 24);
 
-    gdrom_delayed_processing(gdrom);
+    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 
     LOG_INFO("%s - CDDA PLAY command received.\n", __func__);
     LOG_INFO("\tparam_tp = 0x%02x\n", param_tp);
@@ -1192,13 +1222,13 @@ void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
             gdrom->int_reason_reg.cod = true;
             gdrom->int_reason_reg.io = true;
             gdrom->state = GDROM_STATE_NORM;
-            gdrom_delayed_processing(gdrom);
+            gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         } else {
             GDROM_TRACE("MORE DATA TO FOLLOW\n");
             gdrom->stat_reg.drq = false;
             gdrom->stat_reg.bsy = true;
             gdrom->state = GDROM_STATE_PIO_READ_DELAY;
-            gdrom_delayed_processing(gdrom);
+            gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         }
     } else if (gdrom->meta.read.bytes_read > gdrom->data_byte_count) {
         error_set_feature("reading more data from the GD-ROM than is "
@@ -1236,7 +1266,7 @@ gdrom_write_data(struct gdrom_ctxt *gdrom, uint8_t const *buf,
             gdrom->stat_reg.drq = false;
             gdrom->state = GDROM_STATE_NORM;
 
-            gdrom_delayed_processing(gdrom);
+            gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         }
     }
 }
@@ -1274,13 +1304,6 @@ void gdrom_start_dma(struct gdrom_ctxt *gdrom) {
         gdrom->stat_reg.bsy = true;
         gdrom_complete_dma(gdrom);
     }
-
-    // TODO: should I even be doing anything if gdrom->dma_start_reg is not set?
-    gdrom->state = GDROM_STATE_DMA_READING;
-    gdrom->stat_reg.check = false;
-    gdrom_clear_error(gdrom);
-
-    gdrom_delayed_processing(gdrom);
 }
 
 void gdrom_input_cmd(struct gdrom_ctxt *gdrom, unsigned cmd) {
@@ -1889,9 +1912,9 @@ gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
         dc_cycle_stamp_t stamp = clock_cycle_stamp(gdrom->clk);
         dc_cycle_stamp_t delta = stamp - gdrom->dma_start_stamp;
 
-        if (delta < GDROM_INT_DELAY) {
+        if (delta < gdrom->dma_delay) {
             gdrom->gdlend_reg =
-                ((double)delta / (double)GDROM_INT_DELAY) * gdrom->gdlend_final;
+                ((double)delta / (double)gdrom->dma_delay) * gdrom->gdlend_final;
         } else {
             gdrom->gdlend_reg = gdrom->gdlend_final;
         }
