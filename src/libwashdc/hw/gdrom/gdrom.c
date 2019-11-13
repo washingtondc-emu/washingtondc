@@ -33,6 +33,7 @@
 #include "gdrom_response.h"
 #include "dc_sched.h"
 #include "hw/g1/g1_reg.h"
+#include "intmath.h"
 
 #include "gdrom.h"
 
@@ -140,6 +141,7 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
         gdrom->stat_reg.drq = false;
         gdrom->stat_reg.bsy = false;
         gdrom->state = GDROM_STATE_NORM;
+        gdrom->gdlend_reg = gdrom->gdlend_final;
 
         if (!gdrom->dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
@@ -530,7 +532,18 @@ done:
 
 
     // set GD_LEND, etc here
-    gdrom->gdlend_reg = bytes_transmitted;
+
+    if (bytes_transmitted > BIT_RANGE(5, 24)) {
+        /*
+         * not sure what happens when it's too big to fit in the GDLEND
+         * register.
+         */
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    gdrom->gdlend_final = bytes_transmitted;
+    gdrom->gdlend_reg = 0;
+    gdrom->dma_start_stamp = clock_cycle_stamp(gdrom->clk);
     gdrom->dma_start_reg = 0;
 }
 
@@ -1871,7 +1884,19 @@ gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
 static uint32_t
 gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, void *ctxt) {
-    struct gdrom_ctxt *gdrom_ctxt = (struct gdrom_ctxt*)ctxt;
-    GDROM_TRACE("read %08x from GDLEND\n", gdrom_ctxt->gdlend_reg);
-    return gdrom_ctxt->gdlend_reg;
+    struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
+    if (gdrom->state == GDROM_STATE_DMA_READING) {
+        dc_cycle_stamp_t stamp = clock_cycle_stamp(gdrom->clk);
+        dc_cycle_stamp_t delta = stamp - gdrom->dma_start_stamp;
+
+        if (delta < GDROM_INT_DELAY) {
+            gdrom->gdlend_reg =
+                ((double)delta / (double)GDROM_INT_DELAY) * gdrom->gdlend_final;
+        } else {
+            gdrom->gdlend_reg = gdrom->gdlend_final;
+        }
+    }
+
+    GDROM_TRACE("read %08x from GDLEND\n", gdrom->gdlend_reg);
+    return gdrom->gdlend_reg;
 }

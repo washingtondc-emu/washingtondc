@@ -173,6 +173,8 @@ struct gdrom_ctxt {
 
     // length of DMA result
     uint32_t gdlend_reg;
+    uint32_t gdlend_final;
+    dc_cycle_stamp_t dma_start_stamp;
 
     uint32_t drive_sel_reg;
 
