@@ -24,9 +24,9 @@ Guilty Gear X:
 Street Fighter Alpha 3:
     * needs realistic AICA DMA timings or else it will hang before displaying
       the CAPCOM logo
-    * In WashingtonDC's case it displays an error message at the initial
-      loading screen but continues to load and run successfully anyways; the
-      cause of this is not yet known.
+    * It briefly displays an "ERROR: load failed" message onscreen between the
+      two CAPCOM logos despite successfully loading.  This is actually something
+      that happens on real hardware and not an emulation bug.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~ UNKNOWN/UNDER INVESTIGATION ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
