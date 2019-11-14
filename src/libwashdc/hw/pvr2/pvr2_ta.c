@@ -1702,3 +1702,9 @@ struct memory_interface pvr2_ta_fifo_intf = {
     .write16 = pvr2_ta_fifo_poly_write_16,
     .write8 = pvr2_ta_fifo_poly_write_8
 };
+
+unsigned pvr2_ta_fifo_rem_bytes(void) {
+    // hardcode this to 256 bytes.  The TFREM register over in sys_block.c
+    // calls this
+    return 256;
+}

@@ -30,6 +30,7 @@
 #include "hw/sh4/sh4_dmac.h"
 #include "log.h"
 #include "mmio.h"
+#include "hw/pvr2/pvr2_ta.h"
 
 #include "sys_block.h"
 
@@ -148,6 +149,12 @@ sys_sbrev_mmio_read(struct mmio_region_sys_block *region,
     return 16;
 }
 
+static uint32_t
+tfrem_reg_read_handler(struct mmio_region_sys_block *region,
+                       unsigned idx, void *ctxt) {
+    return pvr2_ta_fifo_rem_bytes() / 32;
+}
+
 void sys_block_init(void) {
     init_mmio_region_sys_block(&mmio_region_sys_block, (void*)reg_backing);
 
@@ -211,6 +218,11 @@ void sys_block_init(void) {
                                     "SB_C2DMAXL", 0x5f684c,
                                     mmio_region_sys_block_warn_read_handler,
                                     mmio_region_sys_block_warn_write_handler,
+                                    NULL);
+    mmio_region_sys_block_init_cell(&mmio_region_sys_block,
+                                    "SB_TFREM", 0x5f6880,
+                                    tfrem_reg_read_handler,
+                                    mmio_region_sys_block_readonly_write_error,
                                     NULL);
     mmio_region_sys_block_init_cell(&mmio_region_sys_block,
                                     "SB_LMMODE0", 0x5f6884,

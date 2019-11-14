@@ -340,4 +340,6 @@ struct pvr2_ta {
         pvr2_pt_complete_int_event_scheduled;
 };
 
+unsigned pvr2_ta_fifo_rem_bytes(void);
+
 #endif
