@@ -133,7 +133,7 @@ static struct mmio_region_g2_reg_32 mmio_region_g2_reg_32;
 static uint8_t reg_backing[N_G2_REGS];
 
 struct g2_dma_ch {
-    uint32_t tsel, dir, star, stag, len, st;
+    uint32_t tsel, dir, star, stag, len, st, en, susp;
 
     void(*do_xfer)(uint32_t src_addr, uint32_t dst_addr, unsigned n_bytes);
 
@@ -288,6 +288,26 @@ static void adtsel_reg_write(struct mmio_region_g2_reg_32 *region,
     dma_ch_ad.tsel = val;
 }
 
+static uint32_t aden_reg_read(struct mmio_region_g2_reg_32 *region,
+                              unsigned idx, void *ctxt) {
+    return dma_ch_ad.en;
+}
+
+static void aden_reg_write(struct mmio_region_g2_reg_32 *region,
+                           unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_ad.en = val;
+}
+
+static uint32_t adsusp_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return dma_ch_ad.susp;
+}
+
+static void adsusp_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_ad.susp = val;
+}
+
 static uint32_t addir_reg_read(struct mmio_region_g2_reg_32 *region,
                                unsigned idx, void *ctxt) {
     return dma_ch_ad.dir;
@@ -346,6 +366,26 @@ static uint32_t e1tsel_reg_read(struct mmio_region_g2_reg_32 *region,
 static void e1tsel_reg_write(struct mmio_region_g2_reg_32 *region,
                              unsigned idx, uint32_t val, void *ctxt) {
     dma_ch_e1.tsel = val;
+}
+
+static uint32_t e1en_reg_read(struct mmio_region_g2_reg_32 *region,
+                              unsigned idx, void *ctxt) {
+    return dma_ch_e1.en;
+}
+
+static void e1en_reg_write(struct mmio_region_g2_reg_32 *region,
+                           unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_e1.en = val;
+}
+
+static uint32_t e1susp_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return dma_ch_e1.susp;
+}
+
+static void e1susp_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_e1.susp = val;
 }
 
 static uint32_t e1dir_reg_read(struct mmio_region_g2_reg_32 *region,
@@ -408,6 +448,26 @@ static void e2tsel_reg_write(struct mmio_region_g2_reg_32 *region,
     dma_ch_e2.tsel = val;
 }
 
+static uint32_t e2en_reg_read(struct mmio_region_g2_reg_32 *region,
+                              unsigned idx, void *ctxt) {
+    return dma_ch_e2.en;
+}
+
+static void e2en_reg_write(struct mmio_region_g2_reg_32 *region,
+                           unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_e2.en = val;
+}
+
+static uint32_t e2susp_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return dma_ch_e2.susp;
+}
+
+static void e2susp_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_e2.susp = val;
+}
+
 static uint32_t e2dir_reg_read(struct mmio_region_g2_reg_32 *region,
                                unsigned idx, void *ctxt) {
     return dma_ch_e2.dir;
@@ -466,6 +526,26 @@ static uint32_t ddtsel_reg_read(struct mmio_region_g2_reg_32 *region,
 static void ddtsel_reg_write(struct mmio_region_g2_reg_32 *region,
                              unsigned idx, uint32_t val, void *ctxt) {
     dma_ch_dd.tsel = val;
+}
+
+static uint32_t dden_reg_read(struct mmio_region_g2_reg_32 *region,
+                              unsigned idx, void *ctxt) {
+    return dma_ch_dd.en;
+}
+
+static void dden_reg_write(struct mmio_region_g2_reg_32 *region,
+                           unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_dd.en = val;
+}
+
+static uint32_t ddsusp_reg_read(struct mmio_region_g2_reg_32 *region,
+                                unsigned idx, void *ctxt) {
+    return dma_ch_dd.susp;
+}
+
+static void ddsusp_reg_write(struct mmio_region_g2_reg_32 *region,
+                             unsigned idx, uint32_t val, void *ctxt) {
+    dma_ch_dd.susp = val;
 }
 
 static uint32_t dddir_reg_read(struct mmio_region_g2_reg_32 *region,
@@ -538,8 +618,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADEN", 0x5f7814,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    aden_reg_read,
+                                    aden_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADST", 0x5f7818,
@@ -548,8 +628,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_ADSUSP", 0x5f781c,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    adsusp_reg_read,
+                                    adsusp_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1STAG", 0x5f7820,
@@ -578,8 +658,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1EN", 0x5f7834,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    e1en_reg_read,
+                                    e1en_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1ST", 0x5f7838,
@@ -588,8 +668,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E1SUSP", 0x5f783c,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    e1susp_reg_read,
+                                    e1susp_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2STAG", 0x5f7840,
@@ -618,8 +698,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2EN", 0x5f7854,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    e2en_reg_read,
+                                    e2en_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2ST", 0x5f7858,
@@ -628,8 +708,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_E2SUSP", 0x5f785c,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    e2susp_reg_read,
+                                    e2susp_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDSTAG", 0x5f7860,
@@ -658,8 +738,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDEN", 0x5f7874,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    dden_reg_read,
+                                    dden_reg_write,
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDST", 0x5f7878,
@@ -668,8 +748,8 @@ void g2_reg_init(void) {
                                     NULL);
     mmio_region_g2_reg_32_init_cell(&mmio_region_g2_reg_32,
                                     "SB_DDSUSP", 0x5f787c,
-                                    mmio_region_g2_reg_32_warn_read_handler,
-                                    mmio_region_g2_reg_32_warn_write_handler,
+                                    ddsusp_reg_read,
+                                    ddsusp_reg_write,
                                     NULL);
 
     /* some debugging bullshit, hopefully I never need these... */
