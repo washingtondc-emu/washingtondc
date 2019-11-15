@@ -62,7 +62,11 @@
     break
 
 static void
-pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
+pvr2_reg_do_write(struct pvr2 *pvr2, unsigned addr, uint32_t val) {
+
+    unsigned offs = addr - ADDR_PVR2_FIRST;
+    unsigned idx = offs / sizeof(uint32_t);
+
     uint32_t *reg_backing = pvr2->reg_backing;
     switch (idx) {
     PVR2_REG_WRITE_CASE(PVR2_SB_PDSTAP);
@@ -119,6 +123,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
     case PVR2_TA_VERTBUF_POS:
         // read-only error
         error_set_index(idx);
+        error_set_address(addr);
         error_set_feature("writing to PVR2 read-only register\n");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
@@ -244,6 +249,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
                                                 idx * 4 + ADDR_PVR2_FIRST, 4);
         } else {
             error_set_index(idx);
+            error_set_address(addr);
             error_set_feature("writing to an unknown PVR2 register");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
@@ -257,7 +263,10 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned idx, uint32_t val) {
     return reg_backing[idx_const]
 
 static uint32_t
-pvr2_reg_do_read(struct pvr2 *pvr2, unsigned idx) {
+pvr2_reg_do_read(struct pvr2 *pvr2, unsigned addr) {
+    unsigned offs = addr - ADDR_PVR2_FIRST;
+    unsigned idx = offs / sizeof(uint32_t);
+
     uint32_t *reg_backing = pvr2->reg_backing;
     switch (idx) {
     PVR2_REG_READ_CASE(PVR2_SB_PDSTAP);
@@ -327,6 +336,7 @@ pvr2_reg_do_read(struct pvr2 *pvr2, unsigned idx) {
         break;
     case PVR2_STARTRENDER:
         error_set_index(idx);
+        error_set_address(addr);
         error_set_feature("reading from a PVR2 write-only register\n");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
@@ -365,11 +375,13 @@ pvr2_reg_do_read(struct pvr2 *pvr2, unsigned idx) {
             return reg_backing[idx];
         } else {
             error_set_index(idx);
+            error_set_address(addr);
             error_set_feature("reading from an unknown PVR2 register");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
 
+    error_set_address(addr);
     error_set_index(idx);
     RAISE_ERROR(ERROR_INTEGRITY);
 }
@@ -388,9 +400,7 @@ void pvr2_reg_cleanup(struct pvr2 *pvr2) {
         error_set_length(sizeof(tp));                                   \
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }                                                                   \
-    unsigned offs = addr - ADDR_PVR2_FIRST;                             \
-    unsigned idx = offs / sizeof(uint32_t);                             \
-    return pvr2_reg_do_read((struct pvr2*)ctxt, idx)
+    return pvr2_reg_do_read((struct pvr2*)ctxt, addr)
 
 #define PVR2_REG_WRITE_TMPL(tp)                                         \
     if (addr % sizeof(uint32_t)) {                                      \
@@ -399,9 +409,7 @@ void pvr2_reg_cleanup(struct pvr2 *pvr2) {
         error_set_length(sizeof(tp));                                   \
         RAISE_ERROR(ERROR_UNIMPLEMENTED);                               \
     }                                                                   \
-    unsigned offs = addr - ADDR_PVR2_FIRST;                             \
-    unsigned idx = offs / sizeof(uint32_t);                             \
-    pvr2_reg_do_write((struct pvr2*)ctxt, idx, val)
+    pvr2_reg_do_write((struct pvr2*)ctxt, addr, val)
 
 double pvr2_reg_read_double(addr32_t addr, void *ctxt) {
     error_set_address(addr);
