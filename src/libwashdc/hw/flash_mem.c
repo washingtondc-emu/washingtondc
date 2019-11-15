@@ -109,7 +109,7 @@ void flash_mem_init(struct flash_mem *mem, char const *path, bool writeable) {
     mem->writeable = writeable;
 
     strncpy(mem->file_path, path, sizeof(mem->file_path));
-    mem->file_path[FLASH_MEM_SZ - 1] = '\0';
+    mem->file_path[WASHDC_PATH_LEN - 1] = '\0';
 
     flash_mem_load(mem);
 }
