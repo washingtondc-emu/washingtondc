@@ -1406,6 +1406,13 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     struct memory_map_region *src_region = memory_map_get_region(&mem_map,
                                                                  xfer_src,
                                                                  n_words * 4);
+
+    if (!src_region) {
+        error_set_address(xfer_src);
+        error_set_length(n_words * 4);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     memory_map_read32_func read32 = src_region->intf->read32;
     void *ctxt = src_region->ctxt;
     uint32_t mask = src_region->mask;
