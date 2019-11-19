@@ -842,7 +842,12 @@ static bool run_to_next_arm7_event_debugger(void *ctxt) {
     if (arm7.enabled) {
         debug_set_context(DEBUG_CONTEXT_ARM7);
         dc_cycle_stamp_t cycles_after;
-        for (;;) {
+        bool exit_now;
+
+        if ((exit_now = dreamcast_check_debugger()))
+            return exit_now;
+
+        while (!(exit_now = dreamcast_check_debugger())) {
             int extra_cycles;
             arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
             arm7_op_fn handler = arm7_decode(&arm7, inst);
@@ -860,7 +865,8 @@ static bool run_to_next_arm7_event_debugger(void *ctxt) {
             debug_check_conditions(DEBUG_CONTEXT_ARM7);
 #endif
         }
-        clock_set_cycle_stamp(&arm7_clock, cycles_after);
+        if (!exit_now)
+            clock_set_cycle_stamp(&arm7_clock, cycles_after);
     } else {
         /*
          * XXX When the ARM7 is disabled, the PC is supposed to continue
