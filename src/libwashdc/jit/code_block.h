@@ -27,6 +27,7 @@
 #include <stdbool.h>
 
 #include "jit_il.h"
+#include "washdc/error.h"
 
 #ifdef ENABLE_JIT_X86_64
 #include "x86_64/code_block_x86_64.h"
@@ -38,15 +39,19 @@
 
 #include "jit_intp/code_block_intp.h"
 
-unsigned alloc_slot(struct il_code_block *block);
+enum washdc_jit_slot_tp {
+    // general-purpose slot
+    WASHDC_JIT_SLOT_GEN,
+
+    // floating-point slot
+    WASHDC_JIT_SLOT_FPU
+};
+
+unsigned alloc_slot(struct il_code_block *block, enum washdc_jit_slot_tp tp);
 void free_slot(struct il_code_block *block, unsigned slot_no);
 
 struct il_slot {
-    /*
-     * This is only here because I'm not a big fan of empty structs, or the
-     * ambiguous malloc(0) behavior.
-     */
-    char useless_placeholder;
+    enum washdc_jit_slot_tp tp;
 };
 
 struct il_code_block {
@@ -63,6 +68,15 @@ struct il_code_block {
     struct jit_profile_per_block *profile;
 #endif
 };
+
+static inline void
+check_slot(struct il_code_block *block, unsigned slot_no,
+           enum washdc_jit_slot_tp tp) {
+    if (slot_no >= block->n_slots)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    if (block->slots[slot_no].tp != tp)
+        RAISE_ERROR(ERROR_INTEGRITY);
+}
 
 struct jit_code_block {
     union {

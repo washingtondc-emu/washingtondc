@@ -96,17 +96,18 @@ void il_code_block_insert_inst(struct il_code_block *blk,
     blk->inst_count++;
 }
 
-static void il_code_block_add_slot(struct il_code_block *block) {
+static void il_code_block_add_slot(struct il_code_block *block,
+                                   enum washdc_jit_slot_tp tp) {
     block->n_slots++;
     struct il_slot *new_slot = block->slots + (block->n_slots - 1);
-    memset(new_slot, 0, sizeof(*new_slot));
+    new_slot->tp = tp;
 }
 
-unsigned alloc_slot(struct il_code_block *block) {
+unsigned alloc_slot(struct il_code_block *block, enum washdc_jit_slot_tp tp) {
     if (block->n_slots >= MAX_SLOTS)
         RAISE_ERROR(ERROR_OVERFLOW);
 
-    il_code_block_add_slot(block);
+    il_code_block_add_slot(block, tp);
 
     return block->n_slots - 1;
 }
