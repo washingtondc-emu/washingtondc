@@ -106,10 +106,9 @@ unsigned alloc_slot(struct il_code_block *block) {
     if (block->n_slots >= MAX_SLOTS)
         RAISE_ERROR(ERROR_OVERFLOW);
 
-    unsigned slot_no = block->n_slots++;
     il_code_block_add_slot(block);
 
-    return slot_no;
+    return block->n_slots - 1;
 }
 
 void free_slot(struct il_code_block *block, unsigned slot_no) {
