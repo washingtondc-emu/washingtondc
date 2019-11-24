@@ -58,7 +58,7 @@ void code_block_intp_compile(void *cpu,
     out->cycle_count = cycle_count;
     out->inst_count = inst_count;
     out->n_slots = il_blk->n_slots;
-    out->slots = (uint32_t*)malloc(out->n_slots * sizeof(uint32_t));
+    out->slots = (union slot_val*)malloc(out->n_slots * sizeof(out->slots[0]));
 }
 
 reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
@@ -72,17 +72,17 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             inst++;
             break;
         case JIT_OP_JUMP:
-            return block->slots[inst->immed.jump.jmp_addr_slot];
+            return block->slots[inst->immed.jump.jmp_addr_slot].as_u32;
         case JIT_CSET:
-            if ((block->slots[inst->immed.cset.flag_slot] & 1) ==
+            if ((block->slots[inst->immed.cset.flag_slot].as_u32 & 1) ==
                 inst->immed.cset.t_flag) {
-                block->slots[inst->immed.cset.dst_slot] =
+                block->slots[inst->immed.cset.dst_slot].as_u32 =
                     inst->immed.cset.src_val;
             }
             inst++;
             break;
         case JIT_SET_SLOT:
-            block->slots[inst->immed.set_slot.slot_idx] =
+            block->slots[inst->immed.set_slot.slot_idx].as_u32 =
                 inst->immed.set_slot.new_val;
             inst++;
             break;
@@ -90,129 +90,149 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             inst->immed.call_func.func(cpu,
                                        block->slots[
                                            inst->immed.call_func.slot_no
-                                           ]);
+                                           ].as_u32);
             inst++;
             break;
         case JIT_OP_READ_16_CONSTADDR:
-            block->slots[inst->immed.read_16_constaddr.slot_no] =
+            block->slots[inst->immed.read_16_constaddr.slot_no].as_u32 =
                 memory_map_read_16(inst->immed.read_16_constaddr.map,
                                    inst->immed.read_16_constaddr.addr);
             inst++;
             break;
         case JIT_OP_SIGN_EXTEND_8:
-            block->slots[inst->immed.sign_extend_8.slot_no] =
-                (int32_t)(int8_t)block->slots[inst->immed.sign_extend_8.slot_no];
+            block->slots[inst->immed.sign_extend_8.slot_no].as_u32 =
+                (int32_t)(int8_t)block->slots[inst->immed.sign_extend_8.slot_no].as_u32;
             inst++;
             break;
         case JIT_OP_SIGN_EXTEND_16:
-            block->slots[inst->immed.sign_extend_16.slot_no] =
-                (int32_t)(int16_t)block->slots[inst->immed.sign_extend_16.slot_no];
+            block->slots[inst->immed.sign_extend_16.slot_no].as_u32 =
+                (int32_t)(int16_t)block->slots[inst->immed.sign_extend_16.slot_no].as_u32;
             inst++;
             break;
         case JIT_OP_READ_32_CONSTADDR:
-            block->slots[inst->immed.read_32_constaddr.slot_no] =
+            block->slots[inst->immed.read_32_constaddr.slot_no].as_u32 =
                 memory_map_read_32(inst->immed.read_32_constaddr.map,
                                    inst->immed.read_32_constaddr.addr);
             inst++;
             break;
         case JIT_OP_READ_8_SLOT:
-            block->slots[inst->immed.read_8_slot.dst_slot] =
+            block->slots[inst->immed.read_8_slot.dst_slot].as_u32 =
                 memory_map_read_8(inst->immed.read_8_slot.map,
                                    block->slots[
                                        inst->immed.read_8_slot.addr_slot
-                                       ]);
+                                       ].as_u32);
             inst++;
             break;
         case JIT_OP_READ_16_SLOT:
-            block->slots[inst->immed.read_16_slot.dst_slot] =
+            block->slots[inst->immed.read_16_slot.dst_slot].as_u32 =
                 memory_map_read_16(inst->immed.read_16_slot.map,
                                    block->slots[
                                        inst->immed.read_16_slot.addr_slot
-                                       ]);
+                                       ].as_u32);
             inst++;
             break;
         case JIT_OP_READ_32_SLOT:
-            block->slots[inst->immed.read_32_slot.dst_slot] =
+            block->slots[inst->immed.read_32_slot.dst_slot].as_u32 =
                 memory_map_read_32(inst->immed.read_32_slot.map,
                                    block->slots[
                                        inst->immed.read_32_slot.addr_slot
-                                       ]);
+                                       ].as_u32);
+            inst++;
+            break;
+        case JIT_OP_READ_FLOAT_SLOT:
+            block->slots[inst->immed.read_float_slot.dst_slot].as_float =
+                memory_map_read_float(inst->immed.read_float_slot.map,
+                                      block->slots[
+                                       inst->immed.read_float_slot.addr_slot
+                                       ].as_u32);
             inst++;
             break;
         case JIT_OP_WRITE_8_SLOT:
             memory_map_write_8(inst->immed.write_8_slot.map,
-                                block->slots[inst->immed.write_8_slot.addr_slot],
-                                block->slots[inst->immed.write_8_slot.src_slot]);
+                                block->slots[inst->immed.write_8_slot.addr_slot].as_u32,
+                                block->slots[inst->immed.write_8_slot.src_slot].as_u32);
             inst++;
             break;
         case JIT_OP_WRITE_32_SLOT:
             memory_map_write_32(inst->immed.write_32_slot.map,
-                                block->slots[inst->immed.write_32_slot.addr_slot],
-                                block->slots[inst->immed.write_32_slot.src_slot]);
+                                block->slots[inst->immed.write_32_slot.addr_slot].as_u32,
+                                block->slots[inst->immed.write_32_slot.src_slot].as_u32);
             inst++;
             break;
         case JIT_OP_LOAD_SLOT16:
-            block->slots[inst->immed.load_slot16.slot_no] =
+            block->slots[inst->immed.load_slot16.slot_no].as_u32 =
                 *inst->immed.load_slot16.src;
             inst++;
             break;
         case JIT_OP_LOAD_SLOT:
-            block->slots[inst->immed.load_slot.slot_no] =
+            block->slots[inst->immed.load_slot.slot_no].as_u32 =
                 *inst->immed.load_slot.src;
+            inst++;
+            break;
+        case JIT_OP_LOAD_FLOAT_SLOT:
+            memcpy(&block->slots[inst->immed.load_float_slot.slot_no].as_float,
+                   inst->immed.load_float_slot.src,
+                   sizeof(float));
             inst++;
             break;
         case JIT_OP_STORE_SLOT:
             *inst->immed.store_slot.dst =
-                block->slots[inst->immed.store_slot.slot_no];
+                block->slots[inst->immed.store_slot.slot_no].as_u32;
+            inst++;
+            break;
+        case JIT_OP_STORE_FLOAT_SLOT:
+            memcpy(inst->immed.store_float_slot.dst,
+                   &block->slots[inst->immed.store_float_slot.slot_no].as_float,
+                   sizeof(float));
             inst++;
             break;
         case JIT_OP_ADD:
-            block->slots[inst->immed.add.slot_dst] +=
-                block->slots[inst->immed.add.slot_src];
+            block->slots[inst->immed.add.slot_dst].as_u32 +=
+                block->slots[inst->immed.add.slot_src].as_u32;
             inst++;
             break;
         case JIT_OP_SUB:
-            block->slots[inst->immed.sub.slot_dst] -=
-                block->slots[inst->immed.sub.slot_src];
+            block->slots[inst->immed.sub.slot_dst].as_u32 -=
+                block->slots[inst->immed.sub.slot_src].as_u32;
             inst++;
             break;
         case JIT_OP_ADD_CONST32:
-            block->slots[inst->immed.add_const32.slot_dst] +=
+            block->slots[inst->immed.add_const32.slot_dst].as_u32 +=
                 inst->immed.add_const32.const32;
             inst++;
             break;
         case JIT_OP_XOR:
-            block->slots[inst->immed.xor.slot_dst] ^=
-                block->slots[inst->immed.xor.slot_src];
+            block->slots[inst->immed.xor.slot_dst].as_u32 ^=
+                block->slots[inst->immed.xor.slot_src].as_u32;
             inst++;
             break;
         case JIT_OP_XOR_CONST32:
-            block->slots[inst->immed.xor_const32.slot_no] ^=
+            block->slots[inst->immed.xor_const32.slot_no].as_u32 ^=
                 inst->immed.xor_const32.const32;
             inst++;
             break;
         case JIT_OP_MOV:
-            block->slots[inst->immed.mov.slot_dst] =
-                block->slots[inst->immed.mov.slot_src];
+            block->slots[inst->immed.mov.slot_dst].as_u32 =
+                block->slots[inst->immed.mov.slot_src].as_u32;
             inst++;
             break;
         case JIT_OP_AND:
-            block->slots[inst->immed.and.slot_dst] &=
-                block->slots[inst->immed.and.slot_src];
+            block->slots[inst->immed.and.slot_dst].as_u32 &=
+                block->slots[inst->immed.and.slot_src].as_u32;
             inst++;
             break;
         case JIT_OP_AND_CONST32:
-            block->slots[inst->immed.and_const32.slot_no] &=
+            block->slots[inst->immed.and_const32.slot_no].as_u32 &=
                 inst->immed.and_const32.const32;
             inst++;
             break;
         case JIT_OP_OR:
-            block->slots[inst->immed.or.slot_dst] |=
-                block->slots[inst->immed.or.slot_src];
+            block->slots[inst->immed.or.slot_dst].as_u32 |=
+                block->slots[inst->immed.or.slot_src].as_u32;
             inst++;
             break;
         case JIT_OP_OR_CONST32:
-            block->slots[inst->immed.or_const32.slot_no] |=
+            block->slots[inst->immed.or_const32.slot_no].as_u32 |=
                 inst->immed.or_const32.const32;
             inst++;
             break;
@@ -221,87 +241,87 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             inst++;
             break;
         case JIT_OP_SLOT_TO_BOOL:
-            block->slots[inst->immed.slot_to_bool.slot_no] =
-                (block->slots[inst->immed.slot_to_bool.slot_no] ? 1 : 0);
+            block->slots[inst->immed.slot_to_bool.slot_no].as_u32 =
+                (block->slots[inst->immed.slot_to_bool.slot_no].as_u32 ? 1 : 0);
             inst++;
             break;
         case JIT_OP_NOT:
-            block->slots[inst->immed.not.slot_no] =
-                ~block->slots[inst->immed.not.slot_no];
+            block->slots[inst->immed.not.slot_no].as_u32 =
+                ~block->slots[inst->immed.not.slot_no].as_u32;
             inst++;
             break;
         case JIT_OP_SHLL:
-            block->slots[inst->immed.shll.slot_no] <<=
+            block->slots[inst->immed.shll.slot_no].as_u32 <<=
                 inst->immed.shll.shift_amt;
             inst++;
             break;
         case JIT_OP_SHAR:
-            block->slots[inst->immed.shar.slot_no] =
-                ((int32_t)block->slots[inst->immed.shar.slot_no]) >>
+            block->slots[inst->immed.shar.slot_no].as_u32 =
+                ((int32_t)block->slots[inst->immed.shar.slot_no].as_u32) >>
                 inst->immed.shar.shift_amt;
             inst++;
             break;
         case JIT_OP_SHLR:
-            block->slots[inst->immed.shlr.slot_no] >>=
+            block->slots[inst->immed.shlr.slot_no].as_u32 >>=
                 inst->immed.shlr.shift_amt;
             inst++;
             break;
         case JIT_OP_SET_GT_UNSIGNED:
-            if (block->slots[inst->immed.set_gt_unsigned.slot_lhs] >
-                block->slots[inst->immed.set_gt_unsigned.slot_rhs])
-                block->slots[inst->immed.set_gt_unsigned.slot_dst] |= 1;
+            if (block->slots[inst->immed.set_gt_unsigned.slot_lhs].as_u32 >
+                block->slots[inst->immed.set_gt_unsigned.slot_rhs].as_u32)
+                block->slots[inst->immed.set_gt_unsigned.slot_dst].as_u32 |= 1;
             inst++;
             break;
         case JIT_OP_SET_GT_SIGNED:
-            if ((int32_t)block->slots[inst->immed.set_gt_signed.slot_lhs] >
-                (int32_t)block->slots[inst->immed.set_gt_signed.slot_rhs])
-                block->slots[inst->immed.set_gt_signed.slot_dst] |= 1;
+            if ((int32_t)block->slots[inst->immed.set_gt_signed.slot_lhs].as_u32 >
+                (int32_t)block->slots[inst->immed.set_gt_signed.slot_rhs].as_u32)
+                block->slots[inst->immed.set_gt_signed.slot_dst].as_u32 |= 1;
             inst++;
             break;
         case JIT_OP_SET_GT_SIGNED_CONST:
-            if ((int32_t)block->slots[inst->immed.set_gt_signed_const.slot_lhs] >
+            if ((int32_t)block->slots[inst->immed.set_gt_signed_const.slot_lhs].as_u32 >
                 inst->immed.set_gt_signed_const.imm_rhs)
-                block->slots[inst->immed.set_gt_signed_const.slot_dst] |= 1;
+                block->slots[inst->immed.set_gt_signed_const.slot_dst].as_u32 |= 1;
             inst++;
             break;
         case JIT_OP_SET_EQ:
-            if (block->slots[inst->immed.set_eq.slot_lhs] ==
-                block->slots[inst->immed.set_eq.slot_rhs])
-                block->slots[inst->immed.set_eq.slot_dst] |= 1;
+            if (block->slots[inst->immed.set_eq.slot_lhs].as_u32 ==
+                block->slots[inst->immed.set_eq.slot_rhs].as_u32)
+                block->slots[inst->immed.set_eq.slot_dst].as_u32 |= 1;
             inst++;
             break;
         case JIT_OP_SET_GE_UNSIGNED:
-            if (block->slots[inst->immed.set_ge_unsigned.slot_lhs] >=
-                block->slots[inst->immed.set_ge_unsigned.slot_rhs])
-                block->slots[inst->immed.set_ge_unsigned.slot_dst] |= 1;
+            if (block->slots[inst->immed.set_ge_unsigned.slot_lhs].as_u32 >=
+                block->slots[inst->immed.set_ge_unsigned.slot_rhs].as_u32)
+                block->slots[inst->immed.set_ge_unsigned.slot_dst].as_u32 |= 1;
             inst++;
             break;
         case JIT_OP_SET_GE_SIGNED:
-            if ((int32_t)block->slots[inst->immed.set_ge_signed.slot_lhs] >=
-                (int32_t)block->slots[inst->immed.set_ge_signed.slot_rhs])
-                block->slots[inst->immed.set_ge_unsigned.slot_dst] |= 1;
+            if ((int32_t)block->slots[inst->immed.set_ge_signed.slot_lhs].as_u32 >=
+                (int32_t)block->slots[inst->immed.set_ge_signed.slot_rhs].as_u32)
+                block->slots[inst->immed.set_ge_unsigned.slot_dst].as_u32 |= 1;
             inst++;
             break;
         case JIT_OP_SET_GE_SIGNED_CONST:
-            if ((int32_t)block->slots[inst->immed.set_ge_signed_const.slot_lhs] >=
+            if ((int32_t)block->slots[inst->immed.set_ge_signed_const.slot_lhs].as_u32 >=
                 inst->immed.set_ge_signed_const.imm_rhs)
-                block->slots[inst->immed.set_ge_signed_const.slot_dst] |= 1;
+                block->slots[inst->immed.set_ge_signed_const.slot_dst].as_u32 |= 1;
             inst++;
             break;
         case JIT_OP_MUL_U32:
-            block->slots[inst->immed.mul_u32.slot_dst] =
-                block->slots[inst->immed.mul_u32.slot_lhs] *
-                block->slots[inst->immed.mul_u32.slot_rhs];
+            block->slots[inst->immed.mul_u32.slot_dst].as_u32 =
+                block->slots[inst->immed.mul_u32.slot_lhs].as_u32 *
+                block->slots[inst->immed.mul_u32.slot_rhs].as_u32;
             inst++;
             break;
         case JIT_OP_SHAD:
-            if ((int32_t)block->slots[inst->immed.shad.slot_shift_amt] >= 0) {
-                block->slots[inst->immed.shad.slot_val] <<=
-                    block->slots[inst->immed.shad.slot_shift_amt];
+            if ((int32_t)block->slots[inst->immed.shad.slot_shift_amt].as_u32 >= 0) {
+                block->slots[inst->immed.shad.slot_val].as_u32 <<=
+                    block->slots[inst->immed.shad.slot_shift_amt].as_u32;
             } else {
-                block->slots[inst->immed.shad.slot_val] =
-                    ((int32_t)block->slots[inst->immed.shad.slot_val]) >>
-                    -(int32_t)block->slots[inst->immed.shad.slot_shift_amt];
+                block->slots[inst->immed.shad.slot_val].as_u32 =
+                    ((int32_t)block->slots[inst->immed.shad.slot_val].as_u32) >>
+                    -(int32_t)block->slots[inst->immed.shad.slot_shift_amt].as_u32;
             }
             inst++;
             break;

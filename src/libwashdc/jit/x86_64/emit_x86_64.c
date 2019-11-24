@@ -1397,3 +1397,30 @@ void x86asm_setnzl_reg32(unsigned reg_no) {
 void x86asm_negl_reg32(unsigned reg_no) {
     emit_mod_reg_rm(0, 0xf7, 3, 3, reg_no);
 }
+
+void x86asm_movss_indreg_xmm(unsigned reg_src, unsigned xmm_reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x10, 0, xmm_reg_dst, reg_src);
+}
+
+void x86asm_movss_xmm_indreg(unsigned xmm_reg_src, unsigned reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x11, 0, xmm_reg_src, reg_dst);
+}
+
+void x86asm_movss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x10, 3, xmm_reg_dst, xmm_reg_src);
+}
+
+void x86asm_movss_disp8_reg_xmm(int disp8, unsigned reg_src, unsigned xmm_reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x10, 1, xmm_reg_dst, reg_src);
+    put8(disp8);
+}
+
+void x86asm_movss_disp32_reg_xmm(int disp32, unsigned reg_src, unsigned xmm_reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x10, 2, xmm_reg_dst, reg_src);
+    put32(disp32);
+}

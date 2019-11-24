@@ -80,6 +80,23 @@
 #define R14W R14
 #define R15W R15
 
+#define XMM0  0
+#define XMM1  1
+#define XMM2  2
+#define XMM3  3
+#define XMM4  4
+#define XMM5  5
+#define XMM6  6
+#define XMM7  7
+#define XMM8  8
+#define XMM9  9
+#define XMM10 10
+#define XMM11 11
+#define XMM12 12
+#define XMM13 13
+#define XMM14 14
+#define XMM15 15
+
 #define SIB 4
 #define RIPREL 5
 
@@ -485,5 +502,28 @@ void x86asm_movb_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst);
 
 void x86asm_jmp_disp8(int disp8);
 void x86asm_jmp_lbl8(struct x86asm_lbl8 *lbl);
+
+/*******************************************************************************
+ *
+ * SSE instructions
+ *
+ *******************************************************************************/
+
+// movss (%<reg_src>), %<xmm_reg_dst>
+void x86asm_movss_indreg_xmm(unsigned reg_src, unsigned xmm_reg_dst);
+
+// movss %<xmm_reg_src>, (%<reg_dst>)
+void x86asm_movss_xmm_indreg(unsigned xmm_reg_src, unsigned reg_dst);
+
+// movss %<xmm_reg_src>, %<xmm_reg_dst>
+void x86asm_movss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
+
+// movss <disp8>(%reg_src), <xmm_reg_dst
+void
+x86asm_movss_disp8_reg_xmm(int disp8, unsigned reg_src, unsigned xmm_reg_dst);
+
+// movss <disp32>(%reg_src), <xmm_reg_dst
+void
+x86asm_movss_disp32_reg_xmm(int disp32, unsigned reg_src, unsigned xmm_reg_dst);
 
 #endif

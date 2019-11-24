@@ -44,7 +44,7 @@ enum washdc_jit_slot_tp {
     WASHDC_JIT_SLOT_GEN,
 
     // floating-point slot
-    WASHDC_JIT_SLOT_FPU
+    WASHDC_JIT_SLOT_FLOAT
 };
 
 unsigned alloc_slot(struct il_code_block *block, enum washdc_jit_slot_tp tp);

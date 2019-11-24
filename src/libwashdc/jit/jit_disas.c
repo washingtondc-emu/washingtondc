@@ -95,6 +95,12 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                immed->read_32_slot.addr_slot,
                                immed->read_32_slot.dst_slot);
         break;
+    case JIT_OP_READ_FLOAT_SLOT:
+        washdc_hostfile_printf(out, "%02X: READ_FLOAT_SLOT *(FLOAT*)<SLOT %02X>, "
+                               "<SLOT %02X>\n", idx,
+                               immed->read_float_slot.addr_slot,
+                               immed->read_float_slot.dst_slot);
+        break;
     case JIT_OP_WRITE_8_SLOT:
         washdc_hostfile_printf(out, "%02X: WRITE_8_SLOT <SLOT %02X>, "
                                "*(U8*)<SLOT %02X>\n", idx,
@@ -117,10 +123,20 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                idx, immed->load_slot.src,
                                immed->load_slot.slot_no);
         break;
+    case JIT_OP_LOAD_FLOAT_SLOT:
+        washdc_hostfile_printf(out, "%02X: LOAD_FLOAT_SLOT *(FLOAT*)%p, <SLOT %02X>\n",
+                               idx, immed->load_float_slot.src,
+                               immed->load_float_slot.slot_no);
+        break;
     case JIT_OP_STORE_SLOT:
         washdc_hostfile_printf(out, "%02X: STORE_SLOT <SLOT %02X>, *(U32*)%p\n",
                                idx, immed->store_slot.slot_no,
                                immed->store_slot.dst);
+        break;
+    case JIT_OP_STORE_FLOAT_SLOT:
+        washdc_hostfile_printf(out, "%02X: STORE_FLOAT_SLOT <SLOT %02X>, *(FLOAT*)%p\n",
+                               idx, immed->store_float_slot.slot_no,
+                               immed->store_float_slot.dst);
         break;
     case JIT_OP_ADD:
         washdc_hostfile_printf(out, "%02X: ADD <SLOT %02X>, <SLOT %02X>\n",

@@ -25,6 +25,11 @@
 
 struct il_code_block;
 
+union slot_val {
+    uint32_t as_u32;
+    float as_float;
+};
+
 /*
  * this is mostly identical to the il_code_block, but it's been prepared for
  * the interpreter
@@ -39,7 +44,7 @@ struct code_block_intp {
      * moving values between the sh4 registers and these il registers.
      */
     unsigned n_slots;
-    uint32_t *slots;
+    union slot_val *slots;
 };
 
 void code_block_intp_init(struct code_block_intp *block);

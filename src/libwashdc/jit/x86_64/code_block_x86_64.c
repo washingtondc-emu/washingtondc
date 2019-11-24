@@ -46,6 +46,7 @@
 #include "code_block_x86_64.h"
 
 #define N_REGS 16
+#define N_XMM_REGS 16
 
 static struct reg_stat const gen_regs_template[N_REGS] = {
     [RAX] = {
@@ -161,13 +162,140 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     }
 };
 
+static struct reg_stat const xmm_regs_template[N_XMM_REGS] = {
+    [XMM0] = {
+        .locked = false,
+        .flags = REGISTER_FLAG_RETURN
+    },
+    [XMM1] = {
+        .locked = false,
+        .flags = REGISTER_FLAG_NONE
+    },
+    [XMM2] = {
+        .locked = false,
+        .flags = REGISTER_FLAG_NONE
+    },
+    [XMM3] = {
+        .locked = false,
+        .flags = REGISTER_FLAG_NONE
+    },
+    [XMM4] = {
+        .locked = false,
+        .flags = REGISTER_FLAG_NONE
+    },
+    [XMM5] = {
+        .locked = false,
+        .flags = REGISTER_FLAG_NONE
+    },
+    [XMM6] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM7] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM8] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM9] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM10] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM11] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM12] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM13] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM14] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+    [XMM15] = {
+        .locked = false,
+#if defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#elif defined(ABI_UNIX)
+        .flags = REGISTER_FLAG_NONE
+#else
+#error unknown ABI
+#endif
+    },
+};
+
 static struct register_state {
     struct register_set set;
 
     // maps registers to slot indices
     int *reg_slots;
     int n_regs;
-} gen_reg_state;
+} gen_reg_state, xmm_reg_state;
 
 struct slot {
     union {
@@ -205,9 +333,13 @@ static void evict_register(struct code_block_x86_64 *blk,
 void jit_x86_64_backend_init(void) {
     memset(&gen_reg_state, 0, sizeof(gen_reg_state));
     register_set_init(&gen_reg_state.set, N_REGS, gen_regs_template);
-
     gen_reg_state.n_regs = N_REGS;
     gen_reg_state.reg_slots = (int*)malloc(sizeof(int) * N_REGS);
+
+    memset(&xmm_reg_state, 0, sizeof(xmm_reg_state));
+    register_set_init(&xmm_reg_state.set, N_XMM_REGS, xmm_regs_template);
+    xmm_reg_state.n_regs = N_XMM_REGS;
+    xmm_reg_state.reg_slots = (int*)malloc(sizeof(int) * N_XMM_REGS);
 }
 
 void jit_x86_64_backend_cleanup(void) {
@@ -215,14 +347,26 @@ void jit_x86_64_backend_cleanup(void) {
     gen_reg_state.reg_slots = NULL;
     gen_reg_state.n_regs = 0;
     register_set_cleanup(&gen_reg_state.set);
+
+    free(xmm_reg_state.reg_slots);
+    xmm_reg_state.reg_slots = NULL;
+    xmm_reg_state.n_regs = 0;
+    register_set_cleanup(&xmm_reg_state.set);
 }
 
 static void reset_slots(void) {
-    memset(slots, 0, sizeof(slots));
-    register_set_reset(&gen_reg_state.set);
     int reg_no;
+
+    memset(slots, 0, sizeof(slots));
+
+    register_set_reset(&gen_reg_state.set);
     for (reg_no = 0; reg_no < gen_reg_state.n_regs; reg_no++)
         gen_reg_state.reg_slots[reg_no] = 0xdeadbeef;
+
+    register_set_reset(&xmm_reg_state.set);
+    for (reg_no = 0; reg_no < xmm_reg_state.n_regs; reg_no++)
+        xmm_reg_state.reg_slots[reg_no] = 0xdeadbeef;
+
     rsp_offs = 0;
 }
 
@@ -253,7 +397,42 @@ static void discard_slot(struct code_block_x86_64 *blk, unsigned slot_no) {
  * they all get saved.
  */
 static void prefunc(struct code_block_x86_64 *blk) {
+    evict_register(blk, &xmm_reg_state, XMM0);
+    grab_register(&xmm_reg_state.set, XMM0);
+    evict_register(blk, &xmm_reg_state, XMM1);
+    grab_register(&xmm_reg_state.set, XMM1);
+    evict_register(blk, &xmm_reg_state, XMM2);
+    grab_register(&xmm_reg_state.set, XMM2);
+    evict_register(blk, &xmm_reg_state, XMM3);
+    grab_register(&xmm_reg_state.set, XMM3);
+    evict_register(blk, &xmm_reg_state, XMM4);
+    grab_register(&xmm_reg_state.set, XMM4);
+    evict_register(blk, &xmm_reg_state, XMM5);
+    grab_register(&xmm_reg_state.set, XMM5);
+
 #if defined(ABI_UNIX)
+    // these regs are volatile on unix but not on microsoft
+    evict_register(blk, &xmm_reg_state, XMM6);
+    grab_register(&xmm_reg_state.set, XMM6);
+    evict_register(blk, &xmm_reg_state, XMM7);
+    grab_register(&xmm_reg_state.set, XMM7);
+    evict_register(blk, &xmm_reg_state, XMM8);
+    grab_register(&xmm_reg_state.set, XMM8);
+    evict_register(blk, &xmm_reg_state, XMM9);
+    grab_register(&xmm_reg_state.set, XMM9);
+    evict_register(blk, &xmm_reg_state, XMM10);
+    grab_register(&xmm_reg_state.set, XMM10);
+    evict_register(blk, &xmm_reg_state, XMM11);
+    grab_register(&xmm_reg_state.set, XMM11);
+    evict_register(blk, &xmm_reg_state, XMM12);
+    grab_register(&xmm_reg_state.set, XMM12);
+    evict_register(blk, &xmm_reg_state, XMM13);
+    grab_register(&xmm_reg_state.set, XMM13);
+    evict_register(blk, &xmm_reg_state, XMM14);
+    grab_register(&xmm_reg_state.set, XMM14);
+    evict_register(blk, &xmm_reg_state, XMM15);
+    grab_register(&xmm_reg_state.set, XMM15);
+
     evict_register(blk, &gen_reg_state, RAX);
     grab_register(&gen_reg_state.set, RAX);
     evict_register(blk, &gen_reg_state, RCX);
@@ -287,12 +466,16 @@ static void prefunc(struct code_block_x86_64 *blk) {
     grab_register(&gen_reg_state.set, R10);
     evict_register(blk, &gen_reg_state, R11);
     grab_register(&gen_reg_state.set, R11);
+#else
+    #error unknown ABI
 #endif
 }
 
 /*
  * whenever you emit a function call, call this function after
  * really all it does is ungrab all the registers earlier grabbed by prefunc.
+ *
+ * Unless the function was returning a float, then call postfunc_float instead.
  *
  * It does not ungrab RAX even though that register is grabbed by prefunc.  The
  * reason for this is that RAX holds the return value (if any) and you probably
@@ -310,6 +493,19 @@ static void postfunc(void) {
     ungrab_register(&gen_reg_state.set, RSI);
     ungrab_register(&gen_reg_state.set, RDX);
     ungrab_register(&gen_reg_state.set, RCX);
+
+    // these regs are volatile on unix but not on microsoft
+    ungrab_register(&xmm_reg_state.set, XMM15);
+    ungrab_register(&xmm_reg_state.set, XMM14);
+    ungrab_register(&xmm_reg_state.set, XMM13);
+    ungrab_register(&xmm_reg_state.set, XMM12);
+    ungrab_register(&xmm_reg_state.set, XMM11);
+    ungrab_register(&xmm_reg_state.set, XMM10);
+    ungrab_register(&xmm_reg_state.set, XMM9);
+    ungrab_register(&xmm_reg_state.set, XMM8);
+    ungrab_register(&xmm_reg_state.set, XMM7);
+    ungrab_register(&xmm_reg_state.set, XMM6);
+
 #elif defined(ABI_MICROSOFT)
     ungrab_register(&gen_reg_state.set, R11);
     ungrab_register(&gen_reg_state.set, R10);
@@ -317,7 +513,66 @@ static void postfunc(void) {
     ungrab_register(&gen_reg_state.set, R8);
     ungrab_register(&gen_reg_state.set, RDX);
     ungrab_register(&gen_reg_state.set, RCX);
+
+#else
+    #error unknown ABI
 #endif
+
+    ungrab_register(&xmm_reg_state.set, XMM5);
+    ungrab_register(&xmm_reg_state.set, XMM4);
+    ungrab_register(&xmm_reg_state.set, XMM3);
+    ungrab_register(&xmm_reg_state.set, XMM2);
+    ungrab_register(&xmm_reg_state.set, XMM1);
+    ungrab_register(&xmm_reg_state.set, XMM0);
+}
+
+/*
+ * This is like postfunc, except it does ungrab RAX, and it doesn't ungrab XMM0.
+ * This is intended to be called after functions that return floating points in
+ * the XMM0 register.
+ */
+static void postfunc_float(void) {
+#if defined(ABI_UNIX)
+    ungrab_register(&gen_reg_state.set, R11);
+    ungrab_register(&gen_reg_state.set, R10);
+    ungrab_register(&gen_reg_state.set, R9);
+    ungrab_register(&gen_reg_state.set, R8);
+    ungrab_register(&gen_reg_state.set, RDI);
+    ungrab_register(&gen_reg_state.set, RSI);
+    ungrab_register(&gen_reg_state.set, RDX);
+    ungrab_register(&gen_reg_state.set, RCX);
+    ungrab_register(&gen_reg_state.set, RAX);
+
+    // these regs are volatile on unix but not on microsoft
+    ungrab_register(&xmm_reg_state.set, XMM15);
+    ungrab_register(&xmm_reg_state.set, XMM14);
+    ungrab_register(&xmm_reg_state.set, XMM13);
+    ungrab_register(&xmm_reg_state.set, XMM12);
+    ungrab_register(&xmm_reg_state.set, XMM11);
+    ungrab_register(&xmm_reg_state.set, XMM10);
+    ungrab_register(&xmm_reg_state.set, XMM9);
+    ungrab_register(&xmm_reg_state.set, XMM8);
+    ungrab_register(&xmm_reg_state.set, XMM7);
+    ungrab_register(&xmm_reg_state.set, XMM6);
+
+#elif defined(ABI_MICROSOFT)
+    ungrab_register(&gen_reg_state.set, R11);
+    ungrab_register(&gen_reg_state.set, R10);
+    ungrab_register(&gen_reg_state.set, R9);
+    ungrab_register(&gen_reg_state.set, R8);
+    ungrab_register(&gen_reg_state.set, RDX);
+    ungrab_register(&gen_reg_state.set, RCX);
+    ungrab_register(&gen_reg_state.set, RAX);
+
+#else
+    #error unknown ABI
+#endif
+
+    ungrab_register(&xmm_reg_state.set, XMM5);
+    ungrab_register(&xmm_reg_state.set, XMM4);
+    ungrab_register(&xmm_reg_state.set, XMM3);
+    ungrab_register(&xmm_reg_state.set, XMM2);
+    ungrab_register(&xmm_reg_state.set, XMM1);
 }
 
 /*
@@ -333,12 +588,28 @@ static void move_slot_to_stack(struct code_block_x86_64 *blk, unsigned slot_no) 
     if (slot->reg_state->reg_slots[slot->reg_no] != slot_no)
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    x86asm_pushq_reg64(slot->reg_no);
+    int n_bytes;
+    if (slot->reg_state == &gen_reg_state) {
+        // handle general-purpose register
+        n_bytes = 8;
+        x86asm_pushq_reg64(slot->reg_no);
+    } else if (slot->reg_state == &xmm_reg_state) {
+        // handle SSE
+        /*
+         * TODO: if I ever use vector ops, then I need to save the whole
+         * register
+         */
+        n_bytes = 4;
+        x86asm_addq_imm8_reg(-4, RSP);
+        x86asm_movss_xmm_indreg(slot->reg_no, RSP);
+    } else {
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     register_discard(&slot->reg_state->set, slot->reg_no);
 
     slot->in_reg = false;
-    rsp_offs -= 8;
+    rsp_offs -= n_bytes;
     slot->rbp_offs = rsp_offs;
 
     blk->dirty_stack = true;
@@ -367,7 +638,12 @@ move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no, unsigned reg_n
         if (register_in_use(&slot->reg_state->set, reg_no))
             move_slot_to_stack(blk, slot->reg_state->reg_slots[reg_no]);
 
-        x86asm_mov_reg32_reg32(src_reg, reg_no);
+        if (slot->reg_state == &gen_reg_state)
+            x86asm_mov_reg32_reg32(src_reg, reg_no);
+        else if (slot->reg_state == &xmm_reg_state)
+            x86asm_movss_xmm_xmm(src_reg, reg_no);
+        else
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
         register_discard(&slot->reg_state->set, src_reg);
         register_acquire(&slot->reg_state->set, reg_no);
@@ -391,10 +667,19 @@ move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no, unsigned reg_n
     /*     x86asm_popq_reg64(reg_no); */
     /* } else  */{
         // move the slot from the stack to the reg based on offset from rbp.
-        if (slot->rbp_offs > 127 || slot->rbp_offs < -128)
-            x86asm_movq_disp32_reg_reg(slot->rbp_offs, RBP, reg_no);
-        else
-            x86asm_movq_disp8_reg_reg(slot->rbp_offs, RBP, reg_no);
+        if (slot->reg_state == &gen_reg_state) {
+            if (slot->rbp_offs > 127 || slot->rbp_offs < -128)
+                x86asm_movq_disp32_reg_reg(slot->rbp_offs, RBP, reg_no);
+            else
+                x86asm_movq_disp8_reg_reg(slot->rbp_offs, RBP, reg_no);
+        } else if (slot->reg_state == &xmm_reg_state) {
+            if (slot->rbp_offs > 127 || slot->rbp_offs < -128)
+                x86asm_movss_disp32_reg_xmm(slot->rbp_offs, RBP, reg_no);
+            else
+                x86asm_movss_disp8_reg_xmm(slot->rbp_offs, RBP, reg_no);
+        } else {
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
     }
 
     register_acquire(&slot->reg_state->set, reg_no);
@@ -1494,6 +1779,77 @@ static void emit_shad(struct code_block_x86_64 *blk,
     ungrab_register(&gen_reg_state.set, RCX);
 }
 
+static void emit_read_float_slot(struct code_block_x86_64 *blk,
+                                 struct il_code_block const *il_blk,
+                                 void *cpu, struct jit_inst const *inst) {
+    unsigned dst_slot = inst->immed.read_float_slot.dst_slot;
+    unsigned addr_slot = inst->immed.read_float_slot.addr_slot;
+    struct memory_map const *map = inst->immed.read_float_slot.map;
+
+    // call memory_map_read_float(*addr_slot)
+    prefunc(blk);
+
+    // TODO: inline mem
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_read_float);
+    ms_shadow_close();
+
+    postfunc_float();
+
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, dst_slot);
+
+    // move XMM0 into slots[dst_slot].reg_no
+    x86asm_movss_xmm_xmm(XMM0, slots[dst_slot].reg_no);
+
+    ungrab_slot(dst_slot);
+    ungrab_register(&xmm_reg_state.set, XMM0);
+}
+
+static void emit_load_float_slot(struct code_block_x86_64 *blk,
+                                 struct il_code_block const *il_blk,
+                                 void *cpu, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.load_float_slot.slot_no;
+    void const *src_ptr = inst->immed.load_float_slot.src;
+
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_no);
+
+    unsigned reg_dst = slots[slot_no].reg_no;
+
+    int reg_addr = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, reg_addr);
+    grab_register(&gen_reg_state.set, reg_addr);
+
+    x86asm_mov_imm64_reg64((uintptr_t)src_ptr, reg_addr);
+
+    // move *reg_addr into the XMM reg
+    x86asm_movss_indreg_xmm(reg_addr, reg_dst);
+
+    ungrab_register(&gen_reg_state.set, reg_addr);
+    ungrab_slot(slot_no);
+}
+
+static void emit_store_float_slot(struct code_block_x86_64 *blk,
+                                  struct il_code_block const *il_blk,
+                                  void *cpu, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.store_float_slot.slot_no;
+    void const *dst_ptr = inst->immed.store_float_slot.dst;
+
+    evict_register(blk, &gen_reg_state, REG_RET);
+    grab_register(&gen_reg_state.set, REG_RET);
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_no);
+
+    unsigned reg_no = slots[slot_no].reg_no;
+    x86asm_mov_imm64_reg64((uintptr_t)dst_ptr, REG_RET);
+    x86asm_movss_xmm_indreg(reg_no, REG_RET);
+
+    ungrab_slot(slot_no);
+    ungrab_register(&gen_reg_state.set, REG_RET);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned to a 16-byte
@@ -1684,6 +2040,15 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_SHAD:
             emit_shad(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_READ_FLOAT_SLOT:
+            emit_read_float_slot(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_LOAD_FLOAT_SLOT:
+            emit_load_float_slot(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_STORE_FLOAT_SLOT:
+            emit_store_float_slot(out, il_blk, cpu, inst);
             break;
         default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
