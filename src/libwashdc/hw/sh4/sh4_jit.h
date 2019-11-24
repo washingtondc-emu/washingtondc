@@ -188,6 +188,14 @@ sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
 
     jit_optimize(&il_blk);
 
+#ifdef JIT_PROFILE
+    unsigned inst_no;
+    for (inst_no = 0; inst_no < il_blk.inst_count; inst_no++) {
+        jit_profile_push_il_inst(&sh4->jit_profile, jit_blk->profile,
+                                 il_blk.inst_list + inst_no);
+    }
+#endif
+
     code_block_intp_compile(cpu, blk, &il_blk, ctx.cycle_count * SH4_CLOCK_SCALE);
     il_code_block_cleanup(&il_blk);
 }
