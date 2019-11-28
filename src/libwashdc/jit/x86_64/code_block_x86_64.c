@@ -24,6 +24,7 @@
 #error this file should not be built when the x86_64 JIT backend is disabled
 #endif
 
+#include <limits.h>
 #include <errno.h>
 #include <stddef.h>
 
@@ -557,7 +558,7 @@ static unsigned pick_reg_ex(enum reg_hint hints) {
 
     unsigned reg_no;
     unsigned best_reg = 0;
-    int best_prio;
+    int best_prio = INT_MIN;
     bool found_one = false;
 
     // first pass: try to find one that's not in use
