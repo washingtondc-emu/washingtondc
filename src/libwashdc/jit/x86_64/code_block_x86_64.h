@@ -48,6 +48,9 @@ struct code_block_x86_64 {
     bool dirty_stack;
 };
 
+void jit_x86_64_backend_init(void);
+void jit_x86_64_backend_cleanup(void);
+
 void code_block_x86_64_init(struct code_block_x86_64 *blk);
 void code_block_x86_64_cleanup(struct code_block_x86_64 *blk);
 

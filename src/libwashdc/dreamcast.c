@@ -522,6 +522,7 @@ dreamcast_init(char const *gdi_path,
 
 #ifdef ENABLE_JIT_X86_64
     if (config_get_native_jit()) {
+        jit_x86_64_backend_init();
         exec_mem_init();
         sh4_jit_set_native_dispatch_meta(&sh4_native_dispatch_meta);
         sh4_native_dispatch_meta.clk = &sh4_clock;
@@ -644,6 +645,7 @@ void dreamcast_cleanup() {
         native_mem_cleanup();
         native_dispatch_cleanup(&sh4_native_dispatch_meta);
         exec_mem_cleanup();
+        jit_x86_64_backend_cleanup();
     }
 #endif
 
