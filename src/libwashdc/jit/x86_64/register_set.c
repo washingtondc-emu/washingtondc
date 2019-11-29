@@ -22,9 +22,11 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "washdc/error.h"
 #include "register_set.h"
+#include "log.h"
 
 void register_set_init(struct register_set *set, int n_regs,
                        struct reg_stat const *regs) {
@@ -123,4 +125,134 @@ int register_priority(struct register_set *set, unsigned reg_no) {
         RAISE_ERROR(ERROR_INTEGRITY);
 
     return set->regs[reg_no].prio;
+}
+
+static int
+pick_unused_reg_with_flags(struct register_set *set, enum register_flag flags) {
+    int best_prio = INT_MIN;
+    bool found_one = false;
+    unsigned reg_no, best_reg = 0xdeadbeef;
+    for (reg_no = 0; reg_no < set->n_regs; reg_no++) {
+        enum register_flag reg_flags = set->regs[reg_no].flags;
+        int prio = register_priority(set, reg_no);
+        if ((reg_flags & flags) == flags &&
+            register_available(set, reg_no) &&
+            ((prio > best_prio) || !found_one)) {
+            found_one = true;
+            best_prio = prio;
+            best_reg = reg_no;
+        }
+    }
+
+    if (found_one)
+        return best_reg;
+    return -1;
+}
+
+static int
+pick_unused_reg_without_flags(struct register_set *set,
+                              enum register_flag flags) {
+    int best_prio = INT_MIN;
+    bool found_one = false;
+    unsigned reg_no, best_reg = 0xdeadbeef;
+    for (reg_no = 0; reg_no < set->n_regs; reg_no++) {
+        enum register_flag reg_flags = set->regs[reg_no].flags;
+        int prio = register_priority(set, reg_no);
+        if (!(reg_flags & flags) &&
+            register_available(set, reg_no) &&
+            ((prio > best_prio) || !found_one)) {
+            found_one = true;
+            best_prio = prio;
+            best_reg = reg_no;
+        }
+    }
+
+    if (found_one)
+        return best_reg;
+    return -1;
+}
+
+/*
+ * This function will pick an unused register to use.  This doesn't change the
+ * state of the register.  If there are no unused registers available, this
+ * function will return -1.
+ */
+int register_pick_unused(struct register_set *set, enum register_hint hints) {
+    int reg_no;
+
+    if (hints & REGISTER_HINT_JUMP_ADDR) {
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NATIVE_DISPATCH_PC);
+        if (reg_no >= 0)
+            return reg_no;
+    }
+
+    if (hints & REGISTER_HINT_JUMP_HASH) {
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NATIVE_DISPATCH_HASH);
+        if (reg_no >= 0)
+            return reg_no;
+    }
+
+    if (hints & REGISTER_HINT_FUNCTION) {
+        /*
+         * first consider registers which will be preserved across function
+         * calls.
+         */
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_PRESERVED);
+        if (reg_no >= 0)
+            return reg_no;
+
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE);
+        if (reg_no >= 0)
+            return reg_no;
+    } else {
+        reg_no =
+            pick_unused_reg_without_flags(set, REGISTER_FLAG_PRESERVED);
+        if (reg_no >= 0)
+            return reg_no;
+
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE);
+        if (reg_no >= 0)
+            return reg_no;
+    }
+
+    return -1;
+}
+
+int register_pick(struct register_set *set, enum register_hint hints) {
+    unsigned reg_no;
+    unsigned best_reg = 0;
+    int best_prio = INT_MIN;
+    bool found_one = false;
+
+    // first pass: try to find one that's not in use
+    int unused_reg = register_pick_unused(set, hints);
+    if (unused_reg >= 0)
+        return (unsigned)unused_reg;
+
+    /*
+     * second pass: they're all in use so just pick one that is not locked or
+     * grabbed.
+     */
+    for (reg_no = 0; reg_no < set->n_regs; reg_no++) {
+        if (!register_locked(set, reg_no) &&
+            !register_grabbed(set, reg_no)) {
+            int prio = register_priority(set, reg_no);
+            if (!found_one || prio > best_prio) {
+                found_one = true;
+                best_prio = prio;
+                best_reg = reg_no;
+            }
+        }
+    }
+
+    if (found_one)
+        return best_reg;
+
+    LOG_ERROR("x86_64: no more registers!\n");
+    RAISE_ERROR(ERROR_INTEGRITY);
 }

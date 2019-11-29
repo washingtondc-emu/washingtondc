@@ -50,52 +50,85 @@
 static struct reg_stat const gen_regs_template[N_REGS] = {
     [RAX] = {
         .locked = false,
-        .prio = 0
+        .prio = 0,
+        .flags = REGISTER_FLAG_RETURN
     },
     [RCX] = {
         .locked = false,
-        .prio = 3
+        .prio = 3,
+#ifdef ABI_UNIX
+        .flags = REGISTER_FLAG_NATIVE_DISPATCH_PC
+#else
+        .flags = REGISTER_FLAG_NONE
+#endif
     },
     [RDX] = {
         // RDX is a lower priority because mul will clobber it
         .locked = false,
-        .prio = 1
+        .prio = 1,
+#ifdef ABI_UNIX
+        .flags = REGISTER_FLAG_NATIVE_DISPATCH_HASH
+#else
+        .flags = REGISTER_FLAG_NONE
+#endif
     },
     [RBX] = {
         .locked = false,
-        .prio = 6
+        .prio = 6,
+        .flags = REGISTER_FLAG_PRESERVED
     },
     [RSP] = {
         // stack pointer
-        .locked = true
+        .locked = true,
+        .flags = REGISTER_FLAG_PRESERVED
+
     },
     [RBP] = {
         // base pointer
-        .locked = true
+        .locked = true,
+        .flags = REGISTER_FLAG_PRESERVED
     },
     [RSI] = {
         .locked = false,
-        .prio = 3
+        .prio = 3,
+#ifdef ABI_UNIX
+        .flags = REGISTER_FLAG_NATIVE_DISPATCH_HASH
+#elif defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#else
+#error unknown ABI
+#endif
     },
     [RDI] = {
         .locked = false,
-        .prio = 3
+        .prio = 3,
+#ifdef ABI_UNIX
+        .flags = REGISTER_FLAG_NATIVE_DISPATCH_PC
+#elif defined(ABI_MICROSOFT)
+        .flags = REGISTER_FLAG_PRESERVED
+#else
+#error unknown ABI
+#endif
     },
     [R8] = {
         .locked = false,
-        .prio = 2
+        .prio = 2,
+        .flags = REGISTER_FLAG_NONE
     },
     [R9] = {
         .locked = false,
-        .prio = 2
+        .prio = 2,
+        .flags = REGISTER_FLAG_NONE
     },
     [R10] = {
         .locked = false,
-        .prio = 2
+        .prio = 2,
+        .flags = REGISTER_FLAG_NONE
     },
     [R11] = {
         .locked = false,
-        .prio = 2
+        .prio = 2,
+        .flags = REGISTER_FLAG_NONE
     },
     /*
      * R12 and R13 have a lower priority than R14 and R15 because they require
@@ -104,11 +137,13 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
      */
     [R12] = {
         .locked = false,
-        .prio = 4
+        .prio = 4,
+        .flags = REGISTER_FLAG_PRESERVED
     },
     [R13] = {
         .locked = false,
-        .prio = 4
+        .prio = 4,
+        .flags = REGISTER_FLAG_PRESERVED
     },
     [R14] = {
         /*
@@ -116,11 +151,13 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
          * Microsoft ABI.
          */
         .locked = true,
-        .prio = 5
+        .prio = 5,
+        .flags = REGISTER_FLAG_PRESERVED
     },
     [R15] = {
         .locked = false,
-        .prio = 5
+        .prio = 5,
+        .flags = REGISTER_FLAG_PRESERVED
     }
 };
 
@@ -355,133 +392,6 @@ static void move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no,
     slot->in_reg = true;
 }
 
-enum register_hint {
-    REGISTER_HINT_NONE = 0,
-
-    /*
-     * this hint tells the allocator to favor registers that will be preserved
-     * across function calls.
-     */
-    REGISTER_HINT_FUNCTION = 1,
-
-    /*
-     * Tells the allocator that this slot will be used to store the hash for
-     * the jump instruction
-     */
-    REGISTER_HINT_JUMP_HASH = 2,
-
-    /*
-     * Tells the allocator that this slot will be used to store the address for
-     * the jump instruction
-     */
-    REGISTER_HINT_JUMP_ADDR = 4
-};
-
-/*
- * This function will pick an unused register to use.  This doesn't change the
- * state of the register.  If there are no unused registers available, this
- * function will return -1.
- */
-static int pick_unused_reg_ex(enum register_hint hints) {
-#ifdef ABI_MICROSOFT
-    /*
-     * it'll still work, but it'll be suboptimal because register allocation
-     * decisions are made based on which registers would be preserved across
-     * function calls on the Unix ABI.
-     */
-#warning this needs to be optimised for the Microsoft calling convention
-#endif
-
-    if (hints & REGISTER_HINT_JUMP_ADDR) {
-        if (register_available(&gen_regs, NATIVE_DISPATCH_PC_REG))
-            return NATIVE_DISPATCH_PC_REG;
-    }
-
-    if (hints & REGISTER_HINT_JUMP_HASH) {
-        if (register_available(&gen_regs, NATIVE_DISPATCH_HASH_REG))
-            return NATIVE_DISPATCH_HASH_REG;
-    }
-
-    if (hints & REGISTER_HINT_FUNCTION) {
-        /*
-         * first consider registers which will be preserved across function
-         * calls.
-         */
-        if (register_available(&gen_regs, RBX))
-            return RBX;
-        if (register_available(&gen_regs, R14)) // always locked
-            return R14;
-        if (register_available(&gen_regs, R15))
-            return R15;
-        if (register_available(&gen_regs, R12))
-            return R12;
-        if (register_available(&gen_regs, R13))
-            return R13;
-
-        // pick one of the ones that will get clobbered by function calls
-        if (register_available(&gen_regs, RCX))
-            return RCX;
-        if (register_available(&gen_regs, RDI))
-            return RDI;
-        if (register_available(&gen_regs, RSI))
-            return RSI;
-        if (register_available(&gen_regs, RDX))
-            return RDX;
-        if (register_available(&gen_regs, R8))
-            return R8;
-        if (register_available(&gen_regs, R9))
-            return R9;
-        if (register_available(&gen_regs, R10))
-            return R10;
-        if (register_available(&gen_regs, R11))
-            return R11;
-        if (register_available(&gen_regs, RAX))
-            return RAX;
-    } else {
-        // first look at registers that don't need a REX
-        if (register_available(&gen_regs, RAX))
-            return RAX;
-        if (register_available(&gen_regs, RSI))
-            return RSI;
-        if (register_available(&gen_regs, RCX))
-            return RCX;
-        if (register_available(&gen_regs, RDX))
-            return RDX;
-        if (register_available(&gen_regs, RDI))
-            return RDI; // this gets clobbered by MUL
-
-        // consider RBX even though it's nonvolatile since it doesn't need REX
-        if (register_available(&gen_regs, RBX))
-            return RBX;
-
-        // volatile registers that need REX
-        if (register_available(&gen_regs, R8))
-            return R8;
-        if (register_available(&gen_regs, R9))
-            return R9;
-        if (register_available(&gen_regs, R10))
-            return R10;
-        if (register_available(&gen_regs, R11))
-            return R11;
-
-        // nonvolatile registers that need REX
-        if (register_available(&gen_regs, R12))
-            return R12;
-        if (register_available(&gen_regs, R13))
-            return R13;
-        if (register_available(&gen_regs, R14))
-            return R14;
-        if (register_available(&gen_regs, R15))
-            return R15;
-    }
-
-    return -1;
-}
-
-static int pick_unused_reg(void) {
-    return pick_unused_reg_ex(REGISTER_HINT_FUNCTION);
-}
-
 /*
  * returns true if the given jit_inst would emit a function call.
  * this is used only for optimisation purposes.
@@ -524,50 +434,6 @@ static enum register_hint suggested_register_hints(struct il_code_block const *b
 }
 
 /*
- * The allocator calls this to find a register it can use.  This doesn't change
- * the state of the register or do anything to save the value in that register.
- * All it does is find a register which is not locked and not grabbed.
- */
-static unsigned pick_reg_ex(enum register_hint hints) {
-
-    unsigned reg_no;
-    unsigned best_reg = 0;
-    int best_prio = INT_MIN;
-    bool found_one = false;
-
-    // first pass: try to find one that's not in use
-    int unused_reg = pick_unused_reg_ex(hints);
-    if (unused_reg >= 0)
-        return (unsigned)unused_reg;
-
-    /*
-     * second pass: they're all in use so just pick one that is not locked or
-     * grabbed.
-     */
-    for (reg_no = 0; reg_no < N_REGS; reg_no++) {
-        if (!register_locked(&gen_regs, reg_no) &&
-            !register_grabbed(&gen_regs, reg_no)) {
-            int prio = register_priority(&gen_regs, reg_no);
-            if (!found_one || prio > best_prio) {
-                found_one = true;
-                best_prio = prio;
-                best_reg = reg_no;
-            }
-        }
-    }
-
-    if (found_one)
-        return best_reg;
-
-    LOG_ERROR("x86_64: no more registers!\n");
-    RAISE_ERROR(ERROR_INTEGRITY);
-}
-
-static unsigned pick_reg(void) {
-    return pick_reg_ex(REGISTER_HINT_FUNCTION);
-}
-
-/*
  * call this function to send the given register's contents (if any) to the
  * stack.  Immediately after calling this, grab the register to prevent it from
  * being allocated, and subsequently ungrab it when finished.  The register's
@@ -575,7 +441,8 @@ static unsigned pick_reg(void) {
  */
 static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no) {
     if (register_in_use(&gen_regs, reg_no)) {
-        int reg_dst = pick_unused_reg();
+        // REGISTER_HINT_FUNCTION not necessary, just being used as a "default"
+        int reg_dst = register_pick_unused(&gen_regs, REGISTER_HINT_FUNCTION);
         if (reg_dst == reg_no)
             RAISE_ERROR(ERROR_INTEGRITY);
 
@@ -613,11 +480,11 @@ static void grab_slot(struct code_block_x86_64 *blk,
                 goto mark_grabbed;
         }
 
-        unsigned reg_no = pick_reg_ex(suggested_register_hints(il_blk, slot_no, inst));
+        unsigned reg_no = register_pick(&gen_regs, suggested_register_hints(il_blk, slot_no, inst));
         move_slot_to_reg(blk, slot_no, reg_no);
         goto mark_grabbed;
     } else {
-        unsigned reg_no = pick_reg_ex(suggested_register_hints(il_blk, slot_no, inst));
+        unsigned reg_no = register_pick(&gen_regs, suggested_register_hints(il_blk, slot_no, inst));
         if (register_in_use(&gen_regs, reg_no))
             move_slot_to_stack(blk, register_slots[reg_no]);
         register_acquire(&gen_regs, reg_no);
@@ -1572,7 +1439,8 @@ static void emit_shad(struct code_block_x86_64 *blk,
     evict_register(blk, RCX);
     grab_register(&gen_regs, RCX);
 
-    int reg_tmp = pick_reg();
+    // REGISTER_HINT_FUNCTION not necessary, just being used as a "default"
+    int reg_tmp = register_pick(&gen_regs, REGISTER_HINT_FUNCTION);
     evict_register(blk, reg_tmp);
     grab_register(&gen_regs, reg_tmp);
 

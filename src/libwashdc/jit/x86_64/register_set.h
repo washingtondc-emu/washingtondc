@@ -25,6 +25,44 @@
 
 #include <stdbool.h>
 
+enum register_flag {
+    REGISTER_FLAG_NONE = 0,
+
+    // value of register is preserved across function calls
+    REGISTER_FLAG_PRESERVED = 1,
+
+    // register is used to host the native_dispatch PC register
+    REGISTER_FLAG_NATIVE_DISPATCH_PC = 2,
+
+    // register is used to host the native_dispatch jump hash register
+    REGISTER_FLAG_NATIVE_DISPATCH_HASH = 4,
+
+    // register stores function return values
+    REGISTER_FLAG_RETURN = 8
+};
+
+enum register_hint {
+    REGISTER_HINT_NONE = 0,
+
+    /*
+     * this hint tells the allocator to favor registers that will be preserved
+     * across function calls.
+     */
+    REGISTER_HINT_FUNCTION = 1,
+
+    /*
+     * Tells the allocator that this slot will be used to store the hash for
+     * the jump instruction
+     */
+    REGISTER_HINT_JUMP_HASH = 2,
+
+    /*
+     * Tells the allocator that this slot will be used to store the address for
+     * the jump instruction
+     */
+    REGISTER_HINT_JUMP_ADDR = 4
+};
+
 struct reg_stat {
     // if true this reg can never ever be allocated under any circumstance.
     bool locked;
@@ -34,6 +72,8 @@ struct reg_stat {
      * higher numbers are higher priority.
      */
     int prio;
+
+    enum register_flag flags;
 
     // if this is false, nothing is in this register and it is free at any time
     bool in_use;
@@ -82,5 +122,14 @@ void ungrab_register(struct register_set *set, unsigned reg_no);
 bool register_grabbed(struct register_set *set, unsigned reg_no);
 
 int register_priority(struct register_set *set, unsigned reg_no);
+
+int register_pick_unused(struct register_set *set, enum register_hint hints);
+
+/*
+ * The allocator calls this to find a register it can use.  This doesn't change
+ * the state of the register or do anything to save the value in that register.
+ * All it does is find a register which is not locked and not grabbed.
+ */
+int register_pick(struct register_set *set, enum register_hint hints);
 
 #endif
