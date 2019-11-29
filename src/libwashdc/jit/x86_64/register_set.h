@@ -48,8 +48,6 @@ struct reg_stat {
      * valid.  Being grabbed only prevents the register from going away.
      */
     bool grabbed;
-
-    unsigned slot_no;
 };
 
 struct register_set {
@@ -67,14 +65,12 @@ void register_set_cleanup(struct register_set *set);
  */
 void register_set_reset(struct register_set *set);
 
-void register_acquire(struct register_set *set, unsigned reg_no, unsigned slot_no);
+void register_acquire(struct register_set *set, unsigned reg_no);
 void register_discard(struct register_set *set, unsigned reg_no);
 
 bool register_available(struct register_set *set, unsigned reg_no);
 bool register_in_use(struct register_set *set, unsigned reg_no);
 bool register_locked(struct register_set *set, unsigned reg_no);
-
-unsigned register_get_slot(struct register_set *set, unsigned reg_no);
 
 /*
  * unlike grab_slot, this does not preserve the slot that is currently in the

@@ -48,16 +48,14 @@ void register_set_reset(struct register_set *set) {
     for (reg_no = 0; reg_no < set->n_regs; reg_no++) {
         set->regs[reg_no].in_use = false;
         set->regs[reg_no].grabbed = false;
-        set->regs[reg_no].slot_no = 0xdeadbeef;
     }
 }
 
-void register_acquire(struct register_set *set, unsigned reg_no, unsigned slot_no) {
+void register_acquire(struct register_set *set, unsigned reg_no) {
     if (reg_no >= set->n_regs)
         RAISE_ERROR(ERROR_INTEGRITY);
 
     set->regs[reg_no].in_use = true;
-    set->regs[reg_no].slot_no = slot_no;
 }
 
 void register_discard(struct register_set *set, unsigned reg_no) {
@@ -73,13 +71,6 @@ bool register_available(struct register_set *set, unsigned reg_no) {
 
     struct reg_stat *reg = set->regs + reg_no;
     return !(reg->in_use || reg->locked || reg->grabbed);
-}
-
-unsigned register_get_slot(struct register_set *set, unsigned reg_no) {
-    if (reg_no >= set->n_regs)
-        RAISE_ERROR(ERROR_INTEGRITY);
-
-    return set->regs[reg_no].slot_no;
 }
 
 bool register_in_use(struct register_set *set, unsigned reg_no) {

@@ -124,6 +124,9 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     }
 };
 
+// maps registers to slot indices
+static int register_slots[N_REGS];
+
 static struct register_set gen_regs;
 
 struct slot {
@@ -158,6 +161,7 @@ static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no);
 
 void jit_x86_64_backend_init(void) {
     register_set_init(&gen_regs, N_REGS, gen_regs_template);
+    memset(register_slots, 0, sizeof(register_slots));
 }
 
 void jit_x86_64_backend_cleanup(void) {
@@ -167,6 +171,9 @@ void jit_x86_64_backend_cleanup(void) {
 static void reset_slots(void) {
     memset(slots, 0, sizeof(slots));
     register_set_reset(&gen_regs);
+    int reg_no;
+    for (reg_no = 0; reg_no < N_REGS; reg_no++)
+        register_slots[reg_no] = 0xdeadbeef;
     rsp_offs = 0;
 }
 
@@ -274,7 +281,7 @@ static void move_slot_to_stack(struct code_block_x86_64 *blk, unsigned slot_no) 
     if (!slot->in_use || !slot->in_reg)
         RAISE_ERROR(ERROR_INTEGRITY);
     if (!register_in_use(&gen_regs, slot->reg_no) ||
-        register_get_slot(&gen_regs, slot->reg_no) != slot_no ||
+        register_slots[slot->reg_no] != slot_no ||
         register_locked(&gen_regs, slot->reg_no))
         RAISE_ERROR(ERROR_INTEGRITY);
 
@@ -310,18 +317,19 @@ static void move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no,
             return; // nothing to do here
 
         if (register_in_use(&gen_regs, reg_no))
-            move_slot_to_stack(blk, register_get_slot(&gen_regs, reg_no));
+            move_slot_to_stack(blk, register_slots[reg_no]);
 
         x86asm_mov_reg32_reg32(src_reg, reg_no);
 
         register_discard(&gen_regs, src_reg);
-        register_acquire(&gen_regs, reg_no, slot_no);
+        register_acquire(&gen_regs, reg_no);
+        register_slots[reg_no] = slot_no;
         slots[slot_no].reg_no = reg_no;
         return;
     }
 
     if (register_in_use(&gen_regs, reg_no))
-        move_slot_to_stack(blk, register_get_slot(&gen_regs, reg_no));
+        move_slot_to_stack(blk, register_slots[reg_no]);
 
     /*
      * Don't allow writes to anywhere >= %rbp-0 because that is where the
@@ -341,7 +349,8 @@ static void move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no,
             x86asm_movq_disp8_reg_reg(slot->rbp_offs, RBP, reg_no);
     }
 
-    register_acquire(&gen_regs, reg_no, slot_no);
+    register_acquire(&gen_regs, reg_no);
+    register_slots[reg_no] = slot_no;
     slot->reg_no = reg_no;
     slot->in_reg = true;
 }
@@ -571,9 +580,9 @@ static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no) {
             RAISE_ERROR(ERROR_INTEGRITY);
 
         if (reg_dst >= 0)
-            move_slot_to_reg(blk, register_get_slot(&gen_regs, reg_no), reg_dst);
+            move_slot_to_reg(blk, register_slots[reg_no], reg_dst);
         else
-            move_slot_to_stack(blk, register_get_slot(&gen_regs, reg_no));
+            move_slot_to_stack(blk, register_slots[reg_no]);
     }
     register_discard(&gen_regs, reg_no);
 }
@@ -610,8 +619,9 @@ static void grab_slot(struct code_block_x86_64 *blk,
     } else {
         unsigned reg_no = pick_reg_ex(suggested_register_hints(il_blk, slot_no, inst));
         if (register_in_use(&gen_regs, reg_no))
-            move_slot_to_stack(blk, register_get_slot(&gen_regs, reg_no));
-        register_acquire(&gen_regs, reg_no, slot_no);
+            move_slot_to_stack(blk, register_slots[reg_no]);
+        register_acquire(&gen_regs, reg_no);
+        register_slots[reg_no] = slot_no;
         slot->in_use = true;
         slot->reg_no = reg_no;
         slot->in_reg = true;
