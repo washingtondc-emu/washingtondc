@@ -317,9 +317,7 @@ static void move_slot_to_stack(struct code_block_x86_64 *blk, unsigned slot_no) 
     struct slot *slot = slots + slot_no;
     if (!slot->in_use || !slot->in_reg)
         RAISE_ERROR(ERROR_INTEGRITY);
-    if (!register_in_use(&gen_regs, slot->reg_no) ||
-        register_slots[slot->reg_no] != slot_no ||
-        register_locked(&gen_regs, slot->reg_no))
+    if (register_slots[slot->reg_no] != slot_no)
         RAISE_ERROR(ERROR_INTEGRITY);
 
     x86asm_pushq_reg64(slot->reg_no);
@@ -450,8 +448,12 @@ static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no) {
             move_slot_to_reg(blk, register_slots[reg_no], reg_dst);
         else
             move_slot_to_stack(blk, register_slots[reg_no]);
+
+        /*
+         * move_slot_to_stack and move_slot_to_reg will both discard the
+         * register
+         */
     }
-    register_discard(&gen_regs, reg_no);
 }
 
 /*

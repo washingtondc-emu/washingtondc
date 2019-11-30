@@ -57,17 +57,27 @@ void register_acquire(struct register_set *set, unsigned reg_no) {
     if (reg_no >= set->n_regs)
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    set->regs[reg_no].in_use = true;
+    struct reg_stat *reg = set->regs + reg_no;
+
+    if (reg->in_use || reg->locked)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    reg->in_use = true;
 }
 
 void register_discard(struct register_set *set, unsigned reg_no) {
     if (reg_no >= set->n_regs)
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    set->regs[reg_no].in_use = false;
+    struct reg_stat *reg = set->regs + reg_no;
+
+    if (!reg->in_use || reg->locked)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    reg->in_use = false;
 }
 
-bool register_available(struct register_set *set, unsigned reg_no) {
+static bool register_available(struct register_set *set, unsigned reg_no) {
     if (reg_no >= set->n_regs)
         RAISE_ERROR(ERROR_INTEGRITY);
 
@@ -82,7 +92,7 @@ bool register_in_use(struct register_set *set, unsigned reg_no) {
     return set->regs[reg_no].in_use;
 }
 
-bool register_locked(struct register_set *set, unsigned reg_no) {
+static bool register_locked(struct register_set *set, unsigned reg_no) {
     if (reg_no >= set->n_regs)
         RAISE_ERROR(ERROR_INTEGRITY);
 
@@ -120,7 +130,7 @@ bool register_grabbed(struct register_set *set, unsigned reg_no) {
     return set->regs[reg_no].grabbed;
 }
 
-int register_priority(struct register_set *set, unsigned reg_no) {
+static int register_priority(struct register_set *set, unsigned reg_no) {
     if (reg_no >= set->n_regs)
         RAISE_ERROR(ERROR_INTEGRITY);
 

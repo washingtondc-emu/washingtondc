@@ -108,9 +108,7 @@ void register_set_reset(struct register_set *set);
 void register_acquire(struct register_set *set, unsigned reg_no);
 void register_discard(struct register_set *set, unsigned reg_no);
 
-bool register_available(struct register_set *set, unsigned reg_no);
 bool register_in_use(struct register_set *set, unsigned reg_no);
-bool register_locked(struct register_set *set, unsigned reg_no);
 
 /*
  * unlike grab_slot, this does not preserve the slot that is currently in the
@@ -120,8 +118,6 @@ void grab_register(struct register_set *set, unsigned reg_no);
 void ungrab_register(struct register_set *set, unsigned reg_no);
 
 bool register_grabbed(struct register_set *set, unsigned reg_no);
-
-int register_priority(struct register_set *set, unsigned reg_no);
 
 int register_pick_unused(struct register_set *set, enum register_hint hints);
 
