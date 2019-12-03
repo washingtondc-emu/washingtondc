@@ -161,10 +161,13 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     }
 };
 
-// maps registers to slot indices
-static int register_slots[N_REGS];
+static struct register_state {
+    struct register_set set;
 
-static struct register_set gen_regs;
+    // maps registers to slot indices
+    int *reg_slots;
+    int n_regs;
+} gen_reg_state;
 
 struct slot {
     union {
@@ -174,6 +177,8 @@ struct slot {
         // x86 register index (if this slot resides in a native host register)
         unsigned reg_no;
     };
+
+    struct register_state *reg_state;
 
     // if false, the slot is not in use and all other fields are invalid
     bool in_use;
@@ -194,23 +199,30 @@ struct slot {
  */
 static int rsp_offs; // offset from base pointer to stack pointer
 
-static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no);
+static void evict_register(struct code_block_x86_64 *blk,
+                           struct register_state *reg_state, unsigned reg_no);
 
 void jit_x86_64_backend_init(void) {
-    register_set_init(&gen_regs, N_REGS, gen_regs_template);
-    memset(register_slots, 0, sizeof(register_slots));
+    memset(&gen_reg_state, 0, sizeof(gen_reg_state));
+    register_set_init(&gen_reg_state.set, N_REGS, gen_regs_template);
+
+    gen_reg_state.n_regs = N_REGS;
+    gen_reg_state.reg_slots = (int*)malloc(sizeof(int) * N_REGS);
 }
 
 void jit_x86_64_backend_cleanup(void) {
-    register_set_cleanup(&gen_regs);
+    free(gen_reg_state.reg_slots);
+    gen_reg_state.reg_slots = NULL;
+    gen_reg_state.n_regs = 0;
+    register_set_cleanup(&gen_reg_state.set);
 }
 
 static void reset_slots(void) {
     memset(slots, 0, sizeof(slots));
-    register_set_reset(&gen_regs);
+    register_set_reset(&gen_reg_state.set);
     int reg_no;
-    for (reg_no = 0; reg_no < N_REGS; reg_no++)
-        register_slots[reg_no] = 0xdeadbeef;
+    for (reg_no = 0; reg_no < gen_reg_state.n_regs; reg_no++)
+        gen_reg_state.reg_slots[reg_no] = 0xdeadbeef;
     rsp_offs = 0;
 }
 
@@ -224,14 +236,15 @@ static void discard_slot(struct code_block_x86_64 *blk, unsigned slot_no) {
     struct slot *slot = slots + slot_no;
     if (!slot->in_use)
         RAISE_ERROR(ERROR_INTEGRITY);
-    slot->in_use = false;
     if (slot->in_reg) {
-        register_discard(&gen_regs, slot->reg_no);
+        register_discard(&slot->reg_state->set, slot->reg_no);
     } else {
         if (rsp_offs == slot->rbp_offs) {
             // TODO: add 8 to RSP and base_ptr_offs_next
         }
     }
+    slot->in_use = false;
+    slot->reg_state = NULL;
 }
 
 /*
@@ -241,39 +254,39 @@ static void discard_slot(struct code_block_x86_64 *blk, unsigned slot_no) {
  */
 static void prefunc(struct code_block_x86_64 *blk) {
 #if defined(ABI_UNIX)
-    evict_register(blk, RAX);
-    grab_register(&gen_regs, RAX);
-    evict_register(blk, RCX);
-    grab_register(&gen_regs, RCX);
-    evict_register(blk, RDX);
-    grab_register(&gen_regs, RDX);
-    evict_register(blk, RSI);
-    grab_register(&gen_regs, RSI);
-    evict_register(blk, RDI);
-    grab_register(&gen_regs, RDI);
-    evict_register(blk, R8);
-    grab_register(&gen_regs, R8);
-    evict_register(blk, R9);
-    grab_register(&gen_regs, R9);
-    evict_register(blk, R10);
-    grab_register(&gen_regs, R10);
-    evict_register(blk, R11);
-    grab_register(&gen_regs, R11);
+    evict_register(blk, &gen_reg_state, RAX);
+    grab_register(&gen_reg_state.set, RAX);
+    evict_register(blk, &gen_reg_state, RCX);
+    grab_register(&gen_reg_state.set, RCX);
+    evict_register(blk, &gen_reg_state, RDX);
+    grab_register(&gen_reg_state.set, RDX);
+    evict_register(blk, &gen_reg_state, RSI);
+    grab_register(&gen_reg_state.set, RSI);
+    evict_register(blk, &gen_reg_state, RDI);
+    grab_register(&gen_reg_state.set, RDI);
+    evict_register(blk, &gen_reg_state, R8);
+    grab_register(&gen_reg_state.set, R8);
+    evict_register(blk, &gen_reg_state, R9);
+    grab_register(&gen_reg_state.set, R9);
+    evict_register(blk, &gen_reg_state, R10);
+    grab_register(&gen_reg_state.set, R10);
+    evict_register(blk, &gen_reg_state, R11);
+    grab_register(&gen_reg_state.set, R11);
 #elif defined(ABI_MICROSOFT)
-    evict_register(blk, RAX);
-    grab_register(&gen_regs, RAX);
-    evict_register(blk, RCX);
-    grab_register(&gen_regs, RCX);
-    evict_register(blk, RDX);
-    grab_register(&gen_regs, RDX);
-    evict_register(blk, R8);
-    grab_register(&gen_regs, R8);
-    evict_register(blk, R9);
-    grab_register(&gen_regs, R9);
-    evict_register(blk, R10);
-    grab_register(&gen_regs, R10);
-    evict_register(blk, R11);
-    grab_register(&gen_regs, R11);
+    evict_register(blk, &gen_reg_state, RAX);
+    grab_register(&gen_reg_state.set, RAX);
+    evict_register(blk, &gen_reg_state, RCX);
+    grab_register(&gen_reg_state.set, RCX);
+    evict_register(blk, &gen_reg_state, RDX);
+    grab_register(&gen_reg_state.set, RDX);
+    evict_register(blk, &gen_reg_state, R8);
+    grab_register(&gen_reg_state.set, R8);
+    evict_register(blk, &gen_reg_state, R9);
+    grab_register(&gen_reg_state.set, R9);
+    evict_register(blk, &gen_reg_state, R10);
+    grab_register(&gen_reg_state.set, R10);
+    evict_register(blk, &gen_reg_state, R11);
+    grab_register(&gen_reg_state.set, R11);
 #endif
 }
 
@@ -284,26 +297,26 @@ static void prefunc(struct code_block_x86_64 *blk) {
  * It does not ungrab RAX even though that register is grabbed by prefunc.  The
  * reason for this is that RAX holds the return value (if any) and you probably
  * want to do something with that.  Functions that call postfunc will also need
- * to call ungrab_register(&gen_regs, RAX) afterwards when they no longer need that
+ * to call ungrab_register(&gen_reg_state.set, RAX) afterwards when they no longer need that
  * register.
  */
 static void postfunc(void) {
 #if defined(ABI_UNIX)
-    ungrab_register(&gen_regs, R11);
-    ungrab_register(&gen_regs, R10);
-    ungrab_register(&gen_regs, R9);
-    ungrab_register(&gen_regs, R8);
-    ungrab_register(&gen_regs, RDI);
-    ungrab_register(&gen_regs, RSI);
-    ungrab_register(&gen_regs, RDX);
-    ungrab_register(&gen_regs, RCX);
+    ungrab_register(&gen_reg_state.set, R11);
+    ungrab_register(&gen_reg_state.set, R10);
+    ungrab_register(&gen_reg_state.set, R9);
+    ungrab_register(&gen_reg_state.set, R8);
+    ungrab_register(&gen_reg_state.set, RDI);
+    ungrab_register(&gen_reg_state.set, RSI);
+    ungrab_register(&gen_reg_state.set, RDX);
+    ungrab_register(&gen_reg_state.set, RCX);
 #elif defined(ABI_MICROSOFT)
-    ungrab_register(&gen_regs, R11);
-    ungrab_register(&gen_regs, R10);
-    ungrab_register(&gen_regs, R9);
-    ungrab_register(&gen_regs, R8);
-    ungrab_register(&gen_regs, RDX);
-    ungrab_register(&gen_regs, RCX);
+    ungrab_register(&gen_reg_state.set, R11);
+    ungrab_register(&gen_reg_state.set, R10);
+    ungrab_register(&gen_reg_state.set, R9);
+    ungrab_register(&gen_reg_state.set, R8);
+    ungrab_register(&gen_reg_state.set, RDX);
+    ungrab_register(&gen_reg_state.set, RCX);
 #endif
 }
 
@@ -317,12 +330,12 @@ static void move_slot_to_stack(struct code_block_x86_64 *blk, unsigned slot_no) 
     struct slot *slot = slots + slot_no;
     if (!slot->in_use || !slot->in_reg)
         RAISE_ERROR(ERROR_INTEGRITY);
-    if (register_slots[slot->reg_no] != slot_no)
+    if (slot->reg_state->reg_slots[slot->reg_no] != slot_no)
         RAISE_ERROR(ERROR_INTEGRITY);
 
     x86asm_pushq_reg64(slot->reg_no);
 
-    register_discard(&gen_regs, slot->reg_no);
+    register_discard(&slot->reg_state->set, slot->reg_no);
 
     slot->in_reg = false;
     rsp_offs -= 8;
@@ -337,8 +350,8 @@ static void move_slot_to_stack(struct code_block_x86_64 *blk, unsigned slot_no) 
  * this function assumes that the register has already been allocated.
  * it will safely move any slots already in the register to the stack.
  */
-static void move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no,
-                             unsigned reg_no) {
+static void
+move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no, unsigned reg_no) {
     if (slot_no >= MAX_SLOTS)
         RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
@@ -351,20 +364,20 @@ static void move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no,
         if (src_reg == reg_no)
             return; // nothing to do here
 
-        if (register_in_use(&gen_regs, reg_no))
-            move_slot_to_stack(blk, register_slots[reg_no]);
+        if (register_in_use(&slot->reg_state->set, reg_no))
+            move_slot_to_stack(blk, slot->reg_state->reg_slots[reg_no]);
 
         x86asm_mov_reg32_reg32(src_reg, reg_no);
 
-        register_discard(&gen_regs, src_reg);
-        register_acquire(&gen_regs, reg_no);
-        register_slots[reg_no] = slot_no;
+        register_discard(&slot->reg_state->set, src_reg);
+        register_acquire(&slot->reg_state->set, reg_no);
+        slot->reg_state->reg_slots[reg_no] = slot_no;
         slots[slot_no].reg_no = reg_no;
         return;
     }
 
-    if (register_in_use(&gen_regs, reg_no))
-        move_slot_to_stack(blk, register_slots[reg_no]);
+    if (register_in_use(&slot->reg_state->set, reg_no))
+        move_slot_to_stack(blk, slot->reg_state->reg_slots[reg_no]);
 
     /*
      * Don't allow writes to anywhere >= %rbp-0 because that is where the
@@ -384,8 +397,8 @@ static void move_slot_to_reg(struct code_block_x86_64 *blk, unsigned slot_no,
             x86asm_movq_disp8_reg_reg(slot->rbp_offs, RBP, reg_no);
     }
 
-    register_acquire(&gen_regs, reg_no);
-    register_slots[reg_no] = slot_no;
+    register_acquire(&slot->reg_state->set, reg_no);
+    slot->reg_state->reg_slots[reg_no] = slot_no;
     slot->reg_no = reg_no;
     slot->in_reg = true;
 }
@@ -437,17 +450,18 @@ static enum register_hint suggested_register_hints(struct il_code_block const *b
  * being allocated, and subsequently ungrab it when finished.  The register's
  * contents are unchanged by this function.
  */
-static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no) {
-    if (register_in_use(&gen_regs, reg_no)) {
+static void evict_register(struct code_block_x86_64 *blk,
+                           struct register_state *reg_state, unsigned reg_no) {
+    if (register_in_use(&reg_state->set, reg_no)) {
         // REGISTER_HINT_FUNCTION not necessary, just being used as a "default"
-        int reg_dst = register_pick_unused(&gen_regs, REGISTER_HINT_FUNCTION);
+        int reg_dst = register_pick_unused(&reg_state->set, REGISTER_HINT_FUNCTION);
         if (reg_dst == reg_no)
             RAISE_ERROR(ERROR_INTEGRITY);
 
         if (reg_dst >= 0)
-            move_slot_to_reg(blk, register_slots[reg_no], reg_dst);
+            move_slot_to_reg(blk, reg_state->reg_slots[reg_no], reg_dst);
         else
-            move_slot_to_stack(blk, register_slots[reg_no]);
+            move_slot_to_stack(blk, reg_state->reg_slots[reg_no]);
 
         /*
          * move_slot_to_stack and move_slot_to_reg will both discard the
@@ -469,36 +483,42 @@ static void evict_register(struct code_block_x86_64 *blk, unsigned reg_no) {
  */
 static void grab_slot(struct code_block_x86_64 *blk,
                       struct il_code_block const *il_blk,
-                      struct jit_inst const *inst, unsigned slot_no) {
+                      struct jit_inst const *inst,
+                      struct register_state *reg_state,
+                      unsigned slot_no) {
     if (slot_no >= MAX_SLOTS)
         RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
 
     if (slot->in_use) {
+        if (slot->reg_state != reg_state)
+            RAISE_ERROR(ERROR_INTEGRITY);
+
         if (slot->in_reg) {
-            if (register_grabbed(&gen_regs, slot->reg_no))
+            if (register_grabbed(&slot->reg_state->set, slot->reg_no))
                 return;
             else
                 goto mark_grabbed;
         }
 
-        unsigned reg_no = register_pick(&gen_regs, suggested_register_hints(il_blk, slot_no, inst));
+        unsigned reg_no = register_pick(&slot->reg_state->set, suggested_register_hints(il_blk, slot_no, inst));
         move_slot_to_reg(blk, slot_no, reg_no);
         goto mark_grabbed;
     } else {
-        unsigned reg_no = register_pick(&gen_regs, suggested_register_hints(il_blk, slot_no, inst));
-        if (register_in_use(&gen_regs, reg_no))
-            move_slot_to_stack(blk, register_slots[reg_no]);
-        register_acquire(&gen_regs, reg_no);
-        register_slots[reg_no] = slot_no;
+        unsigned reg_no = register_pick(&reg_state->set, suggested_register_hints(il_blk, slot_no, inst));
+        if (register_in_use(&reg_state->set, reg_no))
+            move_slot_to_stack(blk, reg_state->reg_slots[reg_no]);
+        register_acquire(&reg_state->set, reg_no);
+        reg_state->reg_slots[reg_no] = slot_no;
         slot->in_use = true;
         slot->reg_no = reg_no;
+        slot->reg_state = reg_state;
         slot->in_reg = true;
         goto mark_grabbed;
     }
 
 mark_grabbed:
-    grab_register(&gen_regs, slot->reg_no);
+    grab_register(&slot->reg_state->set, slot->reg_no);
 }
 
 static void ungrab_slot(unsigned slot_no) {
@@ -506,7 +526,7 @@ static void ungrab_slot(unsigned slot_no) {
         RAISE_ERROR(ERROR_TOO_BIG);
     struct slot *slot = slots + slot_no;
     if (slot->in_reg)
-        ungrab_register(&gen_regs, slot->reg_no);
+        ungrab_register(&slot->reg_state->set, slot->reg_no);
     else
         RAISE_ERROR(ERROR_INTEGRITY);
 }
@@ -566,7 +586,7 @@ static void emit_fallback(struct code_block_x86_64 *blk,
     ms_shadow_close();
 
     postfunc();
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 // JIT_OP_JUMP implementation
@@ -576,8 +596,8 @@ static void emit_jump(struct code_block_x86_64 *blk,
     unsigned jmp_addr_slot = inst->immed.jump.jmp_addr_slot;
     unsigned jmp_hash_slot = inst->immed.jump.jmp_hash_slot;
 
-    grab_register(&gen_regs, NATIVE_DISPATCH_PC_REG);
-    grab_register(&gen_regs, NATIVE_DISPATCH_HASH_REG);
+    grab_register(&gen_reg_state.set, NATIVE_DISPATCH_PC_REG);
+    grab_register(&gen_reg_state.set, NATIVE_DISPATCH_HASH_REG);
 
     move_slot_to_reg(blk, jmp_addr_slot, NATIVE_DISPATCH_PC_REG);
     move_slot_to_reg(blk, jmp_hash_slot, NATIVE_DISPATCH_HASH_REG);
@@ -592,7 +612,7 @@ static void emit_cset(struct code_block_x86_64 *blk,
     unsigned dst_slot = inst->immed.cset.dst_slot;
     unsigned flag_slot = inst->immed.cset.flag_slot;
 
-    grab_slot(blk, il_blk, inst, flag_slot);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, flag_slot);
 
     unsigned flag_reg = slots[flag_slot].reg_no;
 
@@ -602,7 +622,7 @@ static void emit_cset(struct code_block_x86_64 *blk,
     else
         x86asm_jnz_lbl8(&lbl);
 
-    grab_slot(blk, il_blk, inst, dst_slot);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, dst_slot);
     unsigned dst_reg = slots[dst_slot].reg_no;
     x86asm_mov_imm32_reg32(src_val, dst_reg);
     ungrab_slot(dst_slot);
@@ -620,7 +640,7 @@ static void emit_set_slot(struct code_block_x86_64 *blk,
     unsigned slot_idx = inst->immed.set_slot.slot_idx;
     uint32_t new_val = inst->immed.set_slot.new_val;
 
-    grab_slot(blk, il_blk, inst, slot_idx);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_idx);
     x86asm_mov_imm32_reg32(new_val, slots[slot_idx].reg_no);
     ungrab_slot(slot_idx);
 }
@@ -635,7 +655,7 @@ static void emit_call_func(struct code_block_x86_64 *blk,
     x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)cpu, REG_ARG0);
     move_slot_to_reg(blk, inst->immed.call_func.slot_no, REG_ARG1);
 
-    evict_register(blk, REG_ARG1); // TODO: is this necessary ?
+    evict_register(blk, &gen_reg_state, REG_ARG1); // TODO: is this necessary ?
 
     ms_shadow_open(blk);
     x86_64_align_stack(blk);
@@ -643,7 +663,7 @@ static void emit_call_func(struct code_block_x86_64 *blk,
     ms_shadow_close();
 
     postfunc();
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 // JIT_OP_READ_16_CONSTADDR implementation
@@ -671,10 +691,10 @@ static void emit_read_16_constaddr(struct code_block_x86_64 *blk,
 
     postfunc();
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
     x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
     ungrab_slot(slot_no);
 }
 
@@ -684,7 +704,7 @@ static void emit_sign_extend_8(struct code_block_x86_64 *blk,
                                 void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.sign_extend_8.slot_no;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
     x86asm_movsx_reg8_reg32(reg_no, reg_no);
@@ -698,7 +718,7 @@ static void emit_sign_extend_16(struct code_block_x86_64 *blk,
                                 void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.sign_extend_16.slot_no;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
     x86asm_movsx_reg16_reg32(reg_no, reg_no);
@@ -732,11 +752,11 @@ static void emit_read_32_constaddr(struct code_block_x86_64 *blk,
 
     postfunc();
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
     x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 // JIT_OP_READ_8_SLOT implementation
@@ -752,12 +772,12 @@ static void emit_read_8_slot(struct code_block_x86_64 *blk,
 
     if (config_get_inline_mem()) {
         move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        evict_register(blk, REG_ARG0);
+        evict_register(blk, &gen_reg_state, REG_ARG0);
         native_mem_read_8(blk, map);
     } else {
         x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
         move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        evict_register(blk, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
         ms_shadow_open(blk);
         x86_64_align_stack(blk);
         x86asm_call_ptr(memory_map_read_8);
@@ -766,11 +786,11 @@ static void emit_read_8_slot(struct code_block_x86_64 *blk,
 
     postfunc();
 
-    grab_slot(blk, il_blk, inst, dst_slot);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, dst_slot);
     x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 // JIT_OP_READ_16_SLOT implementation
@@ -786,12 +806,12 @@ static void emit_read_16_slot(struct code_block_x86_64 *blk,
 
     if (config_get_inline_mem()) {
         move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        evict_register(blk, REG_ARG0);
+        evict_register(blk, &gen_reg_state, REG_ARG0);
         native_mem_read_16(blk, map);
     } else {
         x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
         move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        evict_register(blk, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
         ms_shadow_open(blk);
         x86_64_align_stack(blk);
         x86asm_call_ptr(memory_map_read_16);
@@ -800,11 +820,11 @@ static void emit_read_16_slot(struct code_block_x86_64 *blk,
 
     postfunc();
 
-    grab_slot(blk, il_blk, inst, dst_slot);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, dst_slot);
     x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 // JIT_OP_READ_32_SLOT implementation
@@ -820,12 +840,12 @@ static void emit_read_32_slot(struct code_block_x86_64 *blk,
 
     if (config_get_inline_mem()) {
         move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        evict_register(blk, REG_ARG0);
+        evict_register(blk, &gen_reg_state, REG_ARG0);
         native_mem_read_32(blk, map);
     } else {
         x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
         move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        evict_register(blk, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
         ms_shadow_open(blk);
         x86_64_align_stack(blk);
         x86asm_call_ptr(memory_map_read_32);
@@ -834,11 +854,11 @@ static void emit_read_32_slot(struct code_block_x86_64 *blk,
 
     postfunc();
 
-    grab_slot(blk, il_blk, inst, dst_slot);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, dst_slot);
     x86asm_mov_reg32_reg32(REG_RET, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 // JIT_OP_WRITE_8_SLOT implementation
@@ -855,16 +875,16 @@ static void emit_write_8_slot(struct code_block_x86_64 *blk,
         move_slot_to_reg(blk, addr_slot, REG_ARG0);
         move_slot_to_reg(blk, src_slot, REG_ARG1);
 
-        evict_register(blk, REG_ARG0);
-        evict_register(blk, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG0);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
 
         native_mem_write_8(blk, map);
     } else {
         move_slot_to_reg(blk, addr_slot, REG_ARG1);
         move_slot_to_reg(blk, src_slot, REG_ARG2);
 
-        evict_register(blk, REG_ARG1);
-        evict_register(blk, REG_ARG2);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG2);
 
         x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
         ms_shadow_open(blk);
@@ -875,7 +895,7 @@ static void emit_write_8_slot(struct code_block_x86_64 *blk,
 
     postfunc();
 
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 // JIT_OP_WRITE_32_SLOT implementation
@@ -892,16 +912,16 @@ static void emit_write_32_slot(struct code_block_x86_64 *blk,
         move_slot_to_reg(blk, addr_slot, REG_ARG0);
         move_slot_to_reg(blk, src_slot, REG_ARG1);
 
-        evict_register(blk, REG_ARG0);
-        evict_register(blk, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG0);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
 
         native_mem_write_32(blk, map);
     } else {
         move_slot_to_reg(blk, addr_slot, REG_ARG1);
         move_slot_to_reg(blk, src_slot, REG_ARG2);
 
-        evict_register(blk, REG_ARG1);
-        evict_register(blk, REG_ARG2);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG2);
 
         x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
         ms_shadow_open(blk);
@@ -912,7 +932,7 @@ static void emit_write_32_slot(struct code_block_x86_64 *blk,
 
     postfunc();
 
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 static void
@@ -922,7 +942,7 @@ emit_load_slot16(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.load_slot16.slot_no;
     void const *src_ptr = inst->immed.load_slot16.src;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
@@ -939,7 +959,7 @@ emit_load_slot(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.load_slot.slot_no;
     void const *src_ptr = inst->immed.load_slot.src;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
@@ -956,16 +976,16 @@ emit_store_slot(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.store_slot.slot_no;
     void const *dst_ptr = inst->immed.store_slot.dst;
 
-    evict_register(blk, REG_RET);
-    grab_register(&gen_regs, REG_RET);
-    grab_slot(blk, il_blk, inst, slot_no);
+    evict_register(blk, &gen_reg_state, REG_RET);
+    grab_register(&gen_reg_state.set, REG_RET);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
     x86asm_mov_imm64_reg64((uintptr_t)dst_ptr, REG_RET);
     x86asm_mov_reg32_indreg32(reg_no, REG_RET);
 
     ungrab_slot(slot_no);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 static void
@@ -975,9 +995,9 @@ emit_add(struct code_block_x86_64 *blk,
     unsigned slot_src = inst->immed.add.slot_src;
     unsigned slot_dst = inst->immed.add.slot_dst;
 
-    grab_slot(blk, il_blk, inst, slot_src);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, il_blk, inst, slot_dst);
+        grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_addl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -993,9 +1013,9 @@ emit_sub(struct code_block_x86_64 *blk,
     unsigned slot_src = inst->immed.add.slot_src;
     unsigned slot_dst = inst->immed.add.slot_dst;
 
-    grab_slot(blk, il_blk, inst, slot_src);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, il_blk, inst, slot_dst);
+        grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_subl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1011,10 +1031,10 @@ emit_add_const32(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.add_const32.slot_dst;
     uint32_t const_val = inst->immed.add_const32.const32;
 
-    evict_register(blk, REG_RET);
-    grab_register(&gen_regs, REG_RET);
+    evict_register(blk, &gen_reg_state, REG_RET);
+    grab_register(&gen_reg_state.set, REG_RET);
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
@@ -1023,7 +1043,7 @@ emit_add_const32(struct code_block_x86_64 *blk,
     x86asm_mov_reg32_reg32(REG_RET, reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 static void
@@ -1033,9 +1053,9 @@ emit_xor(struct code_block_x86_64 *blk,
     unsigned slot_src = inst->immed.xor.slot_src;
     unsigned slot_dst = inst->immed.xor.slot_dst;
 
-    grab_slot(blk, il_blk, inst, slot_src);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, il_blk, inst, slot_dst);
+        grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_xorl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1051,9 +1071,9 @@ emit_mov(struct code_block_x86_64 *blk,
     unsigned slot_src = inst->immed.mov.slot_src;
     unsigned slot_dst = inst->immed.mov.slot_dst;
 
-    grab_slot(blk, il_blk, inst, slot_src);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, il_blk, inst, slot_dst);
+        grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_mov_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1069,9 +1089,9 @@ emit_and(struct code_block_x86_64 *blk,
     unsigned slot_src = inst->immed.and.slot_src;
     unsigned slot_dst = inst->immed.and.slot_dst;
 
-    grab_slot(blk, il_blk, inst, slot_src);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, il_blk, inst, slot_dst);
+        grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_andl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1087,7 +1107,7 @@ emit_and_const32(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.and_const32.slot_no;
     unsigned const32 = inst->immed.and_const32.const32;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     x86asm_andl_imm32_reg32(const32, slots[slot_no].reg_no);
 
@@ -1101,9 +1121,9 @@ emit_or(struct code_block_x86_64 *blk,
     unsigned slot_src = inst->immed.or.slot_src;
     unsigned slot_dst = inst->immed.or.slot_dst;
 
-    grab_slot(blk, il_blk, inst, slot_src);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_src);
     if (slot_src != slot_dst)
-        grab_slot(blk, il_blk, inst, slot_dst);
+        grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_orl_reg32_reg32(slots[slot_src].reg_no, slots[slot_dst].reg_no);
 
@@ -1119,7 +1139,7 @@ emit_or_const32(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.or_const32.slot_no;
     unsigned const32 = inst->immed.or_const32.const32;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     x86asm_orl_imm32_reg32(const32, slots[slot_no].reg_no);
 
@@ -1133,7 +1153,7 @@ emit_xor_const32(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.xor_const32.slot_no;
     unsigned const32 = inst->immed.xor_const32.const32;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     x86asm_xorl_imm32_reg32(const32, slots[slot_no].reg_no);
 
@@ -1146,9 +1166,9 @@ emit_slot_to_bool(struct code_block_x86_64 *blk,
                   void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.slot_to_bool.slot_no;
 
-    evict_register(blk, REG_RET);
-    grab_register(&gen_regs, REG_RET);
-    grab_slot(blk, il_blk, inst, slot_no);
+    evict_register(blk, &gen_reg_state, REG_RET);
+    grab_register(&gen_reg_state.set, REG_RET);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_testl_reg32_reg32(slots[slot_no].reg_no, slots[slot_no].reg_no);
@@ -1157,7 +1177,7 @@ emit_slot_to_bool(struct code_block_x86_64 *blk,
     x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 static void
@@ -1166,7 +1186,7 @@ emit_not(struct code_block_x86_64 *blk,
          void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.not.slot_no;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
 
     x86asm_notl_reg32(slots[slot_no].reg_no);
 
@@ -1183,7 +1203,7 @@ emit_shll(struct code_block_x86_64 *blk,
     if (shift_amt >= 32)
         shift_amt = 32;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
     x86asm_shll_imm8_reg32(shift_amt, slots[slot_no].reg_no);
     ungrab_slot(slot_no);
 }
@@ -1198,7 +1218,7 @@ emit_shar(struct code_block_x86_64 *blk,
     if (shift_amt >= 32)
         shift_amt = 32;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
     x86asm_sarl_imm8_reg32(shift_amt, slots[slot_no].reg_no);
     ungrab_slot(slot_no);
 }
@@ -1213,7 +1233,7 @@ emit_shlr(struct code_block_x86_64 *blk,
     if (shift_amt >= 32)
         shift_amt = 32;
 
-    grab_slot(blk, il_blk, inst, slot_no);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no);
     x86asm_shrl_imm8_reg32(shift_amt, slots[slot_no].reg_no);
     ungrab_slot(slot_no);
 }
@@ -1228,9 +1248,9 @@ static void emit_set_gt_unsigned(struct code_block_x86_64 *blk,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_rhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jbe_lbl8(&lbl);
@@ -1254,9 +1274,9 @@ static void emit_set_gt_signed(struct code_block_x86_64 *blk,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_rhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jle_lbl8(&lbl);
@@ -1280,8 +1300,8 @@ static void emit_set_gt_signed_const(struct code_block_x86_64 *blk,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_cmpl_imm8_reg32(imm_rhs, slots[slot_lhs].reg_no);
     x86asm_jle_lbl8(&lbl);
@@ -1304,8 +1324,8 @@ static void emit_set_ge_signed_const(struct code_block_x86_64 *blk,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_cmpl_imm8_reg32(imm_rhs, slots[slot_lhs].reg_no);
     x86asm_jl_lbl8(&lbl);
@@ -1328,9 +1348,9 @@ static void emit_set_eq(struct code_block_x86_64 *blk,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_rhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jnz_lbl8(&lbl);
@@ -1355,9 +1375,9 @@ static void emit_set_ge_unsigned(struct code_block_x86_64 *blk,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_rhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jb_lbl8(&lbl);
@@ -1381,9 +1401,9 @@ static void emit_set_ge_signed(struct code_block_x86_64 *blk,
     struct x86asm_lbl8 lbl;
     x86asm_lbl8_init(&lbl);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_rhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
     x86asm_jl_lbl8(&lbl);
@@ -1404,14 +1424,14 @@ static void emit_mul_u32(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.mul_u32.slot_rhs;
     unsigned slot_dst = inst->immed.mul_u32.slot_dst;
 
-    evict_register(blk, REG_RET);
-    grab_register(&gen_regs, REG_RET);
-    evict_register(blk, EDX);
-    grab_register(&gen_regs, EDX);
+    evict_register(blk, &gen_reg_state, REG_RET);
+    grab_register(&gen_reg_state.set, REG_RET);
+    evict_register(blk, &gen_reg_state, EDX);
+    grab_register(&gen_reg_state.set, EDX);
 
-    grab_slot(blk, il_blk, inst, slot_lhs);
-    grab_slot(blk, il_blk, inst, slot_rhs);
-    grab_slot(blk, il_blk, inst, slot_dst);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst);
 
 #ifdef INVARIANTS
     if (slots[slot_lhs].reg_no == REG_RET || slots[slot_lhs].reg_no == EDX ||
@@ -1427,8 +1447,8 @@ static void emit_mul_u32(struct code_block_x86_64 *blk,
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
-    ungrab_register(&gen_regs, EDX);
-    ungrab_register(&gen_regs, REG_RET);
+    ungrab_register(&gen_reg_state.set, EDX);
+    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 static void emit_shad(struct code_block_x86_64 *blk,
@@ -1438,19 +1458,19 @@ static void emit_shad(struct code_block_x86_64 *blk,
     unsigned slot_shift_amt = inst->immed.shad.slot_shift_amt;
 
     // shift_amt register must be CL
-    evict_register(blk, RCX);
-    grab_register(&gen_regs, RCX);
+    evict_register(blk, &gen_reg_state, RCX);
+    grab_register(&gen_reg_state.set, RCX);
 
     // REGISTER_HINT_FUNCTION not necessary, just being used as a "default"
-    int reg_tmp = register_pick(&gen_regs, REGISTER_HINT_FUNCTION);
-    evict_register(blk, reg_tmp);
-    grab_register(&gen_regs, reg_tmp);
+    int reg_tmp = register_pick(&gen_reg_state.set, REGISTER_HINT_FUNCTION);
+    evict_register(blk, &gen_reg_state, reg_tmp);
+    grab_register(&gen_reg_state.set, reg_tmp);
 
-    grab_slot(blk, il_blk, inst, slot_shift_amt);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_shift_amt);
     x86asm_mov_reg32_reg32(slots[slot_shift_amt].reg_no, RCX);
     ungrab_slot(slot_shift_amt);
 
-    grab_slot(blk, il_blk, inst, slot_val);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_val);
 
     x86asm_mov_reg32_reg32(slots[slot_val].reg_no, reg_tmp);
     x86asm_shll_cl_reg32(slots[slot_val].reg_no);
@@ -1470,8 +1490,8 @@ static void emit_shad(struct code_block_x86_64 *blk,
     x86asm_lbl8_cleanup(&lbl);
 
     ungrab_slot(slot_val);
-    ungrab_register(&gen_regs, reg_tmp);
-    ungrab_register(&gen_regs, RCX);
+    ungrab_register(&gen_reg_state.set, reg_tmp);
+    ungrab_register(&gen_reg_state.set, RCX);
 }
 
 /*
