@@ -137,13 +137,13 @@ static void emit_mod_reg_rm(unsigned rex, unsigned opcode, unsigned mod,
     }
 
     bool sib_rsp = (rm == RSP) && (mod != 3);
-    bool sib_rbp = (rm == RBP) && (mod == 0);
+    bool disp_rbp = (rm == RBP) && (mod == 0);
 
     if (rex)
         put8(rex | 0x40);
     put8(opcode);
 
-    if (sib_rbp) {
+    if (disp_rbp) {
         /*
          * Special case - having a mod of 0 and an R/M of 5 replaces R/M with a
          * 32-bit displacement (from RIP, i think), so we need to set the mod
@@ -178,7 +178,7 @@ static void emit_mod_reg_rm_8bit(unsigned rex, unsigned opcode, unsigned mod,
     }
 
     bool sib_rsp = (rm == RSP) && (mod != 3);
-    bool sib_rbp = (rm == RBP) && (mod == 0);
+    bool disp_rbp = (rm == RBP) && (mod == 0);
 
     if (reg == RDI || reg == RSI || reg == RBP || reg == RSP ||
         (mod == 3 && (rm == RDI || rm == RSI || rm == RBP || rm == RSP)))
@@ -188,7 +188,7 @@ static void emit_mod_reg_rm_8bit(unsigned rex, unsigned opcode, unsigned mod,
         put8(rex | 0x40);
     put8(opcode);
 
-    if (sib_rbp) {
+    if (disp_rbp) {
         /*
          * Special case - having a mod of 0 and an R/M of 5 replaces R/M with a
          * 32-bit displacement (from RIP, i think), so we need to set the mod
@@ -292,13 +292,13 @@ static void emit_mod_reg_rm_2(unsigned rex, unsigned opcode1,
     }
 
     bool sib_rsp = (rm == RSP) && (mod != 3);
-    bool sib_rbp = (rm == RBP) && (mod != 3);
+    bool disp_rbp = (rm == RBP) && (mod == 0);
 
     if (rex)
         put8(rex | 0x40);
     put8(opcode1);
     put8(opcode2);
-    if (sib_rbp) {
+    if (disp_rbp) {
         /*
          * Special case - having a mod of 0 and an R/M of 5 replaces R/M with a
          * 32-bit displacement (from RIP, i think), so we need to set the mod
@@ -334,7 +334,7 @@ static void emit_mod_reg_rm_2_8bit(unsigned rex, unsigned opcode1,
     }
 
     bool sib_rsp = (rm == RSP) && (mod != 3);
-    bool sib_rbp = (rm == RBP) && (mod != 3);
+    bool disp_rbp = (rm == RBP) && (mod == 0);
 
     if (reg == RDI || reg == RSI || reg == RBP || reg == RSP ||
         (mod == 3 && (rm == RDI || rm == RSI || rm == RBP || rm == RSP)))
@@ -344,7 +344,7 @@ static void emit_mod_reg_rm_2_8bit(unsigned rex, unsigned opcode1,
         put8(rex | 0x40);
     put8(opcode1);
     put8(opcode2);
-    if (sib_rbp) {
+    if (disp_rbp) {
         /*
          * Special case - having a mod of 0 and an R/M of 5 replaces R/M with a
          * 32-bit displacement (from RIP, i think), so we need to set the mod
