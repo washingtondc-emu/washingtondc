@@ -138,37 +138,15 @@ static int register_priority(struct register_set *set, unsigned reg_no) {
 }
 
 static int
-pick_unused_reg_with_flags(struct register_set *set, enum register_flag flags) {
+pick_unused_reg_with_flags(struct register_set *set,
+                           enum register_flag flags, enum register_flag mask) {
     int best_prio = INT_MIN;
     bool found_one = false;
     unsigned reg_no, best_reg = 0xdeadbeef;
     for (reg_no = 0; reg_no < set->n_regs; reg_no++) {
         enum register_flag reg_flags = set->regs[reg_no].flags;
         int prio = register_priority(set, reg_no);
-        if ((reg_flags & flags) == flags &&
-            register_available(set, reg_no) &&
-            ((prio > best_prio) || !found_one)) {
-            found_one = true;
-            best_prio = prio;
-            best_reg = reg_no;
-        }
-    }
-
-    if (found_one)
-        return best_reg;
-    return -1;
-}
-
-static int
-pick_unused_reg_without_flags(struct register_set *set,
-                              enum register_flag flags) {
-    int best_prio = INT_MIN;
-    bool found_one = false;
-    unsigned reg_no, best_reg = 0xdeadbeef;
-    for (reg_no = 0; reg_no < set->n_regs; reg_no++) {
-        enum register_flag reg_flags = set->regs[reg_no].flags;
-        int prio = register_priority(set, reg_no);
-        if (!(reg_flags & flags) &&
+        if ((reg_flags & mask) == flags &&
             register_available(set, reg_no) &&
             ((prio > best_prio) || !found_one)) {
             found_one = true;
@@ -192,14 +170,16 @@ int register_pick_unused(struct register_set *set, enum register_hint hints) {
 
     if (hints & REGISTER_HINT_JUMP_ADDR) {
         reg_no =
-            pick_unused_reg_with_flags(set, REGISTER_FLAG_NATIVE_DISPATCH_PC);
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NATIVE_DISPATCH_PC,
+                                       REGISTER_FLAG_NATIVE_DISPATCH_PC);
         if (reg_no >= 0)
             return reg_no;
     }
 
     if (hints & REGISTER_HINT_JUMP_HASH) {
         reg_no =
-            pick_unused_reg_with_flags(set, REGISTER_FLAG_NATIVE_DISPATCH_HASH);
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NATIVE_DISPATCH_HASH,
+                                       REGISTER_FLAG_NATIVE_DISPATCH_HASH);
         if (reg_no >= 0)
             return reg_no;
     }
@@ -210,22 +190,61 @@ int register_pick_unused(struct register_set *set, enum register_hint hints) {
          * calls.
          */
         reg_no =
-            pick_unused_reg_with_flags(set, REGISTER_FLAG_PRESERVED);
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_PRESERVED,
+                                       REGISTER_FLAG_PRESERVED |
+                                       REGISTER_FLAG_REX |
+                                       REGISTER_FLAG_RETURN);
+        if (reg_no >= 0)
+            return reg_no;
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_PRESERVED,
+                                       REGISTER_FLAG_PRESERVED |
+                                       REGISTER_FLAG_RETURN);
         if (reg_no >= 0)
             return reg_no;
 
+        // pick one of the ones that will get clobbered by function calls
         reg_no =
-            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE);
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE,
+                                       REGISTER_FLAG_REX |
+                                       REGISTER_FLAG_RETURN);
+        if (reg_no >= 0)
+            return reg_no;
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE,
+                                       REGISTER_FLAG_RETURN);
         if (reg_no >= 0)
             return reg_no;
     } else {
+        /*
+         * first look at registers that don't need a rex.
+         * IDK why RAX gets top priority but this code
+         * has been that way for a while.
+         */
         reg_no =
-            pick_unused_reg_without_flags(set, REGISTER_FLAG_PRESERVED);
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_RETURN,
+                                       REGISTER_FLAG_RETURN |
+                                       REGISTER_FLAG_REX);
         if (reg_no >= 0)
             return reg_no;
 
+        // consider RBX even though it's nonvolatile since it doesn't need REX
         reg_no =
-            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE);
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_PRESERVED,
+                                       REGISTER_FLAG_REX);
+        if (reg_no >= 0)
+            return reg_no;
+
+        // volatile registers that need REX
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE, REGISTER_FLAG_PRESERVED);
+        if (reg_no >= 0)
+            return reg_no;
+
+        // nonvolatile registers that need REX
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE,
+                                       REGISTER_FLAG_NONE);
         if (reg_no >= 0)
             return reg_no;
     }

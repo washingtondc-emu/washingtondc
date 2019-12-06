@@ -55,7 +55,7 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     },
     [RCX] = {
         .locked = false,
-        .prio = 3,
+        .prio = 10,
 #ifdef ABI_UNIX
         .flags = REGISTER_FLAG_NATIVE_DISPATCH_PC
 #else
@@ -65,7 +65,7 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     [RDX] = {
         // RDX is a lower priority because mul will clobber it
         .locked = false,
-        .prio = 1,
+        .prio = 7,
 #ifdef ABI_UNIX
         .flags = REGISTER_FLAG_NATIVE_DISPATCH_HASH
 #else
@@ -74,7 +74,7 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     },
     [RBX] = {
         .locked = false,
-        .prio = 6,
+        .prio = 10,
         .flags = REGISTER_FLAG_PRESERVED
     },
     [RSP] = {
@@ -90,7 +90,7 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     },
     [RSI] = {
         .locked = false,
-        .prio = 3,
+        .prio = 8,
 #ifdef ABI_UNIX
         .flags = REGISTER_FLAG_NATIVE_DISPATCH_HASH
 #elif defined(ABI_MICROSOFT)
@@ -101,7 +101,7 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     },
     [RDI] = {
         .locked = false,
-        .prio = 3,
+        .prio = 9,
 #ifdef ABI_UNIX
         .flags = REGISTER_FLAG_NATIVE_DISPATCH_PC
 #elif defined(ABI_MICROSOFT)
@@ -112,23 +112,23 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     },
     [R8] = {
         .locked = false,
-        .prio = 2,
-        .flags = REGISTER_FLAG_NONE
+        .prio = 6,
+        .flags = REGISTER_FLAG_REX
     },
     [R9] = {
         .locked = false,
-        .prio = 2,
-        .flags = REGISTER_FLAG_NONE
+        .prio = 5,
+        .flags = REGISTER_FLAG_REX
     },
     [R10] = {
         .locked = false,
-        .prio = 2,
-        .flags = REGISTER_FLAG_NONE
+        .prio = 4,
+        .flags = REGISTER_FLAG_REX
     },
     [R11] = {
         .locked = false,
-        .prio = 2,
-        .flags = REGISTER_FLAG_NONE
+        .prio = 3,
+        .flags = REGISTER_FLAG_REX
     },
     /*
      * R12 and R13 have a lower priority than R14 and R15 because they require
@@ -137,13 +137,13 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
      */
     [R12] = {
         .locked = false,
-        .prio = 4,
-        .flags = REGISTER_FLAG_PRESERVED
+        .prio = 7,
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
     },
     [R13] = {
         .locked = false,
-        .prio = 4,
-        .flags = REGISTER_FLAG_PRESERVED
+        .prio = 6,
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
     },
     [R14] = {
         /*
@@ -151,13 +151,13 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
          * Microsoft ABI.
          */
         .locked = true,
-        .prio = 5,
-        .flags = REGISTER_FLAG_PRESERVED
+        .prio = 9,
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
     },
     [R15] = {
         .locked = false,
-        .prio = 5,
-        .flags = REGISTER_FLAG_PRESERVED
+        .prio = 8,
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
     }
 };
 

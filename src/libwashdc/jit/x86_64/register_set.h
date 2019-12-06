@@ -38,7 +38,10 @@ enum register_flag {
     REGISTER_FLAG_NATIVE_DISPATCH_HASH = 4,
 
     // register stores function return values
-    REGISTER_FLAG_RETURN = 8
+    REGISTER_FLAG_RETURN = 8,
+
+    // register introduces a REX prefix
+    REGISTER_FLAG_REX = 16
 };
 
 enum register_hint {
