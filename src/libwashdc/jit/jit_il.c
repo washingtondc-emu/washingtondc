@@ -233,6 +233,21 @@ void jit_write_32_slot(struct il_code_block *block, struct memory_map *map,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_write_float_slot(struct il_code_block *block, struct memory_map *map,
+                          unsigned src_slot, unsigned addr_slot) {
+    struct jit_inst op;
+
+    check_slot(block, src_slot, WASHDC_JIT_SLOT_FLOAT);
+    check_slot(block, addr_slot, WASHDC_JIT_SLOT_GEN);
+
+    op.op = JIT_OP_WRITE_FLOAT_SLOT;
+    op.immed.write_float_slot.map = map;
+    op.immed.write_float_slot.addr_slot = addr_slot;
+    op.immed.write_float_slot.src_slot = src_slot;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
                      uint16_t const *src) {
     struct jit_inst op;
@@ -685,6 +700,9 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
     case JIT_OP_WRITE_32_SLOT:
         return slot_no == immed->write_32_slot.addr_slot ||
             slot_no == immed->write_32_slot.src_slot;
+    case JIT_OP_WRITE_FLOAT_SLOT:
+        return slot_no == immed->write_float_slot.addr_slot ||
+            slot_no == immed->write_float_slot.src_slot;
     case JIT_OP_LOAD_SLOT16:
         return false;
     case JIT_OP_LOAD_SLOT:
@@ -810,6 +828,8 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
     case JIT_OP_WRITE_8_SLOT:
         break;
     case JIT_OP_WRITE_32_SLOT:
+        break;
+    case JIT_OP_WRITE_FLOAT_SLOT:
         break;
     case JIT_OP_LOAD_SLOT16:
         write_slots[0] = immed->load_slot16.slot_no;

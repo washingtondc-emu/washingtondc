@@ -74,7 +74,7 @@ enum jit_opcode {
     JIT_OP_READ_32_SLOT,
 
     /*
-     * read a 32-bit int at an address contained in a slot into a
+     * read a 32-bit float at an address contained in a slot into a
      * floating-point slot
      */
     JIT_OP_READ_FLOAT_SLOT,
@@ -90,6 +90,12 @@ enum jit_opcode {
      * in a slot
      */
     JIT_OP_WRITE_32_SLOT,
+
+    /*
+     * write a 32-bit float contained in a slot to memory at an address contained
+     * in a slot
+     */
+    JIT_OP_WRITE_FLOAT_SLOT,
 
     /*
      * load 16-bits from a host memory address into a jit register
@@ -274,6 +280,12 @@ struct write_32_slot_immed {
     unsigned addr_slot;
 };
 
+struct write_float_slot_immed {
+    struct memory_map *map;
+    unsigned src_slot;
+    unsigned addr_slot;
+};
+
 struct load_slot16_immed {
     uint16_t const *src;
     unsigned slot_no;
@@ -440,6 +452,7 @@ union jit_immed {
     struct read_float_slot_immed read_float_slot;
     struct write_8_slot_immed write_8_slot;
     struct write_32_slot_immed write_32_slot;
+    struct write_float_slot_immed write_float_slot;
     struct load_slot16_immed load_slot16;
     struct load_slot_immed load_slot;
     struct load_float_slot_immed load_float_slot;
@@ -515,6 +528,8 @@ void jit_write_8_slot(struct il_code_block *block, struct memory_map *map,
                       unsigned src_slot, unsigned addr_slot);
 void jit_write_32_slot(struct il_code_block *block, struct memory_map *map,
                        unsigned src_slot, unsigned addr_slot);
+void jit_write_float_slot(struct il_code_block *block, struct memory_map *map,
+                          unsigned src_slot, unsigned addr_slot);
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
                    uint32_t const *src);
 void jit_load_float_slot(struct il_code_block *block, unsigned slot_no,

@@ -699,8 +699,10 @@ static bool does_inst_emit_call(struct jit_inst const *inst) {
          inst->op == JIT_OP_READ_8_SLOT ||
          inst->op == JIT_OP_READ_16_SLOT ||
          inst->op == JIT_OP_READ_32_SLOT ||
+         inst->op == JIT_OP_READ_FLOAT_SLOT ||
          inst->op == JIT_OP_WRITE_8_SLOT ||
-         inst->op == JIT_OP_WRITE_32_SLOT);
+         inst->op == JIT_OP_WRITE_32_SLOT ||
+         inst->op == JIT_OP_WRITE_FLOAT_SLOT);
 }
 
 static enum register_hint suggested_register_hints(struct il_code_block const *blk,
@@ -1217,6 +1219,44 @@ static void emit_write_32_slot(struct code_block_x86_64 *blk,
 
     postfunc();
 
+    ungrab_register(&gen_reg_state.set, REG_RET);
+}
+
+// JIT_OP_WRITE_FLOAT_SLOT implementation
+static void emit_write_float_slot(struct code_block_x86_64 *blk,
+                                  struct il_code_block const *il_blk,
+                                  void *cpu, struct jit_inst const *inst) {
+    unsigned src_slot = inst->immed.write_float_slot.src_slot;
+    unsigned addr_slot = inst->immed.write_float_slot.addr_slot;
+    struct memory_map const *map = inst->immed.write_float_slot.map;
+
+    prefunc(blk);
+
+    // TODO: inline mem
+
+    /* if (config_get_inline_mem()) { */
+    /*     move_slot_to_reg(blk, addr_slot, REG_ARG0); */
+    /*     move_slot_to_reg(blk, src_slot, REG_ARG1); */
+
+    /*     evict_register(blk, &gen_reg_state, REG_ARG0); */
+    /*     evict_register(blk, &gen_reg_state, REG_ARG1); */
+
+    /*     native_mem_write_32(blk, map); */
+    /* } else { */
+        move_slot_to_reg(blk, addr_slot, REG_ARG1);
+        move_slot_to_reg(blk, src_slot, XMM0);
+
+        evict_register(blk, &gen_reg_state, REG_ARG1);
+        evict_register(blk, &xmm_reg_state, XMM0);
+
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        ms_shadow_open(blk);
+        x86_64_align_stack(blk);
+        x86asm_call_ptr(memory_map_write_float);
+        ms_shadow_close();
+    /* } */
+
+    postfunc();
     ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
@@ -1956,6 +1996,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_WRITE_32_SLOT:
             emit_write_32_slot(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_WRITE_FLOAT_SLOT:
+            emit_write_float_slot(out, il_blk, cpu, inst);
             break;
         case JIT_OP_LOAD_SLOT16:
             emit_load_slot16(out, il_blk, cpu, inst);

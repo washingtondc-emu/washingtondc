@@ -2190,7 +2190,18 @@ bool sh4_jit_fmov_fpu_amrn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
        else
            handler = sh4_inst_binary_fmov_dr_inddecgen;
    } else {
-       handler = sh4_inst_binary_fmovs_fr_inddecgen;
+       unsigned addr_reg = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
+       unsigned src_reg = ((inst >> 4) & 0xf) + SH4_REG_FR0;
+
+       unsigned slot_addr = reg_slot(sh4, block, addr_reg, WASHDC_JIT_SLOT_GEN);
+       unsigned slot_src = reg_slot(sh4, block, src_reg,
+                                    WASHDC_JIT_SLOT_FLOAT);
+
+       jit_add_const32(block, slot_addr, -4);
+       jit_write_float_slot(block, sh4->mem.map, slot_src, slot_addr);
+
+       reg_map[addr_reg].stat = REG_STATUS_SLOT;
+       return true;
    }
 
     struct jit_inst il_inst;

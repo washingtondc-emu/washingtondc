@@ -159,6 +159,12 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                                 block->slots[inst->immed.write_32_slot.src_slot].as_u32);
             inst++;
             break;
+        case JIT_OP_WRITE_FLOAT_SLOT:
+            memory_map_write_float(inst->immed.write_float_slot.map,
+                                   block->slots[inst->immed.write_float_slot.addr_slot].as_u32,
+                                   block->slots[inst->immed.write_float_slot.src_slot].as_float);
+            inst++;
+            break;
         case JIT_OP_LOAD_SLOT16:
             block->slots[inst->immed.load_slot16.slot_no].as_u32 =
                 *inst->immed.load_slot16.src;
