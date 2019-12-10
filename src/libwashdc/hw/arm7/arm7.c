@@ -1337,6 +1337,11 @@ static unsigned arm7_spsr_idx(struct arm7 *arm7) {
 
 void arm7_get_regs(struct arm7 *arm7, void *dat_out) {
     memcpy(dat_out, arm7->reg, sizeof(uint32_t) * ARM7_REGISTER_COUNT);
+    unsigned reg_no;
+    for (reg_no = 0; reg_no <= 15; reg_no++) {
+        memcpy(((char*)dat_out) + (reg_no + ARM7_REG_R0) * sizeof(uint32_t),
+               arm7_gen_reg(arm7, reg_no), sizeof(uint32_t));
+    }
 }
 
 static DEF_ERROR_U32_ATTR(arm7_reg_r0)
