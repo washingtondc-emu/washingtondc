@@ -671,25 +671,38 @@ DEF_LDR_STR_INST(nv)
                                                                         \
         if (psr_user_force && (!(reg_list & (1 << 15)) || !load)) {     \
             error_set_arm7_inst(inst);                                  \
+            error_set_feature("load PSR or force user-mode bit "        \
+                              "(store instruction or load "             \
+                              "instruction with PC inregister list");   \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
         }                                                               \
                                                                         \
         /* docs say you cant do this */                                 \
-        if (rn == 15)                                                   \
+        if (rn == 15) {                                                 \
+            error_set_arm7_inst(inst);                                  \
+            error_set_feature("PC as base pointer");                    \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
                                                                         \
         uint32_t *baseptr = arm7_gen_reg(arm7, rn);                     \
         uint32_t base = *baseptr;                                       \
                                                                         \
         /* This is actually not illegal, but there are some weird */    \
         /* corner cases I have to consider first. */                    \
-        if (writeback && (reg_list & (1 << rn)))                        \
+        if (writeback && (reg_list & (1 << rn))) {                      \
+            error_set_arm7_inst(inst);                                  \
+            error_set_feature("writeback to the base pointer");         \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
                                                                         \
-        if (!reg_list)                                                  \
+        if (!reg_list) {                                                \
+            error_set_arm7_inst(inst);                                  \
+            error_set_feature("empty register list");                   \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
                                                                         \
         if (base % 4) {                                                 \
+            error_set_arm7_inst(inst);                                  \
             error_set_feature("unaligned ARM7 block transfers");        \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
         }                                                               \
@@ -719,8 +732,14 @@ DEF_LDR_STR_INST(nv)
                 }                                                       \
             } else {                                                    \
                 /* store */                                             \
-                if (psr_user_force)                                     \
+                if (psr_user_force) {                                   \
+                    error_set_arm7_inst(inst);                          \
+                    error_set_feature("store instruction; load PSR "    \
+                                      "or force user mode;"             \
+                                      "applying offset before "         \
+                                      "advancing");                     \
                     RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
+                }                                                       \
                 for (reg_no = 0; reg_no < 15; reg_no++)                 \
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
@@ -741,8 +760,12 @@ DEF_LDR_STR_INST(nv)
                 }                                                       \
             }                                                           \
         } else {                                                        \
-            if (psr_user_force)                                         \
+            if (psr_user_force) {                                       \
+                error_set_arm7_inst(inst);                              \
+                error_set_feature("load PSR or force user mode;"        \
+                                  "applying offset after advancing");   \
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            }                                                           \
             /* TODO: */                                                 \
             /* This transfers higher registers before lower */          \
             /* registers.  The spec says that lower registers must */   \
