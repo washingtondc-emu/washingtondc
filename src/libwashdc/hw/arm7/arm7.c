@@ -32,6 +32,7 @@
 
 static DEF_ERROR_U32_ATTR(arm7_inst)
 static DEF_ERROR_U32_ATTR(arm7_pc)
+DEF_ERROR_INT_ATTR(arm7_execution_mode)
 
 #define ARM7_INST_COND_SHIFT 28
 #define ARM7_INST_COND_MASK (0xf << ARM7_INST_COND_SHIFT)
