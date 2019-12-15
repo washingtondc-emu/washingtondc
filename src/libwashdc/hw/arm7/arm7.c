@@ -1240,11 +1240,6 @@ static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
                                 uint32_t src_val, unsigned shift_amt,
                                 bool *carry) {
     uint32_t ret_val;
-    /*
-     * For all cases except logical left-shift, a shift of 0 is actually a
-     * shift of 32.  For now I've chosen to raise an ERROR_UNIMPLEMENTED when
-     * that happens because I'd rather not think about it.
-     */
     switch (shift_fn) {
     case 0:
         // logical left-shift
@@ -1267,8 +1262,6 @@ static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
         return src_val >> shift_amt;
     case 2:
         // arithmetic right-shift
-        if (shift_amt == 0)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         if (shift_amt < 32)
             *carry = ((1 << (shift_amt - 1)) & src_val);
         else
@@ -1276,8 +1269,6 @@ static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
         return ((int32_t)src_val) >> shift_amt;
     case 3:
         // right-rotate
-        if (shift_amt == 0)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         ret_val = ror(src_val, shift_amt);
         *carry = (1 << 31) & ret_val;
         return ret_val;
@@ -1297,6 +1288,12 @@ decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst, bool *carry) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     } else {
         shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
+        /*
+         * for all cases except logical left-shift, a shift of 0 is actually a
+         * shift of 32.
+         */
+        if (!shift_amt && shift_fn)
+            shift_amt = 32;
     }
 
     unsigned src_reg = inst & 0xf;
@@ -1331,6 +1328,13 @@ decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
         shift_amt = *arm7_gen_reg(arm7, reg_no) & 0xff;
     } else {
         shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
+
+        /*
+         * for all cases except logical left-shift, a shift of 0 is actually a
+         * shift of 32.
+         */
+        if (!shift_amt && shift_fn)
+            shift_amt = 32;
     }
 
     unsigned src_reg = inst & 0xf;
