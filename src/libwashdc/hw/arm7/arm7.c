@@ -686,13 +686,45 @@ DEF_LDR_STR_INST(nv)
                                                                         \
         uint32_t *baseptr = arm7_gen_reg(arm7, rn);                     \
         uint32_t base = *baseptr;                                       \
+        int reg_no;                                                     \
                                                                         \
-        /* This is actually not illegal, but there are some weird */    \
-        /* corner cases I have to consider first. */                    \
+        /* things get really hairy when the base register is in the */  \
+        /* list *and* the writeback bit is set */                       \
         if (writeback && (reg_list & (1 << rn))) {                      \
-            error_set_arm7_inst(inst);                                  \
-            error_set_feature("writeback to the base pointer");         \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+            /* quoth the official ARM7DI data sheet: */                 \
+            /* When write-back is specified, the base is written */     \
+            /* back at the end of the second cycle of the */            \
+            /* instruction. During a STM, the first register is */      \
+            /* written out at the start of the second cycle. A STM */   \
+            /* which includes storing the base, with the base as the */ \
+            /* first register to be stored, will therefore store the */ \
+            /* unchanged value, whereas with the base second or */      \
+            /* later in the transfer order, will store the modified */  \
+            /* value. A LDM will always overwrite the updated base */   \
+            /* if the base is in the list. */                           \
+                                                                        \
+            uint32_t final_base = base;                                 \
+            int amt_per_reg = up ? 4 : -4;                              \
+            for (reg_no = 0; reg_no < 15; reg_no++)                     \
+                if (reg_list & (1 << reg_no))                           \
+                    final_base += amt_per_reg;                          \
+                                                                        \
+            if (load) {                                                 \
+                /* for LDM, the writeback always gets overwritten */    \
+                /* with whatever just got loaded from memory */         \
+                writeback = false;                                      \
+            } else {                                                    \
+                bool is_base_first = true;                              \
+                for (reg_no = 0; reg_no < rn; reg_no++)                 \
+                    if (reg_list & (1 << reg_no))                       \
+                        is_base_first = false;                          \
+                if (!is_base_first) {                                   \
+                    /* perform writeback early because it will */       \
+                    /* happen before the base gets stored */            \
+                    writeback = false;                                  \
+                    *baseptr = final_base;                              \
+                }                                                       \
+            }                                                           \
         }                                                               \
                                                                         \
         if (!reg_list) {                                                \
@@ -707,7 +739,6 @@ DEF_LDR_STR_INST(nv)
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
         }                                                               \
                                                                         \
-        int reg_no;                                                     \
         if (up) {                                                       \
             if (load) {                                                 \
                 for (reg_no = 0; reg_no < 15; reg_no++)                 \
