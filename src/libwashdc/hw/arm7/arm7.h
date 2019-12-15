@@ -163,9 +163,11 @@ void arm7_excp_refresh(struct arm7 *arm7);
 
 ERROR_INT_ATTR(arm7_execution_mode);
 
-inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
+inline static uint32_t *
+arm7_gen_reg_bank(struct arm7 *arm7, unsigned reg, unsigned bank) {
     unsigned idx_actual;
-    switch (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) {
+
+    switch (bank) {
     case ARM7_MODE_USER:
         idx_actual = reg + ARM7_REG_R0;
         break;
@@ -200,11 +202,15 @@ inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
             idx_actual = reg + ARM7_REG_R0;
         break;
     default:
-        error_set_arm7_execution_mode(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK);
+        error_set_arm7_execution_mode(bank);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
     return arm7->reg + idx_actual;
+}
+
+inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
+    return arm7_gen_reg_bank(arm7, reg, arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK);
 }
 
 typedef unsigned(*arm7_op_fn)(struct arm7*,arm7_inst);

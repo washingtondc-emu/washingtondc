@@ -670,12 +670,20 @@ DEF_LDR_STR_INST(nv)
         bool writeback = (bool)(inst & (1 << 21));                      \
         bool load = (bool)(inst & (1 << 20));                           \
                                                                         \
-        if (psr_user_force && (!(reg_list & (1 << 15)) || !load)) {     \
-            error_set_arm7_inst(inst);                                  \
-            error_set_feature("load PSR or force user-mode bit "        \
-                              "(store instruction or load "             \
-                              "instruction with PC inregister list");   \
+        /* the spec says this should only be done in a */               \
+        /* privileged mode */                                           \
+        if (psr_user_force &&                                           \
+            (arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK) == ARM7_MODE_USER) { \
+            error_set_feature("whatever happens when you set the "      \
+                              "S-bit in an ARM7 LDM/SDM instruction."); \
             RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
+                                                                        \
+        unsigned bank = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK;    \
+        if (psr_user_force && (!load || !(reg_list & (1<<15)))) {       \
+            if (!load)                                                  \
+                writeback = false; /* the spec says so */               \
+            bank = ARM7_MODE_USER;                                      \
         }                                                               \
                                                                         \
         /* docs say you cant do this */                                 \
@@ -746,7 +754,7 @@ DEF_LDR_STR_INST(nv)
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
                             base += 4;                                  \
-                        *arm7_gen_reg(arm7, reg_no) =                   \
+                        *arm7_gen_reg_bank(arm7, reg_no, bank) =        \
                             memory_map_read_32(arm7->map, base);        \
                         if (!pre)                                       \
                             base += 4;                                  \
@@ -777,7 +785,9 @@ DEF_LDR_STR_INST(nv)
                         if (pre)                                        \
                             base += 4;                                  \
                         memory_map_write_32(arm7->map, base,            \
-                                            *arm7_gen_reg(arm7, reg_no)); \
+                                            *arm7_gen_reg_bank(arm7,    \
+                                                               reg_no,  \
+                                                               bank));  \
                         if (!pre)                                       \
                             base += 4;                                  \
                     }                                                   \
@@ -812,11 +822,22 @@ DEF_LDR_STR_INST(nv)
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
                             base -= 4;                                  \
-                        *arm7_gen_reg(arm7, reg_no) =                   \
+                        *arm7_gen_reg_bank(arm7, reg_no, bank) =        \
                             memory_map_read_32(arm7->map, base);        \
                         if (!pre)                                       \
                             base -= 4;                                  \
                     }                                                   \
+                }                                                       \
+                if (reg_list & (1 << 15)) {                             \
+                    if (psr_user_force)                                 \
+                        arm7->reg[ARM7_REG_CPSR] =                      \
+                            arm7->reg[arm7_spsr_idx(arm7)];             \
+                    if (pre)                                            \
+                        base += 4;                                      \
+                    arm7->reg[ARM7_REG_PC] =                            \
+                        memory_map_read_32(arm7->map, base);            \
+                    if (!pre)                                           \
+                        base += 4;                                      \
                 }                                                       \
             } else {                                                    \
                 if (reg_list & (1 << 15)) {                             \
@@ -835,7 +856,9 @@ DEF_LDR_STR_INST(nv)
                         if (pre)                                        \
                             base -= 4;                                  \
                         memory_map_write_32(arm7->map, base,            \
-                                            *arm7_gen_reg(arm7, reg_no)); \
+                                            *arm7_gen_reg_bank(arm7,    \
+                                                               reg_no,  \
+                                                               bank));  \
                         if (!pre)                                       \
                             base -= 4;                                  \
                     }                                                   \
