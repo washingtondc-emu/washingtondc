@@ -194,26 +194,29 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_BIC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_BIC (14 << 21)
 
-#define MASK_ADD (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_ADD (4 << 21)
-
-#define MASK_ADC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_ADC (5 << 21)
-
 #define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_SUB (2 << 21)
 
 #define MASK_RSB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_RSB (3 << 21)
 
+#define MASK_ADD (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_ADD (4 << 21)
+
+#define MASK_ADC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_ADC (5 << 21)
+
+#define MASK_SBC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_SBC (6 << 21)
+
 #define MASK_RSC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_RSC (7 << 21)
 
-#define MASK_CMP (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
-#define VAL_CMP ((10 << 21) | (1 << 20))
-
 #define MASK_TST (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
 #define VAL_TST ((8 << 21) | (1 << 20))
+
+#define MASK_CMP (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
+#define VAL_CMP ((10 << 21) | (1 << 20))
 
 #define MASK_AND (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_AND 0
@@ -275,6 +278,20 @@ DEF_DATA_OP(sub) {
     return val;
 }
 
+DEF_DATA_OP(sbc) {
+    /*
+     * XXX The nomenclature for lhs/rhs is flipped in ARM7's notation compared
+     * to the SH4's notation; that's why I have rhs on the left and lhs on the
+     * right here.
+     */
+    bool c_tmp;
+    uint32_t val = sub_flags(rhs, lhs, !carry_in, &c_tmp, v_out);
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+    *c_out = !c_tmp;
+    return val;
+}
+
 DEF_DATA_OP(rsb) {
     /*
      * XXX The nomenclature for lhs/rhs is flipped in ARM7's notation compared
@@ -324,14 +341,6 @@ DEF_DATA_OP(adc) {
     return val;
 }
 
-/* DEF_DATA_OP(sbc) { */
-/*     return (lhs - rhs) + (carry_in - 1); */
-/* } */
-
-/* DEF_DATA_OP(rsc) { */
-/*     return (rhs - lhs) + (carry_in - 1); */
-/* } */
-
 DEF_DATA_OP(tst) {
     uint32_t val = lhs & rhs;
     *n_out = val & (1 << 31);
@@ -339,10 +348,6 @@ DEF_DATA_OP(tst) {
 
     return 0xdeadbabe; // result should never be written
 }
-
-/* DEF_DATA_OP(teq) { */
-/*     return lhs ^ rhs; */
-/* } */
 
 DEF_DATA_OP(cmp) {
     /*
@@ -482,6 +487,7 @@ DEF_INST_FN(mov, true, false, true)
 DEF_INST_FN(add, false, false, true)
 DEF_INST_FN(adc, false, false, true)
 DEF_INST_FN(sub, false, false, true)
+DEF_INST_FN(sbc, false, false, true)
 DEF_INST_FN(rsb, false, false, true)
 DEF_INST_FN(rsc, false, false, true)
 DEF_INST_FN(cmp, false, true, false)
@@ -1194,6 +1200,7 @@ DEF_DATA_OP_INST_ALL_CONDS(mov, true, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(add, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(adc, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(sub, false, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(sbc, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(rsb, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(rsc, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(cmp, false, true, false)
@@ -1249,6 +1256,7 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(add);
     DEF_COND_TBL(adc);
     DEF_COND_TBL(sub);
+    DEF_COND_TBL(sbc);
     DEF_COND_TBL(rsb);
     DEF_COND_TBL(rsc);
     DEF_COND_TBL(cmp);
@@ -1285,6 +1293,8 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
         return arm7_adc_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_SUB) == VAL_SUB) {
         return arm7_sub_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_SBC) == VAL_SBC) {
+        return arm7_sbc_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_RSB) == VAL_RSB) {
         return arm7_rsb_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_RSC) == VAL_RSC) {
