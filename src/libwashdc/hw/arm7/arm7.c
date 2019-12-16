@@ -239,6 +239,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_SWI BIT_RANGE(24, 27)
 #define VAL_SWI BIT_RANGE(24, 27)
 
+#define MASK_SWAP (BIT_RANGE(4, 11) | BIT_RANGE(20,21) | BIT_RANGE(23, 27))
+#define VAL_SWAP ((9 << 4) | (2 << 23))
+
 /* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
 /* #define VAL_TEQ_IMMED ((1 << 25) | (9 << 21)) */
 
@@ -1241,6 +1244,56 @@ DEF_SWI_INST(le)
 DEF_SWI_INST(al)
 DEF_SWI_INST(nv)
 
+#define DEF_SWAP_INST(cond)                                     \
+    static unsigned                                             \
+    arm7_inst_swap_##cond(struct arm7 *arm7, arm7_inst inst) {  \
+        EVAL_COND(cond);                                        \
+        unsigned n_bytes = ((inst >> 22) & 1) ? 1 : 4;          \
+        unsigned src_reg = inst & 0xf;                          \
+        unsigned dst_reg = (inst >> 12) & 0xf;                  \
+        unsigned addr_reg = (inst >> 16) & 0xf;                 \
+                                                                \
+        if (addr_reg == 15 || src_reg == 15 || dst_reg == 15)   \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
+                                                                \
+        uint32_t addr = *arm7_gen_reg(arm7, addr_reg);          \
+                                                                \
+        if (n_bytes == 4 && addr % 4)                           \
+            LOG_ERROR("TODO: unaligned ARM7 word swaps");       \
+                                                                \
+        if (n_bytes == 4) {                                         \
+            uint32_t dat_in = memory_map_read_32(arm7->map, addr);  \
+            uint32_t dat_out = *arm7_gen_reg(arm7, src_reg);        \
+            memory_map_write_32(arm7->map, addr, dat_out);          \
+            *arm7_gen_reg(arm7, dst_reg) = dat_in;                  \
+        } else {                                                    \
+            uint8_t dat_in = memory_map_read_8(arm7->map, addr);    \
+            uint8_t dat_out = *arm7_gen_reg(arm7, src_reg);         \
+            memory_map_write_8(arm7->map, addr, dat_out);           \
+            *arm7_gen_reg(arm7, dst_reg) = dat_in;                  \
+        }                                                           \
+    cond_fail:                                                      \
+        next_inst(arm7);                                            \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                           \
+    }
+
+DEF_SWAP_INST(eq)
+DEF_SWAP_INST(ne)
+DEF_SWAP_INST(cs)
+DEF_SWAP_INST(cc)
+DEF_SWAP_INST(mi)
+DEF_SWAP_INST(pl)
+DEF_SWAP_INST(vs)
+DEF_SWAP_INST(vc)
+DEF_SWAP_INST(hi)
+DEF_SWAP_INST(ls)
+DEF_SWAP_INST(ge)
+DEF_SWAP_INST(lt)
+DEF_SWAP_INST(gt)
+DEF_SWAP_INST(le)
+DEF_SWAP_INST(al)
+DEF_SWAP_INST(nv)
+
 arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(branch);
     DEF_COND_TBL(ldr_str);
@@ -1264,6 +1317,7 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(mvn);
     DEF_COND_TBL(cmn);
     DEF_COND_TBL(swi);
+    DEF_COND_TBL(swap);
 
     if ((inst & MASK_B) == VAL_B) {
         return arm7_branch_cond_tbl[(inst >> 28) & 0xf];
@@ -1309,6 +1363,8 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
         return arm7_cmn_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_SWI) == VAL_SWI) {
         return arm7_swi_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_SWAP) == VAL_SWAP) {
+        return arm7_swap_cond_tbl[(inst >> 28) & 0xf];
     }
 
     error_set_arm7_inst(inst);
