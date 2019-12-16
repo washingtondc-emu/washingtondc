@@ -197,6 +197,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_ADD (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_ADD (4 << 21)
 
+#define MASK_ADC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_ADC (5 << 21)
+
 #define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_SUB (2 << 21)
 
@@ -301,9 +304,12 @@ DEF_DATA_OP(cmn) {
     return 0xdeadbeef;
 }
 
-/* DEF_DATA_OP(adc) { */
-/*     return lhs + rhs + carry_in; */
-/* } */
+DEF_DATA_OP(adc) {
+    uint32_t val = add_flags(lhs, rhs, carry_in, c_out, v_out);
+    *n_out = val & (1 << 31);
+    *z_out = !val;
+    return val;
+}
 
 /* DEF_DATA_OP(sbc) { */
 /*     return (lhs - rhs) + (carry_in - 1); */
@@ -461,6 +467,7 @@ DEF_INST_FN(and, true, false, true)
 DEF_INST_FN(bic, true, false, true)
 DEF_INST_FN(mov, true, false, true)
 DEF_INST_FN(add, false, false, true)
+DEF_INST_FN(adc, false, false, true)
 DEF_INST_FN(sub, false, false, true)
 DEF_INST_FN(rsb, false, false, true)
 DEF_INST_FN(cmp, false, true, false)
@@ -1171,6 +1178,7 @@ DEF_DATA_OP_INST_ALL_CONDS(and, true, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(bic, true, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(mov, true, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(add, false, false, true)
+DEF_DATA_OP_INST_ALL_CONDS(adc, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(sub, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(rsb, false, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(cmp, false, true, false)
@@ -1224,6 +1232,7 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(bic);
     DEF_COND_TBL(mov);
     DEF_COND_TBL(add);
+    DEF_COND_TBL(adc);
     DEF_COND_TBL(sub);
     DEF_COND_TBL(rsb);
     DEF_COND_TBL(cmp);
@@ -1256,6 +1265,8 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
         return arm7_mov_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_ADD) == VAL_ADD) {
         return arm7_add_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_ADC) == VAL_ADC) {
+        return arm7_adc_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_SUB) == VAL_SUB) {
         return arm7_sub_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_RSB) == VAL_RSB) {
