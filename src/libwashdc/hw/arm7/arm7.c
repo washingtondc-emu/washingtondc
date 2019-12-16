@@ -184,6 +184,9 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MSR (BIT_RANGE(23, 27) | BIT_RANGE(4, 21))
 #define VAL_MSR  (0x0129f000)
 
+#define MASK_MSR_FLAGS (BIT_RANGE(12, 21) | BIT_RANGE(23, 24) | BIT_RANGE(26, 27))
+#define VAL_MSR_FLAGS ((0x28f << 12) | (2 << 23))
+
 // data processing opcodes
 #define MASK_ORR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_ORR (12 << 21)
@@ -1012,6 +1015,54 @@ DEF_MSR_INST(le)
 DEF_MSR_INST(al)
 DEF_MSR_INST(nv)
 
+/*
+ * MSR_FLAGS
+ * copy a register to CPSR (or SPSR), but only the N, Z, C and V bits.
+ * Execution mode does not change.
+ */
+#define DEF_MSR_FLAGS_INST(cond)                                    \
+    static unsigned                                                 \
+    arm7_inst_msr_flags_##cond(struct arm7 *arm7, arm7_inst inst) { \
+        EVAL_COND(cond);                                            \
+        bool immed = (inst >> 25) & 1;                              \
+        bool dst_psr = (1 << 22) & inst;                            \
+        if (!immed && (inst & BIT_RANGE(4, 11)))                    \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+                                                                    \
+        uint32_t val = immed ? decode_immed(inst) :                 \
+            *arm7_gen_reg(arm7, inst & 0xf);                        \
+                                                                    \
+        uint32_t *dst_p;                                            \
+        if (dst_psr)                                                \
+            dst_p = arm7->reg + arm7_spsr_idx(arm7);                \
+        else                                                        \
+            dst_p = arm7->reg + ARM7_REG_CPSR;                      \
+                                                                    \
+        *dst_p = ((*dst_p) & (~ARM7_CPSR_NZCV_MASK)) |              \
+            (val &ARM7_CPSR_NZCV_MASK);                             \
+                                                                    \
+cond_fail:                                                          \
+        next_inst(arm7);                                            \
+        return 1 * S_CYCLE;                                         \
+    }
+
+DEF_MSR_FLAGS_INST(eq)
+DEF_MSR_FLAGS_INST(ne)
+DEF_MSR_FLAGS_INST(cs)
+DEF_MSR_FLAGS_INST(cc)
+DEF_MSR_FLAGS_INST(mi)
+DEF_MSR_FLAGS_INST(pl)
+DEF_MSR_FLAGS_INST(vs)
+DEF_MSR_FLAGS_INST(vc)
+DEF_MSR_FLAGS_INST(hi)
+DEF_MSR_FLAGS_INST(ls)
+DEF_MSR_FLAGS_INST(ge)
+DEF_MSR_FLAGS_INST(lt)
+DEF_MSR_FLAGS_INST(gt)
+DEF_MSR_FLAGS_INST(le)
+DEF_MSR_FLAGS_INST(al)
+DEF_MSR_FLAGS_INST(nv)
+
 #ifdef INVARIANTS
 #define MUL_INVARIANTS_CHECK                                            \
     if ((BIT_RANGE(22, 27) & inst) || (((BIT_RANGE(4, 7) & inst) >> 4) != 9)) \
@@ -1300,6 +1351,7 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(block_xfer);
     DEF_COND_TBL(mrs);
     DEF_COND_TBL(msr);
+    DEF_COND_TBL(msr_flags);
     DEF_COND_TBL(mul);
     DEF_COND_TBL(orr);
     DEF_COND_TBL(eor);
@@ -1329,6 +1381,8 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
         return arm7_mrs_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_MSR) == VAL_MSR) {
         return arm7_msr_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_MSR_FLAGS) == VAL_MSR_FLAGS) {
+        return arm7_msr_flags_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_MUL) == VAL_MUL) {
         return arm7_mul_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_ORR) == VAL_ORR) {

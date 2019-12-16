@@ -73,6 +73,9 @@ static_assert(SCHED_FREQUENCY % (10 * 1000 * 1000) == 0,
 #define ARM7_CPSR_M_SHIFT 0
 #define ARM7_CPSR_M_MASK (0x1f << ARM7_CPSR_M_SHIFT)
 
+#define ARM7_CPSR_NZCV_MASK (ARM7_CPSR_N_MASK | ARM7_CPSR_Z_MASK |  \
+                             ARM7_CPSR_C_MASK | ARM7_CPSR_V_MASK)
+
 enum arm7_mode {
     ARM7_MODE_USER = (0x10 << ARM7_CPSR_M_SHIFT),
     ARM7_MODE_FIQ  = (0x11 << ARM7_CPSR_M_SHIFT),
