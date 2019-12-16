@@ -805,14 +805,6 @@ DEF_LDR_STR_INST(nv)
                 }                                                       \
             } else {                                                    \
                 /* store */                                             \
-                if (psr_user_force) {                                   \
-                    error_set_arm7_inst(inst);                          \
-                    error_set_feature("store instruction; load PSR "    \
-                                      "or force user mode;"             \
-                                      "applying offset before "         \
-                                      "advancing");                     \
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
-                }                                                       \
                 for (reg_no = 0; reg_no < 15; reg_no++)                 \
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
@@ -835,12 +827,6 @@ DEF_LDR_STR_INST(nv)
                 }                                                       \
             }                                                           \
         } else {                                                        \
-            if (psr_user_force) {                                       \
-                error_set_arm7_inst(inst);                              \
-                error_set_feature("load PSR or force user mode;"        \
-                                  "applying offset after advancing");   \
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
-            }                                                           \
             /* TODO: */                                                 \
             /* This transfers higher registers before lower */          \
             /* registers.  The spec says that lower registers must */   \
