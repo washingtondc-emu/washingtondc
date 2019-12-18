@@ -440,8 +440,6 @@ DEF_DATA_OP(bic) {
             input_2 = decode_immed(inst);                               \
         } else {                                                        \
             input_2 = decode_shift(arm7, inst, &c_out);                 \
-            if ((inst & (1 << 4)) && rn == 15)                          \
-                input_1 += 4;                                           \
         }                                                               \
                                                                         \
         uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
@@ -1559,6 +1557,8 @@ decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
 
     unsigned src_reg = inst & 0xf;
     uint32_t src_val = *arm7_gen_reg(arm7, src_reg);
+    if (amt_in_reg && src_reg == 15)
+        src_val += 4;
 
     return do_decode_shift(arm7, shift_fn, src_val, shift_amt, carry);
 }
