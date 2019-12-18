@@ -3590,11 +3590,12 @@ void sh4_inst_binary_shld_gen_gen(void *cpu, cpu_inst_param inst) {
     int32_t src = (int32_t)*srcp;
     uint32_t dst = (int32_t)*dstp;
 
-    if (src >= 0) {
-        dst <<= src;
-    } else {
-        dst >>= -src;
-    }
+    if (src >= 0)
+        dst <<= src & 0x1f;
+    else if (!(src & 0x1f))
+        dst = 0;
+    else
+        dst >>= ((~src) & 0x1f) + 1;
 
     *dstp = dst;
 }
