@@ -1468,12 +1468,16 @@ static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
         break;
     case 2:
         // arithmetic right-shift
-        if (shift_amt < 32) {
-            *carry = ((1 << (shift_amt - 1)) & src_val);
-            return ((int32_t)src_val) >> shift_amt;
+        if (shift_amt) {
+            if (shift_amt < 32) {
+                *carry = ((1 << (shift_amt - 1)) & src_val);
+                return ((int32_t)src_val) >> shift_amt;
+            } else {
+                *carry = (bool)((1 << 31) & src_val);
+                return *carry ? ~0 : 0;
+            }
         } else {
-            *carry = (bool)((1 << 31) & src_val);
-            return *carry ? ~0 : 0;
+            return src_val;
         }
         break;
     case 3:
