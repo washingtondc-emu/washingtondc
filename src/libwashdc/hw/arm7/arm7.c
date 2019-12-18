@@ -658,7 +658,9 @@ DEF_BRANCH_INST(nv)
                 addr += offs;                                           \
         }                                                               \
                                                                         \
-        if (writeback) {                                                \
+        /* ldr ignores writeback when rn == rd because the */           \
+        /* writeback happens before the load is complete */             \
+        if (writeback && (to_mem || rn != rd)) {                        \
             if (rn == 15)                                               \
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
             *arm7_gen_reg(arm7, rn) = addr;                             \
