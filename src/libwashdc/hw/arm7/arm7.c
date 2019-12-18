@@ -1435,28 +1435,47 @@ static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
         // logical left-shift
         if (shift_amt) {
             // LSL 0 doesn't effect the carry flag
-            if (shift_amt < 32)
+            if (shift_amt < 32) {
                 *carry = (bool)(1 << (31 - shift_amt + 1) & src_val);
-            else
+                return src_val << shift_amt;
+            } else if (shift_amt == 32) {
+                *carry = src_val & 1;
+                return 0;
+            } else {
                 *carry = false;
+                return 0;
+            }
+        } else {
+            return src_val;
         }
-        return src_val << shift_amt;
+        break;
     case 1:
         // logical right-shift
         if (shift_amt) {
-            if (shift_amt < 32)
+            if (shift_amt < 32) {
                 *carry = ((1 << (shift_amt - 1)) & src_val);
-            else
-                *carry = (1 << 31) & src_val;
+                return src_val >> shift_amt;
+            } else if (shift_amt == 32) {
+                *carry = (bool)((1 << 31) & src_val);
+                return 0;
+            } else {
+                *carry = false;
+                return 0;
+            }
+        } else {
+            return src_val;
         }
-        return src_val >> shift_amt;
+        break;
     case 2:
         // arithmetic right-shift
-        if (shift_amt < 32)
+        if (shift_amt < 32) {
             *carry = ((1 << (shift_amt - 1)) & src_val);
-        else
-            *carry = (1 << 31) & src_val;
-        return ((int32_t)src_val) >> shift_amt;
+            return ((int32_t)src_val) >> shift_amt;
+        } else {
+            *carry = (bool)((1 << 31) & src_val);
+            return *carry ? ~0 : 0;
+        }
+        break;
     case 3:
         // right-rotate
         ret_val = ror(src_val, shift_amt);
