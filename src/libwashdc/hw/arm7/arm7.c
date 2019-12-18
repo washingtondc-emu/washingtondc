@@ -1479,10 +1479,17 @@ static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
         }
         break;
     case 3:
-        // right-rotate
-        ret_val = ror(src_val, shift_amt);
-        *carry = (1 << 31) & ret_val;
-        return ret_val;
+        if (shift_amt) {
+            // right-rotate
+            ret_val = ror(src_val, shift_amt);
+            *carry = (1 << 31) & ret_val;
+            return ret_val;
+        } else {
+            // rotate right extend
+            uint32_t new_msb = *carry ? 0x80000000 : 0;
+            *carry = (bool)(src_val & 1);
+            return (src_val >> 1) | new_msb;
+        }
     }
 
     RAISE_ERROR(ERROR_INTEGRITY);
@@ -1500,11 +1507,12 @@ decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst, bool *carry) {
     } else {
         shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
         /*
-         * for all cases except logical left-shift, a shift of 0 is actually a
-         * shift of 32.
+         * for all cases except logical left-shift and ror, a shift of 0 is
+         * actually a shift of 32.
          */
-        if (!shift_amt && shift_fn)
+        if (!shift_amt && shift_fn && shift_fn != 3) {
             shift_amt = 32;
+        }
     }
 
     unsigned src_reg = inst & 0xf;
@@ -1541,11 +1549,12 @@ decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
         shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
 
         /*
-         * for all cases except logical left-shift, a shift of 0 is actually a
-         * shift of 32.
+         * for all cases except logical left-shift and ror, a shift of 0 is
+         * actually a shift of 32.
          */
-        if (!shift_amt && shift_fn)
+        if (!shift_amt && shift_fn && shift_fn != 3) {
             shift_amt = 32;
+        }
     }
 
     unsigned src_reg = inst & 0xf;
