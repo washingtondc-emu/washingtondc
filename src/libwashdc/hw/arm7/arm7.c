@@ -841,7 +841,18 @@ DEF_LDR_STR_INST(nv)
             /* like the one SH4 uses to communicate with PowerVR2's */  \
             /* Tile Accelerator. */                                     \
             if (load) {                                                 \
-                for (reg_no = 15; reg_no >= 0; reg_no--) {              \
+                if (reg_list & (1 << 15)) {                             \
+                    if (psr_user_force)                                 \
+                        arm7->reg[ARM7_REG_CPSR] =                      \
+                            arm7->reg[arm7_spsr_idx(arm7)];             \
+                    if (pre)                                            \
+                        base -= 4;                                      \
+                    arm7->reg[ARM7_REG_PC] =                            \
+                        memory_map_read_32(arm7->map, base);            \
+                    if (!pre)                                           \
+                        base -= 4;                                      \
+                }                                                       \
+                for (reg_no = 14; reg_no >= 0; reg_no--) {              \
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
                             base -= 4;                                  \
@@ -850,17 +861,6 @@ DEF_LDR_STR_INST(nv)
                         if (!pre)                                       \
                             base -= 4;                                  \
                     }                                                   \
-                }                                                       \
-                if (reg_list & (1 << 15)) {                             \
-                    if (psr_user_force)                                 \
-                        arm7->reg[ARM7_REG_CPSR] =                      \
-                            arm7->reg[arm7_spsr_idx(arm7)];             \
-                    if (pre)                                            \
-                        base += 4;                                      \
-                    arm7->reg[ARM7_REG_PC] =                            \
-                        memory_map_read_32(arm7->map, base);            \
-                    if (!pre)                                           \
-                        base += 4;                                      \
                 }                                                       \
             } else {                                                    \
                 if (reg_list & (1 << 15)) {                             \
