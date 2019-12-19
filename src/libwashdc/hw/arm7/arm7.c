@@ -69,6 +69,10 @@ static uint32_t decode_shift_ldr_str(struct arm7 *arm7,
 
 static void arm7_error_set_regs(void *argptr);
 
+static uint32_t
+decode_shift_by_immediate(struct arm7 *arm7, unsigned shift_fn,
+                          unsigned val_reg, unsigned shift_amt, bool *carry);
+
 static inline bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -1426,71 +1430,137 @@ static uint32_t decode_immed(arm7_inst inst) {
     return ror(imm, n_bits);
 }
 
-static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
-                                uint32_t src_val, unsigned shift_amt,
-                                bool *carry) {
+static uint32_t
+decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst, bool *carry) {
+    bool amt_in_reg = inst & (1 << 4);
+    unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
+
+    if (amt_in_reg) {
+        // Docs say this feature isn't available for load/store
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    return decode_shift_by_immediate(arm7, shift_fn, inst & 0xf,
+                                     (inst & BIT_RANGE(7, 11)) >> 7, carry);
+}
+
+/*
+ * decodes val_reg << shift_amt_reg, where "<<" is replaced by
+ * whatever shift function we're actually using.
+ */
+static uint32_t
+decode_shift_by_register(struct arm7 *arm7, unsigned shift_fn,
+                         unsigned val_reg, unsigned shift_amt_reg,
+                         bool *carry) {
+    if (shift_amt_reg == 15)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    unsigned shift_amt = *arm7_gen_reg(arm7, shift_amt_reg) & 0xff;
+
+    unsigned val_to_shift = *arm7_gen_reg(arm7, val_reg);
+    if (val_reg == 15)
+        val_to_shift += 4; // pipeline effects
+
+    if (shift_amt == 0)
+        return val_to_shift;
+
+    uint32_t ret_val;
+    switch (shift_fn) {
+    case 0:
+        // logical left shift
+        if (shift_amt < 32) {
+            *carry = (bool)((1 << (31 - shift_amt + 1)) & val_to_shift);
+            return val_to_shift << shift_amt;
+        } else if (shift_amt == 32) {
+            *carry = val_to_shift & 1;
+            return 0;
+        } else {
+            *carry = false;
+            return 0;
+        }
+    case 1:
+        // logical right shift
+        if (shift_amt < 32) {
+            *carry = ((1 << (shift_amt - 1)) & val_to_shift);
+            return val_to_shift >> shift_amt;
+        } else if (shift_amt == 32) {
+            *carry = (bool)((1 << 31) & val_to_shift);
+            return 0;
+        } else {
+            *carry = false;
+            return 0;
+        }
+    case 2:
+        // arithmetic right shift
+        if (shift_amt < 32) {
+            *carry = ((1 << (shift_amt - 1)) & val_to_shift);
+            return ((int32_t)val_to_shift) >> shift_amt;
+        } else {
+            *carry = (bool)((1 << 31) & val_to_shift);
+            return *carry ? ~0 : 0;
+        }
+    case 3:
+        // right-rotate
+        ret_val = ror(val_to_shift, shift_amt);
+        *carry = (1 << 31) & ret_val;
+        return ret_val;
+    }
+
+    RAISE_ERROR(ERROR_INTEGRITY);
+}
+
+static uint32_t
+decode_shift_by_immediate(struct arm7 *arm7, unsigned shift_fn,
+                          unsigned val_reg, unsigned shift_amt, bool *carry) {
+#ifdef INVARIANTS
+    // it comes from a 5-bit field in the instruction
+    if (shift_amt > 31)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    unsigned val_to_shift = *arm7_gen_reg(arm7, val_reg);
+    /* if (val_reg == 15) */
+    /*     val_to_shift += 4; // pipeline effects */
+
     uint32_t ret_val;
     switch (shift_fn) {
     case 0:
         // logical left-shift
         if (shift_amt) {
-            // LSL 0 doesn't effect the carry flag
-            if (shift_amt < 32) {
-                *carry = (bool)(1 << (31 - shift_amt + 1) & src_val);
-                return src_val << shift_amt;
-            } else if (shift_amt == 32) {
-                *carry = src_val & 1;
-                return 0;
-            } else {
-                *carry = false;
-                return 0;
-            }
+            *carry = (bool)((1 << (31 - shift_amt + 1)) & val_to_shift);
+            return val_to_shift << shift_amt;
         } else {
-            return src_val;
+            // carry flag is unaffected by LSL #0
+            return val_to_shift;
         }
-        break;
     case 1:
         // logical right-shift
         if (shift_amt) {
-            if (shift_amt < 32) {
-                *carry = ((1 << (shift_amt - 1)) & src_val);
-                return src_val >> shift_amt;
-            } else if (shift_amt == 32) {
-                *carry = (bool)((1 << 31) & src_val);
-                return 0;
-            } else {
-                *carry = false;
-                return 0;
-            }
+            *carry = ((1 << (shift_amt - 1)) & val_to_shift);
+            return val_to_shift >> shift_amt;
         } else {
-            return src_val;
+            *carry = (bool)((1 << 31) & val_to_shift);
+            return 0;
         }
-        break;
     case 2:
         // arithmetic right-shift
         if (shift_amt) {
-            if (shift_amt < 32) {
-                *carry = ((1 << (shift_amt - 1)) & src_val);
-                return ((int32_t)src_val) >> shift_amt;
-            } else {
-                *carry = (bool)((1 << 31) & src_val);
-                return *carry ? ~0 : 0;
-            }
+            *carry = ((1 << (shift_amt - 1)) & val_to_shift);
+            return ((int32_t)val_to_shift) >> shift_amt;
         } else {
-            return src_val;
+            *carry = (bool)((1 << 31) & val_to_shift);
+            return *carry ? ~0 : 0;
         }
-        break;
     case 3:
         if (shift_amt) {
             // right-rotate
-            ret_val = ror(src_val, shift_amt);
+            ret_val = ror(val_to_shift, shift_amt);
             *carry = (1 << 31) & ret_val;
             return ret_val;
         } else {
             // rotate right extend
             uint32_t new_msb = *carry ? 0x80000000 : 0;
-            *carry = (bool)(src_val & 1);
-            return (src_val >> 1) | new_msb;
+            *carry = (bool)(val_to_shift & 1);
+            return (val_to_shift >> 1) | new_msb;
         }
     }
 
@@ -1498,36 +1568,9 @@ static uint32_t do_decode_shift(struct arm7 *arm7, unsigned shift_fn,
 }
 
 static uint32_t
-decode_shift_ldr_str(struct arm7 *arm7, arm7_inst inst, bool *carry) {
-    bool amt_in_reg = inst & (1 << 4);
-    unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
-    uint32_t shift_amt;
-
-    if (amt_in_reg) {
-        // Docs say this feature isn't available for load/store
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    } else {
-        shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
-        /*
-         * for all cases except logical left-shift and ror, a shift of 0 is
-         * actually a shift of 32.
-         */
-        if (!shift_amt && shift_fn && shift_fn != 3) {
-            shift_amt = 32;
-        }
-    }
-
-    unsigned src_reg = inst & 0xf;
-    uint32_t src_val = *arm7_gen_reg(arm7, src_reg);
-
-    return do_decode_shift(arm7, shift_fn, src_val, shift_amt, carry);
-}
-
-static uint32_t
 decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
     bool amt_in_reg = inst & (1 << 4);
     unsigned shift_fn = (inst & BIT_RANGE(5, 6)) >> 5;
-    uint32_t shift_amt;
 
     /*
      * For all cases except logical left-shift, a shift of 0 is actually a
@@ -1543,28 +1586,12 @@ decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry) {
             RAISE_ERROR(ERROR_INTEGRITY);
         }
 
-        unsigned reg_no = (inst & BIT_RANGE(8, 11)) >> 8;
-        if (reg_no == 15)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        shift_amt = *arm7_gen_reg(arm7, reg_no) & 0xff;
+        return decode_shift_by_register(arm7, shift_fn, inst & 0xf,
+                                        (inst & BIT_RANGE(8, 11)) >> 8, carry);
     } else {
-        shift_amt = (inst & BIT_RANGE(7, 11)) >> 7;
-
-        /*
-         * for all cases except logical left-shift and ror, a shift of 0 is
-         * actually a shift of 32.
-         */
-        if (!shift_amt && shift_fn && shift_fn != 3) {
-            shift_amt = 32;
-        }
+        return decode_shift_by_immediate(arm7, shift_fn, inst & 0xf,
+                                         (inst & BIT_RANGE(7, 11)) >> 7, carry);
     }
-
-    unsigned src_reg = inst & 0xf;
-    uint32_t src_val = *arm7_gen_reg(arm7, src_reg);
-    if (amt_in_reg && src_reg == 15)
-        src_val += 4;
-
-    return do_decode_shift(arm7, shift_fn, src_val, shift_amt, carry);
 }
 
 static unsigned arm7_spsr_idx(struct arm7 *arm7) {
