@@ -1529,6 +1529,12 @@ static void sh4_unmapped_writedouble(uint32_t addr, double val, void *ctxt) {
 }
 
 static void sh4_unmapped_write32(uint32_t addr, uint32_t val, void *ctxt) {
+    /*
+     * XXX I think maybe these addresses are intended to go to the SH4 ocache
+     * ram since bits 0-28 of the addresses match up, but that doesn't seem
+     * right since the spec makes it pretty clear that the ocache ram area goes
+     * from 0x7c000000 to 0x7fffffff (ie the upper 3 bits should be important).
+     */
     if (((addr >> 16) == 0xbc2d) && !val) {
         /*
          * HACK - this memory region is off-limits according to SH-4 documentation.
