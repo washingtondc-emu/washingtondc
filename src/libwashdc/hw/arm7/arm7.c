@@ -73,6 +73,14 @@ static uint32_t
 decode_shift_by_immediate(struct arm7 *arm7, unsigned shift_fn,
                           unsigned val_reg, unsigned shift_amt, bool *carry);
 
+/*
+ * call this whenever writing to the M, I or F fields in cpsr.
+ * For NZCV, this doesn't really matter.
+ */
+static void arm7_cpsr_mode_change(struct arm7 *arm7, uint32_t new_val) {
+    arm7->reg[ARM7_REG_CPSR] = new_val;
+}
+
 static inline bool arm7_cond_eq(struct arm7 *arm7) {
     return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
 }
@@ -144,6 +152,7 @@ void arm7_init(struct arm7 *arm7,
     memset(arm7, 0, sizeof(*arm7));
     arm7->clk = clk;
     arm7->inst_mem = inst_mem;
+    arm7->reg[ARM7_REG_CPSR] = ARM7_MODE_SVC;
 
     arm7_error_callback.arg = arm7;
     arm7_error_callback.callback_fn = arm7_error_set_regs;
@@ -471,7 +480,7 @@ DEF_DATA_OP(bic) {
                                              c_flag | v_flag);          \
             }                                                           \
         } else if (s_flag && rd == 15) {                                \
-            arm7->reg[ARM7_REG_CPSR] = arm7->reg[arm7_spsr_idx(arm7)];  \
+            arm7_cpsr_mode_change(arm7, arm7->reg[arm7_spsr_idx(arm7)]);\
         } else if (require_s) {                                         \
             RAISE_ERROR(ERROR_INTEGRITY);                               \
         }                                                               \
@@ -798,8 +807,8 @@ DEF_LDR_STR_INST(nv)
                     }                                                   \
                 if (reg_list & (1 << 15)) {                             \
                     if (psr_user_force)                                 \
-                        arm7->reg[ARM7_REG_CPSR] =                      \
-                            arm7->reg[arm7_spsr_idx(arm7)];             \
+                        arm7_cpsr_mode_change(arm7,                     \
+                                              arm7->reg[arm7_spsr_idx(arm7)]); \
                     if (pre)                                            \
                         base += 4;                                      \
                     arm7->reg[ARM7_REG_PC] =                            \
@@ -843,8 +852,8 @@ DEF_LDR_STR_INST(nv)
             if (load) {                                                 \
                 if (reg_list & (1 << 15)) {                             \
                     if (psr_user_force)                                 \
-                        arm7->reg[ARM7_REG_CPSR] =                      \
-                            arm7->reg[arm7_spsr_idx(arm7)];             \
+                        arm7_cpsr_mode_change(arm7,                     \
+                                              arm7->reg[arm7_spsr_idx(arm7)]); \
                     if (pre)                                            \
                         base -= 4;                                      \
                     arm7->reg[ARM7_REG_PC] =                            \
@@ -974,14 +983,14 @@ DEF_MRS_INST(nv)
         EVAL_COND(cond);                                        \
         bool dst_psr = (1 << 22) & inst;                        \
                                                                 \
-        uint32_t *dst_p;                                        \
-        if (dst_psr)                                            \
-            dst_p = arm7->reg + arm7_spsr_idx(arm7);            \
-        else                                                    \
-            dst_p = arm7->reg + ARM7_REG_CPSR;                  \
-                                                                \
         unsigned src_reg = inst & 0xff;                         \
-        *dst_p = *arm7_gen_reg(arm7, src_reg);                  \
+        if (dst_psr) {                                          \
+            uint32_t *dst_p = arm7->reg + arm7_spsr_idx(arm7);  \
+            *dst_p = *arm7_gen_reg(arm7, src_reg);              \
+        } else {                                                \
+            arm7_cpsr_mode_change(arm7, *arm7_gen_reg(arm7, src_reg));\
+        }                                                       \
+                                                                \
                                                                 \
     cond_fail:                                                  \
         next_inst(arm7);                                        \
@@ -1199,7 +1208,7 @@ DEF_MUL_INST(nv)
                                              c_flag | v_flag);          \
             }                                                           \
         } else if (s_flag && rd == 15) {                                \
-            arm7->reg[ARM7_REG_CPSR] = arm7->reg[arm7_spsr_idx(arm7)];  \
+            arm7_cpsr_mode_change(arm7, arm7->reg[arm7_spsr_idx(arm7)]);\
         } else if (require_s) {                                         \
             RAISE_ERROR(ERROR_INTEGRITY);                               \
         }                                                               \
@@ -1744,8 +1753,9 @@ void arm7_excp_refresh(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
         arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0;
-        arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-            ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+        arm7_cpsr_mode_change(arm7, (cpsr & ~ARM7_CPSR_M_MASK) |
+                              ARM7_MODE_SVC | ARM7_CPSR_I_MASK |
+                              ARM7_CPSR_F_MASK);
         arm7_reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_RESET;
     } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
@@ -1753,8 +1763,9 @@ void arm7_excp_refresh(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0x1c;
         LOG_DBG("FIQ jump to 0x1c\n");
-        arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-            ARM7_MODE_FIQ | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+        arm7_cpsr_mode_change(arm7, (cpsr & ~ARM7_CPSR_M_MASK) |
+                              ARM7_MODE_FIQ | ARM7_CPSR_I_MASK |
+                              ARM7_CPSR_F_MASK);
         arm7_reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_FIQ;
     } else if (excp & ARM7_EXCP_SWI) {
@@ -1771,8 +1782,9 @@ void arm7_excp_refresh(struct arm7 *arm7) {
         arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
         arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
         arm7->reg[ARM7_REG_PC] = 0;
-        arm7->reg[ARM7_REG_CPSR] = (cpsr & ~ARM7_CPSR_M_MASK) |
-            ARM7_MODE_SVC | ARM7_CPSR_I_MASK | ARM7_CPSR_F_MASK;
+        arm7_cpsr_mode_change(arm7, (cpsr & ~ARM7_CPSR_M_MASK) |
+                              ARM7_MODE_SVC | ARM7_CPSR_I_MASK |
+                              ARM7_CPSR_F_MASK);
         arm7_reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_SWI;
     }
