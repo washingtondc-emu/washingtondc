@@ -119,6 +119,7 @@ struct arm7 {
     struct memory_map *map;
 
     uint32_t reg[ARM7_REGISTER_COUNT];
+    unsigned gpr_indices[16];
 
     unsigned extra_cycles;
 
@@ -165,56 +166,6 @@ void arm7_clear_fiq(struct arm7 *arm7);
 void arm7_excp_refresh(struct arm7 *arm7);
 
 ERROR_INT_ATTR(arm7_execution_mode);
-
-inline static uint32_t *
-arm7_gen_reg_bank(struct arm7 *arm7, unsigned reg, unsigned bank) {
-    unsigned idx_actual;
-
-    switch (bank) {
-    case ARM7_MODE_USER:
-        idx_actual = reg + ARM7_REG_R0;
-        break;
-    case ARM7_MODE_FIQ:
-        if (reg >= 8 && reg <= 14)
-            idx_actual = (reg - 8) + ARM7_REG_R8_FIQ;
-        else
-            idx_actual = reg + ARM7_REG_R0;
-        break;
-    case ARM7_MODE_IRQ:
-        if (reg >= 13 && reg <= 14)
-            idx_actual = (reg - 13) + ARM7_REG_R13_IRQ;
-        else
-            idx_actual = reg + ARM7_REG_R0;
-        break;
-    case ARM7_MODE_SVC:
-        if (reg >= 13 && reg <= 14)
-            idx_actual = (reg - 13) + ARM7_REG_R13_SVC;
-        else
-            idx_actual = reg + ARM7_REG_R0;
-        break;
-    case ARM7_MODE_ABT:
-        if (reg >= 13 && reg <= 14)
-            idx_actual = (reg - 13) + ARM7_REG_R13_ABT;
-        else
-            idx_actual = reg + ARM7_REG_R0;
-        break;
-    case ARM7_MODE_UND:
-        if (reg >= 13 && reg <= 14)
-            idx_actual = (reg - 13) + ARM7_REG_R13_UND;
-        else
-            idx_actual = reg + ARM7_REG_R0;
-        break;
-    default:
-        error_set_arm7_execution_mode(bank);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-
-    return arm7->reg + idx_actual;
-}
-
-inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
-    return arm7_gen_reg_bank(arm7, reg, arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK);
-}
 
 typedef unsigned(*arm7_op_fn)(struct arm7*,arm7_inst);
 arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst);

@@ -73,11 +73,178 @@ static uint32_t
 decode_shift_by_immediate(struct arm7 *arm7, unsigned shift_fn,
                           unsigned val_reg, unsigned shift_amt, bool *carry);
 
+static unsigned const arm7_reg_map_user[16] = {
+    ARM7_REG_R0,
+    ARM7_REG_R1,
+    ARM7_REG_R2,
+    ARM7_REG_R3,
+    ARM7_REG_R4,
+    ARM7_REG_R5,
+    ARM7_REG_R6,
+    ARM7_REG_R7,
+    ARM7_REG_R8,
+    ARM7_REG_R9,
+    ARM7_REG_R10,
+    ARM7_REG_R11,
+    ARM7_REG_R12,
+    ARM7_REG_R13,
+    ARM7_REG_R14,
+    ARM7_REG_R15
+};
+
+static unsigned const arm7_reg_map_fiq[16] = {
+    ARM7_REG_R0,
+    ARM7_REG_R1,
+    ARM7_REG_R2,
+    ARM7_REG_R3,
+    ARM7_REG_R4,
+    ARM7_REG_R5,
+    ARM7_REG_R6,
+    ARM7_REG_R7,
+    ARM7_REG_R8_FIQ,
+    ARM7_REG_R9_FIQ,
+    ARM7_REG_R10_FIQ,
+    ARM7_REG_R11_FIQ,
+    ARM7_REG_R12_FIQ,
+    ARM7_REG_R13_FIQ,
+    ARM7_REG_R14_FIQ,
+    ARM7_REG_R15
+};
+
+static unsigned const arm7_reg_map_irq[16] = {
+    ARM7_REG_R0,
+    ARM7_REG_R1,
+    ARM7_REG_R2,
+    ARM7_REG_R3,
+    ARM7_REG_R4,
+    ARM7_REG_R5,
+    ARM7_REG_R6,
+    ARM7_REG_R7,
+    ARM7_REG_R8,
+    ARM7_REG_R9,
+    ARM7_REG_R10,
+    ARM7_REG_R11,
+    ARM7_REG_R12,
+    ARM7_REG_R13_IRQ,
+    ARM7_REG_R14_IRQ,
+    ARM7_REG_R15
+};
+
+static unsigned const arm7_reg_map_svc[16] = {
+    ARM7_REG_R0,
+    ARM7_REG_R1,
+    ARM7_REG_R2,
+    ARM7_REG_R3,
+    ARM7_REG_R4,
+    ARM7_REG_R5,
+    ARM7_REG_R6,
+    ARM7_REG_R7,
+    ARM7_REG_R8,
+    ARM7_REG_R9,
+    ARM7_REG_R10,
+    ARM7_REG_R11,
+    ARM7_REG_R12,
+    ARM7_REG_R13_SVC,
+    ARM7_REG_R14_SVC,
+    ARM7_REG_R15
+};
+
+static unsigned const arm7_reg_map_abt[16] = {
+    ARM7_REG_R0,
+    ARM7_REG_R1,
+    ARM7_REG_R2,
+    ARM7_REG_R3,
+    ARM7_REG_R4,
+    ARM7_REG_R5,
+    ARM7_REG_R6,
+    ARM7_REG_R7,
+    ARM7_REG_R8,
+    ARM7_REG_R9,
+    ARM7_REG_R10,
+    ARM7_REG_R11,
+    ARM7_REG_R12,
+    ARM7_REG_R13_ABT,
+    ARM7_REG_R14_ABT,
+    ARM7_REG_R15
+};
+
+static unsigned const arm7_reg_map_und[16] = {
+    ARM7_REG_R0,
+    ARM7_REG_R1,
+    ARM7_REG_R2,
+    ARM7_REG_R3,
+    ARM7_REG_R4,
+    ARM7_REG_R5,
+    ARM7_REG_R6,
+    ARM7_REG_R7,
+    ARM7_REG_R8,
+    ARM7_REG_R9,
+    ARM7_REG_R10,
+    ARM7_REG_R11,
+    ARM7_REG_R12,
+    ARM7_REG_R13_UND,
+    ARM7_REG_R14_UND,
+    ARM7_REG_R15
+};
+
+inline static uint32_t *
+arm7_gen_reg_bank(struct arm7 *arm7, unsigned reg, unsigned bank) {
+    switch (bank) {
+    case ARM7_MODE_USER:
+        return arm7->reg + arm7_reg_map_user[reg];
+    case ARM7_MODE_FIQ:
+        return arm7->reg + arm7_reg_map_fiq[reg];
+    case ARM7_MODE_IRQ:
+        return arm7->reg + arm7_reg_map_irq[reg];
+    case ARM7_MODE_SVC:
+        return arm7->reg + arm7_reg_map_svc[reg];
+    case ARM7_MODE_ABT:
+        return arm7->reg + arm7_reg_map_abt[reg];
+    case ARM7_MODE_UND:
+        return arm7->reg + arm7_reg_map_und[reg];
+    default:
+        error_set_arm7_execution_mode(bank);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
+    return arm7->reg + arm7->gpr_indices[reg];
+}
+
 /*
  * call this whenever writing to the M, I or F fields in cpsr.
  * For NZCV, this doesn't really matter.
  */
 static void arm7_cpsr_mode_change(struct arm7 *arm7, uint32_t new_val) {
+    switch (new_val & ARM7_CPSR_M_MASK) {
+    case ARM7_MODE_USER:
+        memcpy(arm7->gpr_indices, arm7_reg_map_user,
+               sizeof(arm7->gpr_indices));
+        break;
+    case ARM7_MODE_FIQ:
+        memcpy(arm7->gpr_indices, arm7_reg_map_fiq,
+               sizeof(arm7->gpr_indices));
+        break;
+    case ARM7_MODE_IRQ:
+        memcpy(arm7->gpr_indices, arm7_reg_map_irq,
+               sizeof(arm7->gpr_indices));
+        break;
+    case ARM7_MODE_SVC:
+        memcpy(arm7->gpr_indices, arm7_reg_map_svc,
+               sizeof(arm7->gpr_indices));
+        break;
+    case ARM7_MODE_ABT:
+        memcpy(arm7->gpr_indices, arm7_reg_map_abt,
+               sizeof(arm7->gpr_indices));
+        break;
+    case ARM7_MODE_UND:
+        memcpy(arm7->gpr_indices, arm7_reg_map_und,
+               sizeof(arm7->gpr_indices));
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
     arm7->reg[ARM7_REG_CPSR] = new_val;
 }
 
@@ -153,6 +320,8 @@ void arm7_init(struct arm7 *arm7,
     arm7->clk = clk;
     arm7->inst_mem = inst_mem;
     arm7->reg[ARM7_REG_CPSR] = ARM7_MODE_SVC;
+    memcpy(arm7->gpr_indices, arm7_reg_map_svc,
+           sizeof(arm7->gpr_indices));
 
     arm7_error_callback.arg = arm7;
     arm7_error_callback.callback_fn = arm7_error_set_regs;
