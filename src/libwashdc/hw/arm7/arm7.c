@@ -188,24 +188,8 @@ static unsigned const arm7_reg_map_und[16] = {
 };
 
 inline static uint32_t *
-arm7_gen_reg_bank(struct arm7 *arm7, unsigned reg, unsigned bank) {
-    switch (bank) {
-    case ARM7_MODE_USER:
-        return arm7->reg + arm7_reg_map_user[reg];
-    case ARM7_MODE_FIQ:
-        return arm7->reg + arm7_reg_map_fiq[reg];
-    case ARM7_MODE_IRQ:
-        return arm7->reg + arm7_reg_map_irq[reg];
-    case ARM7_MODE_SVC:
-        return arm7->reg + arm7_reg_map_svc[reg];
-    case ARM7_MODE_ABT:
-        return arm7->reg + arm7_reg_map_abt[reg];
-    case ARM7_MODE_UND:
-        return arm7->reg + arm7_reg_map_und[reg];
-    default:
-        error_set_arm7_execution_mode(bank);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+arm7_gen_reg_user(struct arm7 *arm7, unsigned reg) {
+    return arm7->reg + arm7_reg_map_user[reg];
 }
 
 inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
@@ -969,8 +953,13 @@ DEF_LDR_STR_INST(nv)
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
                             base += 4;                                  \
-                        *arm7_gen_reg_bank(arm7, reg_no, bank) =        \
-                            memory_map_read_32(arm7->map, base);        \
+                        if (bank == ARM7_MODE_USER) {                   \
+                            *arm7_gen_reg_user(arm7, reg_no) =          \
+                                memory_map_read_32(arm7->map, base);    \
+                        } else {                                        \
+                            *arm7_gen_reg(arm7, reg_no) =               \
+                                memory_map_read_32(arm7->map, base);    \
+                        }                                               \
                         if (!pre)                                       \
                             base += 4;                                  \
                     }                                                   \
@@ -991,10 +980,15 @@ DEF_LDR_STR_INST(nv)
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
                             base += 4;                                  \
-                        memory_map_write_32(arm7->map, base,            \
-                                            *arm7_gen_reg_bank(arm7,    \
-                                                               reg_no,  \
-                                                               bank));  \
+                        if (bank == ARM7_MODE_USER) {                   \
+                            memory_map_write_32(arm7->map, base,        \
+                                                *arm7_gen_reg_user(arm7, \
+                                                                   reg_no)); \
+                        } else {                                        \
+                            memory_map_write_32(arm7->map, base,        \
+                                                *arm7_gen_reg(arm7,     \
+                                                              reg_no)); \
+                        }                                               \
                         if (!pre)                                       \
                             base += 4;                                  \
                     }                                                   \
@@ -1034,8 +1028,13 @@ DEF_LDR_STR_INST(nv)
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
                             base -= 4;                                  \
-                        *arm7_gen_reg_bank(arm7, reg_no, bank) =        \
-                            memory_map_read_32(arm7->map, base);        \
+                        if (bank == ARM7_MODE_USER) {                   \
+                            *arm7_gen_reg_user(arm7, reg_no) =          \
+                                memory_map_read_32(arm7->map, base);    \
+                        } else {                                        \
+                            *arm7_gen_reg(arm7, reg_no) =               \
+                                memory_map_read_32(arm7->map, base);    \
+                        }                                               \
                         if (!pre)                                       \
                             base -= 4;                                  \
                     }                                                   \
@@ -1056,10 +1055,15 @@ DEF_LDR_STR_INST(nv)
                     if (reg_list & (1 << reg_no)) {                     \
                         if (pre)                                        \
                             base -= 4;                                  \
-                        memory_map_write_32(arm7->map, base,            \
-                                            *arm7_gen_reg_bank(arm7,    \
-                                                               reg_no,  \
-                                                               bank));  \
+                        if (bank == ARM7_MODE_USER) {                   \
+                            memory_map_write_32(arm7->map, base,        \
+                                                *arm7_gen_reg_user(arm7, \
+                                                                   reg_no)); \
+                        } else {                                        \
+                            memory_map_write_32(arm7->map, base,        \
+                                                *arm7_gen_reg(arm7,     \
+                                                              reg_no)); \
+                        }                                               \
                         if (!pre)                                       \
                             base -= 4;                                  \
                     }                                                   \
