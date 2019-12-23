@@ -73,127 +73,68 @@ static uint32_t
 decode_shift_by_immediate(struct arm7 *arm7, unsigned shift_fn,
                           unsigned val_reg, unsigned shift_amt, bool *carry);
 
-static unsigned const arm7_reg_map_user[16] = {
-    ARM7_REG_R0,
-    ARM7_REG_R1,
-    ARM7_REG_R2,
-    ARM7_REG_R3,
-    ARM7_REG_R4,
-    ARM7_REG_R5,
-    ARM7_REG_R6,
-    ARM7_REG_R7,
-    ARM7_REG_R8,
-    ARM7_REG_R9,
-    ARM7_REG_R10,
-    ARM7_REG_R11,
-    ARM7_REG_R12,
-    ARM7_REG_R13,
-    ARM7_REG_R14,
-    ARM7_REG_R15
-};
-
-static unsigned const arm7_reg_map_fiq[16] = {
-    ARM7_REG_R0,
-    ARM7_REG_R1,
-    ARM7_REG_R2,
-    ARM7_REG_R3,
-    ARM7_REG_R4,
-    ARM7_REG_R5,
-    ARM7_REG_R6,
-    ARM7_REG_R7,
-    ARM7_REG_R8_FIQ,
-    ARM7_REG_R9_FIQ,
-    ARM7_REG_R10_FIQ,
-    ARM7_REG_R11_FIQ,
-    ARM7_REG_R12_FIQ,
-    ARM7_REG_R13_FIQ,
-    ARM7_REG_R14_FIQ,
-    ARM7_REG_R15
-};
-
-static unsigned const arm7_reg_map_irq[16] = {
-    ARM7_REG_R0,
-    ARM7_REG_R1,
-    ARM7_REG_R2,
-    ARM7_REG_R3,
-    ARM7_REG_R4,
-    ARM7_REG_R5,
-    ARM7_REG_R6,
-    ARM7_REG_R7,
-    ARM7_REG_R8,
-    ARM7_REG_R9,
-    ARM7_REG_R10,
-    ARM7_REG_R11,
-    ARM7_REG_R12,
-    ARM7_REG_R13_IRQ,
-    ARM7_REG_R14_IRQ,
-    ARM7_REG_R15
-};
-
-static unsigned const arm7_reg_map_svc[16] = {
-    ARM7_REG_R0,
-    ARM7_REG_R1,
-    ARM7_REG_R2,
-    ARM7_REG_R3,
-    ARM7_REG_R4,
-    ARM7_REG_R5,
-    ARM7_REG_R6,
-    ARM7_REG_R7,
-    ARM7_REG_R8,
-    ARM7_REG_R9,
-    ARM7_REG_R10,
-    ARM7_REG_R11,
-    ARM7_REG_R12,
-    ARM7_REG_R13_SVC,
-    ARM7_REG_R14_SVC,
-    ARM7_REG_R15
-};
-
-static unsigned const arm7_reg_map_abt[16] = {
-    ARM7_REG_R0,
-    ARM7_REG_R1,
-    ARM7_REG_R2,
-    ARM7_REG_R3,
-    ARM7_REG_R4,
-    ARM7_REG_R5,
-    ARM7_REG_R6,
-    ARM7_REG_R7,
-    ARM7_REG_R8,
-    ARM7_REG_R9,
-    ARM7_REG_R10,
-    ARM7_REG_R11,
-    ARM7_REG_R12,
-    ARM7_REG_R13_ABT,
-    ARM7_REG_R14_ABT,
-    ARM7_REG_R15
-};
-
-static unsigned const arm7_reg_map_und[16] = {
-    ARM7_REG_R0,
-    ARM7_REG_R1,
-    ARM7_REG_R2,
-    ARM7_REG_R3,
-    ARM7_REG_R4,
-    ARM7_REG_R5,
-    ARM7_REG_R6,
-    ARM7_REG_R7,
-    ARM7_REG_R8,
-    ARM7_REG_R9,
-    ARM7_REG_R10,
-    ARM7_REG_R11,
-    ARM7_REG_R12,
-    ARM7_REG_R13_UND,
-    ARM7_REG_R14_UND,
-    ARM7_REG_R15
-};
-
 inline static uint32_t *
-arm7_gen_reg_user(struct arm7 *arm7, unsigned reg) {
-    return arm7->reg + arm7_reg_map_user[reg];
+arm7_gen_reg_bank(struct arm7 *arm7, unsigned reg, unsigned bank) {
+    unsigned curmode = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK;
+    if (curmode == bank)
+        return arm7->reg + ARM7_REG_R0;
+
+    switch (bank) {
+    case ARM7_MODE_USER:
+        if (curmode == ARM7_MODE_FIQ) {
+            if (reg < 8 || reg == 15)
+                return arm7->reg + ARM7_REG_R0 + reg;
+            else
+                return arm7->reg + ARM7_REG_R8_BANK + (reg - 8);
+        } else {
+            if (reg != 13 && reg != 14)
+                return arm7->reg + ARM7_REG_R0 + reg;
+            else
+                return arm7->reg + ARM7_REG_R8_BANK + (reg - 8);
+        }
+    case ARM7_MODE_FIQ:
+        if (reg >= 8 && reg <= 14)
+            return arm7->reg + ARM7_REG_R8_FIQ + (reg - 8);
+        else
+            return arm7->reg + ARM7_REG_R0 + reg;
+    case ARM7_MODE_IRQ:
+        if (reg == 13 || reg == 14) {
+            return arm7->reg + ARM7_REG_R13_IRQ + (reg - 13);
+        } else if (curmode == ARM7_MODE_FIQ && (reg >= 8 && reg <= 14)) {
+            return arm7->reg + ARM7_REG_R8_BANK + (reg - 8);
+        } else {
+            return arm7->reg + ARM7_REG_R0 + reg;
+        }
+    case ARM7_MODE_SVC:
+        if (reg == 13 || reg == 14) {
+            return arm7->reg + ARM7_REG_R13_SVC + (reg - 13);
+        } else if (curmode == ARM7_MODE_FIQ && (reg >= 8 && reg <= 14)) {
+            return arm7->reg + ARM7_REG_R8_BANK + (reg - 8);
+        } else {
+            return arm7->reg + ARM7_REG_R0 + reg;
+        }
+   case ARM7_MODE_ABT:
+        if (reg == 13 || reg == 14) {
+            return arm7->reg + ARM7_REG_R13_ABT + (reg - 13);
+        } else if (curmode == ARM7_MODE_FIQ && (reg >= 8 && reg <= 14)) {
+            return arm7->reg + ARM7_REG_R8_BANK + (reg - 8);
+        } else {
+            return arm7->reg + ARM7_REG_R0 + reg;
+        }
+    case ARM7_MODE_UND:
+        if (reg == 13 || reg == 14) {
+            return arm7->reg + ARM7_REG_R13_UND + (reg - 13);
+        } else if (curmode == ARM7_MODE_FIQ && (reg >= 8 && reg <= 14)) {
+            return arm7->reg + ARM7_REG_R8_BANK + (reg - 8);
+        } else {
+            return arm7->reg + ARM7_REG_R0 + reg;
+        }
+    }
+    RAISE_ERROR(ERROR_INTEGRITY);
 }
 
 inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
-    return arm7->reg + arm7->gpr_indices[reg];
+    return arm7->reg + reg + ARM7_REG_R0;
 }
 
 /*
@@ -201,34 +142,92 @@ inline static uint32_t *arm7_gen_reg(struct arm7 *arm7, unsigned reg) {
  * For NZCV, this doesn't really matter.
  */
 static void arm7_cpsr_mode_change(struct arm7 *arm7, uint32_t new_val) {
-    switch (new_val & ARM7_CPSR_M_MASK) {
+    unsigned new_mode = new_val & ARM7_CPSR_M_MASK;
+    unsigned old_mode = arm7->reg[ARM7_REG_CPSR] &
+        ARM7_CPSR_M_MASK;
+
+    if (new_mode == old_mode)
+        goto the_end;
+
+    switch (old_mode) {
     case ARM7_MODE_USER:
-        memcpy(arm7->gpr_indices, arm7_reg_map_user,
-               sizeof(arm7->gpr_indices));
         break;
     case ARM7_MODE_FIQ:
-        memcpy(arm7->gpr_indices, arm7_reg_map_fiq,
-               sizeof(arm7->gpr_indices));
+        memcpy(arm7->reg + ARM7_REG_R8_FIQ,
+               arm7->reg + ARM7_REG_R8, sizeof(uint32_t) * 7);
+        memcpy(arm7->reg + ARM7_REG_R8,
+               arm7->reg + ARM7_REG_R8_BANK, sizeof(uint32_t) * 7);
         break;
     case ARM7_MODE_IRQ:
-        memcpy(arm7->gpr_indices, arm7_reg_map_irq,
-               sizeof(arm7->gpr_indices));
+        memcpy(arm7->reg + ARM7_REG_R13_IRQ,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_BANK,
+               sizeof(uint32_t) * 2);
         break;
     case ARM7_MODE_SVC:
-        memcpy(arm7->gpr_indices, arm7_reg_map_svc,
-               sizeof(arm7->gpr_indices));
-        break;
-    case ARM7_MODE_ABT:
-        memcpy(arm7->gpr_indices, arm7_reg_map_abt,
-               sizeof(arm7->gpr_indices));
+        memcpy(arm7->reg + ARM7_REG_R13_SVC,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_BANK,
+               sizeof(uint32_t) * 2);
         break;
     case ARM7_MODE_UND:
-        memcpy(arm7->gpr_indices, arm7_reg_map_und,
-               sizeof(arm7->gpr_indices));
+        memcpy(arm7->reg + ARM7_REG_R13_UND,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_BANK,
+               sizeof(uint32_t) * 2);
+        break;
+    case ARM7_MODE_ABT:
+        memcpy(arm7->reg + ARM7_REG_R13_ABT,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_BANK,
+               sizeof(uint32_t) * 2);
         break;
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
     }
+
+    switch (new_mode) {
+    case ARM7_MODE_USER:
+        break;
+    case ARM7_MODE_FIQ:
+        memcpy(arm7->reg + ARM7_REG_R8_BANK,
+               arm7->reg + ARM7_REG_R8, sizeof(uint32_t) * 7);
+        memcpy(arm7->reg + ARM7_REG_R8,
+               arm7->reg + ARM7_REG_R8_FIQ, sizeof(uint32_t) * 7);
+        break;
+    case ARM7_MODE_IRQ:
+        memcpy(arm7->reg + ARM7_REG_R13_BANK,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_IRQ, sizeof(uint32_t) * 2);
+        break;
+    case ARM7_MODE_SVC:
+        memcpy(arm7->reg + ARM7_REG_R13_BANK,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_SVC, sizeof(uint32_t) * 2);
+        break;
+    case ARM7_MODE_ABT:
+        memcpy(arm7->reg + ARM7_REG_R13_BANK,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_ABT, sizeof(uint32_t) * 2);
+        break;
+    case ARM7_MODE_UND:
+        memcpy(arm7->reg + ARM7_REG_R13_BANK,
+               arm7->reg + ARM7_REG_R13, sizeof(uint32_t) * 2);
+        memcpy(arm7->reg + ARM7_REG_R13,
+               arm7->reg + ARM7_REG_R13_UND, sizeof(uint32_t) * 2);
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+ the_end:
     arm7->reg[ARM7_REG_CPSR] = new_val;
 }
 
@@ -304,8 +303,6 @@ void arm7_init(struct arm7 *arm7,
     arm7->clk = clk;
     arm7->inst_mem = inst_mem;
     arm7->reg[ARM7_REG_CPSR] = ARM7_MODE_SVC;
-    memcpy(arm7->gpr_indices, arm7_reg_map_svc,
-           sizeof(arm7->gpr_indices));
 
     arm7_error_callback.arg = arm7;
     arm7_error_callback.callback_fn = arm7_error_set_regs;
@@ -857,6 +854,23 @@ DEF_LDR_STR_INST(le)
 DEF_LDR_STR_INST(al)
 DEF_LDR_STR_INST(nv)
 
+#ifdef INVARIANTS
+#define BASEPTR_SANITY_OPEN do {                                    \
+    uint32_t baseptr_orig = *baseptr
+
+#define BASEPTR_SANITY_CLOSE                                            \
+    if (baseptr_orig != *baseptr) {                                     \
+        LOG_ERROR("mode change %08X to %08X\n",                         \
+                  oldmode,                                              \
+                  (unsigned)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK)); \
+        RAISE_ERROR(ERROR_INTEGRITY);                                   \
+    }} while (0)
+
+#else
+#define BASEPTR_SANITY_OPEN do {
+#define BASEPTR_SANITY_CLOSE } while (0)
+#endif
+
 #define DEF_BLOCK_XFER_INST(cond)                                       \
     static unsigned                                                     \
     arm7_inst_block_xfer_##cond(struct arm7 *arm7, arm7_inst inst) {    \
@@ -954,7 +968,8 @@ DEF_LDR_STR_INST(nv)
                         if (pre)                                        \
                             base += 4;                                  \
                         if (bank == ARM7_MODE_USER) {                   \
-                            *arm7_gen_reg_user(arm7, reg_no) =          \
+                            *arm7_gen_reg_bank(arm7, reg_no,            \
+                                               ARM7_MODE_USER) =        \
                                 memory_map_read_32(arm7->map, base);    \
                         } else {                                        \
                             *arm7_gen_reg(arm7, reg_no) =               \
@@ -964,9 +979,15 @@ DEF_LDR_STR_INST(nv)
                             base += 4;                                  \
                     }                                                   \
                 if (reg_list & (1 << 15)) {                             \
-                    if (psr_user_force)                                 \
+                    if (psr_user_force) {                               \
+                        BASEPTR_SANITY_OPEN;                            \
+                        unsigned oldmode =                              \
+                            arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK; \
                         arm7_cpsr_mode_change(arm7,                     \
                                               arm7->reg[arm7_spsr_idx(arm7)]); \
+                        baseptr = arm7_gen_reg_bank(arm7, rn, oldmode); \
+                        BASEPTR_SANITY_CLOSE;                           \
+                    }                                                   \
                     if (pre)                                            \
                         base += 4;                                      \
                     arm7->reg[ARM7_REG_PC] =                            \
@@ -982,8 +1003,9 @@ DEF_LDR_STR_INST(nv)
                             base += 4;                                  \
                         if (bank == ARM7_MODE_USER) {                   \
                             memory_map_write_32(arm7->map, base,        \
-                                                *arm7_gen_reg_user(arm7, \
-                                                                   reg_no)); \
+                                *arm7_gen_reg_bank(arm7,                \
+                                reg_no,                                 \
+                                ARM7_MODE_USER));                       \
                         } else {                                        \
                             memory_map_write_32(arm7->map, base,        \
                                                 *arm7_gen_reg(arm7,     \
@@ -1014,9 +1036,15 @@ DEF_LDR_STR_INST(nv)
             /* Tile Accelerator. */                                     \
             if (load) {                                                 \
                 if (reg_list & (1 << 15)) {                             \
-                    if (psr_user_force)                                 \
+                    if (psr_user_force) {                               \
+                        BASEPTR_SANITY_OPEN;                            \
+                        unsigned oldmode =                              \
+                            arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK; \
                         arm7_cpsr_mode_change(arm7,                     \
                                               arm7->reg[arm7_spsr_idx(arm7)]); \
+                        baseptr = arm7_gen_reg_bank(arm7, rn, oldmode); \
+                        BASEPTR_SANITY_CLOSE;                           \
+                    }                                                   \
                     if (pre)                                            \
                         base -= 4;                                      \
                     arm7->reg[ARM7_REG_PC] =                            \
@@ -1029,7 +1057,7 @@ DEF_LDR_STR_INST(nv)
                         if (pre)                                        \
                             base -= 4;                                  \
                         if (bank == ARM7_MODE_USER) {                   \
-                            *arm7_gen_reg_user(arm7, reg_no) =          \
+                            *arm7_gen_reg_bank(arm7, reg_no, ARM7_MODE_USER) = \
                                 memory_map_read_32(arm7->map, base);    \
                         } else {                                        \
                             *arm7_gen_reg(arm7, reg_no) =               \
@@ -1057,8 +1085,9 @@ DEF_LDR_STR_INST(nv)
                             base -= 4;                                  \
                         if (bank == ARM7_MODE_USER) {                   \
                             memory_map_write_32(arm7->map, base,        \
-                                                *arm7_gen_reg_user(arm7, \
-                                                                   reg_no)); \
+                                                *arm7_gen_reg_bank(arm7, \
+                                                                   reg_no, \
+                                                                   ARM7_MODE_USER)); \
                         } else {                                        \
                             memory_map_write_32(arm7->map, base,        \
                                                 *arm7_gen_reg(arm7,     \
@@ -1802,6 +1831,31 @@ void arm7_get_regs(struct arm7 *arm7, void *dat_out) {
         memcpy(((char*)dat_out) + (reg_no + ARM7_REG_R0) * sizeof(uint32_t),
                arm7_gen_reg(arm7, reg_no), sizeof(uint32_t));
     }
+    for (reg_no = 8; reg_no <= 14; reg_no++) {
+        memcpy(((char*)dat_out) + ((reg_no - 8) + ARM7_REG_R8_FIQ) * sizeof(uint32_t),
+               arm7_gen_reg_bank(arm7, reg_no, ARM7_MODE_FIQ),
+               sizeof(uint32_t));
+    }
+    for (reg_no = 13; reg_no <= 14; reg_no++) {
+        memcpy(((char*)dat_out) + ((reg_no - 13) + ARM7_REG_R13_SVC) * sizeof(uint32_t),
+               arm7_gen_reg_bank(arm7, reg_no, ARM7_MODE_SVC),
+               sizeof(uint32_t));
+    }
+    for (reg_no = 13; reg_no <= 14; reg_no++) {
+        memcpy(((char*)dat_out) + ((reg_no - 13) + ARM7_REG_R13_ABT) * sizeof(uint32_t),
+               arm7_gen_reg_bank(arm7, reg_no, ARM7_MODE_ABT),
+               sizeof(uint32_t));
+    }
+    for (reg_no = 13; reg_no <= 14; reg_no++) {
+        memcpy(((char*)dat_out) + ((reg_no - 13) + ARM7_REG_R13_IRQ) * sizeof(uint32_t),
+               arm7_gen_reg_bank(arm7, reg_no, ARM7_MODE_IRQ),
+               sizeof(uint32_t));
+    }
+    for (reg_no = 13; reg_no <= 14; reg_no++) {
+        memcpy(((char*)dat_out) + ((reg_no - 13) + ARM7_REG_R13_UND) * sizeof(uint32_t),
+               arm7_gen_reg_bank(arm7, reg_no, ARM7_MODE_UND),
+               sizeof(uint32_t));
+    }
 }
 
 static DEF_ERROR_U32_ATTR(arm7_reg_r0)
@@ -1851,41 +1905,41 @@ static DEF_ERROR_U32_ATTR(arm7_reg_spsr_und)
 static void arm7_error_set_regs(void *argptr) {
     struct arm7 *arm7 = (struct arm7*)argptr;
 
-    error_set_arm7_reg_r0(arm7->reg[ARM7_REG_R0]);
-    error_set_arm7_reg_r1(arm7->reg[ARM7_REG_R1]);
-    error_set_arm7_reg_r2(arm7->reg[ARM7_REG_R2]);
-    error_set_arm7_reg_r3(arm7->reg[ARM7_REG_R3]);
-    error_set_arm7_reg_r4(arm7->reg[ARM7_REG_R4]);
-    error_set_arm7_reg_r5(arm7->reg[ARM7_REG_R5]);
-    error_set_arm7_reg_r6(arm7->reg[ARM7_REG_R6]);
-    error_set_arm7_reg_r7(arm7->reg[ARM7_REG_R7]);
-    error_set_arm7_reg_r8(arm7->reg[ARM7_REG_R8]);
-    error_set_arm7_reg_r9(arm7->reg[ARM7_REG_R9]);
-    error_set_arm7_reg_r10(arm7->reg[ARM7_REG_R10]);
-    error_set_arm7_reg_r11(arm7->reg[ARM7_REG_R11]);
-    error_set_arm7_reg_r12(arm7->reg[ARM7_REG_R12]);
-    error_set_arm7_reg_r13(arm7->reg[ARM7_REG_R13]);
-    error_set_arm7_reg_r14(arm7->reg[ARM7_REG_R14]);
-    error_set_arm7_reg_r15(arm7->reg[ARM7_REG_R15]);
+    error_set_arm7_reg_r0(*arm7_gen_reg(arm7, 0));
+    error_set_arm7_reg_r1(*arm7_gen_reg(arm7, 1));
+    error_set_arm7_reg_r2(*arm7_gen_reg(arm7, 2));
+    error_set_arm7_reg_r3(*arm7_gen_reg(arm7, 3));
+    error_set_arm7_reg_r4(*arm7_gen_reg(arm7, 4));
+    error_set_arm7_reg_r5(*arm7_gen_reg(arm7, 5));
+    error_set_arm7_reg_r6(*arm7_gen_reg(arm7, 6));
+    error_set_arm7_reg_r7(*arm7_gen_reg(arm7, 7));
+    error_set_arm7_reg_r8(*arm7_gen_reg(arm7, 8));
+    error_set_arm7_reg_r9(*arm7_gen_reg(arm7, 9));
+    error_set_arm7_reg_r10(*arm7_gen_reg(arm7, 10));
+    error_set_arm7_reg_r11(*arm7_gen_reg(arm7, 11));
+    error_set_arm7_reg_r12(*arm7_gen_reg(arm7, 12));
+    error_set_arm7_reg_r13(*arm7_gen_reg(arm7, 13));
+    error_set_arm7_reg_r14(*arm7_gen_reg(arm7, 14));
+    error_set_arm7_reg_r15(*arm7_gen_reg(arm7, 15));
 
     // putting this here even though it's just an alias for r15
     error_set_arm7_reg_pc(arm7->reg[ARM7_REG_PC]);
 
-    error_set_arm7_reg_r8_fiq(arm7->reg[ARM7_REG_R8_FIQ]);
-    error_set_arm7_reg_r9_fiq(arm7->reg[ARM7_REG_R9_FIQ]);
-    error_set_arm7_reg_r10_fiq(arm7->reg[ARM7_REG_R10_FIQ]);
-    error_set_arm7_reg_r11_fiq(arm7->reg[ARM7_REG_R11_FIQ]);
-    error_set_arm7_reg_r12_fiq(arm7->reg[ARM7_REG_R12_FIQ]);
-    error_set_arm7_reg_r13_fiq(arm7->reg[ARM7_REG_R13_FIQ]);
-    error_set_arm7_reg_r14_fiq(arm7->reg[ARM7_REG_R14_FIQ]);
-    error_set_arm7_reg_r13_svc(arm7->reg[ARM7_REG_R13_SVC]);
-    error_set_arm7_reg_r14_svc(arm7->reg[ARM7_REG_R14_SVC]);
-    error_set_arm7_reg_r13_abt(arm7->reg[ARM7_REG_R13_ABT]);
-    error_set_arm7_reg_r14_abt(arm7->reg[ARM7_REG_R14_ABT]);
-    error_set_arm7_reg_r13_irq(arm7->reg[ARM7_REG_R13_IRQ]);
-    error_set_arm7_reg_r14_irq(arm7->reg[ARM7_REG_R14_IRQ]);
-    error_set_arm7_reg_r13_und(arm7->reg[ARM7_REG_R13_UND]);
-    error_set_arm7_reg_r14_und(arm7->reg[ARM7_REG_R14_UND]);
+    error_set_arm7_reg_r8_fiq(*arm7_gen_reg_bank(arm7, 8, ARM7_MODE_FIQ));
+    error_set_arm7_reg_r9_fiq(*arm7_gen_reg_bank(arm7, 9, ARM7_MODE_FIQ));
+    error_set_arm7_reg_r10_fiq(*arm7_gen_reg_bank(arm7, 10, ARM7_MODE_FIQ));
+    error_set_arm7_reg_r11_fiq(*arm7_gen_reg_bank(arm7, 11, ARM7_MODE_FIQ));
+    error_set_arm7_reg_r12_fiq(*arm7_gen_reg_bank(arm7, 12, ARM7_MODE_FIQ));
+    error_set_arm7_reg_r13_fiq(*arm7_gen_reg_bank(arm7, 13, ARM7_MODE_FIQ));
+    error_set_arm7_reg_r14_fiq(*arm7_gen_reg_bank(arm7, 14, ARM7_MODE_FIQ));
+    error_set_arm7_reg_r13_svc(*arm7_gen_reg_bank(arm7, 13, ARM7_MODE_SVC));
+    error_set_arm7_reg_r14_svc(*arm7_gen_reg_bank(arm7, 14, ARM7_MODE_SVC));
+    error_set_arm7_reg_r13_abt(*arm7_gen_reg_bank(arm7, 13, ARM7_MODE_ABT));
+    error_set_arm7_reg_r14_abt(*arm7_gen_reg_bank(arm7, 14, ARM7_MODE_ABT));
+    error_set_arm7_reg_r13_irq(*arm7_gen_reg_bank(arm7, 13, ARM7_MODE_IRQ));
+    error_set_arm7_reg_r14_irq(*arm7_gen_reg_bank(arm7, 14, ARM7_MODE_IRQ));
+    error_set_arm7_reg_r13_und(*arm7_gen_reg_bank(arm7, 13, ARM7_MODE_UND));
+    error_set_arm7_reg_r14_und(*arm7_gen_reg_bank(arm7, 14, ARM7_MODE_UND));
 
     error_set_arm7_reg_cpsr(arm7->reg[ARM7_REG_CPSR]);
 
@@ -1923,22 +1977,22 @@ void arm7_excp_refresh(struct arm7 *arm7) {
         excp &= ~ARM7_EXCP_FIQ;
 
     if (excp & ARM7_EXCP_RESET) {
-        arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
-        arm7->reg[ARM7_REG_PC] = 0;
         arm7_cpsr_mode_change(arm7, (cpsr & ~ARM7_CPSR_M_MASK) |
                               ARM7_MODE_SVC | ARM7_CPSR_I_MASK |
                               ARM7_CPSR_F_MASK);
+        arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
+        *arm7_gen_reg(arm7, 14) = arm7_pc_next(arm7) + 4;
+        arm7->reg[ARM7_REG_PC] = 0;
         arm7_reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_RESET;
     } else if ((excp & ARM7_EXCP_FIQ) && !(cpsr & ARM7_CPSR_F_MASK)) {
-        arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
-        arm7->reg[ARM7_REG_R14_FIQ] = arm7_pc_next(arm7) + 4;
-        arm7->reg[ARM7_REG_PC] = 0x1c;
         LOG_DBG("FIQ jump to 0x1c\n");
         arm7_cpsr_mode_change(arm7, (cpsr & ~ARM7_CPSR_M_MASK) |
                               ARM7_MODE_FIQ | ARM7_CPSR_I_MASK |
                               ARM7_CPSR_F_MASK);
+        arm7->reg[ARM7_REG_SPSR_FIQ] = cpsr;
+        *arm7_gen_reg(arm7, 14) = arm7_pc_next(arm7) + 4;
+        arm7->reg[ARM7_REG_PC] = 0x1c;
         arm7_reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_FIQ;
     } else if (excp & ARM7_EXCP_SWI) {
@@ -1952,12 +2006,12 @@ void arm7_excp_refresh(struct arm7 *arm7) {
          * pipeline[0].  Therefore, the next instruction to be executed is at
          * ARM7_REG_R15 - 4.
          */
-        arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
-        arm7->reg[ARM7_REG_R14_SVC] = arm7_pc_next(arm7) + 4;
-        arm7->reg[ARM7_REG_PC] = 0;
         arm7_cpsr_mode_change(arm7, (cpsr & ~ARM7_CPSR_M_MASK) |
                               ARM7_MODE_SVC | ARM7_CPSR_I_MASK |
                               ARM7_CPSR_F_MASK);
+        arm7->reg[ARM7_REG_SPSR_SVC] = cpsr;
+        *arm7_gen_reg(arm7, 14) = arm7_pc_next(arm7) + 4;
+        arm7->reg[ARM7_REG_PC] = 0;
         arm7_reset_pipeline(arm7);
         arm7->excp &= ~ARM7_EXCP_SWI;
     }

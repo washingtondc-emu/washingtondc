@@ -53,6 +53,14 @@ enum arm7_reg_idx {
     ARM7_REG_R15,
     ARM7_REG_PC = ARM7_REG_R15,
 
+    ARM7_REG_R8_BANK,
+    ARM7_REG_R9_BANK,
+    ARM7_REG_R10_BANK,
+    ARM7_REG_R11_BANK,
+    ARM7_REG_R12_BANK,
+    ARM7_REG_R13_BANK,
+    ARM7_REG_R14_BANK,
+
     /*
      * banked-registers.  ARM7 defines six distinct execution modes:
      * User (normal), FIQ, Superviser (kernel), Abort, IRQ, and Undefined.

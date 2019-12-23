@@ -119,7 +119,6 @@ struct arm7 {
     struct memory_map *map;
 
     uint32_t reg[ARM7_REGISTER_COUNT];
-    unsigned gpr_indices[16];
 
     unsigned extra_cycles;
 
