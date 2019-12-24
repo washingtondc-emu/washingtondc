@@ -2156,7 +2156,17 @@ bool sh4_jit_fmov_arm_fpu(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
        else
            handler = sh4_inst_binary_fmov_indgen_dr;
    } else {
-       handler = sh4_inst_binary_fmovs_indgen_fr;
+       unsigned addr_reg = ((inst >> 4) & 0xf) + SH4_REG_R0;
+       unsigned fr_dst_reg = ((inst >> 8) & 0xf) + SH4_REG_FR0;
+
+       unsigned slot_addr = reg_slot(sh4, block, addr_reg, WASHDC_JIT_SLOT_GEN);
+       unsigned slot_dst = reg_slot(sh4, block, fr_dst_reg,
+                                    WASHDC_JIT_SLOT_FLOAT);
+
+       jit_read_float_slot(block, sh4->mem.map, slot_addr, slot_dst);
+       reg_map[fr_dst_reg].stat = REG_STATUS_SLOT;
+
+       return true;
    }
 
     struct jit_inst il_inst;
