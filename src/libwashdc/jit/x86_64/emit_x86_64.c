@@ -1481,3 +1481,39 @@ void x86asm_movss_sib_xmm(unsigned reg_base, unsigned scale,
     unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
     put8(sib);
 }
+
+void x86asm_movss_xmm_sib(unsigned xmm_reg_src, unsigned reg_base,
+                          unsigned scale, unsigned reg_index) {
+    unsigned log2;
+    switch (scale) {
+    case 1:
+        log2 = 0;
+        break;
+    case 2:
+        log2 = 1;
+        break;
+    case 4:
+        log2 = 2;
+        break;
+    case 8:
+        log2 = 3;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    unsigned rex = 0;
+    if (reg_base >= R8) {
+        rex |= REX_B;
+        reg_base -= R8;
+    }
+    if (reg_index >= R8) {
+        rex |= REX_X;
+        reg_index -= R8;
+    }
+
+    put8(0xf3);
+    emit_mod_reg_rm_sib_2(rex, 0x0f, 0x11, 0, xmm_reg_src, SIB);
+    unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
+    put8(sib);
+}

@@ -1232,29 +1232,27 @@ static void emit_write_float_slot(struct code_block_x86_64 *blk,
 
     prefunc(blk);
 
-    // TODO: inline mem
+    if (config_get_inline_mem()) {
+        move_slot_to_reg(blk, addr_slot, REG_ARG0);
+        move_slot_to_reg(blk, src_slot, REG_ARG0_XMM);
 
-    /* if (config_get_inline_mem()) { */
-    /*     move_slot_to_reg(blk, addr_slot, REG_ARG0); */
-    /*     move_slot_to_reg(blk, src_slot, REG_ARG1); */
+        evict_register(blk, &gen_reg_state, REG_ARG0);
+        evict_register(blk, &gen_reg_state, REG_ARG0_XMM);
 
-    /*     evict_register(blk, &gen_reg_state, REG_ARG0); */
-    /*     evict_register(blk, &gen_reg_state, REG_ARG1); */
-
-    /*     native_mem_write_32(blk, map); */
-    /* } else { */
+        native_mem_write_float(blk, map);
+    } else {
         move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        move_slot_to_reg(blk, src_slot, XMM0);
+        move_slot_to_reg(blk, src_slot, REG_ARG0_XMM);
 
         evict_register(blk, &gen_reg_state, REG_ARG1);
-        evict_register(blk, &xmm_reg_state, XMM0);
+        evict_register(blk, &xmm_reg_state, REG_ARG0_XMM);
 
         x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
         ms_shadow_open(blk);
         x86_64_align_stack(blk);
         x86asm_call_ptr(memory_map_write_float);
         ms_shadow_close();
-    /* } */
+    }
 
     postfunc();
     ungrab_register(&gen_reg_state.set, REG_RET);

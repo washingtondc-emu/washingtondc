@@ -66,6 +66,11 @@
 
 #endif
 
+#define REG_ARG0_XMM XMM0
+#define REG_ARG1_XMM XMM1
+#define REG_ARG2_XMM XMM2
+#define REG_ARG3_XMM XMM3
+
 #define REG_RET RAX
 #define REG_RET_XMM XMM0
 

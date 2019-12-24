@@ -530,4 +530,8 @@ x86asm_movss_disp32_reg_xmm(int disp32, unsigned reg_src, unsigned xmm_reg_dst);
 void x86asm_movss_sib_xmm(unsigned reg_base, unsigned scale,
                           unsigned reg_index, unsigned xmm_reg_dst);
 
+// movss %<xmm_reg_src>, (%<reg_base>, <scale>, %<reg_index>)
+void x86asm_movss_xmm_sib(unsigned xmm_reg_src, unsigned reg_base,
+                          unsigned scale, unsigned reg_index);
+
 #endif
