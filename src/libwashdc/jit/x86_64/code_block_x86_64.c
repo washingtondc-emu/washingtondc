@@ -1829,24 +1829,29 @@ static void emit_read_float_slot(struct code_block_x86_64 *blk,
     // call memory_map_read_float(*addr_slot)
     prefunc(blk);
 
-    // TODO: inline mem
-    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-    move_slot_to_reg(blk, addr_slot, REG_ARG1);
-    evict_register(blk, &gen_reg_state, REG_ARG1);
-    ms_shadow_open(blk);
-    x86_64_align_stack(blk);
-    x86asm_call_ptr(memory_map_read_float);
-    ms_shadow_close();
+    if (config_get_inline_mem()) {
+        move_slot_to_reg(blk, addr_slot, REG_ARG0);
+        evict_register(blk, &gen_reg_state, REG_ARG0);
+        native_mem_read_float(blk, map);
+    } else {
+        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+        move_slot_to_reg(blk, addr_slot, REG_ARG1);
+        evict_register(blk, &gen_reg_state, REG_ARG1);
+        ms_shadow_open(blk);
+        x86_64_align_stack(blk);
+        x86asm_call_ptr(memory_map_read_float);
+        ms_shadow_close();
+    }
 
     postfunc_float();
 
     grab_slot(blk, il_blk, inst, &xmm_reg_state, dst_slot);
 
     // move XMM0 into slots[dst_slot].reg_no
-    x86asm_movss_xmm_xmm(XMM0, slots[dst_slot].reg_no);
+    x86asm_movss_xmm_xmm(REG_RET_XMM, slots[dst_slot].reg_no);
 
     ungrab_slot(dst_slot);
-    ungrab_register(&xmm_reg_state.set, XMM0);
+    ungrab_register(&xmm_reg_state.set, REG_RET_XMM);
 }
 
 static void emit_load_float_slot(struct code_block_x86_64 *blk,

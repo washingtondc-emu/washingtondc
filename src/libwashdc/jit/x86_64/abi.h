@@ -67,6 +67,7 @@
 #endif
 
 #define REG_RET RAX
+#define REG_RET_XMM XMM0
 
 /*
  * volatile registers: registers whose values are not preserved across function
