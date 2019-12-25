@@ -407,6 +407,20 @@ void jit_mov(struct il_code_block *block, unsigned slot_src,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_mov_float(struct il_code_block *block, unsigned slot_src,
+                   unsigned slot_dst) {
+    struct jit_inst op;
+
+    check_slot(block, slot_src, WASHDC_JIT_SLOT_FLOAT);
+    check_slot(block, slot_dst, WASHDC_JIT_SLOT_FLOAT);
+
+    op.op = JIT_OP_MOV_FLOAT;
+    op.immed.mov_float.slot_src = slot_src;
+    op.immed.mov_float.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_and(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst) {
     struct jit_inst op;
@@ -727,6 +741,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return slot_no == immed->xor_const32.slot_no;
     case JIT_OP_MOV:
         return slot_no == immed->mov.slot_src;
+    case JIT_OP_MOV_FLOAT:
+        return slot_no == immed->mov_float.slot_src;
     case JIT_OP_AND:
         return slot_no == immed->and.slot_src || slot_no == immed->and.slot_dst;
     case JIT_OP_AND_CONST32:
@@ -862,6 +878,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         write_slots[0] = immed->xor_const32.slot_no;
         break;
     case JIT_OP_MOV:
+        write_slots[0] = immed->mov.slot_dst;
+        break;
+    case JIT_OP_MOV_FLOAT:
         write_slots[0] = immed->mov.slot_dst;
         break;
     case JIT_OP_AND:

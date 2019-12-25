@@ -2452,7 +2452,17 @@ bool sh4_jit_fmov_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
             RAISE_ERROR(ERROR_INTEGRITY); // should never happen
         }
     } else {
-        handler = sh4_inst_binary_fmov_fr_fr;
+        unsigned fr_src_reg = ((inst >> 4) & 0xf) + SH4_REG_FR0;
+        unsigned fr_dst_reg = ((inst >> 8) & 0xf) + SH4_REG_FR0;
+
+        unsigned fr_src_slot = reg_slot(sh4, block, fr_src_reg, WASHDC_JIT_SLOT_FLOAT);
+        unsigned fr_dst_slot = reg_slot(sh4, block, fr_dst_reg, WASHDC_JIT_SLOT_FLOAT);
+
+        jit_mov_float(block, fr_src_slot, fr_dst_slot);
+
+        reg_map[fr_dst_reg].stat = REG_STATUS_SLOT;
+
+        return true;
     }
 
     struct jit_inst il_inst;

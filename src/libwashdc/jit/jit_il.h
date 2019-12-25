@@ -133,6 +133,9 @@ enum jit_opcode {
     // move one slot into another
     JIT_OP_MOV,
 
+    // move one fpu slot into anoter
+    JIT_OP_MOV_FLOAT,
+
     // AND one slot with another
     JIT_OP_AND,
 
@@ -341,6 +344,10 @@ struct mov_immed {
     unsigned slot_src, slot_dst;
 };
 
+struct mov_float_immed {
+    unsigned slot_src, slot_dst;
+};
+
 struct and_immed {
     unsigned slot_src, slot_dst;
 };
@@ -465,6 +472,7 @@ union jit_immed {
     struct xor_immed xor;
     struct xor_const32_immed xor_const32;
     struct mov_immed mov;
+    struct mov_float_immed mov_float;
     struct and_immed and;
     struct and_const32_immed and_const32;
     struct or_immed or;
@@ -553,6 +561,8 @@ void jit_xor_const32(struct il_code_block *block, unsigned slot_no,
                      uint32_t const32);
 void jit_mov(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);
+void jit_mov_float(struct il_code_block *block, unsigned slot_src,
+                   unsigned slot_dst);
 void jit_and(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);
 void jit_and_const32(struct il_code_block *block, unsigned slot_src,

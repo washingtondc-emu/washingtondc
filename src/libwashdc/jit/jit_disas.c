@@ -171,6 +171,10 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
         washdc_hostfile_printf(out, "%02X: MOV <SLOT %02X>, <SLOT %02X>\n", idx,
                                immed->mov.slot_src, immed->mov.slot_dst);
         break;
+    case JIT_OP_MOV_FLOAT:
+        washdc_hostfile_printf(out, "%02X: MOV_FLOAT <SLOT %02X>, <SLOT %02X>\n", idx,
+                               immed->mov_float.slot_src, immed->mov_float.slot_dst);
+        break;
     case JIT_OP_AND:
         washdc_hostfile_printf(out, "%02X: AND <SLOT %02X>, <SLOT %02X>\n", idx,
                                immed->and.slot_src, immed->and.slot_dst);

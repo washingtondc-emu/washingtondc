@@ -1413,6 +1413,24 @@ emit_mov(struct code_block_x86_64 *blk,
 }
 
 static void
+emit_mov_float(struct code_block_x86_64 *blk,
+               struct il_code_block const *il_blk,
+               void *cpu, struct jit_inst const *inst) {
+    unsigned slot_src = inst->immed.mov_float.slot_src;
+    unsigned slot_dst = inst->immed.mov_float.slot_dst;
+
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_src);
+    if (slot_src != slot_dst)
+        grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_dst);
+
+    x86asm_movss_xmm_xmm(slots[slot_src].reg_no, slots[slot_dst].reg_no);
+
+    if (slot_src != slot_dst)
+        ungrab_slot(slot_dst);
+    ungrab_slot(slot_src);
+}
+
+static void
 emit_and(struct code_block_x86_64 *blk,
          struct il_code_block const *il_blk,
          void *cpu, struct jit_inst const *inst) {
@@ -2036,6 +2054,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_MOV:
             emit_mov(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_MOV_FLOAT:
+            emit_mov_float(out, il_blk, cpu, inst);
             break;
         case JIT_OP_AND:
             emit_and(out, il_blk, cpu, inst);
