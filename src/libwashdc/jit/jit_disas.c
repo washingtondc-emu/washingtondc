@@ -273,6 +273,12 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                immed->mul_u32.slot_rhs,
                                immed->mul_u32.slot_dst);
         break;
+    case JIT_OP_MUL_FLOAT:
+        washdc_hostfile_printf(out,
+                               "%02X: MUL_FLOAT <SLOT %02X>, <SLOT %02X>\n",
+                               idx, immed->mul_float.slot_lhs,
+                               immed->mul_float.slot_dst);
+        break;
     case JIT_OP_DISCARD_SLOT:
         washdc_hostfile_printf(out, "%02X: DISCARD_SLOT <SLOT %02X>\n", idx,
                                immed->discard_slot.slot_no);

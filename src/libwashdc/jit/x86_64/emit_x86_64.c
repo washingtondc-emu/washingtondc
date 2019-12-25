@@ -1434,6 +1434,11 @@ void x86asm_movss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0x10, 3, xmm_reg_dst, xmm_reg_src);
 }
 
+void x86asm_mulss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x59, 3, xmm_reg_dst, xmm_reg_src);
+}
+
 void x86asm_movss_disp8_reg_xmm(int disp8, unsigned reg_src, unsigned xmm_reg_dst) {
     put8(0xf3);
     emit_mod_reg_rm_2(0, 0x0f, 0x10, 1, xmm_reg_dst, reg_src);

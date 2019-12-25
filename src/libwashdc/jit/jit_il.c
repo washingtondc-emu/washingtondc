@@ -663,6 +663,20 @@ void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_mul_float(struct il_code_block *block, unsigned slot_lhs,
+                   unsigned slot_dst) {
+    struct jit_inst op;
+
+    check_slot(block, slot_lhs, WASHDC_JIT_SLOT_FLOAT);
+    check_slot(block, slot_dst, WASHDC_JIT_SLOT_FLOAT);
+
+    op.op = JIT_OP_MUL_FLOAT;
+    op.immed.mul_float.slot_lhs = slot_lhs;
+    op.immed.mul_float.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_shad(struct il_code_block *block, unsigned slot_val,
               unsigned slot_shift_amt) {
     struct jit_inst op;
@@ -793,6 +807,9 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
     case JIT_OP_MUL_U32:
         return slot_no == immed->mul_u32.slot_lhs ||
             slot_no == immed->mul_u32.slot_rhs;
+    case JIT_OP_MUL_FLOAT:
+        return slot_no == immed->mul_float.slot_lhs ||
+            slot_no == immed->mul_float.slot_dst;
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
@@ -936,6 +953,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         break;
     case JIT_OP_MUL_U32:
         write_slots[0] = immed->mul_u32.slot_dst;
+        break;
+    case JIT_OP_MUL_FLOAT:
+        write_slots[0] = immed->mul_float.slot_dst;
         break;
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
