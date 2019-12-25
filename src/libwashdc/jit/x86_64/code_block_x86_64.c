@@ -397,75 +397,82 @@ static void discard_slot(struct code_block_x86_64 *blk, unsigned slot_no) {
  * they all get saved.
  */
 static void prefunc(struct code_block_x86_64 *blk) {
-    evict_register(blk, &xmm_reg_state, XMM0);
     grab_register(&xmm_reg_state.set, XMM0);
-    evict_register(blk, &xmm_reg_state, XMM1);
     grab_register(&xmm_reg_state.set, XMM1);
-    evict_register(blk, &xmm_reg_state, XMM2);
     grab_register(&xmm_reg_state.set, XMM2);
-    evict_register(blk, &xmm_reg_state, XMM3);
     grab_register(&xmm_reg_state.set, XMM3);
-    evict_register(blk, &xmm_reg_state, XMM4);
     grab_register(&xmm_reg_state.set, XMM4);
-    evict_register(blk, &xmm_reg_state, XMM5);
     grab_register(&xmm_reg_state.set, XMM5);
 
 #if defined(ABI_UNIX)
     // these regs are volatile on unix but not on microsoft
-    evict_register(blk, &xmm_reg_state, XMM6);
     grab_register(&xmm_reg_state.set, XMM6);
-    evict_register(blk, &xmm_reg_state, XMM7);
     grab_register(&xmm_reg_state.set, XMM7);
-    evict_register(blk, &xmm_reg_state, XMM8);
     grab_register(&xmm_reg_state.set, XMM8);
-    evict_register(blk, &xmm_reg_state, XMM9);
     grab_register(&xmm_reg_state.set, XMM9);
-    evict_register(blk, &xmm_reg_state, XMM10);
     grab_register(&xmm_reg_state.set, XMM10);
-    evict_register(blk, &xmm_reg_state, XMM11);
     grab_register(&xmm_reg_state.set, XMM11);
-    evict_register(blk, &xmm_reg_state, XMM12);
     grab_register(&xmm_reg_state.set, XMM12);
-    evict_register(blk, &xmm_reg_state, XMM13);
     grab_register(&xmm_reg_state.set, XMM13);
-    evict_register(blk, &xmm_reg_state, XMM14);
     grab_register(&xmm_reg_state.set, XMM14);
-    evict_register(blk, &xmm_reg_state, XMM15);
     grab_register(&xmm_reg_state.set, XMM15);
+#endif
+
+    evict_register(blk, &xmm_reg_state, XMM0);
+    evict_register(blk, &xmm_reg_state, XMM1);
+    evict_register(blk, &xmm_reg_state, XMM2);
+    evict_register(blk, &xmm_reg_state, XMM3);
+    evict_register(blk, &xmm_reg_state, XMM4);
+    evict_register(blk, &xmm_reg_state, XMM5);
+
+#if defined(ABI_UNIX)
+    // these regs are volatile on unix but not on microsoft
+    evict_register(blk, &xmm_reg_state, XMM6);
+    evict_register(blk, &xmm_reg_state, XMM7);
+    evict_register(blk, &xmm_reg_state, XMM8);
+    evict_register(blk, &xmm_reg_state, XMM9);
+    evict_register(blk, &xmm_reg_state, XMM10);
+    evict_register(blk, &xmm_reg_state, XMM11);
+    evict_register(blk, &xmm_reg_state, XMM12);
+    evict_register(blk, &xmm_reg_state, XMM13);
+    evict_register(blk, &xmm_reg_state, XMM14);
+    evict_register(blk, &xmm_reg_state, XMM15);
+
+    grab_register(&gen_reg_state.set, RAX);
+    grab_register(&gen_reg_state.set, RCX);
+    grab_register(&gen_reg_state.set, RDX);
+    grab_register(&gen_reg_state.set, RSI);
+    grab_register(&gen_reg_state.set, RDI);
+    grab_register(&gen_reg_state.set, R8);
+    grab_register(&gen_reg_state.set, R9);
+    grab_register(&gen_reg_state.set, R10);
+    grab_register(&gen_reg_state.set, R11);
 
     evict_register(blk, &gen_reg_state, RAX);
-    grab_register(&gen_reg_state.set, RAX);
     evict_register(blk, &gen_reg_state, RCX);
-    grab_register(&gen_reg_state.set, RCX);
     evict_register(blk, &gen_reg_state, RDX);
-    grab_register(&gen_reg_state.set, RDX);
     evict_register(blk, &gen_reg_state, RSI);
-    grab_register(&gen_reg_state.set, RSI);
     evict_register(blk, &gen_reg_state, RDI);
-    grab_register(&gen_reg_state.set, RDI);
     evict_register(blk, &gen_reg_state, R8);
-    grab_register(&gen_reg_state.set, R8);
     evict_register(blk, &gen_reg_state, R9);
-    grab_register(&gen_reg_state.set, R9);
     evict_register(blk, &gen_reg_state, R10);
-    grab_register(&gen_reg_state.set, R10);
     evict_register(blk, &gen_reg_state, R11);
-    grab_register(&gen_reg_state.set, R11);
 #elif defined(ABI_MICROSOFT)
-    evict_register(blk, &gen_reg_state, RAX);
     grab_register(&gen_reg_state.set, RAX);
-    evict_register(blk, &gen_reg_state, RCX);
     grab_register(&gen_reg_state.set, RCX);
-    evict_register(blk, &gen_reg_state, RDX);
     grab_register(&gen_reg_state.set, RDX);
-    evict_register(blk, &gen_reg_state, R8);
     grab_register(&gen_reg_state.set, R8);
-    evict_register(blk, &gen_reg_state, R9);
     grab_register(&gen_reg_state.set, R9);
-    evict_register(blk, &gen_reg_state, R10);
     grab_register(&gen_reg_state.set, R10);
-    evict_register(blk, &gen_reg_state, R11);
     grab_register(&gen_reg_state.set, R11);
+
+    evict_register(blk, &gen_reg_state, RAX);
+    evict_register(blk, &gen_reg_state, RCX);
+    evict_register(blk, &gen_reg_state, RDX);
+    evict_register(blk, &gen_reg_state, R8);
+    evict_register(blk, &gen_reg_state, R9);
+    evict_register(blk, &gen_reg_state, R10);
+    evict_register(blk, &gen_reg_state, R11);
 #else
     #error unknown ABI
 #endif
