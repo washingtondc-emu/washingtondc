@@ -503,6 +503,8 @@ void x86asm_movb_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst);
 void x86asm_jmp_disp8(int disp8);
 void x86asm_jmp_lbl8(struct x86asm_lbl8 *lbl);
 
+void x86asm_nop(void);
+
 /*******************************************************************************
  *
  * SSE instructions

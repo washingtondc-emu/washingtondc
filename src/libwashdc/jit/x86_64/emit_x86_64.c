@@ -1419,6 +1419,10 @@ void x86asm_negl_reg32(unsigned reg_no) {
     emit_mod_reg_rm(0, 0xf7, 3, 3, reg_no);
 }
 
+void x86asm_nop(void) {
+    put8(0x90);
+}
+
 void x86asm_movss_indreg_xmm(unsigned reg_src, unsigned xmm_reg_dst) {
     put8(0xf3);
     emit_mod_reg_rm_2(0, 0x0f, 0x10, 0, xmm_reg_dst, reg_src);
