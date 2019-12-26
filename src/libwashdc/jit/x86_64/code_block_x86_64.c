@@ -1968,11 +1968,13 @@ static void emit_store_float_slot(struct code_block_x86_64 *blk,
  * issued.
  */
 void x86_64_align_stack(struct code_block_x86_64 *blk) {
-    unsigned mod = (rsp_offs - 8) % 16;
+    int cur = -(rsp_offs + 8);
+    int roundup = ((cur + 15) / 16) * 16;
+    int newdisp = roundup - cur;
 
-    if (mod) {
-        x86asm_addq_imm8_reg(-(16 - mod), RSP);
-        rsp_offs -= (16 - mod);
+    if (newdisp) {
+        x86asm_addq_imm8_reg(-newdisp, RSP);
+        rsp_offs -= newdisp;
     }
 
     blk->dirty_stack = true;
