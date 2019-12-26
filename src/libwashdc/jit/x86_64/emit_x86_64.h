@@ -537,4 +537,7 @@ void x86asm_movss_xmm_sib(unsigned xmm_reg_src, unsigned reg_base,
 // mulss %<xmm_reg_src>, %<xmm_reg_src>
 void x86asm_mulss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
 
+// subss %<xmm_reg_src>, %<xmm_reg_src>
+void x86asm_subss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
+
 #endif

@@ -1522,3 +1522,8 @@ void x86asm_movss_xmm_sib(unsigned xmm_reg_src, unsigned reg_base,
     unsigned sib = reg_base | (reg_index << 3) | (log2 << 6);
     put8(sib);
 }
+
+void x86asm_subss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x5c, 3, xmm_reg_dst, xmm_reg_src);
+}
