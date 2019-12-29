@@ -2062,6 +2062,30 @@ static void emit_store_float_slot(struct code_block_x86_64 *blk,
     ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
+static void
+emit_store_float_slot_indexed(struct code_block_x86_64 *blk,
+                              struct il_code_block const *il_blk,
+                              void *cpu, struct jit_inst const *inst) {
+    unsigned slot_base = inst->immed.store_float_slot_indexed.slot_base;
+    unsigned slot_src = inst->immed.store_float_slot_indexed.slot_src;
+    unsigned index = inst->immed.store_float_slot_indexed.index;
+
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_base, 8);
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_src, 4);
+
+    unsigned reg_base = slots[slot_base].reg_no;
+    unsigned xmm_reg_src = slots[slot_src].reg_no;
+    int disp_bytes = 4 * index;
+
+    if (disp_bytes <= 127 && disp_bytes >= - 128)
+        x86asm_movss_xmm_disp8_reg(xmm_reg_src, disp_bytes, reg_base);
+    else
+        x86asm_movss_xmm_disp32_reg(xmm_reg_src, disp_bytes, reg_base);
+
+    ungrab_slot(slot_src);
+    ungrab_slot(slot_base);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned to a 16-byte
@@ -2287,6 +2311,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_STORE_FLOAT_SLOT:
             emit_store_float_slot(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_STORE_FLOAT_SLOT_INDEXED:
+            emit_store_float_slot_indexed(out, il_blk, cpu, inst);
             break;
         default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);

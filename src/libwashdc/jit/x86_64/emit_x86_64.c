@@ -1469,6 +1469,22 @@ void x86asm_movss_disp32_reg_xmm(int disp32, unsigned reg_src, unsigned xmm_reg_
     put32(disp32);
 }
 
+// movss %<xmm_reg_src>, <disp8>(%reg_dst)
+void
+x86asm_movss_xmm_disp8_reg(unsigned xmm_reg_src, int disp8, unsigned reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x11, 1, xmm_reg_src, reg_dst);
+    put8(disp8);
+}
+
+// movss %<xmm_reg_src>, <disp32>(%reg_dst)
+void
+x86asm_movss_xmm_disp32_reg(unsigned xmm_reg_src, int disp32, unsigned reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x11, 2, xmm_reg_src, reg_dst);
+    put32(disp32);
+}
+
 void x86asm_movss_sib_xmm(unsigned reg_base, unsigned scale,
                           unsigned reg_index, unsigned xmm_reg_dst) {
     unsigned log2;

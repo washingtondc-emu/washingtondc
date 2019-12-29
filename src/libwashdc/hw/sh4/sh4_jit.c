@@ -208,14 +208,14 @@ res_drain_reg(Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
               struct il_code_block *block, unsigned reg_no) {
     struct residency *res = reg_map + reg_no;
     if (res->stat == REG_STATUS_SLOT) {
-        unsigned regbase_slot;
+        unsigned regbase_slot = get_regbase_slot(sh4, ctx, block);
         switch (block->slots[res->slot_no].tp) {
         case WASHDC_JIT_SLOT_GEN:
-            regbase_slot = get_regbase_slot(sh4, ctx, block);
             jit_store_slot_indexed(block, res->slot_no, regbase_slot, reg_no);
             break;
         case WASHDC_JIT_SLOT_FLOAT:
-            jit_store_float_slot(block, res->slot_no, (float*)(sh4->reg + reg_no));
+            jit_store_float_slot_indexed(block, res->slot_no,
+                                         regbase_slot, reg_no);
             break;
         default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
