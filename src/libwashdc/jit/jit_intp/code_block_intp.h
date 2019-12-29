@@ -28,6 +28,7 @@ struct il_code_block;
 union slot_val {
     uint32_t as_u32;
     float as_float;
+    void *as_host_ptr;
 };
 
 /*

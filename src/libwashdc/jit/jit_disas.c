@@ -50,6 +50,11 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                (unsigned)immed->set_slot.new_val,
                                immed->set_slot.slot_idx);
         break;
+    case JIT_SET_SLOT_HOST_PTR:
+        washdc_hostfile_printf(out, "%02X: SET_HOST_PTR %p, <SLOT %02X>\n", idx,
+                               immed->set_slot_host_ptr.ptr,
+                               immed->set_slot_host_ptr.slot_idx);
+        break;
     case JIT_OP_CALL_FUNC:
         washdc_hostfile_printf(out, "%02X: CALL %p(<CPU CTXT>, <SLOT %02X>)\n",
                                idx, immed->call_func.func,
@@ -128,6 +133,12 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
         washdc_hostfile_printf(out, "%02X: LOAD_SLOT *(U32*)%p, <SLOT %02X>\n",
                                idx, immed->load_slot.src,
                                immed->load_slot.slot_no);
+        break;
+    case JIT_OP_LOAD_SLOT_INDEXED:
+        washdc_hostfile_printf(out, "%02X: LOAD_SLOT_INDEXED *(U32*)(<SLOT %02X> + %u * 4), <SLOT %02X>\n",
+                               idx, immed->load_slot_indexed.slot_base,
+                               immed->load_slot_indexed.index,
+                               immed->load_slot_indexed.slot_dst);
         break;
     case JIT_OP_LOAD_FLOAT_SLOT:
         washdc_hostfile_printf(out, "%02X: LOAD_FLOAT_SLOT *(FLOAT*)%p, <SLOT %02X>\n",

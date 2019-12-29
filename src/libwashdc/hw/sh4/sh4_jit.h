@@ -55,10 +55,15 @@ void sh4_jit_new_block(void);
 struct sh4_jit_compile_ctx {
     unsigned last_inst_type;
     unsigned cycle_count;
+
+    // only valid if have_reg_slot is true
+    unsigned reg_slot;
+
     bool sz_bit : 1;
     bool pr_bit : 1;
     bool in_delay_slot : 1;
     bool dirty_fpscr : 1;
+    bool have_reg_slot : 1;
 };
 
 #define SH4_JIT_HASH_MASK 0x1fffffff
@@ -128,7 +133,8 @@ sh4_jit_compile_native(void *cpu, struct native_dispatch_meta const *meta,
         .sz_bit = sh4_fpscr_sz(sh4),
         .pr_bit = sh4_fpscr_pr(sh4),
         .in_delay_slot = false,
-        .dirty_fpscr = false
+        .dirty_fpscr = false,
+        .have_reg_slot = false
     };
 
     il_code_block_init(&il_blk);
@@ -175,7 +181,8 @@ sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
         .sz_bit = sh4_fpscr_sz(sh4),
         .pr_bit = sh4_fpscr_pr(sh4),
         .in_delay_slot = false,
-        .dirty_fpscr = false
+        .dirty_fpscr = false,
+        .have_reg_slot = false
     };
 
     il_code_block_init(&il_blk);

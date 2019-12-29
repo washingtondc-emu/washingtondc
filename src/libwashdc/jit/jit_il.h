@@ -49,6 +49,9 @@ enum jit_opcode {
     // this will set a register to the given constant value
     JIT_SET_SLOT,
 
+    // this will set a register to point to something on te host machine
+    JIT_SET_SLOT_HOST_PTR,
+
     // this will copy a slot into SR and handle any state changes
     JIT_OP_CALL_FUNC,
 
@@ -105,6 +108,12 @@ enum jit_opcode {
 
     // load 32-bits from a host memory address into a jit register
     JIT_OP_LOAD_SLOT,
+
+    /*
+     * load 32-bits from a host memory address (addressed via address in a
+     * slot + index) into another slot
+     */
+    JIT_OP_LOAD_SLOT_INDEXED,
 
     // load 32-bit float from a host memory address into a jit register
     JIT_OP_LOAD_FLOAT_SLOT,
@@ -228,6 +237,11 @@ struct set_slot_immed {
     uint32_t new_val;
 };
 
+struct set_slot_host_ptr_immed {
+    unsigned slot_idx;
+    void *ptr;
+};
+
 struct call_func_immed {
     void(*func)(void*,uint32_t);
     unsigned slot_no;
@@ -303,6 +317,12 @@ struct load_slot16_immed {
 struct load_slot_immed {
     uint32_t const *src;
     unsigned slot_no;
+};
+
+struct load_slot_indexed_immed {
+    unsigned slot_base;
+    unsigned index;
+    unsigned slot_dst;
 };
 
 struct load_float_slot_immed {
@@ -462,6 +482,7 @@ union jit_immed {
     struct jump_immed jump;
     struct cset_immed cset;
     struct set_slot_immed set_slot;
+    struct set_slot_host_ptr_immed set_slot_host_ptr;
     struct call_func_immed call_func;
     struct read_16_constaddr_immed read_16_constaddr;
     struct sign_extend_16_immed sign_extend_8;
@@ -476,6 +497,7 @@ union jit_immed {
     struct write_float_slot_immed write_float_slot;
     struct load_slot16_immed load_slot16;
     struct load_slot_immed load_slot;
+    struct load_slot_indexed_immed load_slot_indexed;
     struct load_float_slot_immed load_float_slot;
     struct store_slot_immed store_slot;
     struct store_float_slot_immed store_float_slot;
@@ -532,6 +554,8 @@ void jit_cset(struct il_code_block *block, unsigned flag_slot,
               unsigned t_flag, uint32_t src_val, unsigned dst_slot);
 void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
+void jit_set_slot_host_ptr(struct il_code_block *block, unsigned slot_idx,
+                           void *ptr);
 void jit_call_func(struct il_code_block *block,
                    void(*func)(void*,uint32_t), unsigned slot_no);
 void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
@@ -556,6 +580,8 @@ void jit_write_float_slot(struct il_code_block *block, struct memory_map *map,
                           unsigned src_slot, unsigned addr_slot);
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
                    uint32_t const *src);
+void jit_load_slot_indexed(struct il_code_block *block, unsigned slot_base,
+                           unsigned index, unsigned slot_dst);
 void jit_load_float_slot(struct il_code_block *block, unsigned slot_no,
                    float const *src);
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,

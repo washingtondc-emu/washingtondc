@@ -86,6 +86,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                 inst->immed.set_slot.new_val;
             inst++;
             break;
+        case JIT_SET_SLOT_HOST_PTR:
+            block->slots[inst->immed.set_slot_host_ptr.slot_idx].as_host_ptr =
+                inst->immed.set_slot_host_ptr.ptr;
+            inst++;
+            break;
         case JIT_OP_CALL_FUNC:
             inst->immed.call_func.func(cpu,
                                        block->slots[
@@ -173,6 +178,13 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
         case JIT_OP_LOAD_SLOT:
             block->slots[inst->immed.load_slot.slot_no].as_u32 =
                 *inst->immed.load_slot.src;
+            inst++;
+            break;
+        case JIT_OP_LOAD_SLOT_INDEXED:
+            memcpy(&block->slots[inst->immed.load_slot_indexed.slot_dst].as_u32,
+                   ((char*)block->slots[inst->immed.load_slot_indexed.slot_base].as_host_ptr) + sizeof(uint32_t) *
+                   inst->immed.load_slot_indexed.index,
+                   sizeof(block->slots[inst->immed.load_slot_indexed.slot_dst].as_u32));
             inst++;
             break;
         case JIT_OP_LOAD_FLOAT_SLOT:
@@ -347,6 +359,8 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             }
             inst++;
             break;
+        default:
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
 

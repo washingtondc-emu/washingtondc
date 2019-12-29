@@ -80,6 +80,19 @@ void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_set_slot_host_ptr(struct il_code_block *block, unsigned slot_idx,
+                  void *ptr) {
+    struct jit_inst op;
+
+    check_slot(block, slot_idx, WASHDC_JIT_SLOT_HOST_PTR);
+
+    op.op = JIT_SET_SLOT_HOST_PTR;
+    op.immed.set_slot_host_ptr.ptr = ptr;
+    op.immed.set_slot_host_ptr.slot_idx = slot_idx;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_call_func(struct il_code_block *block,
                    void(*func)(void*,uint32_t), unsigned slot_no) {
     struct jit_inst op;
@@ -270,6 +283,21 @@ void jit_load_slot(struct il_code_block *block, unsigned slot_no,
     op.op = JIT_OP_LOAD_SLOT;
     op.immed.load_slot.src = src;
     op.immed.load_slot.slot_no = slot_no;
+
+    il_code_block_push_inst(block, &op);
+}
+
+void jit_load_slot_indexed(struct il_code_block *block, unsigned slot_base,
+                           unsigned index, unsigned slot_dst) {
+    struct jit_inst op;
+
+    check_slot(block, slot_base, WASHDC_JIT_SLOT_HOST_PTR);
+    check_slot(block, slot_dst, WASHDC_JIT_SLOT_GEN);
+
+    op.op = JIT_OP_LOAD_SLOT_INDEXED;
+    op.immed.load_slot_indexed.slot_base = slot_base;
+    op.immed.load_slot_indexed.index = index;
+    op.immed.load_slot_indexed.slot_dst = slot_dst;
 
     il_code_block_push_inst(block, &op);
 }
@@ -718,6 +746,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
             slot_no == immed->cset.dst_slot;
     case JIT_SET_SLOT:
         return false;
+    case JIT_SET_SLOT_HOST_PTR:
+        return false;
     case JIT_OP_CALL_FUNC:
         return slot_no == immed->call_func.slot_no;
     case JIT_OP_READ_16_CONSTADDR:
@@ -749,6 +779,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return false;
     case JIT_OP_LOAD_SLOT:
         return false;
+    case JIT_OP_LOAD_SLOT_INDEXED:
+        return slot_no == immed->load_slot_indexed.slot_base;
     case JIT_OP_LOAD_FLOAT_SLOT:
         return false;
     case JIT_OP_STORE_SLOT:
@@ -848,6 +880,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
     case JIT_SET_SLOT:
         write_slots[0] = immed->set_slot.slot_idx;
         break;
+    case JIT_SET_SLOT_HOST_PTR:
+        write_slots[0] = immed->set_slot_host_ptr.slot_idx;
+        break;
     case JIT_OP_CALL_FUNC:
         break;
     case JIT_OP_READ_16_CONSTADDR:
@@ -885,6 +920,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         break;
     case JIT_OP_LOAD_SLOT:
         write_slots[0] = immed->load_slot.slot_no;
+        break;
+    case JIT_OP_LOAD_SLOT_INDEXED:
+        write_slots[0] = immed->load_slot_indexed.slot_dst;
         break;
     case JIT_OP_LOAD_FLOAT_SLOT:
         write_slots[0] = immed->load_float_slot.slot_no;
