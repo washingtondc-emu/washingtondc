@@ -315,6 +315,22 @@ void jit_load_float_slot(struct il_code_block *block, unsigned slot_no,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_load_float_slot_indexed(struct il_code_block *block,
+                                 unsigned slot_base,
+                                 unsigned index, unsigned slot_dst) {
+    struct jit_inst op;
+
+    check_slot(block, slot_base, WASHDC_JIT_SLOT_HOST_PTR);
+    check_slot(block, slot_dst, WASHDC_JIT_SLOT_FLOAT);
+
+    op.op = JIT_OP_LOAD_FLOAT_SLOT_INDEXED;
+    op.immed.load_float_slot_indexed.slot_base = slot_base;
+    op.immed.load_float_slot_indexed.index = index;
+    op.immed.load_float_slot_indexed.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_store_slot(struct il_code_block *block, unsigned slot_no,
                     uint32_t *dst) {
     struct jit_inst op;
@@ -798,6 +814,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return slot_no == immed->load_slot_indexed.slot_base;
     case JIT_OP_LOAD_FLOAT_SLOT:
         return false;
+    case JIT_OP_LOAD_FLOAT_SLOT_INDEXED:
+        return slot_no == immed->load_float_slot_indexed.slot_base;
     case JIT_OP_STORE_SLOT:
         return slot_no == immed->store_slot.slot_no;
     case JIT_OP_STORE_SLOT_INDEXED:
@@ -944,6 +962,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         break;
     case JIT_OP_LOAD_FLOAT_SLOT:
         write_slots[0] = immed->load_float_slot.slot_no;
+        break;
+    case JIT_OP_LOAD_FLOAT_SLOT_INDEXED:
+        write_slots[0] = immed->load_float_slot_indexed.slot_dst;
         break;
     case JIT_OP_STORE_SLOT:
         break;

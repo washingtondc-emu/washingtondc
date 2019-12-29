@@ -193,6 +193,13 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                    sizeof(float));
             inst++;
             break;
+        case JIT_OP_LOAD_FLOAT_SLOT_INDEXED:
+            memcpy(&block->slots[inst->immed.load_float_slot_indexed.slot_dst].as_float,
+                   ((char*)block->slots[inst->immed.load_float_slot_indexed.slot_base].as_host_ptr) + sizeof(float) *
+                   inst->immed.load_float_slot_indexed.index,
+                   sizeof(block->slots[inst->immed.load_float_slot_indexed.slot_dst].as_float));
+            inst++;
+            break;
         case JIT_OP_STORE_SLOT:
             *inst->immed.store_slot.dst =
                 block->slots[inst->immed.store_slot.slot_no].as_u32;

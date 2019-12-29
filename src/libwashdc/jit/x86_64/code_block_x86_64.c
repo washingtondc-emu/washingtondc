@@ -2020,6 +2020,30 @@ static void emit_load_float_slot(struct code_block_x86_64 *blk,
     ungrab_slot(slot_no);
 }
 
+static void
+emit_load_float_slot_indexed(struct code_block_x86_64 *blk,
+                             struct il_code_block const *il_blk,
+                             void *cpu, struct jit_inst const *inst) {
+    unsigned slot_base = inst->immed.load_float_slot_indexed.slot_base;
+    unsigned slot_dst = inst->immed.load_float_slot_indexed.slot_dst;
+    unsigned index = inst->immed.load_float_slot_indexed.index;
+
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_base, 8);
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_dst, 4);
+
+    unsigned reg_base = slots[slot_base].reg_no;
+    unsigned reg_dst = slots[slot_dst].reg_no;
+    int disp_bytes = 4 * index;
+
+    if (disp_bytes <= 127 && disp_bytes >= - 128)
+        x86asm_movss_disp8_reg_xmm(disp_bytes, reg_base, reg_dst);
+    else
+        x86asm_movss_disp32_reg_xmm(disp_bytes, reg_base, reg_dst);
+
+    ungrab_slot(slot_dst);
+    ungrab_slot(slot_base);
+}
+
 static void emit_store_float_slot(struct code_block_x86_64 *blk,
                                   struct il_code_block const *il_blk,
                                   void *cpu, struct jit_inst const *inst) {
@@ -2257,6 +2281,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_LOAD_FLOAT_SLOT:
             emit_load_float_slot(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_LOAD_FLOAT_SLOT_INDEXED:
+            emit_load_float_slot_indexed(out, il_blk, cpu, inst);
             break;
         case JIT_OP_STORE_FLOAT_SLOT:
             emit_store_float_slot(out, il_blk, cpu, inst);

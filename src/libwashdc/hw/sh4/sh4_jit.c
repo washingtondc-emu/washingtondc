@@ -2528,14 +2528,13 @@ static unsigned reg_slot(Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
         res->stat = REG_STATUS_SLOT_AND_SH4;
         res->slot_no = slot_no;
         // TODO: set res->last_read here
-        unsigned regbase_slot;
+        unsigned regbase_slot = get_regbase_slot(sh4, ctx, block);
         switch (tp) {
         case WASHDC_JIT_SLOT_GEN:
-            regbase_slot = get_regbase_slot(sh4, ctx, block);
             jit_load_slot_indexed(block, regbase_slot, reg_no, slot_no);
             break;
         case WASHDC_JIT_SLOT_FLOAT:
-            jit_load_float_slot(block, slot_no, (float*)(sh4->reg + reg_no));
+            jit_load_float_slot_indexed(block, regbase_slot, reg_no, slot_no);
             break;
         default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
