@@ -150,6 +150,12 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                idx, immed->store_slot.slot_no,
                                immed->store_slot.dst);
         break;
+    case JIT_OP_STORE_SLOT_INDEXED:
+        washdc_hostfile_printf(out, "%02X: STORE_SLOT_INDEXED <SLOT %02X>, (<SLOT %02X> + %u * 4)\n",
+                               idx, immed->store_slot_indexed.slot_src,
+                               immed->store_slot_indexed.slot_base,
+                               immed->store_slot_indexed.index);
+        break;
     case JIT_OP_STORE_FLOAT_SLOT:
         washdc_hostfile_printf(out, "%02X: STORE_FLOAT_SLOT <SLOT %02X>, *(FLOAT*)%p\n",
                                idx, immed->store_float_slot.slot_no,

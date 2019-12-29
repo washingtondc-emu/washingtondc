@@ -1379,6 +1379,32 @@ emit_store_slot(struct code_block_x86_64 *blk,
 }
 
 static void
+emit_store_slot_indexed(struct code_block_x86_64 *blk,
+                        struct il_code_block const *il_blk,
+                        void *cpu, struct jit_inst const *inst) {
+    unsigned slot_base = inst->immed.store_slot_indexed.slot_base;
+    unsigned slot_src = inst->immed.store_slot_indexed.slot_src;
+    unsigned index = inst->immed.store_slot_indexed.index;
+
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_base, 8);
+    if (slot_base != slot_src)
+        grab_slot(blk, il_blk, inst, &gen_reg_state, slot_src, 4);
+
+    unsigned reg_base = slots[slot_base].reg_no;
+    unsigned reg_src = slots[slot_src].reg_no;
+    int disp_bytes = 4 * index;
+
+    if (disp_bytes <= 127 && disp_bytes >= - 128)
+        x86asm_movl_reg_disp8_reg(reg_src, disp_bytes, reg_base);
+    else
+        x86asm_movl_reg_disp32_reg(reg_src, disp_bytes, reg_base);
+
+    if (slot_base != slot_src)
+        ungrab_slot(slot_src);
+    ungrab_slot(slot_base);
+}
+
+static void
 emit_add(struct code_block_x86_64 *blk,
          struct il_code_block const *il_blk,
          void *cpu, struct jit_inst const *inst) {
@@ -2138,6 +2164,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_STORE_SLOT:
             emit_store_slot(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_STORE_SLOT_INDEXED:
+            emit_store_slot_indexed(out, il_blk, cpu, inst);
             break;
         case JIT_OP_ADD:
             emit_add(out, il_blk, cpu, inst);

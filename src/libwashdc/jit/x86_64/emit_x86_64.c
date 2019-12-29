@@ -875,6 +875,20 @@ void x86asm_movb_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst) {
     put8(disp8);
 }
 
+// movl <reg_src>, <disp8>(<reg_dst>)
+void
+x86asm_movl_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x89, 1, reg_src, reg_dst);
+    put8(disp8);
+}
+
+// movl <reg_src>, <disp32>(<reg_dst>)
+void
+x86asm_movl_reg_disp32_reg(unsigned reg_src, int disp32, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x89, 2, reg_src, reg_dst);
+    put32(disp32);
+}
+
 // movl <disp8>(<reg_src>), <reg_dst>
 void x86asm_movl_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 0x8b, 1, reg_dst, reg_src);

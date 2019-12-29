@@ -121,6 +121,12 @@ enum jit_opcode {
     // store 32-bits from a jit register address into a host memory address
     JIT_OP_STORE_SLOT,
 
+    /*
+     * store 32-bits to a host memory address (addressed via address in a
+     * slot + index) from another slot
+     */
+    JIT_OP_STORE_SLOT_INDEXED,
+
     // store float from a jit register address into a host memory address
     JIT_OP_STORE_FLOAT_SLOT,
 
@@ -335,6 +341,12 @@ struct store_slot_immed {
     unsigned slot_no;
 };
 
+struct store_slot_indexed_immed {
+    unsigned slot_base;
+    unsigned index;
+    unsigned slot_src;
+};
+
 struct store_float_slot_immed {
     float *dst;
     unsigned slot_no;
@@ -500,6 +512,7 @@ union jit_immed {
     struct load_slot_indexed_immed load_slot_indexed;
     struct load_float_slot_immed load_float_slot;
     struct store_slot_immed store_slot;
+    struct store_slot_indexed_immed store_slot_indexed;
     struct store_float_slot_immed store_float_slot;
     struct add_immed add;
     struct sub_immed sub;
@@ -588,6 +601,8 @@ void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
                      uint16_t const *src);
 void jit_store_slot(struct il_code_block *block, unsigned slot_no,
                     uint32_t *dst);
+void jit_store_slot_indexed(struct il_code_block *block, unsigned slot_src,
+                            unsigned slot_base, unsigned index);
 void jit_store_float_slot(struct il_code_block *block, unsigned slot_no,
                           float *dst);
 void jit_add(struct il_code_block *block, unsigned slot_src,

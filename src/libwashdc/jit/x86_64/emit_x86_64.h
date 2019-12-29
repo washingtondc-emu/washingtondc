@@ -250,6 +250,12 @@ void x86asm_movl_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst);
 // movl <disp32>(<reg_src>), <reg_dst>
 void x86asm_movl_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst);
 
+// movl <reg_src>, <disp8>(<reg_dst>)
+void x86asm_movl_reg_disp8_reg(unsigned reg_src, int disp8, unsigned reg_dst);
+
+// movl <reg_src>, <disp32>(<reg_dst>)
+void x86asm_movl_reg_disp32_reg(unsigned reg_src, int disp32, unsigned reg_dst);
+
 // movq <disp8>(<reg_src>), <reg_dst>
 void x86asm_movq_disp8_reg_reg(int disp8, unsigned reg_src, unsigned reg_dst);
 
