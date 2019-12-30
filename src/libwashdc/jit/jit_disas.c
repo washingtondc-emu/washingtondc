@@ -134,44 +134,44 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                idx, immed->load_slot.src,
                                immed->load_slot.slot_no);
         break;
-    case JIT_OP_LOAD_SLOT_INDEXED:
-        washdc_hostfile_printf(out, "%02X: LOAD_SLOT_INDEXED *(U32*)(<SLOT %02X> + %u * 4), <SLOT %02X>\n",
-                               idx, immed->load_slot_indexed.slot_base,
-                               immed->load_slot_indexed.index,
-                               immed->load_slot_indexed.slot_dst);
+    case JIT_OP_LOAD_SLOT_OFFSET:
+        washdc_hostfile_printf(out, "%02X: LOAD_SLOT_OFFSET *(U32*)(<SLOT %02X> + %u * 4), <SLOT %02X>\n",
+                               idx, immed->load_slot_offset.slot_base,
+                               immed->load_slot_offset.index,
+                               immed->load_slot_offset.slot_dst);
         break;
     case JIT_OP_LOAD_FLOAT_SLOT:
         washdc_hostfile_printf(out, "%02X: LOAD_FLOAT_SLOT *(FLOAT*)%p, <SLOT %02X>\n",
                                idx, immed->load_float_slot.src,
                                immed->load_float_slot.slot_no);
         break;
-    case JIT_OP_LOAD_FLOAT_SLOT_INDEXED:
-        washdc_hostfile_printf(out, "%02X: LOAD_FLOAT_SLOT_INDEXED *(FLOAT*)(<SLOT %02X> + %u * 4), <SLOT %02X>\n",
-                               idx, immed->load_float_slot_indexed.slot_base,
-                               immed->load_float_slot_indexed.index,
-                               immed->load_float_slot_indexed.slot_dst);
+    case JIT_OP_LOAD_FLOAT_SLOT_OFFSET:
+        washdc_hostfile_printf(out, "%02X: LOAD_FLOAT_SLOT_OFFSET *(FLOAT*)(<SLOT %02X> + %u * 4), <SLOT %02X>\n",
+                               idx, immed->load_float_slot_offset.slot_base,
+                               immed->load_float_slot_offset.index,
+                               immed->load_float_slot_offset.slot_dst);
         break;
     case JIT_OP_STORE_SLOT:
         washdc_hostfile_printf(out, "%02X: STORE_SLOT <SLOT %02X>, *(U32*)%p\n",
                                idx, immed->store_slot.slot_no,
                                immed->store_slot.dst);
         break;
-    case JIT_OP_STORE_SLOT_INDEXED:
-        washdc_hostfile_printf(out, "%02X: STORE_SLOT_INDEXED <SLOT %02X>, (<SLOT %02X> + %u * 4)\n",
-                               idx, immed->store_slot_indexed.slot_src,
-                               immed->store_slot_indexed.slot_base,
-                               immed->store_slot_indexed.index);
+    case JIT_OP_STORE_SLOT_OFFSET:
+        washdc_hostfile_printf(out, "%02X: STORE_SLOT_OFFSET <SLOT %02X>, (<SLOT %02X> + %u * 4)\n",
+                               idx, immed->store_slot_offset.slot_src,
+                               immed->store_slot_offset.slot_base,
+                               immed->store_slot_offset.index);
         break;
     case JIT_OP_STORE_FLOAT_SLOT:
         washdc_hostfile_printf(out, "%02X: STORE_FLOAT_SLOT <SLOT %02X>, *(FLOAT*)%p\n",
                                idx, immed->store_float_slot.slot_no,
                                immed->store_float_slot.dst);
         break;
-    case JIT_OP_STORE_FLOAT_SLOT_INDEXED:
-        washdc_hostfile_printf(out, "%02X: STORE_FLOAT_SLOT_INDEXED <SLOT %02X>, *(FLOAT*)(<SLOT %02X> + %u * 4)\n",
-                               idx, immed->store_float_slot_indexed.slot_src,
-                               immed->store_float_slot_indexed.slot_base,
-                               immed->store_float_slot_indexed.index);
+    case JIT_OP_STORE_FLOAT_SLOT_OFFSET:
+        washdc_hostfile_printf(out, "%02X: STORE_FLOAT_SLOT_OFFSET <SLOT %02X>, *(FLOAT*)(<SLOT %02X> + %u * 4)\n",
+                               idx, immed->store_float_slot_offset.slot_src,
+                               immed->store_float_slot_offset.slot_base,
+                               immed->store_float_slot_offset.index);
         break;
     case JIT_OP_ADD:
         washdc_hostfile_printf(out, "%02X: ADD <SLOT %02X>, <SLOT %02X>\n",

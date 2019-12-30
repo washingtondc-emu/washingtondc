@@ -113,12 +113,12 @@ enum jit_opcode {
      * load 32-bits from a host memory address (addressed via address in a
      * slot + index) into another slot
      */
-    JIT_OP_LOAD_SLOT_INDEXED,
+    JIT_OP_LOAD_SLOT_OFFSET,
 
     // load 32-bit float from a host memory address into a jit register
     JIT_OP_LOAD_FLOAT_SLOT,
 
-    JIT_OP_LOAD_FLOAT_SLOT_INDEXED,
+    JIT_OP_LOAD_FLOAT_SLOT_OFFSET,
 
     // store 32-bits from a jit register address into a host memory address
     JIT_OP_STORE_SLOT,
@@ -127,12 +127,12 @@ enum jit_opcode {
      * store 32-bits to a host memory address (addressed via address in a
      * slot + index) from another slot
      */
-    JIT_OP_STORE_SLOT_INDEXED,
+    JIT_OP_STORE_SLOT_OFFSET,
 
     // store float from a jit register address into a host memory address
     JIT_OP_STORE_FLOAT_SLOT,
 
-    JIT_OP_STORE_FLOAT_SLOT_INDEXED,
+    JIT_OP_STORE_FLOAT_SLOT_OFFSET,
 
     // add one slot into another
     JIT_OP_ADD,
@@ -329,7 +329,7 @@ struct load_slot_immed {
     unsigned slot_no;
 };
 
-struct load_slot_indexed_immed {
+struct load_slot_offset_immed {
     unsigned slot_base;
     unsigned index;
     unsigned slot_dst;
@@ -340,7 +340,7 @@ struct load_float_slot_immed {
     unsigned slot_no;
 };
 
-struct load_float_slot_indexed_immed {
+struct load_float_slot_offset_immed {
     unsigned slot_base;
     unsigned index;
     unsigned slot_dst;
@@ -351,7 +351,7 @@ struct store_slot_immed {
     unsigned slot_no;
 };
 
-struct store_slot_indexed_immed {
+struct store_slot_offset_immed {
     unsigned slot_base;
     unsigned index;
     unsigned slot_src;
@@ -362,7 +362,7 @@ struct store_float_slot_immed {
     unsigned slot_no;
 };
 
-struct store_float_slot_indexed_immed {
+struct store_float_slot_offset_immed {
     unsigned slot_base;
     unsigned index;
     unsigned slot_src;
@@ -525,13 +525,13 @@ union jit_immed {
     struct write_float_slot_immed write_float_slot;
     struct load_slot16_immed load_slot16;
     struct load_slot_immed load_slot;
-    struct load_slot_indexed_immed load_slot_indexed;
+    struct load_slot_offset_immed load_slot_offset;
     struct load_float_slot_immed load_float_slot;
-    struct load_float_slot_indexed_immed load_float_slot_indexed;
+    struct load_float_slot_offset_immed load_float_slot_offset;
     struct store_slot_immed store_slot;
-    struct store_slot_indexed_immed store_slot_indexed;
+    struct store_slot_offset_immed store_slot_offset;
     struct store_float_slot_immed store_float_slot;
-    struct store_float_slot_indexed_immed store_float_slot_indexed;
+    struct store_float_slot_offset_immed store_float_slot_offset;
     struct add_immed add;
     struct sub_immed sub;
     struct sub_float_immed sub_float;
@@ -611,22 +611,22 @@ void jit_write_float_slot(struct il_code_block *block, struct memory_map *map,
                           unsigned src_slot, unsigned addr_slot);
 void jit_load_slot(struct il_code_block *block, unsigned slot_no,
                    uint32_t const *src);
-void jit_load_slot_indexed(struct il_code_block *block, unsigned slot_base,
+void jit_load_slot_offset(struct il_code_block *block, unsigned slot_base,
                            unsigned index, unsigned slot_dst);
 void jit_load_float_slot(struct il_code_block *block, unsigned slot_no,
                    float const *src);
-void jit_load_float_slot_indexed(struct il_code_block *block,
+void jit_load_float_slot_offset(struct il_code_block *block,
                                  unsigned slot_base,
                                  unsigned index, unsigned slot_dst);
 void jit_load_slot16(struct il_code_block *block, unsigned slot_no,
                      uint16_t const *src);
 void jit_store_slot(struct il_code_block *block, unsigned slot_no,
                     uint32_t *dst);
-void jit_store_slot_indexed(struct il_code_block *block, unsigned slot_src,
+void jit_store_slot_offset(struct il_code_block *block, unsigned slot_src,
                             unsigned slot_base, unsigned index);
 void jit_store_float_slot(struct il_code_block *block, unsigned slot_no,
                           float *dst);
-void jit_store_float_slot_indexed(struct il_code_block *block, unsigned slot_src,
+void jit_store_float_slot_offset(struct il_code_block *block, unsigned slot_src,
                                   unsigned slot_base, unsigned index);
 void jit_add(struct il_code_block *block, unsigned slot_src,
              unsigned slot_dst);

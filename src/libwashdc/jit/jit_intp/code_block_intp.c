@@ -180,11 +180,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                 *inst->immed.load_slot.src;
             inst++;
             break;
-        case JIT_OP_LOAD_SLOT_INDEXED:
-            memcpy(&block->slots[inst->immed.load_slot_indexed.slot_dst].as_u32,
-                   ((char*)block->slots[inst->immed.load_slot_indexed.slot_base].as_host_ptr) + sizeof(uint32_t) *
-                   inst->immed.load_slot_indexed.index,
-                   sizeof(block->slots[inst->immed.load_slot_indexed.slot_dst].as_u32));
+        case JIT_OP_LOAD_SLOT_OFFSET:
+            memcpy(&block->slots[inst->immed.load_slot_offset.slot_dst].as_u32,
+                   ((char*)block->slots[inst->immed.load_slot_offset.slot_base].as_host_ptr) + sizeof(uint32_t) *
+                   inst->immed.load_slot_offset.index,
+                   sizeof(block->slots[inst->immed.load_slot_offset.slot_dst].as_u32));
             inst++;
             break;
         case JIT_OP_LOAD_FLOAT_SLOT:
@@ -193,11 +193,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                    sizeof(float));
             inst++;
             break;
-        case JIT_OP_LOAD_FLOAT_SLOT_INDEXED:
-            memcpy(&block->slots[inst->immed.load_float_slot_indexed.slot_dst].as_float,
-                   ((char*)block->slots[inst->immed.load_float_slot_indexed.slot_base].as_host_ptr) + sizeof(float) *
-                   inst->immed.load_float_slot_indexed.index,
-                   sizeof(block->slots[inst->immed.load_float_slot_indexed.slot_dst].as_float));
+        case JIT_OP_LOAD_FLOAT_SLOT_OFFSET:
+            memcpy(&block->slots[inst->immed.load_float_slot_offset.slot_dst].as_float,
+                   ((char*)block->slots[inst->immed.load_float_slot_offset.slot_base].as_host_ptr) + sizeof(float) *
+                   inst->immed.load_float_slot_offset.index,
+                   sizeof(block->slots[inst->immed.load_float_slot_offset.slot_dst].as_float));
             inst++;
             break;
         case JIT_OP_STORE_SLOT:
@@ -205,11 +205,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                 block->slots[inst->immed.store_slot.slot_no].as_u32;
             inst++;
             break;
-        case JIT_OP_STORE_SLOT_INDEXED:
-            memcpy(((char*)block->slots[inst->immed.store_slot_indexed.slot_base].as_host_ptr) + sizeof(uint32_t) *
-                   inst->immed.store_slot_indexed.index,
-                   &block->slots[inst->immed.store_slot_indexed.slot_src].as_u32,
-                   sizeof(block->slots[inst->immed.store_slot_indexed.slot_src].as_u32));
+        case JIT_OP_STORE_SLOT_OFFSET:
+            memcpy(((char*)block->slots[inst->immed.store_slot_offset.slot_base].as_host_ptr) + sizeof(uint32_t) *
+                   inst->immed.store_slot_offset.index,
+                   &block->slots[inst->immed.store_slot_offset.slot_src].as_u32,
+                   sizeof(block->slots[inst->immed.store_slot_offset.slot_src].as_u32));
             inst++;
             break;
         case JIT_OP_STORE_FLOAT_SLOT:
@@ -218,11 +218,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                    sizeof(float));
             inst++;
             break;
-        case JIT_OP_STORE_FLOAT_SLOT_INDEXED:
-            memcpy(((char*)block->slots[inst->immed.store_float_slot_indexed.slot_base].as_host_ptr) + sizeof(float) *
-                   inst->immed.store_float_slot_indexed.index,
-                   &block->slots[inst->immed.store_float_slot_indexed.slot_src].as_float,
-                   sizeof(block->slots[inst->immed.store_float_slot_indexed.slot_src].as_float));
+        case JIT_OP_STORE_FLOAT_SLOT_OFFSET:
+            memcpy(((char*)block->slots[inst->immed.store_float_slot_offset.slot_base].as_host_ptr) + sizeof(float) *
+                   inst->immed.store_float_slot_offset.index,
+                   &block->slots[inst->immed.store_float_slot_offset.slot_src].as_float,
+                   sizeof(block->slots[inst->immed.store_float_slot_offset.slot_src].as_float));
             inst++;
             break;
         case JIT_OP_ADD:

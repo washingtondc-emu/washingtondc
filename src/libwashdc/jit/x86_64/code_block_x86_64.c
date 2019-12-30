@@ -1332,12 +1332,12 @@ emit_load_slot(struct code_block_x86_64 *blk,
     ungrab_slot(slot_no);
 }
 
-static void emit_load_slot_indexed(struct code_block_x86_64 *blk,
+static void emit_load_slot_offset(struct code_block_x86_64 *blk,
                                    struct il_code_block const *il_blk,
                                    void *cpu, struct jit_inst const* inst) {
-    unsigned slot_base = inst->immed.load_slot_indexed.slot_base;
-    unsigned slot_dst = inst->immed.load_slot_indexed.slot_dst;
-    unsigned index = inst->immed.load_slot_indexed.index;
+    unsigned slot_base = inst->immed.load_slot_offset.slot_base;
+    unsigned slot_dst = inst->immed.load_slot_offset.slot_dst;
+    unsigned index = inst->immed.load_slot_offset.index;
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_base, 8);
     if (slot_base != slot_dst)
@@ -1379,12 +1379,12 @@ emit_store_slot(struct code_block_x86_64 *blk,
 }
 
 static void
-emit_store_slot_indexed(struct code_block_x86_64 *blk,
+emit_store_slot_offset(struct code_block_x86_64 *blk,
                         struct il_code_block const *il_blk,
                         void *cpu, struct jit_inst const *inst) {
-    unsigned slot_base = inst->immed.store_slot_indexed.slot_base;
-    unsigned slot_src = inst->immed.store_slot_indexed.slot_src;
-    unsigned index = inst->immed.store_slot_indexed.index;
+    unsigned slot_base = inst->immed.store_slot_offset.slot_base;
+    unsigned slot_src = inst->immed.store_slot_offset.slot_src;
+    unsigned index = inst->immed.store_slot_offset.index;
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_base, 8);
     if (slot_base != slot_src)
@@ -2021,12 +2021,12 @@ static void emit_load_float_slot(struct code_block_x86_64 *blk,
 }
 
 static void
-emit_load_float_slot_indexed(struct code_block_x86_64 *blk,
+emit_load_float_slot_offset(struct code_block_x86_64 *blk,
                              struct il_code_block const *il_blk,
                              void *cpu, struct jit_inst const *inst) {
-    unsigned slot_base = inst->immed.load_float_slot_indexed.slot_base;
-    unsigned slot_dst = inst->immed.load_float_slot_indexed.slot_dst;
-    unsigned index = inst->immed.load_float_slot_indexed.index;
+    unsigned slot_base = inst->immed.load_float_slot_offset.slot_base;
+    unsigned slot_dst = inst->immed.load_float_slot_offset.slot_dst;
+    unsigned index = inst->immed.load_float_slot_offset.index;
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_base, 8);
     grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_dst, 4);
@@ -2063,12 +2063,12 @@ static void emit_store_float_slot(struct code_block_x86_64 *blk,
 }
 
 static void
-emit_store_float_slot_indexed(struct code_block_x86_64 *blk,
+emit_store_float_slot_offset(struct code_block_x86_64 *blk,
                               struct il_code_block const *il_blk,
                               void *cpu, struct jit_inst const *inst) {
-    unsigned slot_base = inst->immed.store_float_slot_indexed.slot_base;
-    unsigned slot_src = inst->immed.store_float_slot_indexed.slot_src;
-    unsigned index = inst->immed.store_float_slot_indexed.index;
+    unsigned slot_base = inst->immed.store_float_slot_offset.slot_base;
+    unsigned slot_src = inst->immed.store_float_slot_offset.slot_src;
+    unsigned index = inst->immed.store_float_slot_offset.index;
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_base, 8);
     grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_src, 4);
@@ -2207,14 +2207,14 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_OP_LOAD_SLOT:
             emit_load_slot(out, il_blk, cpu, inst);
             break;
-        case JIT_OP_LOAD_SLOT_INDEXED:
-            emit_load_slot_indexed(out, il_blk, cpu, inst);
+        case JIT_OP_LOAD_SLOT_OFFSET:
+            emit_load_slot_offset(out, il_blk, cpu, inst);
             break;
         case JIT_OP_STORE_SLOT:
             emit_store_slot(out, il_blk, cpu, inst);
             break;
-        case JIT_OP_STORE_SLOT_INDEXED:
-            emit_store_slot_indexed(out, il_blk, cpu, inst);
+        case JIT_OP_STORE_SLOT_OFFSET:
+            emit_store_slot_offset(out, il_blk, cpu, inst);
             break;
         case JIT_OP_ADD:
             emit_add(out, il_blk, cpu, inst);
@@ -2306,14 +2306,14 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_OP_LOAD_FLOAT_SLOT:
             emit_load_float_slot(out, il_blk, cpu, inst);
             break;
-        case JIT_OP_LOAD_FLOAT_SLOT_INDEXED:
-            emit_load_float_slot_indexed(out, il_blk, cpu, inst);
+        case JIT_OP_LOAD_FLOAT_SLOT_OFFSET:
+            emit_load_float_slot_offset(out, il_blk, cpu, inst);
             break;
         case JIT_OP_STORE_FLOAT_SLOT:
             emit_store_float_slot(out, il_blk, cpu, inst);
             break;
-        case JIT_OP_STORE_FLOAT_SLOT_INDEXED:
-            emit_store_float_slot_indexed(out, il_blk, cpu, inst);
+        case JIT_OP_STORE_FLOAT_SLOT_OFFSET:
+            emit_store_float_slot_offset(out, il_blk, cpu, inst);
             break;
         default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
