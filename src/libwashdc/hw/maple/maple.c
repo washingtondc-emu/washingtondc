@@ -61,16 +61,22 @@
 /*
  * delay that specifies how long a DMA transaction should take.
  *
- * This value has been confirmed on real hardware; it is slightly faster than
- * it should be but still within an acceptable tolerance (its only off by
- * approx 60us).
+ * TODO: I ran a test that seemingly confirmed this value on real hardware to
+ * be approximately 1ms.  Using that value broke several games (Namco Museum and
+ * Sonic Adventure 2 at the least and probably others too) so I'm going with 0
+ * for now.
  *
- * The test used to confirm this value was a little hacky and incorrect (it used
- * a non-atomic int across irqs) so I would like to revisit this someday.  Also
- * I'd like to see if the response time changes for different packet types, or
- * if it can be effected by what maple devices are plugged in.
+ * The test only tested DEVINFO packets, so it's possible that GETCOND is
+ * actually faster.  The test was also built on a KallistiOS kernel that I
+ * hacked up with my own timing code, so that may have been interfering with it
+ * as well.  A new test should be written which doesn't rely on any
+ * pre-existing SDK so that we can be sure nothing is interfering with the
+ * timing.
+ *
+ * I'm pretty sure that Star Wars Episode I Racer needs there to be *some*
+ * latency here, so this does need to be figured out eventually.
  */
-#define MAPLE_DMA_COMPLETE_DELAY (SCHED_FREQUENCY / 1024)
+#define MAPLE_DMA_COMPLETE_DELAY 0
 
 static void maple_dma_complete_int_event_handler(struct SchedEvent *event);
 
