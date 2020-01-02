@@ -177,6 +177,14 @@ static void suspend_loop(void);
 
 static void dc_inject_irq(char const *id);
 
+void washdc_dump_main_memory(char const *path) {
+    FILE *outfile = fopen(path, "wb");
+    if (outfile) {
+        fwrite(dc_mem.mem, sizeof(dc_mem.mem), 1, outfile);
+        fclose(outfile);
+    }
+}
+
 /*
  * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
  * because programs that use the serial port (like KallistiOS) can timeout if

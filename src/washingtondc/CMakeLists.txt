@@ -2,7 +2,7 @@
 #
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2016-2019 snickerbockers
+#    Copyright (C) 2016-2020 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -23,7 +23,11 @@
 #set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 cmake_minimum_required(VERSION 2.6)
 
+# for std::filesystem in the overlay.  Otherwise, we would not need this
+set(CMAKE_CXX_STANDARD 17)
+
 project(WashingtonDC CXX)
+
 set(WashingtonDC_VERSION_MAJOR 0)
 set(WashingtonDC_VERSION_MINOR 1)
 
@@ -173,7 +177,8 @@ set(washingtondc_libs "m"
                       "png"
                       "${vid_libs}"
                       "zlib"
-                      "portaudio_static")
+                      "portaudio_static"
+                      "stdc++fs")
 
 if (USE_LIBEVENT)
     set(washingtondc_libs "${washingtondc_libs}" "event_core")
@@ -197,5 +202,6 @@ target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include"
                                                 "${CMAKE_SOURCE_DIR}/external/capstone/include"
                                                 "${CMAKE_SOURCE_DIR}/external/glew/include"
                                                 "${CMAKE_SOURCE_DIR}/external/libevent/include"
-                                                "${CMAKE_BINARY_DIR}/external/libevent/include")
+                                                "${CMAKE_BINARY_DIR}/external/libevent/include"
+                                                "${CMAKE_SOURCE_DIR}/external/imgui-filebrowser")
 target_link_libraries(washingtondc "${washingtondc_libs}")

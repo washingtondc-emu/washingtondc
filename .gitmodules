@@ -16,3 +16,6 @@
 [submodule "external/libevent"]
 	path = external/libevent
 	url = https://github.com/libevent/libevent
+[submodule "external/imgui-filebrowser"]
+	path = external/imgui-filebrowser
+	url = https://github.com/AirGuanZ/imgui-filebrowser

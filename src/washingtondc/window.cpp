@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ static void toggle_overlay(void);
 static void mouse_btn_cb(GLFWwindow *win, int btn, int action, int mods);
 static void
 mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y);
+static void text_input_cb(GLFWwindow* window, unsigned int codepoint);
 
 struct win_intf const* get_win_intf_glfw(void) {
     static struct win_intf win_intf_glfw = { };
@@ -257,6 +258,7 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1.trig-r(1)");
 
     glfwSetMouseButtonCallback(win, mouse_btn_cb);
+    glfwSetCharCallback(win, text_input_cb);
 }
 
 static void win_glfw_cleanup() {
@@ -610,4 +612,8 @@ static void
 mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y) {
     mouse_scroll_x = scroll_x;
     mouse_scroll_y = scroll_y;
+}
+
+static void text_input_cb(GLFWwindow* window, unsigned int codepoint) {
+    overlay::input_text(codepoint);
 }

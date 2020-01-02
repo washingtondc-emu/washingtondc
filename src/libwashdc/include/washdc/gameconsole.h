@@ -153,6 +153,9 @@ void washdc_gameconsole_texinfo_var(struct washdc_gameconsole const *cons,
 void washdc_gameconsole_inject_irq(struct washdc_gameconsole const *cons,
                                    char const *irq_id);
 
+void washdc_dump_main_memory(char const *path);
+
+
 #ifdef __cplusplus
 }
 #endif

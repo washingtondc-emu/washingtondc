@@ -26,6 +26,7 @@
 #include <sstream>
 #include <vector>
 #include <iostream>
+#include <memory>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -41,6 +42,7 @@
 #include "../window.hpp"
 #include "../sound.hpp"
 #include "../washingtondc.hpp"
+#include "imfilebrowser.h"
 
 #include "overlay.hpp"
 
@@ -77,6 +79,8 @@ static void show_aica_win(void);
 static void show_tex_cache_win(void);
 static void show_tex_win(unsigned idx);
 static std::string var_as_str(struct washdc_var const *var);
+
+static std::unique_ptr<ImGui::FileBrowser> mem_dump_browser;
 
 /*
  * This structure represents a texture in the texture-cache which the UI has a
@@ -220,6 +224,9 @@ void overlay::draw() {
 
                 ImGui::EndMenu();
             }
+
+            if (ImGui::MenuItem("Dump Main Memory"))
+                mem_dump_browser->Open();
             ImGui::EndMenu();
         }
 
@@ -262,6 +269,13 @@ void overlay::draw() {
 
             show_tex_win(tex_idx);
         }
+    }
+
+    mem_dump_browser->Display();
+    if (mem_dump_browser->HasSelected()) {
+        std::filesystem::path sel = mem_dump_browser->GetSelected();
+        mem_dump_browser->Close();
+        washdc_dump_main_memory(sel.c_str());
     }
 
     if (mute_old != do_mute_audio)
@@ -622,13 +636,22 @@ void overlay::init(bool enable_debugger) {
     textures.resize(console->texcache.sz);
     for (tex_stat& stat : textures)
         glGenTextures(1, &stat.tex_obj);
+
+    ImGuiFileBrowserFlags browser_flags =
+        ImGuiFileBrowserFlags_EnterNewFilename |
+        ImGuiFileBrowserFlags_CreateNewDir;
+    mem_dump_browser = std::make_unique<ImGui::FileBrowser>(browser_flags);
+    mem_dump_browser->SetTitle("Save Main System Memory Dump");
+    mem_dump_browser->SetTypeFilters({ ".bin" });
 }
 
 void overlay::cleanup() {
+    mem_dump_browser.reset(nullptr);
+
     for (tex_stat& stat : textures)
         glDeleteTextures(1, &stat.tex_obj);
 
-    ui_renderer.reset();
+    ui_renderer.reset(nullptr);
 
     ImGui::DestroyContext();
 
@@ -661,5 +684,12 @@ static std::string overlay::var_as_str(struct washdc_var const *var) {
         return ss.str();
     case WASHDC_VAR_INVALID:
         return "INVALID";
+    }
+}
+
+void overlay::input_text(unsigned codepoint) {
+    if (not_hidden) {
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddInputCharacter(codepoint);
     }
 }
