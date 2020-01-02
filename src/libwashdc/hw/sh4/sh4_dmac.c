@@ -370,6 +370,9 @@ void sh4_dmac_transfer_from_mem(Sh4 *sh4, addr32_t transfer_src, size_t unit_sz,
     }
 }
 
+static DEF_ERROR_U32_ATTR(dma_xfer_src)
+static DEF_ERROR_U32_ATTR(dma_xfer_dst)
+
 void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
                              addr32_t transfer_dst, size_t n_words) {
     struct memory_map *map = sh4->mem.map;
@@ -379,6 +382,14 @@ void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
                                                                  n_words * sizeof(uint32_t));
     struct memory_map_region *dst_region = memory_map_get_region(map, transfer_dst,
                                                                  n_words * sizeof(uint32_t));
+
+    if (!src_region || !dst_region) {
+        error_set_dma_xfer_src(transfer_src);
+        error_set_dma_xfer_dst(transfer_dst);
+        error_set_length(n_words * sizeof(uint32_t));
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     memory_map_read32_func read32 = src_region->intf->read32;
     memory_map_write32_func write32 = dst_region->intf->write32;
     uint32_t src_mask = src_region->mask;
