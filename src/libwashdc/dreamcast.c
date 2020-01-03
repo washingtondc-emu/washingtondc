@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -1406,19 +1406,73 @@ void dc_request_frame_stop(void) {
     frame_stop = true;
 }
 
+static DEF_ERROR_U32_ATTR(ch2_dma_xfer_src_first)
+static DEF_ERROR_U32_ATTR(ch2_dma_xfer_src_last)
+static DEF_ERROR_U32_ATTR(ch2_dma_xfer_dst_first)
+static DEF_ERROR_U32_ATTR(ch2_dma_xfer_dst_last)
+
+/*
+ * this is like dc_ch2_dma_xfer, but it's slower because it evaluates the
+ * memory mapping of each 4 bytes individually.  We use it as a fallback for
+ * situations where dc_ch2_dma_xfer sees a transfer that crosses the boundary
+ * between regions.  Mars Matrix needs this because it does a 512KB transfer
+ * into PVR2 texture memory which starts at the end of one of the main system
+ * memory mirrors and crosses over into the beginning of the next mirror.
+ */
+static void
+dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
+    unsigned n_bytes = 4 * n_words;
+    uint32_t xfer_src_first = xfer_src;
+    uint32_t xfer_src_last = xfer_src + n_bytes - 4;
+    uint32_t xfer_dst_first = xfer_dst;
+    uint32_t xfer_dst_last = xfer_dst + n_bytes - 4;
+
+    uint32_t src = xfer_src_first;
+    uint32_t dst = xfer_dst_first;
+    while (src <= xfer_src_last) {
+        uint32_t val = memory_map_read_32(&mem_map, src);
+
+        if ((dst >= ADDR_TA_FIFO_POLY_FIRST) &&
+            (dst <= ADDR_TA_FIFO_POLY_LAST)) {
+            pvr2_ta_fifo_poly_write_32(dst, val, &dc_pvr2);
+        } else if ((dst >= ADDR_AREA4_TEX64_FIRST) &&
+                   (dst <= ADDR_AREA4_TEX64_LAST)) {
+            pvr2_tex_mem_area64_write_32(dst - ADDR_AREA4_TEX64_FIRST +
+                                         ADDR_TEX64_FIRST, val, &dc_pvr2);
+        } else if ((xfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
+                   (xfer_dst <= ADDR_AREA4_TEX32_LAST)) {
+            pvr2_tex_mem_area32_write_32(dst - ADDR_AREA4_TEX32_FIRST +
+                                         ADDR_TEX32_FIRST, val, &dc_pvr2);
+        } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
+               xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
+            pvr2_yuv_input_data(&dc_pvr2, &val, sizeof(val));
+        } else {
+            error_set_ch2_dma_xfer_src_last(xfer_src_last);
+            error_set_ch2_dma_xfer_src_first(xfer_src_first);
+            error_set_ch2_dma_xfer_dst_last(xfer_dst_last);
+            error_set_ch2_dma_xfer_dst_first(xfer_dst_first);
+            error_set_address(xfer_src);
+            error_set_length(4);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        src += 4;
+        dst += 4;
+    }
+}
+
 void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
-    /*
-     * TODO: The below code does not account for what happens when a DMA tranfer
-     * crosses over into a different memory region.
-     */
     struct memory_map_region *src_region = memory_map_get_region(&mem_map,
                                                                  xfer_src,
                                                                  n_words * 4);
 
     if (!src_region) {
-        error_set_address(xfer_src);
-        error_set_length(n_words * 4);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        /*
+         * This could mean that the transfer crosses regions, so try switching
+         * to the fallback implementation.
+         */
+        dc_ch2_dma_xfer_slow(xfer_src, xfer_dst, n_words);
+        return;
     }
 
     memory_map_read32_func read32 = src_region->intf->read32;
