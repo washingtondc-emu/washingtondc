@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -1590,7 +1590,7 @@ static void washdbg_disas_single_emit(char ch) {
 
 static char const *washdbg_disas_single_sh4(uint32_t addr, uint16_t val) {
     memset(sh4_disas_line, 0, sizeof(sh4_disas_line));
-    sh4asm_disas_inst(val, washdbg_disas_single_emit);
+    sh4asm_disas_inst(val, washdbg_disas_single_emit, addr);
 
     return sh4_disas_line;
 }
