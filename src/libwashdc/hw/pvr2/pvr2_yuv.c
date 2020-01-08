@@ -170,16 +170,6 @@ static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
         }
     }
 
-    /*
-     * TODO: how to know the output linestride?  For now it is hardocoded to
-     * 1024 bytes (512 pixels) because that is what NBA2K expects.  Maybe it's
-     * 16 * macroblock_count_x * 2 bytes rounded up to next power of two?
-     *
-     * logically you'd expect the answer to be
-     * (2 * 16 * yuv->cur_macroblock_x) bytes, but NBA2K clearly needs it to
-     * be 1024 bytes...
-     */
-
     unsigned linestride = 2 * 16 * yuv->macroblock_count_x;
     unsigned macroblock_offs = linestride * 16 * yuv->cur_macroblock_y +
         yuv->cur_macroblock_x * 8 * sizeof(uint32_t);
