@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@
 #include "gfx/gfx_il.h"
 #include "pvr2.h"
 #include "pvr2_reg.h"
+#include "intmath.h"
 
 #include "pvr2_ta.h"
 
@@ -461,10 +462,21 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         else
             PVR2_TRACE("twiddled\n");
 
+        /*
+         * XXX: not sure if PVR2_TEXT_CONTROL should be read here, or when we
+         * submit the vertices.
+         */
+        unsigned linestride = hdr->stride_sel ?
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4)) :
+            (1 << hdr->tex_width_shift);
+        if (!linestride || linestride > (1 << hdr->tex_width_shift))
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
         struct pvr2_tex *ent =
             pvr2_tex_cache_find(pvr2, hdr->tex_addr, hdr->tex_palette_start,
                                 hdr->tex_width_shift,
                                 hdr->tex_height_shift,
+                                linestride,
                                 hdr->pix_fmt, hdr->tex_twiddle,
                                 hdr->tex_vq_compression,
                                 hdr->tex_mipmap,
@@ -483,6 +495,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
                                      hdr->tex_addr, hdr->tex_palette_start,
                                      hdr->tex_width_shift,
                                      hdr->tex_height_shift,
+                                     linestride,
                                      hdr->pix_fmt,
                                      hdr->tex_twiddle,
                                      hdr->tex_vq_compression,
@@ -617,6 +630,14 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt_vtx const *vtx) {
 
     uv[3][0] = uv[1][0] + uv_vec[0][0] + uv_vec[1][0];
     uv[3][1] = uv[1][1] + uv_vec[0][1] + uv_vec[1][1];
+
+    if (ta->hdr.stride_sel) {
+        unsigned linestride = 32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
+        int idx;
+        for (idx = 0; idx < 3; idx++) {
+            uv[idx][0] *= ((float)linestride) / ((float)(1 << ta->hdr.tex_width_shift));
+        }
+    }
 
     /*
      * any three non-colinear points will define a 2-dimensional hyperplane in
@@ -797,7 +818,14 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 
     PVR2_TRACE("(%f, %f, %f)\n", vert.pos[0], vert.pos[1], vert.pos[2]);
 
-    memcpy(vert.tex_coord, vtx->uv, sizeof(vert.tex_coord));
+    if (ta->hdr.stride_sel) {
+        unsigned linestride = 32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
+        vert.tex_coord[0] = vtx->uv[0] * ((float)(1 << ta->hdr.tex_width_shift) / (float)linestride);
+        vert.tex_coord[1] = vtx->uv[1];
+    } else {
+        memcpy(vert.tex_coord, vtx->uv, sizeof(vert.tex_coord));
+    }
+
     memcpy(vert.base_color, vtx->base_color, sizeof(vtx->base_color));
     memcpy(vert.offs_color, vtx->offs_color, sizeof(vtx->offs_color));
 
@@ -1213,8 +1241,13 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
             TEX_CTRL_PALETTE_START_SHIFT;
     }
 
+    if (hdr->stride_sel)
+        hdr->tex_mipmap = false;
+    else
+        hdr->tex_mipmap = (bool)(TEX_CTRL_MIP_MAPPED_MASK & ta_fifo32[3]);
+
     hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
-    hdr->tex_mipmap = (bool)(TEX_CTRL_MIP_MAPPED_MASK & ta_fifo32[3]);
+
     hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
                      TEX_CTRL_TEX_ADDR_SHIFT) << 3;
     hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>

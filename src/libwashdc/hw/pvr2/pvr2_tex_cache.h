@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -40,6 +40,17 @@ struct pvr2_tex_meta {
     uint32_t addr_first, addr_last;
 
     unsigned w_shift, h_shift;
+
+    /*
+     * Linestride in this context doesn't work the same way it would in most
+     * other contexts.  PowerVR2 allows programs to submit textures with
+     * non-power-of-two dimensions by setting the stride select bit and writing
+     * the desired length to the lowest 5 bits of TEXT_CONTROL.  The linestride
+     * is always less than or equal to (1<<w_shift), and texture coordinates
+     * are all calculated based on (1<<w_shift) even though that's not actually
+     * the width of the texture.
+     */
+    unsigned linestride;
 
     /*
      * The difference between pix_fmt and tex_fmt is that pix_fmt documents
@@ -128,6 +139,7 @@ struct pvr2_tex_cache {
 struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
                                     uint32_t addr, uint32_t pal_addr,
                                     unsigned w_shift, unsigned h_shift,
+                                    unsigned linestride,
                                     int tex_fmt, bool twiddled,
                                     bool vq_compression, bool mipmap,
                                     bool stride_sel);
@@ -139,6 +151,7 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
 struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
                                      uint32_t addr, uint32_t pal_addr,
                                      unsigned w_shift, unsigned h_shift,
+                                     unsigned linestride,
                                      int tex_fmt, bool twiddled,
                                      bool vq_compression, bool mipmap,
                                      bool stride_sel);

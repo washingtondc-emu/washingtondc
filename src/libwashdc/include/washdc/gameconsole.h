@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -108,7 +108,7 @@ struct washdc_texinfo {
 
     void *tex_dat;
     size_t n_tex_bytes;
-    int w_shift, h_shift;
+    unsigned width, height;
     enum washdc_tex_fmt fmt;
 };
 

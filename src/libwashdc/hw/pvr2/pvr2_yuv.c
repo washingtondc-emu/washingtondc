@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -180,7 +180,7 @@ static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
      * be 1024 bytes...
      */
 
-    unsigned linestride = 512 * 2;
+    unsigned linestride = 2 * 16 * yuv->macroblock_count_x;
     unsigned macroblock_offs = linestride * 16 * yuv->cur_macroblock_y +
         yuv->cur_macroblock_x * 8 * sizeof(uint32_t);
 

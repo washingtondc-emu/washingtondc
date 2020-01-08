@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -167,7 +167,7 @@ void pvr2_tex_cache_cleanup(struct pvr2 *pvr2) {
 
 struct pvr2_tex_hash {
     uint32_t addr_first;
-    unsigned w_shift, h_shift;
+    unsigned w_shift, h_shift, linestride;
     int tex_fmt;
     uint32_t tex_palette_start;
     bool twiddled : 1;
@@ -182,6 +182,8 @@ static inline bool pvr2_tex_hash_eq(struct pvr2_tex_hash const *hash1,
     if (hash1->w_shift != hash2->w_shift)
         return false;
     if (hash1->h_shift != hash2->h_shift)
+        return false;
+    if (hash1->linestride != hash2->linestride)
         return false;
     if (hash1->tex_fmt != hash2->tex_fmt)
         return false;
@@ -204,6 +206,7 @@ static inline bool pvr2_tex_hash_eq(struct pvr2_tex_hash const *hash1,
 struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
                                      uint32_t addr, uint32_t pal_addr,
                                      unsigned w_shift, unsigned h_shift,
+                                     unsigned linestride,
                                      int tex_fmt, bool twiddled,
                                      bool vq_compression, bool mipmap,
                                      bool stride_sel) {
@@ -215,6 +218,7 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
         .addr_first = addr,
         .w_shift = w_shift,
         .h_shift = h_shift,
+        .linestride = linestride,
         .tex_fmt = tex_fmt,
         .twiddled = twiddled,
         .vq_compression = vq_compression,
@@ -234,6 +238,7 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
             .addr_first = meta->addr_first,
             .w_shift = meta->w_shift,
             .h_shift = meta->h_shift,
+            .linestride = linestride,
             .tex_fmt = meta->tex_fmt,
             .twiddled = meta->twiddled,
             .vq_compression = meta->vq_compression,
@@ -253,6 +258,7 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
 struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
                                     uint32_t addr, uint32_t pal_addr,
                                     unsigned w_shift, unsigned h_shift,
+                                    unsigned linestride,
                                     int tex_fmt, bool twiddled,
                                     bool vq_compression, bool mipmap,
                                     bool stride_sel) {
@@ -312,6 +318,7 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
     tex->meta.addr_first = addr;
     tex->meta.w_shift = w_shift;
     tex->meta.h_shift = h_shift;
+    tex->meta.linestride = linestride;
     tex->meta.tex_fmt = tex_fmt;
     tex->meta.twiddled = twiddled;
     tex->meta.vq_compression = vq_compression;
@@ -337,15 +344,24 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
 
     if (tex->meta.vq_compression) {
         unsigned side_len = 1 << w_shift;
+        if (linestride != side_len) {
+            /*
+             * TODO: I'm pretty sure this should be possible, it's just that
+             * my vq compression code doesn't implement it.  But it's probably
+             * something that works on real hardware.
+             */
+            error_set_feature("Vector Quantization + stride-select textures");
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
         tex->meta.addr_last = addr - 1 + PVR2_CODE_BOOK_LEN +
             sizeof(uint8_t) * side_len * side_len / 4;
     } else {
         if (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
             tex->meta.addr_last = addr - 1 +
-                ((1 << w_shift) * (1 << h_shift)) / 2;
+                (linestride * (1 << h_shift)) / 2;
         } else {
             tex->meta.addr_last = addr - 1 + pixel_sizes[tex_fmt] *
-                (1 << w_shift) * (1 << h_shift);
+                linestride * (1 << h_shift);
         }
         if (tex->meta.mipmap) {
             if (tex->meta.w_shift != tex->meta.h_shift) {
@@ -550,7 +566,7 @@ static void pvr2_tex_vq_decompress(void *dst, void const *code_book,
 void pvr2_tex_cache_read(struct pvr2 *pvr2,
                          void **tex_dat_out, size_t *n_bytes_out,
                          struct pvr2_tex_meta const *meta) {
-    unsigned tex_w = 1 << meta->w_shift, tex_h = 1 << meta->h_shift;
+    unsigned tex_w = meta->linestride, tex_h = 1 << meta->h_shift;
 
     // TODO: better error-handling
     if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=
@@ -881,7 +897,7 @@ void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
                 cmd.arg.bind_tex.gfx_obj_handle = tex_in->obj_no;
                 cmd.arg.bind_tex.tex_no = idx;
                 cmd.arg.bind_tex.pix_fmt = tmp.pix_fmt;
-                cmd.arg.bind_tex.width = 1 << tex_in->meta.w_shift;
+                cmd.arg.bind_tex.width = tex_in->meta.linestride;
                 cmd.arg.bind_tex.height = 1 << tex_in->meta.h_shift;
 
                 rend_exec_il(&cmd, 1);

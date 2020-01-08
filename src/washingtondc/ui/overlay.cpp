@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -372,7 +372,7 @@ overlay::update_tex_cache_ent(struct washdc_texinfo *texinfo,
                               struct overlay::tex_stat stat) {
     glBindTexture(GL_TEXTURE_2D, stat.tex_obj);
 
-    unsigned tex_w = 1 << texinfo->w_shift, tex_h = 1 << texinfo->h_shift;
+    unsigned tex_w = texinfo->width, tex_h = texinfo->height;
     void *dat = texinfo->tex_dat;
 
     int color_tp_png;
@@ -526,7 +526,7 @@ static void overlay::show_tex_cache_win(void) {
                                ImVec2(0, 0), ImVec2(1,1), -1, ImVec4(1,1,1,1),
                                ImVec4(1, 1, 1, 1))) {
             textures.at(idx).show_window = true;
-            unsigned tex_w = 1 << texinfo.w_shift, tex_h = 1 << texinfo.h_shift;
+            unsigned tex_w = texinfo.width, tex_h = texinfo.height;
             textures.at(idx).aspect_ratio = (double)tex_w / (double)tex_h;
         }
 

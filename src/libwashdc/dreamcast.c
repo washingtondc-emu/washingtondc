@@ -216,8 +216,8 @@ static void dc_get_texinfo(struct washdc_texcache const *cache,
         texinfo->valid = true;
         texinfo->n_vars = 12;
 
-        texinfo->w_shift = meta.w_shift;
-        texinfo->h_shift = meta.h_shift;
+        texinfo->width = meta.linestride;
+        texinfo->height = 1 << meta.h_shift;
 
         switch (meta.pix_fmt) {
         case GFX_TEX_FMT_ARGB_1555:
