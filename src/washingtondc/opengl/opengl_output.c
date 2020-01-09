@@ -92,7 +92,7 @@ static GLfloat trans_mat[16] = {
     0.0f, 0.0f, 0.0f, 1.0f
 };
 
-static GLfloat const tex_mat[9] = {
+static GLfloat tex_mat[9] = {
     1.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f,
     0.0f, 0.0f, 1.0f
@@ -242,30 +242,77 @@ void opengl_video_present(void) {
     double yres_dbl = (double)yres;
 
     /*
-     * double up the height for progressive-scans.
+     * double up the height if we can.
+     *
+     * I'm not 100% clear on how 240p video ends up filling the entirety of my
+     * 480-scanline TV screen, but it defintely does so I can only assume that
+     * the hardware knows when it can double up the vertical resolution.
+     */
+    if (bound_obj_h * 2 <= 480)
+        bound_obj_h *= 2;
+
+    /*
      *
      * For interlace-scans, this would have already happened in the PowerVR2
      * emulation because the total scanline count including both fields is
      * actually twice the height of each individual field.  Progressive scans
      * are vertically stretched out by the TV, which is why the height gets
      * doubled here and not in the PowerVR2 emulation code.
+     *
+     * After doubling the height, it should be approximately 480 scanlines.  It is
+     * common for games to make it slightly less than that, ie 476 scanlines.
+     * The width is completely arbitrary since that's just an analog signal,
+     * although it's usually either 320 or 240.
+     *
+     * So somehow, we need to divine what the intended aspect ratio is.  Analog
+     * video didn't have a fixed horizontal resolution, it would just spit out
+     * an analog signal and however many pixels the TV set had would be how the
+     * horizontal resolution.  Scanlines are the only discrete element on an
+     * analog video system, and thus the number of scanlines your TV set has is
+     * fixed.
+     *
+     * Here we assume that the television set we're emulating has 480
+     * scanlines, and 640 pixels per scanline.  If the game gives us a
+     * framebuffer with less than 480 scanlines, then we'll treat the extra
+     * scanlines in the emulated TV as being empty.  If the game gives us more
+     * than 480 scanlines, then the excess scanlines won't be displayed.  No
+     * matter how many horizontal pixels there are, the picture will always be
+     * stretched or compressed to make the aspect ratio 4:3.
      */
-    double y_scale = bound_obj_interlace ? 1.0 : 2.0;
-
-    double xratio = xres_dbl / bound_obj_w;
-    double yratio = yres_dbl / (y_scale * bound_obj_h);
 
     double clip_width, clip_height;
-
-    if (xratio > yratio) {
-        // output height is window height, and output width is scaled accordingly
-        clip_height = 1.0;
-        clip_width = (bound_obj_w / (y_scale * bound_obj_h)) * (yres_dbl / xres_dbl);
+    if ((xres_dbl / yres_dbl) < (4.0 / 3.0)) {
+        // output window is taller and narrower than 4:3
+        clip_height = (3.0 / 4.0) * (xres_dbl / yres_dbl);
     } else {
-        // output width is window width, and output height is scaled accordingly
-        clip_width = 1.0;
-        clip_height = (y_scale * bound_obj_h / bound_obj_w) * (xres_dbl / yres_dbl);
+        // output window is shorter and wider than 4:3
+        clip_height = bound_obj_h < 480 ? bound_obj_h / 480.0 : 1.0;
     }
+
+    /*
+     * handle pictures that are smaller than 480 scanlines.
+     *
+     * XXX because of this, there will always be a little empty space on the
+     * output window when the pictures are less than 480 scanlines.  It would
+     * be possible to scale it up to fill either the width or height of the
+     * screen.  Current behavior seems better since it leaves behind blank
+     * parts of the screen like a real TV might, but arguably it's kinda
+     * annoying since fullscreen mode isn't the entire screen.
+     *
+     * Also it might be more accurate to shift up so that the top scanline is
+     * always at the top of the window.  Current implementation centers
+     * everything, and I'm not sure if that's how a real CRT set would do it.
+     */
+    if (clip_height < 480)
+        clip_height *= (bound_obj_h) / 480.0;
+
+    clip_width = (4.0 / 3.0) * (yres_dbl / xres_dbl) * clip_height;
+
+    // clip pictures that are bigger than 480 scanlines
+    if (bound_obj_h > 480.0)
+        tex_mat[4] = 480.0 / bound_obj_h;
+    else
+        tex_mat[4] = 1.0;
 
     trans_mat[0] = clip_width;
     trans_mat[5] = do_flip ? -clip_height : clip_height;
