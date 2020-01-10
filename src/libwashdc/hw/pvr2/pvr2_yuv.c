@@ -76,6 +76,11 @@ void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base) {
     if (tex_ctrl & (1 << 24))
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
+#ifdef INVARIANTS
+    if (new_base % 8)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
     /*
      * TODO: what happens if any of these settings change without updating the
      * base address?
@@ -174,13 +179,10 @@ static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
     unsigned macroblock_offs = linestride * 16 * yuv->cur_macroblock_y +
         yuv->cur_macroblock_x * 8 * sizeof(uint32_t);
 
-    uint32_t row_offs32 = yuv->dst_addr / 4 + macroblock_offs / 4;
-    uint32_t *row_ptr = ((uint32_t*)pvr2->mem.tex64) + row_offs32;
-    uint32_t addr_base = 4 * row_offs32;
+    uint32_t addr_base = yuv->dst_addr + macroblock_offs;
 
     for (row = 0; row < 16; row++) {
-        memcpy(row_ptr, block[row], 8 * sizeof(uint32_t));
-        row_ptr += linestride / 4;
+        pvr2_tex_mem_64bit_write_raw(&pvr2->mem, addr_base, block[row], 32);
         addr_base += linestride;
 
         pvr2_framebuffer_notify_write(pvr2, ADDR_TEX64_FIRST + addr_base,

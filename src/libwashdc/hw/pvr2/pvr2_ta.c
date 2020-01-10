@@ -1450,14 +1450,15 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
         ISP_BACKGND_T_ADDR_SHIFT;
     uint32_t backgnd_skip = ((ISP_BACKGND_T_SKIP_MASK & backgnd_tag) >>
                              ISP_BACKGND_T_SKIP_SHIFT) + 3;
-    uint32_t const *backgnd_info = (uint32_t*)(pvr2->mem.tex32 + backgnd_info_addr);
-
     /* printf("background skip is %d\n", (int)backgnd_skip); */
 
     /* printf("ISP_BACKGND_D is %f\n", (double)frak); */
     /* printf("ISP_BACKGND_T is 0x%08x\n", (unsigned)backgnd_tag); */
 
-    uint32_t bg_color_src = *(backgnd_info + 3 + 0 * backgnd_skip + 3);
+    uint32_t bg_color_src =
+        pvr2_tex_mem_32bit_read32(&pvr2->mem,
+                                  backgnd_info_addr +
+                                  (3 + 0 * backgnd_skip + 3) * sizeof(uint32_t));
 
     float bg_color_a = (float)((bg_color_src & 0xff000000) >> 24) / 255.0f;
     float bg_color_r = (float)((bg_color_src & 0x00ff0000) >> 16) / 255.0f;

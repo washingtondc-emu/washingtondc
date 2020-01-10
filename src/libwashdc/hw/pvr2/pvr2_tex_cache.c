@@ -456,9 +456,9 @@ void pvr2_tex_cache_notify_palette_tp_change(struct pvr2 *pvr2) {
  * de-twiddle src into dst.  Both src and dst must be preallocated buffers with
  * a length of (1 << tex_w_shift) * (1 << tex_h_shift) * bytes_per_pix.
  */
-static void pvr2_tex_detwiddle(void *dst, void const *src,
-                               unsigned tex_w_shift, unsigned tex_h_shift,
-                               unsigned bytes_per_pix) {
+static void pvr2_tex_detwiddle(struct pvr2_tex_mem *mem, void *dst,
+                               uint32_t src_addr, unsigned tex_w_shift,
+                               unsigned tex_h_shift, unsigned bytes_per_pix) {
     uint8_t *dst8 = (uint8_t*)dst;
     unsigned tex_w = 1 << tex_w_shift, tex_h = 1 << tex_h_shift;
     unsigned row, col;
@@ -471,9 +471,10 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
                 RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
-            memcpy(dst8 + (row * tex_w + col) * bytes_per_pix,
-                   src + twid_idx * bytes_per_pix,
-                   bytes_per_pix);
+            pvr2_tex_mem_64bit_read_raw(mem, dst8 +
+                                        (row * tex_w + col) * bytes_per_pix,
+                                        src_addr + twid_idx * bytes_per_pix,
+                                        bytes_per_pix);
         }
     }
 }
@@ -484,10 +485,10 @@ static void pvr2_tex_detwiddle(void *dst, void const *src,
  * The normal version of pvr2_tex_detwiddle won't work since each byte contains
  * two packed pixels.
  */
-static void pvr2_tex_detwiddle_4bpp(void *dst, void const *src,
-                                    unsigned tex_w_shift, unsigned tex_h_shift) {
+static void
+pvr2_tex_detwiddle_4bpp(struct pvr2_tex_mem *mem, void *dst, uint32_t src_addr,
+                        unsigned tex_w_shift, unsigned tex_h_shift) {
     uint8_t *dst8 = (uint8_t*)dst;
-    uint8_t const *src8 = (uint8_t*)src;
     unsigned tex_w = 1 << tex_w_shift, tex_h = 1 << tex_h_shift;
     unsigned row, col;
     for (row = 0; row < tex_h; row++) {
@@ -501,10 +502,11 @@ static void pvr2_tex_detwiddle_4bpp(void *dst, void const *src,
             unsigned dst_idx = row * tex_w + col;
 
             uint8_t in_px;
+            uint32_t byteaddr = src_addr + twid_idx / 2;
             if (twid_idx % 2 == 0)
-                in_px = src8[twid_idx / 2] & 0xf;
+                in_px = pvr2_tex_mem_64bit_read8(mem, byteaddr) & 0xf;
             else
-                in_px = src8[twid_idx / 2] >> 4;
+                in_px = pvr2_tex_mem_64bit_read8(mem, byteaddr) >> 4;
 
             if (dst_idx % 2 == 0) {
                 dst8[dst_idx / 2] &= ~0xf;
@@ -529,14 +531,14 @@ static void pvr2_tex_detwiddle_4bpp(void *dst, void const *src,
  * supported (TEX_CTRL_PIX_FMT_ARGB_1555, TEX_CTRL_PIX_FMT_RGB_565,
  * TEX_CTRL_PIX_FMT_ARGB_4444).
  */
-static void pvr2_tex_vq_decompress(void *dst, void const *code_book,
-                                   void const *src, unsigned side_shift) {
+static void
+pvr2_tex_vq_decompress(struct pvr2_tex_mem *mem, void *dst,
+                       unsigned code_book_addr, unsigned src_addr,
+                       unsigned side_shift) {
     unsigned dst_side = 1 << side_shift;
     unsigned src_side_shift = side_shift - 1;
     unsigned src_side = 1 << src_side_shift;
     unsigned row, col;
-    uint8_t const *code_book_src = (uint8_t const*)code_book;
-    uint8_t const *img_dat_src = (uint8_t const*)src;
     uint16_t *dst_img = (uint16_t*)dst;
 
     for (row = 0; row < src_side; row++) {
@@ -545,10 +547,14 @@ static void pvr2_tex_vq_decompress(void *dst, void const *code_book,
                                             src_side_shift, src_side_shift);
 
             // code book index
-            unsigned idx = img_dat_src[twid_idx];
-            uint16_t color[4];
-            memcpy(color, code_book_src + PVR2_CODE_BOOK_ENTRY_SIZE * idx,
-                   PVR2_CODE_BOOK_ENTRY_SIZE);
+            unsigned idx = pvr2_tex_mem_64bit_read8(mem, twid_idx + src_addr);
+            unsigned offs = PVR2_CODE_BOOK_ENTRY_SIZE * idx + code_book_addr;
+            uint16_t color[4] = {
+                pvr2_tex_mem_64bit_read16(mem, offs),
+                pvr2_tex_mem_64bit_read16(mem, offs + 2),
+                pvr2_tex_mem_64bit_read16(mem, offs + 4),
+                pvr2_tex_mem_64bit_read16(mem, offs + 6)
+            };
 
             unsigned dst_row = row * 2, dst_col = col * 2;
             memcpy(dst_img + dst_row * dst_side + dst_col,
@@ -588,15 +594,15 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         n_bytes = tex_w * tex_h * px_sz;
     }
 
-    void *tex_dat = NULL;
+    uint8_t *tex_dat = NULL;
     if (n_bytes)
-        tex_dat = malloc(n_bytes * sizeof(uint8_t));
+        tex_dat = (uint8_t*)malloc(n_bytes * sizeof(uint8_t));
 
     if (!tex_dat)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    uint8_t const *beg;
-    uint8_t const *code_book; // points to the code book if this is VQ
+    unsigned beg_addr;
+    unsigned code_book_addr; // points to the code book if this is VQ
 
     /*
      * handle mipmaps.
@@ -606,7 +612,6 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
      * accomplish this, we have to offset the addr_first by the offset
      * to the highest-order mipmap.
      */
-    uint8_t const *pvr2_tex64_mem = pvr2->mem.tex64;
     if (meta->mipmap) {
         if (meta->w_shift != meta->h_shift) {
             error_set_feature("proper response for attempting to "
@@ -623,8 +628,8 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         unsigned side_shift = meta->w_shift;
 
         if (meta->vq_compression) {
-            code_book = pvr2_tex64_mem + meta->addr_first;
-            beg = code_book + PVR2_CODE_BOOK_LEN +
+            code_book_addr = meta->addr_first;
+            beg_addr = code_book_addr + PVR2_CODE_BOOK_LEN +
                 mipmap_byte_offset_vq[side_shift];
         } else {
             switch (meta->tex_fmt) {
@@ -632,13 +637,13 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
             case TEX_CTRL_PIX_FMT_RGB_565:
             case TEX_CTRL_PIX_FMT_YUV_422:
             case TEX_CTRL_PIX_FMT_ARGB_4444:
-                beg = pvr2_tex64_mem + meta->addr_first +
-                    mipmap_byte_offset_norm[meta->w_shift];
+                beg_addr =
+                    meta->addr_first + mipmap_byte_offset_norm[meta->w_shift];
                 break;
             case TEX_CTRL_PIX_FMT_4_BPP_PAL:
             case TEX_CTRL_PIX_FMT_8_BPP_PAL:
-                beg = pvr2_tex64_mem + meta->addr_first +
-                    mipmap_byte_offset_palette[meta->w_shift];
+                beg_addr =
+                    meta->addr_first + mipmap_byte_offset_palette[meta->w_shift];
                 break;
             default:
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -649,10 +654,10 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
          * mipmaps are disabled, tex_in->addr_first is actually the
          * first byte of the texture.
          */
-        beg = pvr2_tex64_mem + meta->addr_first;
+        beg_addr = meta->addr_first;
         if (meta->vq_compression) {
-            code_book = beg;
-            beg += PVR2_CODE_BOOK_LEN;
+            code_book_addr = beg_addr;
+            beg_addr += PVR2_CODE_BOOK_LEN;
         }
     }
 
@@ -687,17 +692,20 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        pvr2_tex_vq_decompress(tex_dat, code_book, beg, meta->w_shift);
+        pvr2_tex_vq_decompress(&pvr2->mem, tex_dat, code_book_addr,
+                               beg_addr, meta->w_shift);
     } else if (meta->twiddled) {
         if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-            pvr2_tex_detwiddle_4bpp(tex_dat, beg, meta->w_shift, meta->h_shift);
+            pvr2_tex_detwiddle_4bpp(&pvr2->mem, tex_dat, beg_addr, meta->w_shift, meta->h_shift);
         } else {
-            pvr2_tex_detwiddle(tex_dat, beg,
+            pvr2_tex_detwiddle(&pvr2->mem, tex_dat, beg_addr,
                                meta->w_shift, meta->h_shift,
                                pixel_sizes[meta->tex_fmt]);
         }
     } else {
-        memcpy(tex_dat, beg, n_bytes * sizeof(uint8_t));
+        size_t idx;
+        for (idx = 0; idx < n_bytes; idx++)
+            tex_dat[idx] = pvr2_tex_mem_64bit_read8(&pvr2->mem, beg_addr + idx);
     }
 
     if (meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
