@@ -52,7 +52,7 @@ pvr2_tex_mem_32bit_read32(struct pvr2_tex_mem *mem, unsigned addr) {
     if (addr > PVR2_TEX32_MEM_LEN - sizeof(ret)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
         error_set_address(addr);
-        error_set_length(sizeof(uint32_t));
+        error_set_length(sizeof(ret));
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
@@ -63,6 +63,21 @@ pvr2_tex_mem_32bit_read32(struct pvr2_tex_mem *mem, unsigned addr) {
 inline static uint16_t
 pvr2_tex_mem_32bit_read16(struct pvr2_tex_mem *mem, unsigned addr) {
     uint16_t ret;
+
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(ret)) {
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        error_set_address(addr);
+        error_set_length(sizeof(ret));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(&ret, mem->tex32 + addr, sizeof(ret));
+    return ret;
+}
+
+inline static uint8_t
+pvr2_tex_mem_32bit_read8(struct pvr2_tex_mem *mem, unsigned addr) {
+    uint8_t ret;
 
     if (addr > PVR2_TEX32_MEM_LEN - sizeof(ret)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
@@ -87,6 +102,58 @@ inline static void pvr2_tex_mem_32bit_read_raw(struct pvr2_tex_mem *mem,
     memcpy(dstp, srcp, n_bytes * sizeof(uint8_t));
 }
 
+inline static void
+pvr2_tex_mem_32bit_write_double(struct pvr2_tex_mem *mem,
+                                unsigned addr, double val) {
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex32 + addr, &val, sizeof(val));
+}
+
+inline static void
+pvr2_tex_mem_32bit_write32(struct pvr2_tex_mem *mem,
+                           unsigned addr, uint32_t val) {
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex32 + addr, &val, sizeof(val));
+}
+
+inline static void
+pvr2_tex_mem_32bit_write16(struct pvr2_tex_mem *mem,
+                           unsigned addr, uint16_t val) {
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex32 + addr, &val, sizeof(val));
+}
+
+inline static void
+pvr2_tex_mem_32bit_write8(struct pvr2_tex_mem *mem,
+                          unsigned addr, uint8_t val) {
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex32 + addr, &val, sizeof(val));
+}
+
 inline static void pvr2_tex_mem_32bit_write_raw(struct pvr2_tex_mem *mem,
                                                 uint32_t addr, void const *srcp,
                                                 unsigned n_bytes) {
@@ -97,6 +164,21 @@ inline static void pvr2_tex_mem_32bit_write_raw(struct pvr2_tex_mem *mem,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
     memcpy(dstp, srcp, n_bytes * sizeof(uint8_t));
+}
+
+inline static double
+pvr2_tex_mem_64bit_read_double(struct pvr2_tex_mem *mem, unsigned addr) {
+    double ret;
+
+    if (addr > PVR2_TEX64_MEM_LEN - sizeof(ret)) {
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        error_set_address(addr);
+        error_set_length(sizeof(ret));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(&ret, mem->tex64 + addr, sizeof(ret));
+    return ret;
 }
 
 inline static uint32_t
@@ -166,6 +248,58 @@ inline static void pvr2_tex_mem_64bit_write_raw(struct pvr2_tex_mem *mem,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
     memcpy(dstp, srcp, n_bytes * sizeof(uint8_t));
+}
+
+inline static void
+pvr2_tex_mem_64bit_write_double(struct pvr2_tex_mem *mem,
+                                unsigned addr, double val) {
+    if (addr > PVR2_TEX64_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex64 + addr, &val, sizeof(val));
+}
+
+inline static void
+pvr2_tex_mem_64bit_write32(struct pvr2_tex_mem *mem,
+                           unsigned addr, uint32_t val) {
+    if (addr > PVR2_TEX64_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex64 + addr, &val, sizeof(val));
+}
+
+inline static void
+pvr2_tex_mem_64bit_write16(struct pvr2_tex_mem *mem,
+                           unsigned addr, uint16_t val) {
+    if (addr > PVR2_TEX64_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex64 + addr, &val, sizeof(val));
+}
+
+inline static void
+pvr2_tex_mem_64bit_write8(struct pvr2_tex_mem *mem,
+                          unsigned addr, uint8_t val) {
+    if (addr > PVR2_TEX64_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex64 + addr, &val, sizeof(val));
 }
 
 // 32-bit access area
