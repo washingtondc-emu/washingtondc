@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
 
-uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
+static uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -55,7 +55,7 @@ uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
     return pvr2_tex_mem_32bit_read8(&pvr2->mem, addr - ADDR_TEX32_FIRST);
 }
 
-void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+static void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -72,7 +72,7 @@ void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     pvr2_tex_mem_32bit_write8(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
 }
 
-uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
+static uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -97,7 +97,7 @@ uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
     return pvr2_tex_mem_32bit_read16(&pvr2->mem, addr - ADDR_TEX32_FIRST);
 }
 
-void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+static void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -115,7 +115,7 @@ void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     pvr2_tex_mem_32bit_write16(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
 }
 
-uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
+static uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -140,7 +140,7 @@ uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
     return pvr2_tex_mem_32bit_read32(&pvr2->mem, addr - ADDR_TEX32_FIRST);
 }
 
-void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+static void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -158,26 +158,26 @@ void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     pvr2_tex_mem_32bit_write32(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
 }
 
-float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt) {
+static float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt) {
     uint32_t tmp = pvr2_tex_mem_area32_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void pvr2_tex_mem_area32_write_float(addr32_t addr, float val, void *ctxt) {
+static void pvr2_tex_mem_area32_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     pvr2_tex_mem_area32_write_32(addr, tmp, ctxt);
 }
 
-double pvr2_tex_mem_area32_read_double(addr32_t addr, void *ctxt) {
+static double pvr2_tex_mem_area32_read_double(addr32_t addr, void *ctxt) {
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
+static void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -195,7 +195,7 @@ void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
     pvr2_tex_mem_32bit_write_double(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
 }
 
-uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
+static uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -219,7 +219,7 @@ uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
     return pvr2_tex_mem_64bit_read8(&pvr2->mem, addr - ADDR_TEX64_FIRST);
 }
 
-void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+static void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -238,7 +238,7 @@ void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     pvr2_tex_mem_64bit_write8(&pvr2->mem, addr - ADDR_TEX64_FIRST, val);
 }
 
-uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
+static uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -263,7 +263,7 @@ uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
     return pvr2_tex_mem_64bit_read16(&pvr2->mem, addr - ADDR_TEX64_FIRST);
 }
 
-void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+static void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -283,7 +283,7 @@ void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     pvr2_tex_mem_64bit_write16(&pvr2->mem, addr - ADDR_TEX64_FIRST, val);
 }
 
-uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
+static uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -308,7 +308,7 @@ uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
     return pvr2_tex_mem_64bit_read32(&pvr2->mem, addr - ADDR_TEX64_FIRST);
 }
 
-void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+static void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -328,20 +328,20 @@ void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     pvr2_tex_mem_64bit_write32(&pvr2->mem, addr - ADDR_TEX64_FIRST, val);
 }
 
-float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt) {
+static float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt) {
     uint32_t tmp = pvr2_tex_mem_area64_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
     return ret;
 }
 
-void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt) {
+static void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt) {
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     pvr2_tex_mem_area64_write_32(addr, tmp, ctxt);
 }
 
-double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
+static double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS
@@ -358,7 +358,7 @@ double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
     return pvr2_tex_mem_64bit_read_double(&pvr2->mem, addr - ADDR_TEX64_FIRST);
 }
 
-void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
+static void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
 #ifdef INVARIANTS

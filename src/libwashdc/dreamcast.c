@@ -1437,12 +1437,12 @@ dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
             pvr2_ta_fifo_poly_write_32(dst, val, &dc_pvr2);
         } else if ((dst >= ADDR_AREA4_TEX64_FIRST) &&
                    (dst <= ADDR_AREA4_TEX64_LAST)) {
-            pvr2_tex_mem_area64_write_32(dst - ADDR_AREA4_TEX64_FIRST +
-                                         ADDR_TEX64_FIRST, val, &dc_pvr2);
+            pvr2_tex_mem_64bit_write32(&dc_pvr2.mem,
+                                       dst - ADDR_AREA4_TEX64_FIRST, val);
         } else if ((xfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
                    (xfer_dst <= ADDR_AREA4_TEX32_LAST)) {
-            pvr2_tex_mem_area32_write_32(dst - ADDR_AREA4_TEX32_FIRST +
-                                         ADDR_TEX32_FIRST, val, &dc_pvr2);
+            pvr2_tex_mem_32bit_write32(&dc_pvr2.mem,
+                                       dst - ADDR_AREA4_TEX32_FIRST, val);
         } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
             pvr2_yuv_input_data(&dc_pvr2, &val, sizeof(val));
@@ -1489,22 +1489,22 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     } else if ((xfer_dst >= ADDR_AREA4_TEX64_FIRST) &&
                (xfer_dst <= ADDR_AREA4_TEX64_LAST)) {
         // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
-        xfer_dst = xfer_dst - ADDR_AREA4_TEX64_FIRST + ADDR_TEX64_FIRST;
+        xfer_dst = xfer_dst - ADDR_AREA4_TEX64_FIRST;
 
         while (n_words--) {
             uint32_t buf = read32(xfer_src & mask, ctxt);
-            pvr2_tex_mem_area64_write_32(xfer_dst, buf, &dc_pvr2);
+            pvr2_tex_mem_64bit_write32(&dc_pvr2.mem, xfer_dst, buf);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
         }
     } else if ((xfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
                (xfer_dst <= ADDR_AREA4_TEX32_LAST)) {
         // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
-        xfer_dst = xfer_dst - ADDR_AREA4_TEX32_FIRST + ADDR_TEX32_FIRST;
+        xfer_dst = xfer_dst - ADDR_AREA4_TEX32_FIRST;
 
         while (n_words--) {
             uint32_t buf = read32(xfer_src & mask, ctxt);
-            pvr2_tex_mem_area32_write_32(xfer_dst, buf, &dc_pvr2);
+            pvr2_tex_mem_32bit_write32(&dc_pvr2.mem, xfer_dst, buf);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
         }

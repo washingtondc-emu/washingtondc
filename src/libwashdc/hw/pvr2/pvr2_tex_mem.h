@@ -302,30 +302,6 @@ pvr2_tex_mem_64bit_write8(struct pvr2_tex_mem *mem,
     memcpy(mem->tex64 + addr, &val, sizeof(val));
 }
 
-// 32-bit access area
-uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt);
-uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt);
-uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt);
-float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area32_write_float(addr32_t addr, float val, void *ctxt);
-double pvr2_tex_mem_area32_read_double(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt);
-
-// 64-bit access area
-uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt);
-uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt);
-uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt);
-float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt);
-double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt);
-void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt);
-
 extern struct memory_interface pvr2_tex_mem_area32_intf,
     pvr2_tex_mem_area64_intf;
 
