@@ -303,6 +303,6 @@ pvr2_tex_mem_64bit_write8(struct pvr2_tex_mem *mem,
 }
 
 extern struct memory_interface pvr2_tex_mem_area32_intf,
-    pvr2_tex_mem_area64_intf;
+    pvr2_tex_mem_area64_intf, pvr2_tex_mem_unused_intf;
 
 #endif

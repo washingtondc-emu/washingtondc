@@ -33,129 +33,64 @@
 static uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
-        ((addr - 1 + sizeof(uint8_t)) > ADDR_TEX32_LAST) ||
-        ((addr - 1 + sizeof(uint8_t)) < ADDR_TEX32_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory read");
-        error_set_address(addr);
-        error_set_length(sizeof(uint8_t));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     /*
      * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
      * end of the framebuffer
      */
-    if ((addr + sizeof(uint8_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
+    if ((addr + ADDR_TEX32_FIRST + sizeof(uint8_t)) >= get_fb_w_sof1(pvr2) ||
+        (addr + ADDR_TEX32_FIRST + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex_mem_32bit_read8(&pvr2->mem, addr - ADDR_TEX32_FIRST);
+    return pvr2_tex_mem_32bit_read8(&pvr2->mem, addr);
 }
 
 static void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if ((addr < ADDR_TEX32_FIRST) || (addr > ADDR_TEX32_LAST) ||
-        (addr > ADDR_TEX32_LAST) || (addr < ADDR_TEX32_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_mem_32bit_write8(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
+    pvr2_tex_mem_32bit_write8(&pvr2->mem, addr, val);
 }
 
 static uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
-        ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX32_LAST) ||
-        ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX32_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory read");
-        error_set_address(addr);
-        error_set_length(sizeof(uint16_t));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     /*
      * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
      * end of the framebuffer
      */
-    if ((addr + sizeof(uint16_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
+    if ((addr + ADDR_TEX32_FIRST + sizeof(uint16_t)) >= get_fb_w_sof1(pvr2) ||
+        (addr + ADDR_TEX32_FIRST + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex_mem_32bit_read16(&pvr2->mem, addr - ADDR_TEX32_FIRST);
+    return pvr2_tex_mem_32bit_read16(&pvr2->mem, addr);
 }
 
 static void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
-        ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX32_LAST) ||
-        ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX32_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_mem_32bit_write16(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
+    pvr2_tex_mem_32bit_write16(&pvr2->mem, addr, val);
 }
 
 static uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
-        ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX32_LAST) ||
-        ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX32_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory read");
-        error_set_address(addr);
-        error_set_length(sizeof(uint32_t));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     /*
      * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
      * end of the framebuffer
      */
-    if ((addr + sizeof(uint32_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
+    if ((addr + ADDR_TEX32_FIRST + sizeof(uint32_t)) >= get_fb_w_sof1(pvr2) ||
+        (addr + ADDR_TEX32_FIRST + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex_mem_32bit_read32(&pvr2->mem, addr - ADDR_TEX32_FIRST);
+    return pvr2_tex_mem_32bit_read32(&pvr2->mem, addr);
 }
 
 static void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
-        ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX32_LAST) ||
-        ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX32_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_mem_32bit_write32(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
+    pvr2_tex_mem_32bit_write32(&pvr2->mem, addr, val);
 }
 
 static float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt) {
@@ -180,152 +115,77 @@ static double pvr2_tex_mem_area32_read_double(addr32_t addr, void *ctxt) {
 static void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX32_FIRST || addr > ADDR_TEX32_LAST ||
-        ((addr - 1 + sizeof(val)) > ADDR_TEX32_LAST) ||
-        ((addr - 1 + sizeof(val)) < ADDR_TEX32_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_mem_32bit_write_double(&pvr2->mem, addr - ADDR_TEX32_FIRST, val);
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
+    pvr2_tex_mem_32bit_write_double(&pvr2->mem, addr, val);
 }
 
 static uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        (addr > ADDR_TEX64_LAST) || (addr < ADDR_TEX64_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory read");
-        error_set_address(addr);
-        error_set_length(sizeof(uint8_t));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     /*
      * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
      * end of the framebuffer
      */
-    if ((addr + sizeof(uint8_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
+    if ((addr + ADDR_TEX64_FIRST + sizeof(uint8_t)) >= get_fb_w_sof1(pvr2) ||
+        (addr + ADDR_TEX64_FIRST + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex_mem_64bit_read8(&pvr2->mem, addr - ADDR_TEX64_FIRST);
+    return pvr2_tex_mem_64bit_read8(&pvr2->mem, addr);
 }
 
 static void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        (addr > ADDR_TEX64_LAST) || (addr < ADDR_TEX64_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
 
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
-
-    pvr2_tex_mem_64bit_write8(&pvr2->mem, addr - ADDR_TEX64_FIRST, val);
+    pvr2_tex_mem_64bit_write8(&pvr2->mem, addr, val);
 }
 
 static uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX64_LAST) ||
-        ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX64_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory read");
-        error_set_address(addr);
-        error_set_length(sizeof(uint16_t));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     /*
      * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
      * end of the framebuffer
      */
-    if ((addr + sizeof(uint16_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
+    if ((addr + ADDR_TEX64_FIRST + sizeof(uint16_t)) >= get_fb_w_sof1(pvr2) ||
+        (addr + ADDR_TEX64_FIRST + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex_mem_64bit_read16(&pvr2->mem, addr - ADDR_TEX64_FIRST);
+    return pvr2_tex_mem_64bit_read16(&pvr2->mem, addr);
 }
 
 static void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        ((addr - 1 + sizeof(uint16_t)) > ADDR_TEX64_LAST) ||
-        ((addr - 1 + sizeof(uint16_t)) < ADDR_TEX64_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
 
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
-
-    pvr2_tex_mem_64bit_write16(&pvr2->mem, addr - ADDR_TEX64_FIRST, val);
+    pvr2_tex_mem_64bit_write16(&pvr2->mem, addr, val);
 }
 
 static uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX64_LAST) ||
-        ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX64_FIRST)) {
-        error_set_address(addr);
-        error_set_length(sizeof(uint32_t));
-        error_set_feature("out-of-bounds PVR2 texture memory read");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     /*
      * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
      * end of the framebuffer
      */
-    if ((addr + sizeof(uint32_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
+    if ((addr + ADDR_TEX64_FIRST + sizeof(uint32_t)) >= get_fb_w_sof1(pvr2) ||
+        (addr + ADDR_TEX64_FIRST + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
         framebuffer_sync_from_host_maybe();
 
-    return pvr2_tex_mem_64bit_read32(&pvr2->mem, addr - ADDR_TEX64_FIRST);
+    return pvr2_tex_mem_64bit_read32(&pvr2->mem, addr);
 }
 
 static void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        ((addr - 1 + sizeof(uint32_t)) > ADDR_TEX64_LAST) ||
-        ((addr - 1 + sizeof(uint32_t)) < ADDR_TEX64_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
 
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
-
-    pvr2_tex_mem_64bit_write32(&pvr2->mem, addr - ADDR_TEX64_FIRST, val);
+    pvr2_tex_mem_64bit_write32(&pvr2->mem, addr, val);
 }
 
 static float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt) {
@@ -344,38 +204,51 @@ static void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt
 static double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        ((addr - 1 + sizeof(double)) > ADDR_TEX64_LAST) ||
-        ((addr - 1 + sizeof(double)) < ADDR_TEX64_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory read");
-        error_set_address(addr);
-        error_set_length(sizeof(double));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
-    return pvr2_tex_mem_64bit_read_double(&pvr2->mem, addr - ADDR_TEX64_FIRST);
+    return pvr2_tex_mem_64bit_read_double(&pvr2->mem, addr);
 }
 
 static void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
 
-#ifdef INVARIANTS
-    if (addr < ADDR_TEX64_FIRST || addr > ADDR_TEX64_LAST ||
-        ((addr - 1 + sizeof(val)) > ADDR_TEX64_LAST) ||
-        ((addr - 1 + sizeof(val)) < ADDR_TEX64_FIRST)) {
-        error_set_feature("out-of-bounds PVR2 texture memory write");
-        error_set_address(addr);
-        error_set_length(sizeof(val));
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
+    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
+    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
 
-    pvr2_framebuffer_notify_write(pvr2, addr, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr, sizeof(val));
+    pvr2_tex_mem_64bit_write_double(&pvr2->mem, addr, val);
+}
 
-    pvr2_tex_mem_64bit_write_double(&pvr2->mem, addr - ADDR_TEX64_FIRST, val);
+static uint8_t pvr2_tex_mem_unused_read_8(addr32_t addr, void *ctxt) {
+    return ~0;
+}
+static void
+pvr2_tex_mem_unused_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+}
+static uint16_t pvr2_tex_mem_unused_read_16(addr32_t addr, void *ctxt) {
+    return ~0;
+}
+static void
+pvr2_tex_mem_unused_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+}
+static uint32_t pvr2_tex_mem_unused_read_32(addr32_t addr, void *ctxt) {
+    return ~0;
+}
+static void
+pvr2_tex_mem_unused_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+}
+static float pvr2_tex_mem_unused_read_float(addr32_t addr, void *ctxt) {
+    float retval;
+    memset(&retval, 0xff, sizeof(retval));
+    return retval;
+}
+static void
+pvr2_tex_mem_unused_write_float(addr32_t addr, float val, void *ctxt) {
+}
+static double pvr2_tex_mem_unused_read_double(addr32_t addr, void *ctxt) {
+    double retval;
+    memset(&retval, 0xff, sizeof(retval));
+    return retval;
+}
+static void
+pvr2_tex_mem_unused_write_double(addr32_t addr, double val, void *ctxt) {
 }
 
 struct memory_interface pvr2_tex_mem_area32_intf = {
@@ -404,4 +277,18 @@ struct memory_interface pvr2_tex_mem_area64_intf = {
     .write32 = pvr2_tex_mem_area64_write_32,
     .write16 = pvr2_tex_mem_area64_write_16,
     .write8 = pvr2_tex_mem_area64_write_8
+};
+
+struct memory_interface pvr2_tex_mem_unused_intf = {
+    .readdouble = pvr2_tex_mem_unused_read_double,
+    .readfloat = pvr2_tex_mem_unused_read_float,
+    .read32 = pvr2_tex_mem_unused_read_32,
+    .read16 = pvr2_tex_mem_unused_read_16,
+    .read8 = pvr2_tex_mem_unused_read_8,
+
+    .writedouble = pvr2_tex_mem_unused_write_double,
+    .writefloat = pvr2_tex_mem_unused_write_float,
+    .write32 = pvr2_tex_mem_unused_write_32,
+    .write16 = pvr2_tex_mem_unused_write_16,
+    .write8 = pvr2_tex_mem_unused_write_8,
 };

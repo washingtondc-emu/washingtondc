@@ -1292,10 +1292,16 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
      * 0x13000000-0x13ffffff, but I'm not sure.
      */
     memory_map_add(map, 0x04000000, 0x047fffff,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
                    &pvr2_tex_mem_area64_intf, &dc_pvr2);
     memory_map_add(map, 0x05000000, 0x057fffff,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_tex_mem_area32_intf, &dc_pvr2);
+    memory_map_add(map, 0x06000000, 0x067fffff,
+                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_tex_mem_area64_intf, &dc_pvr2);
+    memory_map_add(map, 0x07000000, 0x077fffff,
+                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
                    &pvr2_tex_mem_area32_intf, &dc_pvr2);
 
 
@@ -1398,6 +1404,19 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, ADDR_EXT_DEV_FIRST + 0x02000000, ADDR_EXT_DEV_LAST + 0x02000000,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &ext_dev_intf, NULL);
+
+    /*
+     * More PowerVR2 texture regions - these don't get used much which is why
+     * they're at the end (for performance reasons).
+     */
+    memory_map_add(map, 0x04800000, 0x04ffffff, 0x1fffffff, 0x1fffffff,
+                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
+    memory_map_add(map, 0x05800000, 0x05ffffff, 0x1fffffff, 0x1fffffff,
+                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
+    memory_map_add(map, 0x06800000, 0x06ffffff, 0x1fffffff, 0x1fffffff,
+                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
+    memory_map_add(map, 0x07800000, 0x07ffffff, 0x1fffffff, 0x1fffffff,
+                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
 
     map->unmap = &sh4_unmapped_mem;
 }
