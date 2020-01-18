@@ -45,6 +45,36 @@ struct pvr2_tex_mem {
 #define PVR2_TEX64_MEM_LEN (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1)
 
 // generic read/write functions for emulator code to use (ie not part of memory map
+inline static double
+pvr2_tex_mem_32bit_read_double(struct pvr2_tex_mem *mem, unsigned addr) {
+    double ret;
+
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(ret)) {
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        error_set_address(addr);
+        error_set_length(sizeof(ret));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(&ret, mem->tex32 + addr, sizeof(ret));
+    return ret;
+}
+
+inline static float
+pvr2_tex_mem_32bit_read_float(struct pvr2_tex_mem *mem, unsigned addr) {
+    float ret;
+
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(ret)) {
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        error_set_address(addr);
+        error_set_length(sizeof(ret));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(&ret, mem->tex32 + addr, sizeof(ret));
+    return ret;
+}
+
 inline static uint32_t
 pvr2_tex_mem_32bit_read32(struct pvr2_tex_mem *mem, unsigned addr) {
     uint32_t ret;
@@ -116,6 +146,19 @@ pvr2_tex_mem_32bit_write_double(struct pvr2_tex_mem *mem,
 }
 
 inline static void
+pvr2_tex_mem_32bit_write_float(struct pvr2_tex_mem *mem,
+                               unsigned addr, float val) {
+    if (addr > PVR2_TEX32_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex32 + addr, &val, sizeof(val));
+}
+
+inline static void
 pvr2_tex_mem_32bit_write32(struct pvr2_tex_mem *mem,
                            unsigned addr, uint32_t val) {
     if (addr > PVR2_TEX32_MEM_LEN - sizeof(val)) {
@@ -169,6 +212,21 @@ inline static void pvr2_tex_mem_32bit_write_raw(struct pvr2_tex_mem *mem,
 inline static double
 pvr2_tex_mem_64bit_read_double(struct pvr2_tex_mem *mem, unsigned addr) {
     double ret;
+
+    if (addr > PVR2_TEX64_MEM_LEN - sizeof(ret)) {
+        error_set_feature("out-of-bounds PVR2 texture memory read");
+        error_set_address(addr);
+        error_set_length(sizeof(ret));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(&ret, mem->tex64 + addr, sizeof(ret));
+    return ret;
+}
+
+inline static float
+pvr2_tex_mem_64bit_read_float(struct pvr2_tex_mem *mem, unsigned addr) {
+    float ret;
 
     if (addr > PVR2_TEX64_MEM_LEN - sizeof(ret)) {
         error_set_feature("out-of-bounds PVR2 texture memory read");
@@ -253,6 +311,19 @@ inline static void pvr2_tex_mem_64bit_write_raw(struct pvr2_tex_mem *mem,
 inline static void
 pvr2_tex_mem_64bit_write_double(struct pvr2_tex_mem *mem,
                                 unsigned addr, double val) {
+    if (addr > PVR2_TEX64_MEM_LEN - sizeof(val)) {
+        error_set_feature("out-of-bounds PVR2 texture memory write");
+        error_set_address(addr);
+        error_set_length(sizeof(val));
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(mem->tex64 + addr, &val, sizeof(val));
+}
+
+inline static void
+pvr2_tex_mem_64bit_write_float(struct pvr2_tex_mem *mem,
+                               unsigned addr, float val) {
     if (addr > PVR2_TEX64_MEM_LEN - sizeof(val)) {
         error_set_feature("out-of-bounds PVR2 texture memory write");
         error_set_address(addr);
