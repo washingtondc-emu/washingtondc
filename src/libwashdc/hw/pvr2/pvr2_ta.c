@@ -1456,8 +1456,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     /* printf("ISP_BACKGND_T is 0x%08x\n", (unsigned)backgnd_tag); */
 
     uint32_t bg_color_src =
-        pvr2_tex_mem_32bit_read32(&pvr2->mem,
-                                  backgnd_info_addr +
+        pvr2_tex_mem_32bit_read32(pvr2, backgnd_info_addr +
                                   (3 + 0 * backgnd_skip + 3) * sizeof(uint32_t));
 
     float bg_color_a = (float)((bg_color_src & 0xff000000) >> 24) / 255.0f;

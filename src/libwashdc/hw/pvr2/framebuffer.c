@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -90,19 +90,19 @@ static unsigned bytes_per_pix(uint32_t fb_r_ctrl) {
  * uint8_t with every *three* elements representing one pixel.
  */
 static void
-conv_rgb565_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb565_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                         uint32_t addr_pixels_in,
                         unsigned n_pixels, uint8_t concat);
 static void
-conv_rgb555_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb555_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                         uint32_t addr_pixels_in,
                         unsigned n_pixels, uint8_t concat);
 static void
-conv_rgb888_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb888_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                         uint32_t addr_pixels_in,
                         unsigned n_pixels);
 static void
-conv_rgb0888_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb0888_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                          uint32_t addr_pixels_in,
                          unsigned n_pixels);
 
@@ -154,9 +154,9 @@ sync_fb_from_tex_mem_rgb565_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         uint32_t addr_row1 = sof1 + row * field_adv;
         uint32_t addr_row2 = sof2 + row * field_adv;
 
-        conv_rgb565_to_rgba8888(&pvr2->mem, dst_fb + row * 2 * fb_width,
+        conv_rgb565_to_rgba8888(pvr2, dst_fb + row * 2 * fb_width,
                                 addr_row1, fb_width, concat);
-        conv_rgb565_to_rgba8888(&pvr2->mem, dst_fb + (row * 2 + 1) * fb_width,
+        conv_rgb565_to_rgba8888(pvr2, dst_fb + (row * 2 + 1) * fb_width,
                                 addr_row2, fb_width, concat);
     }
 
@@ -223,7 +223,7 @@ sync_fb_from_tex_mem_rgb565_prog(struct pvr2 *pvr2, struct framebuffer *fb,
         uint32_t in_col_start_addr = sof1 + field_adv * row * 2;
         uint32_t *out_col_start = dst_fb + row * fb_width;
 
-        conv_rgb565_to_rgba8888(&pvr2->mem, out_col_start, in_col_start_addr,
+        conv_rgb565_to_rgba8888(pvr2, out_col_start, in_col_start_addr,
                                 fb_width, concat);
     }
 
@@ -299,9 +299,9 @@ sync_fb_from_tex_mem_rgb555_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         uint32_t addr_row1 = sof1 + row * field_adv;
         uint32_t addr_row2 = sof2 + row * field_adv;
 
-        conv_rgb555_to_rgba8888(&pvr2->mem, dst_fb + row * 2 * fb_width,
+        conv_rgb555_to_rgba8888(pvr2, dst_fb + row * 2 * fb_width,
                                 addr_row1, fb_width, concat);
-        conv_rgb555_to_rgba8888(&pvr2->mem, dst_fb + (row * 2 + 1) * fb_width,
+        conv_rgb555_to_rgba8888(pvr2, dst_fb + (row * 2 + 1) * fb_width,
                                 addr_row2, fb_width, concat);
     }
 
@@ -380,9 +380,9 @@ sync_fb_from_tex_mem_rgb888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         uint32_t addr_row1 = sof1 + row * field_adv;
         uint32_t addr_row2 = sof2 + row * field_adv;
 
-        conv_rgb888_to_rgba8888(&pvr2->mem, dst_fb + row * 2 * fb_width,
+        conv_rgb888_to_rgba8888(pvr2, dst_fb + row * 2 * fb_width,
                                 addr_row1, fb_width);
-        conv_rgb888_to_rgba8888(&pvr2->mem, dst_fb + (row * 2 + 1) * fb_width,
+        conv_rgb888_to_rgba8888(pvr2, dst_fb + (row * 2 + 1) * fb_width,
                                 addr_row2, fb_width);
     }
 
@@ -449,7 +449,7 @@ sync_fb_from_tex_mem_rgb555_prog(struct pvr2 *pvr2, struct framebuffer *fb,
         uint32_t in_col_start_addr = sof1 + field_adv * row * 2;
         uint32_t *out_col_start = dst_fb + row * fb_width;
 
-        conv_rgb555_to_rgba8888(&pvr2->mem, out_col_start, in_col_start_addr,
+        conv_rgb555_to_rgba8888(pvr2, out_col_start, in_col_start_addr,
                                 fb_width, concat);
     }
 
@@ -525,9 +525,9 @@ sync_fb_from_tex_mem_rgb0888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         uint32_t addr_row1 = sof1 + row * field_adv;
         uint32_t addr_row2 = sof2 + row * field_adv;
 
-        conv_rgb0888_to_rgba8888(&pvr2->mem, dst_fb + (row << 1) * fb_width,
+        conv_rgb0888_to_rgba8888(pvr2, dst_fb + (row << 1) * fb_width,
                                  addr_row1, fb_width);
-        conv_rgb0888_to_rgba8888(&pvr2->mem,
+        conv_rgb0888_to_rgba8888(pvr2,
                                  dst_fb + ((row << 1) + 1) * fb_width,
                                  addr_row2, fb_width);
     }
@@ -592,7 +592,7 @@ sync_fb_from_tex_mem_rgb0888_prog(struct pvr2 *pvr2, struct framebuffer *fb,
         uint32_t addr_in_col_start = sof1 + fb_width * row * 4;
         uint32_t *out_col_start = dst_fb + row * fb_width;
 
-        conv_rgb0888_to_rgba8888(&pvr2->mem, out_col_start,
+        conv_rgb0888_to_rgba8888(pvr2, out_col_start,
                                  addr_in_col_start, fb_width);
     }
 
@@ -684,12 +684,12 @@ static void copy_to_tex_mem(struct pvr2 *pvr2, void const *in,
                             addr32_t offs, size_t len);
 
 static void
-conv_rgb565_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb565_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                         uint32_t addr_pixels_in, unsigned n_pixels,
                         uint8_t concat) {
     for (unsigned idx = 0; idx < n_pixels; idx++) {
         uint32_t pix_addr = addr_pixels_in + idx * 2;
-        uint16_t pix = pvr2_tex_mem_32bit_read16(mem, pix_addr);
+        uint16_t pix = pvr2_tex_mem_32bit_read16(pvr2, pix_addr);
         uint32_t r = (((pix & 0xf800) >> 11) << 3) | concat;
         uint32_t g = (((pix & 0x07e0) >> 5) << 2) | (concat & 0x3);
         uint32_t b = ((pix & 0x001f) << 3) | concat;
@@ -699,12 +699,12 @@ conv_rgb565_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
 }
 
 static void
-conv_rgb555_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb555_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                         uint32_t addr_pixels_in,
                         unsigned n_pixels, uint8_t concat) {
     for (unsigned idx = 0; idx < n_pixels; idx++) {
         uint32_t pix_addr = addr_pixels_in + idx * 2;
-        uint16_t pix = pvr2_tex_mem_32bit_read16(mem, pix_addr);
+        uint16_t pix = pvr2_tex_mem_32bit_read16(pvr2, pix_addr);
         uint32_t b = ((pix & 0x001f) << 3) | concat;
         uint32_t g = (((pix & 0x03e0) >> 5) << 2) | (concat & 3);
         uint32_t r = (((pix & 0xec00) >> 10) << 2) | concat;
@@ -714,12 +714,12 @@ conv_rgb555_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
 }
 
 static void
-conv_rgb888_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb888_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                         uint32_t addr_pixels_in,
                         unsigned n_pixels) {
     for (unsigned idx = 0; idx < n_pixels; idx++) {
         uint8_t pix[3];
-        pvr2_tex_mem_32bit_read_raw(mem, pix, addr_pixels_in + idx * 3, 3);
+        pvr2_tex_mem_32bit_read_raw(pvr2, pix, addr_pixels_in + idx * 3, 3);
         uint32_t r = pix[0];
         uint32_t g = pix[1];
         uint32_t b = pix[2];
@@ -729,11 +729,11 @@ conv_rgb888_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
 }
 
 static void
-conv_rgb0888_to_rgba8888(struct pvr2_tex_mem *mem, uint32_t *pixels_out,
+conv_rgb0888_to_rgba8888(struct pvr2 *pvr2, uint32_t *pixels_out,
                          uint32_t addr_pixels_in,
                          unsigned n_pixels) {
     for (unsigned idx = 0; idx < n_pixels; idx++) {
-        uint32_t pix = pvr2_tex_mem_32bit_read32(mem, addr_pixels_in + idx * 4);
+        uint32_t pix = pvr2_tex_mem_32bit_read32(pvr2, addr_pixels_in + idx * 4);
         uint32_t r = (pix & 0x00ff0000) >> 16;
         uint32_t g = (pix & 0x0000ff00) >> 8;
         uint32_t b = (pix & 0x000000ff);
@@ -1171,9 +1171,9 @@ static void copy_to_tex_mem(struct pvr2 *pvr2, void const *in,
      */
     offs &= TEX_MIRROR_MASK;
     if (tex_mem_offs == ADDR_TEX32_FIRST)
-        pvr2_tex_mem_32bit_write_raw(&pvr2->mem, offs, in, len);
+        pvr2_tex_mem_32bit_write_raw(pvr2, offs, in, len);
     else
-        pvr2_tex_mem_64bit_write_raw(&pvr2->mem, offs, in, len);
+        pvr2_tex_mem_64bit_write_raw(pvr2, offs, in, len);
 
     /*
      * let the texture tracking system know we may have just overwritten a
