@@ -184,11 +184,6 @@ static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
     for (row = 0; row < 16; row++) {
         pvr2_tex_mem_64bit_write_raw(pvr2, addr_base, block[row], 32);
         addr_base += linestride;
-
-        pvr2_framebuffer_notify_write(pvr2, ADDR_TEX64_FIRST + addr_base,
-                                      8 * sizeof(uint32_t));
-        pvr2_tex_cache_notify_write(pvr2, ADDR_TEX64_FIRST + addr_base,
-                                    8 * sizeof(uint32_t));
     }
 
     yuv->cur_macroblock_x++;

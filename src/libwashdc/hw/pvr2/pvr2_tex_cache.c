@@ -402,19 +402,18 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
 }
 
 void pvr2_tex_cache_notify_write(struct pvr2 *pvr2,
-                                 uint32_t addr_first, uint32_t len) {
+                                 uint32_t addr_64bit, uint32_t len) {
 #ifdef INVARIANTS
-    uint32_t addr_last_abs = addr_first + (len - 1);
-    if (addr_first < ADDR_TEX64_FIRST || addr_first > ADDR_TEX64_LAST ||
-        addr_last_abs < ADDR_TEX64_FIRST || addr_last_abs > ADDR_TEX64_LAST) {
-        error_set_address(addr_first);
+    uint32_t addr_last_abs = addr_64bit + (len - 1);
+    if (addr_64bit >= (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) ||
+        addr_last_abs >= (ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1)) {
+        error_set_address(addr_64bit);
         error_set_length(len);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 #endif
-    addr_first -= ADDR_TEX64_FIRST;
-    uint32_t addr_last = addr_first + (len - 1);
-    unsigned page_first = addr_first / PVR2_TEX_PAGE_SIZE;
+    uint32_t addr_last = addr_64bit + (len - 1);
+    unsigned page_first = addr_64bit / PVR2_TEX_PAGE_SIZE;
     unsigned page_last = addr_last / PVR2_TEX_PAGE_SIZE;
     dc_cycle_stamp_t time = clock_cycle_stamp(pvr2->clk);
     struct pvr2_tex_cache *cache = &pvr2->tex_cache;

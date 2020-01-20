@@ -1174,13 +1174,6 @@ static void copy_to_tex_mem(struct pvr2 *pvr2, void const *in,
         pvr2_tex_mem_32bit_write_raw(pvr2, offs, in, len);
     else
         pvr2_tex_mem_64bit_write_raw(pvr2, offs, in, len);
-
-    /*
-     * let the texture tracking system know we may have just overwritten a
-     * texture in the cache.
-     */
-    if (tex_mem_offs == ADDR_TEX64_FIRST)
-        pvr2_tex_cache_notify_write(pvr2, offs + ADDR_TEX64_FIRST, len);
 }
 
 static int
@@ -1421,9 +1414,9 @@ static inline bool check_overlap(uint32_t range1_start, uint32_t range1_end,
     return false;
 }
 
-void pvr2_framebuffer_notify_write(struct pvr2 *pvr2, uint32_t addr,
+void pvr2_framebuffer_notify_write(struct pvr2 *pvr2, uint32_t addr_32bit,
                                    unsigned n_bytes) {
-    uint32_t first_byte = addr - ADDR_TEX32_FIRST;
+    uint32_t first_byte = addr_32bit;
     uint32_t last_byte = n_bytes - 1 + first_byte;
 
     unsigned fb_idx;

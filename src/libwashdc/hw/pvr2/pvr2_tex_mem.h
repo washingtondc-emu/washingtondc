@@ -42,18 +42,18 @@ struct pvr2_tex_mem {
 
 #define PVR2_TEX_MEM_BANK_SIZE (PVR2_TEX32_MEM_LEN / 2)
 
-/* static inline unsigned */
-/* pvr2_tex_mem_addr_32_to_64(unsigned offs) { */
-/*     unsigned offs32 = offs & 0x007ffffc; */
-/*     unsigned offs64; */
+static inline unsigned
+pvr2_tex_mem_addr_32_to_64(unsigned offs) {
+    unsigned offs32 = offs & 0x007ffffc;
+    unsigned offs64;
 
-/*     if (offs32 >= PVR2_TEX_MEM_BANK_SIZE) */
-/*         offs64 = (offs32 - PVR2_TEX_MEM_BANK_SIZE) * 2 + 4; */
-/*     else */
-/*         offs64 = offs32 * 2; */
+    if (offs32 >= PVR2_TEX_MEM_BANK_SIZE)
+        offs64 = (offs32 - PVR2_TEX_MEM_BANK_SIZE) * 2 + 4;
+    else
+        offs64 = offs32 * 2;
 
-/*     return offs64 | (offs & 3); */
-/* } */
+    return offs64 | (offs & 3);
+}
 
 static inline unsigned
 pvr2_tex_mem_addr_64_to_32(unsigned offs) {

@@ -30,6 +30,35 @@
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
 
+static inline void
+pvr2_tex_mem_sync_fb(struct pvr2 *pvr2, uint32_t addr_32bit, size_t n_bytes) {
+    /*
+     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
+     * end of the framebuffer
+     */
+    uint32_t sof1 = get_fb_w_sof1(pvr2);
+    uint32_t sof2 = get_fb_w_sof2(pvr2);
+    if ((addr_32bit + ADDR_TEX32_FIRST + n_bytes) >= sof1 ||
+        (addr_32bit + ADDR_TEX32_FIRST + n_bytes) >= sof2)
+        framebuffer_sync_from_host_maybe();
+}
+
+static inline void
+pvr2_tex_mem_notify_writes(struct pvr2 *pvr2,
+                           uint32_t addr_32bit, size_t n_bytes) {
+    pvr2_tex_mem_sync_fb(pvr2, addr_32bit, n_bytes);
+    pvr2_framebuffer_notify_write(pvr2, addr_32bit, n_bytes);
+
+    /*
+     * TODO: calling pvr2_tex_mem_addr_32_to_64 is suboptimal because if this
+     * function is being called from a 64-bit write handler then we already
+     * know the 64-bit address.
+     */
+    pvr2_tex_cache_notify_write(pvr2,
+                                pvr2_tex_mem_addr_32_to_64(addr_32bit),
+                                n_bytes);
+}
+
 double
 pvr2_tex_mem_32bit_read_double(struct pvr2 *pvr2, unsigned addr) {
     double ret;
@@ -56,6 +85,7 @@ pvr2_tex_mem_32bit_read_float(struct pvr2 *pvr2, unsigned addr) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_sync_fb(pvr2, addr, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + addr, sizeof(ret));
     return ret;
 }
@@ -71,6 +101,7 @@ pvr2_tex_mem_32bit_read32(struct pvr2 *pvr2, unsigned addr) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_sync_fb(pvr2, addr, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + addr, sizeof(ret));
     return ret;
 }
@@ -86,6 +117,7 @@ pvr2_tex_mem_32bit_read16(struct pvr2 *pvr2, unsigned addr) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_sync_fb(pvr2, addr, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + addr, sizeof(ret));
     return ret;
 }
@@ -101,6 +133,7 @@ pvr2_tex_mem_32bit_read8(struct pvr2 *pvr2, unsigned addr) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_sync_fb(pvr2, addr, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + addr, sizeof(ret));
     return ret;
 }
@@ -114,19 +147,13 @@ void pvr2_tex_mem_32bit_read_raw(struct pvr2 *pvr2,
         error_set_length(n_bytes);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
+
+    pvr2_tex_mem_sync_fb(pvr2, addr, n_bytes);
     memcpy(dstp, srcp, n_bytes * sizeof(uint8_t));
 }
 
 static uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX32_FIRST + sizeof(uint8_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX32_FIRST + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
 
     return pvr2_tex_mem_32bit_read8(pvr2, addr);
 }
@@ -141,6 +168,7 @@ pvr2_tex_mem_32bit_write_double(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_notify_writes(pvr2, addr, sizeof(val));
     memcpy(pvr2->mem.tex32 + addr, &val, sizeof(val));
 }
 
@@ -154,6 +182,7 @@ pvr2_tex_mem_32bit_write_float(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_notify_writes(pvr2, addr, sizeof(val));
     memcpy(pvr2->mem.tex32 + addr, &val, sizeof(val));
 }
 
@@ -167,6 +196,7 @@ pvr2_tex_mem_32bit_write32(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_notify_writes(pvr2, addr, sizeof(val));
     memcpy(pvr2->mem.tex32 + addr, &val, sizeof(val));
 }
 
@@ -180,6 +210,7 @@ pvr2_tex_mem_32bit_write16(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_notify_writes(pvr2, addr, sizeof(val));
     memcpy(pvr2->mem.tex32 + addr, &val, sizeof(val));
 }
 
@@ -193,6 +224,7 @@ pvr2_tex_mem_32bit_write8(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    pvr2_tex_mem_notify_writes(pvr2, addr, sizeof(val));
     memcpy(pvr2->mem.tex32 + addr, &val, sizeof(val));
 }
 
@@ -205,6 +237,7 @@ void pvr2_tex_mem_32bit_write_raw(struct pvr2 *pvr2,
         error_set_length(n_bytes);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
+    pvr2_tex_mem_notify_writes(pvr2, addr, n_bytes);
     memcpy(dstp, srcp, n_bytes * sizeof(uint8_t));
 }
 
@@ -222,6 +255,12 @@ pvr2_tex_mem_64bit_read_double(struct pvr2 *pvr2, unsigned addr) {
     unsigned offs1 = pvr2_tex_mem_addr_64_to_32(addr);
     unsigned offs2 = pvr2_tex_mem_addr_64_to_32(addr + 4);
 
+    /*
+     * TODO: calling pvr2_tex_mem_sync_fb twice is suboptimal
+     * because we might end up syncing the framebuffe twice
+     */
+    pvr2_tex_mem_sync_fb(pvr2, offs1, sizeof(ret)/2);
+    pvr2_tex_mem_sync_fb(pvr2, offs2, sizeof(ret)/2);
     memcpy(&ret, pvr2->mem.tex32 + offs1, sizeof(ret)/2);
     memcpy(((char*)&ret) + sizeof(ret)/2, pvr2->mem.tex32 + offs2, sizeof(ret)/2);
     return ret;
@@ -239,6 +278,7 @@ pvr2_tex_mem_64bit_read_float(struct pvr2 *pvr2, unsigned addr) {
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_sync_fb(pvr2, offs, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + offs, sizeof(ret));
     return ret;
 }
@@ -255,6 +295,7 @@ pvr2_tex_mem_64bit_read32(struct pvr2 *pvr2, unsigned addr) {
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_sync_fb(pvr2, offs, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + offs, sizeof(ret));
     return ret;
 }
@@ -271,6 +312,7 @@ pvr2_tex_mem_64bit_read16(struct pvr2 *pvr2, unsigned addr) {
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_sync_fb(pvr2, offs, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + offs, sizeof(ret));
     return ret;
 }
@@ -287,6 +329,7 @@ pvr2_tex_mem_64bit_read8(struct pvr2 *pvr2, unsigned addr) {
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_sync_fb(pvr2, offs, sizeof(ret));
     memcpy(&ret, pvr2->mem.tex32 + offs, sizeof(ret));
     return ret;
 }
@@ -345,6 +388,13 @@ pvr2_tex_mem_64bit_write_double(struct pvr2 *pvr2,
     unsigned offs1 = pvr2_tex_mem_addr_64_to_32(addr);
     unsigned offs2 = pvr2_tex_mem_addr_64_to_32(addr + 4);
 
+    /*
+     * TODO: this is suboptimal because it could call
+     * framebuffer_sync_from_host_maybe twice
+     */
+    pvr2_tex_mem_notify_writes(pvr2, offs1, sizeof(val));
+    pvr2_tex_mem_notify_writes(pvr2, offs2, sizeof(val));
+
     memcpy(pvr2->mem.tex32 + offs1, &val, sizeof(val)/2);
     memcpy(pvr2->mem.tex32 + offs2,
            ((char*)&val) + sizeof(val)/2, sizeof(val)/2);
@@ -361,6 +411,7 @@ pvr2_tex_mem_64bit_write_float(struct pvr2 *pvr2,
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_notify_writes(pvr2, offs, sizeof(val));
     memcpy(pvr2->mem.tex32 + offs, &val, sizeof(val));
 }
 
@@ -375,6 +426,7 @@ pvr2_tex_mem_64bit_write32(struct pvr2 *pvr2,
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_notify_writes(pvr2, offs, sizeof(val));
     memcpy(pvr2->mem.tex32 + offs, &val, sizeof(val));
 }
 
@@ -389,6 +441,7 @@ pvr2_tex_mem_64bit_write16(struct pvr2 *pvr2,
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_notify_writes(pvr2, offs, sizeof(val));
     memcpy(pvr2->mem.tex32 + offs, &val, sizeof(val));
 }
 
@@ -403,204 +456,102 @@ pvr2_tex_mem_64bit_write8(struct pvr2 *pvr2,
     }
 
     unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+    pvr2_tex_mem_notify_writes(pvr2, offs, sizeof(val));
     memcpy(pvr2->mem.tex32 + offs, &val, sizeof(val));
 }
 
 static void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
     pvr2_tex_mem_32bit_write8(pvr2, addr, val);
 }
 
 static uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX32_FIRST + sizeof(uint16_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX32_FIRST + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_32bit_read16(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
     pvr2_tex_mem_32bit_write16(pvr2, addr, val);
 }
 
 static uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX32_FIRST + sizeof(uint32_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX32_FIRST + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_32bit_read32(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
     pvr2_tex_mem_32bit_write32(pvr2, addr, val);
 }
 
 static float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX32_FIRST + sizeof(float)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX32_FIRST + sizeof(float)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_32bit_read_float(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area32_write_float(addr32_t addr, float val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
     pvr2_tex_mem_32bit_write_float(pvr2, addr, val);
 }
 
 static double pvr2_tex_mem_area32_read_double(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX32_FIRST + sizeof(double)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX32_FIRST + sizeof(double)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_32bit_read_double(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX32_FIRST, sizeof(val));
     pvr2_tex_mem_32bit_write_double(pvr2, addr, val);
 }
 
 static uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX64_FIRST + sizeof(uint8_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX64_FIRST + sizeof(uint8_t)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_64bit_read8(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-
     pvr2_tex_mem_64bit_write8(pvr2, addr, val);
 }
 
 static uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX64_FIRST + sizeof(uint16_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX64_FIRST + sizeof(uint16_t)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_64bit_read16(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-
     pvr2_tex_mem_64bit_write16(pvr2, addr, val);
 }
 
 static uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX64_FIRST + sizeof(uint32_t)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX64_FIRST + sizeof(uint32_t)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_64bit_read32(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-
     pvr2_tex_mem_64bit_write32(pvr2, addr, val);
 }
 
 static float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    /*
-     * TODO: don't call framebuffer_sync_from_host_maybe if addr is beyond the
-     * end of the framebuffer
-     */
-    if ((addr + ADDR_TEX64_FIRST + sizeof(float)) >= get_fb_w_sof1(pvr2) ||
-        (addr + ADDR_TEX64_FIRST + sizeof(float)) >= get_fb_w_sof2(pvr2))
-        framebuffer_sync_from_host_maybe();
-
     return pvr2_tex_mem_64bit_read_float(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-
     pvr2_tex_mem_64bit_write_float(pvr2, addr, val);
 }
 
 static double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
     return pvr2_tex_mem_64bit_read_double(pvr2, addr);
 }
 
 static void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    pvr2_framebuffer_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-    pvr2_tex_cache_notify_write(pvr2, addr + ADDR_TEX64_FIRST, sizeof(val));
-
     pvr2_tex_mem_64bit_write_double(pvr2, addr, val);
 }
 
