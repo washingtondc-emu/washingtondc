@@ -102,16 +102,47 @@ void sh4_ocache_clear(struct sh4_ocache *ocache) {
     memset(ocache->oc_ram_area, 0, sizeof(uint8_t) * SH4_OC_RAM_AREA_SIZE);
 }
 
+#ifdef INVARIANTS
+#define INVARIANTS_ORA_WRITE_RANGE_CHECK                          \
+    if (!sh4_ocache_in_ram_area(paddr)) {                         \
+            error_set_address(paddr);                             \
+            error_set_value(val);                                 \
+            RAISE_ERROR(ERROR_INTEGRITY);                         \
+    }
+#define INVARIANTS_ORA_READ_RANGE_CHECK                           \
+    if (!sh4_ocache_in_ram_area(paddr)) {                         \
+            error_set_address(paddr);                             \
+            RAISE_ERROR(ERROR_INTEGRITY);                         \
+    }
+#else
+#define INVARIANTS_ORA_WRITE_RANGE_CHECK
+#define INVARIANTS_ORA_READ_RANGE_CHECK
+#endif
+
+/*
+ * XXX based on some preliminary hardware tests I have done, you can actually
+ * write to the ORA area with ORA disabled, and it will hold the value.  I do
+ * not understand how that works since the specification says that will not
+ * work.
+ *
+ * I have verified that writes to the ORA area when the operand cache is
+ * disabled will not maintain their value, and read will always return 0.
+ */
+
+// TODO index mode can re-order ORA banks, so maybe we need to consider that?
+
 #define SH4_OCACHE_DO_WRITE_ORA_TMPL(type, postfix)                     \
     void sh4_ocache_do_write_ora_##postfix(uint32_t paddr, type val,    \
                                            void *ctxt) {                \
         struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
-        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||              \
-            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||              \
-            !sh4_ocache_in_ram_area(paddr)) {                           \
-            error_set_address(paddr);                                   \
-            RAISE_ERROR(ERROR_INTEGRITY);                               \
-        }                                                               \
+        INVARIANTS_ORA_WRITE_RANGE_CHECK                                \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK))                \
+            return;                                                     \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK))                \
+            LOG_WARN("WARNING: WRITING %08X to %08X (%u bytes) WITH ORA " \
+                     "DISABLED\n",                                      \
+                     (unsigned)val, (unsigned)paddr, (unsigned)sizeof(val)); \
+                                                                        \
         type *addr = (type*)sh4_ocache_get_ora_ram_addr(sh4, paddr);    \
         *addr = val;                                                    \
     }
@@ -125,13 +156,14 @@ SH4_OCACHE_DO_WRITE_ORA_TMPL(uint8_t, 8)
 #define SH4_OCACHE_DO_READ_ORA_TMPL(type, postfix)                      \
     type sh4_ocache_do_read_ora_##postfix(uint32_t paddr, void *ctxt) { \
         struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
-        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK) ||              \
-            !(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK) ||              \
-            !sh4_ocache_in_ram_area(paddr)) {                           \
-            error_set_address(paddr);                                   \
-            RAISE_ERROR(ERROR_INTEGRITY);                               \
-        }                                                               \
+        INVARIANTS_ORA_READ_RANGE_CHECK                                 \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_OCE_MASK))                \
+            return 0;                                                   \
         type *ptr = (type*)sh4_ocache_get_ora_ram_addr(sh4, paddr);     \
+        if (!(sh4->reg[SH4_REG_CCR] & SH4_CCR_ORA_MASK))                \
+            LOG_WARN("WARNING: READING %08X to %08X (%u bytes) WITH ORA " \
+                     "DISABLED\n",                                      \
+                     (unsigned)*ptr, (unsigned)paddr, (unsigned)sizeof(type)); \
         return *ptr;                                                    \
     }
 
