@@ -1840,7 +1840,7 @@ void aica_get_sndchan_stat(struct aica const *aica,
                            struct washdc_sndchan_stat *stat) {
     if (ch_no < AICA_CHAN_COUNT) {
         stat->playing = aica->channels[ch_no].playing;
-        stat->n_vars = 17;
+        stat->n_vars = 19;
         stat->ch_idx = ch_no;
     } else {
         LOG_ERROR("%s - AICA INVALID CHANNEL INDEX %u\n", __func__, ch_no);
@@ -1975,18 +1975,32 @@ void aica_get_sndchan_var(struct aica const *aica,
         var->val.as_int = chan->pan;
         return;
     case 15:
-        // octave
-        strncpy(var->name, "octave", WASHDC_VAR_NAME_LEN);
+        // attack-rate
+        strncpy(var->name, "attack-rate", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
-        var->val.as_int = chan->octave;
+        var->val.as_int = chan->attack_rate;
         return;
     case 16:
-        // FNS
-        strncpy(var->name, "FNS", WASHDC_VAR_NAME_LEN);
+        // decay-rate
+        strncpy(var->name, "decay-rate", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_HEX;
-        var->val.as_int = chan->fns;
+        var->val.as_int = chan->decay_rate;
+        return;
+    case 17:
+        // sustain-rate
+        strncpy(var->name, "sustain-rate", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->sustain_rate;
+        return;
+    case 18:
+        // release-rate
+        strncpy(var->name, "release-rate", WASHDC_VAR_NAME_LEN);
+        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
+        var->tp = WASHDC_VAR_HEX;
+        var->val.as_int = chan->release_rate;
         return;
     default:
         goto inval;
