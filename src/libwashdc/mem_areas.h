@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -127,11 +127,17 @@
  * mirror images of the texture memory areas in ADDR_TEX32_FIRST/ADDR_TEX32_LAST
  * and ADDR_TEX64_FIRST/ADDR_TEX64_LAST.  These get used for channel-2 dma to
  * texture memory.
+ *
+ * These two regions can both map to either the 32-bit bus or the 64-bit bus.
+ * the LMMODE0 (0xa05f6884) and LMMODE1 (0xa05f6888) registers control which bus
+ * each range maps to.  When one of those registers is 0, the corresponding
+ * memory range maps to the 64-bit bus.  When one of those registers is 1, the
+ * corresponding memory range maps to the 32-bit bus.
  */
-#define ADDR_AREA4_TEX64_FIRST 0x11000000
-#define ADDR_AREA4_TEX64_LAST  0x117fffff
-#define ADDR_AREA4_TEX32_FIRST 0x11800000
-#define ADDR_AREA4_TEX32_LAST  0x11ffffff
+#define ADDR_AREA4_TEX_REGION_0_FIRST 0x11000000
+#define ADDR_AREA4_TEX_REGION_0_LAST  0x117fffff
+#define ADDR_AREA4_TEX_REGION_1_FIRST 0x11800000
+#define ADDR_AREA4_TEX_REGION_1_LAST  0x11ffffff
 
 // area 4 is used by the tile accelerator
 #define ADDR_AREA4_FIRST 0x10000000

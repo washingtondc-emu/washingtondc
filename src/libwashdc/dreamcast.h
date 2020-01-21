@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -145,5 +145,14 @@ struct pvr2_stat;
 void dc_get_pvr2_stats(struct pvr2_stat *stats);
 
 unsigned dc_get_frame_count(void);
+
+/*
+ * control whether ADDR_AREA4_TEX_REGION_0 and ADDR_AREA4_TEX_REGION_1 map to
+ * 64-bit or 32-bit texture bus.
+ */
+void dc_set_lmmode0(unsigned val);
+void dc_set_lmmode1(unsigned val);
+unsigned dc_get_lmmode0(void);
+unsigned dc_get_lmmode1(void);
 
 #endif

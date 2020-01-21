@@ -150,6 +150,8 @@ static bool run_to_next_sh4_event_jit(void *ctxt);
 
 static bool run_to_next_arm7_event(void *ctxt);
 
+static int lmmode0, lmmode1;
+
 #ifdef ENABLE_JIT_X86_64
 static bool run_to_next_sh4_event_jit_native(void *ctxt);
 #endif
@@ -606,6 +608,9 @@ do_init_win_gfx:
     gfx_init(gfx_if, win_width, win_height);
 
     dc_sound_init(snd_intf);
+
+    lmmode0 = 0;
+    lmmode1 = 0;
 
     init_complete = true;
 
@@ -1430,6 +1435,23 @@ static DEF_ERROR_U32_ATTR(ch2_dma_xfer_src_last)
 static DEF_ERROR_U32_ATTR(ch2_dma_xfer_dst_first)
 static DEF_ERROR_U32_ATTR(ch2_dma_xfer_dst_last)
 
+void dc_set_lmmode0(unsigned val) {
+    lmmode0 = val;
+}
+
+void dc_set_lmmode1(unsigned val) {
+    lmmode1 = val;
+}
+
+unsigned dc_get_lmmode0(void) {
+    return lmmode0;
+}
+
+unsigned dc_get_lmmode1(void) {
+    return lmmode1;
+}
+
+
 /*
  * this is like dc_ch2_dma_xfer, but it's slower because it evaluates the
  * memory mapping of each 4 bytes individually.  We use it as a fallback for
@@ -1454,14 +1476,20 @@ dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         if ((dst >= ADDR_TA_FIFO_POLY_FIRST) &&
             (dst <= ADDR_TA_FIFO_POLY_LAST)) {
             pvr2_ta_fifo_poly_write_32(dst, val, &dc_pvr2);
-        } else if ((dst >= ADDR_AREA4_TEX64_FIRST) &&
-                   (dst <= ADDR_AREA4_TEX64_LAST)) {
-            pvr2_tex_mem_64bit_write32(&dc_pvr2,
-                                       dst - ADDR_AREA4_TEX64_FIRST, val);
-        } else if ((xfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
-                   (xfer_dst <= ADDR_AREA4_TEX32_LAST)) {
-            pvr2_tex_mem_32bit_write32(&dc_pvr2,
-                                       dst - ADDR_AREA4_TEX32_FIRST, val);
+        } else if ((dst >= ADDR_AREA4_TEX_REGION_0_FIRST) &&
+                   (dst <= ADDR_AREA4_TEX_REGION_0_LAST)) {
+            uint32_t dst_offs = dst - ADDR_AREA4_TEX_REGION_0_FIRST;
+            if (dc_get_lmmode0() == 0)
+                pvr2_tex_mem_64bit_write32(&dc_pvr2, dst_offs, val);
+            else
+                pvr2_tex_mem_32bit_write32(&dc_pvr2, dst_offs, val);
+        } else if ((xfer_dst >= ADDR_AREA4_TEX_REGION_1_FIRST) &&
+                   (xfer_dst <= ADDR_AREA4_TEX_REGION_1_LAST)) {
+            uint32_t dst_offs = dst - ADDR_AREA4_TEX_REGION_1_FIRST;
+            if (dc_get_lmmode1() == 0)
+                pvr2_tex_mem_64bit_write32(&dc_pvr2, dst_offs, val);
+            else
+                pvr2_tex_mem_32bit_write32(&dc_pvr2, dst_offs, val);
         } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
             pvr2_yuv_input_data(&dc_pvr2, &val, sizeof(val));
@@ -1505,27 +1533,43 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
         }
-    } else if ((xfer_dst >= ADDR_AREA4_TEX64_FIRST) &&
-               (xfer_dst <= ADDR_AREA4_TEX64_LAST)) {
+    } else if ((xfer_dst >= ADDR_AREA4_TEX_REGION_0_FIRST) &&
+               (xfer_dst <= ADDR_AREA4_TEX_REGION_0_LAST)) {
         // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
-        xfer_dst = xfer_dst - ADDR_AREA4_TEX64_FIRST;
-
-        while (n_words--) {
-            uint32_t buf = read32(xfer_src & mask, ctxt);
-            pvr2_tex_mem_64bit_write32(&dc_pvr2, xfer_dst, buf);
-            xfer_dst += sizeof(buf);
-            xfer_src += sizeof(buf);
+        xfer_dst -= ADDR_AREA4_TEX_REGION_0_FIRST;
+        if (dc_get_lmmode0() == 0) {
+            while (n_words--) {
+                uint32_t buf = read32(xfer_src & mask, ctxt);
+                pvr2_tex_mem_64bit_write32(&dc_pvr2, xfer_dst, buf);
+                xfer_dst += sizeof(buf);
+                xfer_src += sizeof(buf);
+            }
+        } else {
+            while (n_words--) {
+                uint32_t buf = read32(xfer_src & mask, ctxt);
+                pvr2_tex_mem_32bit_write32(&dc_pvr2, xfer_dst, buf);
+                xfer_dst += sizeof(buf);
+                xfer_src += sizeof(buf);
+            }
         }
-    } else if ((xfer_dst >= ADDR_AREA4_TEX32_FIRST) &&
-               (xfer_dst <= ADDR_AREA4_TEX32_LAST)) {
+    } else if ((xfer_dst >= ADDR_AREA4_TEX_REGION_1_FIRST) &&
+               (xfer_dst <= ADDR_AREA4_TEX_REGION_1_LAST)) {
         // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
-        xfer_dst = xfer_dst - ADDR_AREA4_TEX32_FIRST;
-
-        while (n_words--) {
-            uint32_t buf = read32(xfer_src & mask, ctxt);
-            pvr2_tex_mem_32bit_write32(&dc_pvr2, xfer_dst, buf);
-            xfer_dst += sizeof(buf);
-            xfer_src += sizeof(buf);
+        xfer_dst -= ADDR_AREA4_TEX_REGION_1_FIRST;
+        if (dc_get_lmmode1() == 0) {
+            while (n_words--) {
+                uint32_t buf = read32(xfer_src & mask, ctxt);
+                pvr2_tex_mem_64bit_write32(&dc_pvr2, xfer_dst, buf);
+                xfer_dst += sizeof(buf);
+                xfer_src += sizeof(buf);
+            }
+        } else {
+            while (n_words--) {
+                uint32_t buf = read32(xfer_src & mask, ctxt);
+                pvr2_tex_mem_32bit_write32(&dc_pvr2, xfer_dst, buf);
+                xfer_dst += sizeof(buf);
+                xfer_src += sizeof(buf);
+            }
         }
     } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -155,6 +155,26 @@ tfrem_reg_read_handler(struct mmio_region_sys_block *region,
     return pvr2_ta_fifo_rem_bytes() / 32;
 }
 
+static uint32_t lmmode0_reg_read_handler(struct mmio_region_sys_block *region,
+                                         unsigned idx, void *ctxt) {
+    return dc_get_lmmode0();
+}
+
+static void lmmode0_reg_write_handler(struct mmio_region_sys_block *region,
+                                      unsigned idx, uint32_t val, void *ctxt) {
+    dc_set_lmmode0(val & 1);
+}
+
+static uint32_t lmmode1_reg_read_handler(struct mmio_region_sys_block *region,
+                                         unsigned idx, void *ctxt) {
+    return dc_get_lmmode1();
+}
+
+static void lmmode1_reg_write_handler(struct mmio_region_sys_block *region,
+                                      unsigned idx, uint32_t val, void *ctxt) {
+    dc_set_lmmode1(val & 1);
+}
+
 void sys_block_init(void) {
     init_mmio_region_sys_block(&mmio_region_sys_block, (void*)reg_backing);
 
@@ -226,13 +246,13 @@ void sys_block_init(void) {
                                     NULL);
     mmio_region_sys_block_init_cell(&mmio_region_sys_block,
                                     "SB_LMMODE0", 0x5f6884,
-                                    mmio_region_sys_block_warn_read_handler,
-                                    mmio_region_sys_block_warn_write_handler,
+                                    lmmode0_reg_read_handler,
+                                    lmmode0_reg_write_handler,
                                     NULL);
     mmio_region_sys_block_init_cell(&mmio_region_sys_block,
                                     "SB_LMMODE1", 0x5f6888,
-                                    mmio_region_sys_block_warn_read_handler,
-                                    mmio_region_sys_block_warn_write_handler,
+                                    lmmode1_reg_read_handler,
+                                    lmmode1_reg_write_handler,
                                     NULL);
     mmio_region_sys_block_init_cell(&mmio_region_sys_block,
                                     "SB_FFST", 0x5f688c,
