@@ -175,6 +175,20 @@ static void lmmode1_reg_write_handler(struct mmio_region_sys_block *region,
     dc_set_lmmode1(val & 1);
 }
 
+static uint32_t sdst_reg_read_handler(struct mmio_region_sys_block *region,
+                                      unsigned idx, void *ctxt) {
+    LOG_DBG("reading 0 from SDST\n");
+    return 0;
+}
+
+static void sdst_reg_write_handler(struct mmio_region_sys_block *region,
+                                   unsigned idx, uint32_t val, void *ctxt) {
+    if (val) {
+        error_set_feature("Sort-DMA");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
 void sys_block_init(void) {
     init_mmio_region_sys_block(&mmio_region_sys_block, (void*)reg_backing);
 
@@ -215,8 +229,8 @@ void sys_block_init(void) {
                                     NULL);
     mmio_region_sys_block_init_cell(&mmio_region_sys_block,
                                     "SB_SDST", 0x5f6820,
-                                    mmio_region_sys_block_warn_read_handler,
-                                    mmio_region_sys_block_warn_write_handler,
+                                    sdst_reg_read_handler,
+                                    sdst_reg_write_handler,
                                     NULL);
     mmio_region_sys_block_init_cell(&mmio_region_sys_block,
                                     "SB_DBREQM", 0x5f6840,
