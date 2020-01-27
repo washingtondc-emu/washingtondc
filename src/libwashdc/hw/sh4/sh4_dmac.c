@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -415,7 +415,28 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
      * registers as well (I think CHCR2 has a per-channel enable bit for this?)
      */
 
-    if (n_bytes != (32 * sh4->dmac.dmatcr[2])) {
+    unsigned xfer_unit;
+    switch ((sh4->dmac.chcr[2] >> 4) & 7) {
+    case 0:
+        xfer_unit = 8;
+        break;
+    case 1:
+        xfer_unit = 1;
+        break;
+    case 2:
+        xfer_unit = 2;
+        break;
+    case 3:
+        xfer_unit = 4;
+        break;
+    case 4:
+        xfer_unit = 32;
+        break;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    if (n_bytes != (xfer_unit * sh4->dmac.dmatcr[2])) {
         error_set_feature("whatever happens when there's a channel-2 DMA "
                           "length mismatch");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
