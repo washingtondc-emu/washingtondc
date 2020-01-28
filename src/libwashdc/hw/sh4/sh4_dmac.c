@@ -436,6 +436,19 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
+    if (xfer_unit != 32) {
+        /*
+         * It seems a real dreamcast will not allow for transfers which are not
+         * done in 32-byte increments.  Whenever I try it in one of my hardware
+         * tests, the system freezes.  Maybe there's an exception that should
+         * be raised, IDK.  All I know is that you can't do this on a real
+         * Dreamcast.
+         */
+        error_set_feature("The App requested a DMA tranfer in units other than "
+                          "32-bytes");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     if (n_bytes != (xfer_unit * sh4->dmac.dmatcr[2])) {
         error_set_feature("whatever happens when there's a channel-2 DMA "
                           "length mismatch");
@@ -449,6 +462,26 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     unsigned n_words = n_bytes / 4;
 
     addr32_t transfer_src = sh4->dmac.sar[2];
+
+    if (transfer_src % xfer_unit) {
+        /*
+         * transfers must be properly aligned.
+         * if you don't do this, it won't work on a real dreamcast.  Might as
+         * well raise an error and crash the emulator.
+         */
+        error_set_feature("non-aligned CH2 DMA transfer source address");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    if (transfer_dst % xfer_unit) {
+        /*
+         * transfers must be properly aligned.
+         * if you don't do this, it won't work on a real dreamcast.  Might as
+         * well raise an error and crash the emulator.
+         */
+        error_set_feature("non-aligned CH2 DMA transfer destination address");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     LOG_DBG("SH4 - initiating %u-byte DMA transfer from 0x%08x to "
             "0x%08x\n", n_bytes, transfer_src, transfer_dst);
