@@ -502,6 +502,8 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
 static void raise_ch2_dma_int_event_handler(struct SchedEvent *event) {
     Sh4 *sh4 = event->arg_ptr;
 
+    sh4->dmac.dmatcr[2] = 0;
+
     // raise the interrupt
     sh4->dmac.chcr[2] |= SH4_DMAC_CHCR_TE_MASK;
     sh4_set_interrupt(sh4, SH4_IRQ_DMAC, SH4_EXCP_DMAC_DMTE2);
