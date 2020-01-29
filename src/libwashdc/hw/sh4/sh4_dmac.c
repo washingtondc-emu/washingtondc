@@ -486,6 +486,8 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
     LOG_DBG("SH4 - initiating %u-byte DMA transfer from 0x%08x to "
             "0x%08x\n", n_bytes, transfer_src, transfer_dst);
 
+    sh4->dmac.sar_pending[2] = transfer_src + n_bytes;
+
     /*
      * TODO: replace this function call with a hook of some sort so that other
      * platforms can have different behavior.  Alternatively, use the
@@ -502,7 +504,12 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
 static void raise_ch2_dma_int_event_handler(struct SchedEvent *event) {
     Sh4 *sh4 = event->arg_ptr;
 
+    /*
+     * TODO: i think ideally these registers should continually update during
+     * the transfer.
+     */
     sh4->dmac.dmatcr[2] = 0;
+    sh4->dmac.sar[2] = sh4->dmac.sar_pending[2];
 
     // raise the interrupt
     sh4->dmac.chcr[2] |= SH4_DMAC_CHCR_TE_MASK;

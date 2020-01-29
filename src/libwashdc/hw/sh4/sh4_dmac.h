@@ -38,6 +38,12 @@ struct sh4_dmac {
     reg32_t dmatcr[4];
     reg32_t chcr[4];
 
+    /*
+     * while we're waiting on a DMA xfer to end, sar_pending holds the final
+     * value of sar that will be written after the xfer completes.
+     */
+    reg32_t sar_pending[4];
+
     reg32_t dmaor;
 };
 
