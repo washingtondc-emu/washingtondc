@@ -1508,10 +1508,14 @@ dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     }
 }
 
-void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
+dc_cycle_stamp_t
+dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     struct memory_map_region *src_region = memory_map_get_region(&mem_map,
                                                                  xfer_src,
                                                                  n_words * 4);
+
+    addr32_t xfer_dst_initial = xfer_dst;
+    unsigned n_words_initial = n_words;
 
     if (!src_region) {
         /*
@@ -1519,7 +1523,7 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
          * to the fallback implementation.
          */
         dc_ch2_dma_xfer_slow(xfer_src, xfer_dst, n_words);
-        return;
+        goto the_end;
     }
 
     memory_map_read32_func read32 = src_region->intf->read32;
@@ -1584,6 +1588,65 @@ void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         error_set_feature("channel-2 DMA transfers to an unknown destination");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+
+ the_end:
+    // calculate dma timing, we return this to the sh4 code below
+    if ((xfer_dst_initial >= ADDR_TA_FIFO_POLY_FIRST) &&
+        (xfer_dst_initial <= ADDR_TA_FIFO_POLY_LAST)) {
+        /*
+         * TODO: WE NEED TO BENCMARK THIS.  BELOW TIMING IS
+         * INACCURATE BECAUSE IT IS COPIED FROM TEXTURE MEMORY DMA!
+         */
+        double n_secs =
+            ((n_words_initial*4) * 0.019373669058526 + 10.9678657897639) /
+            (50 * 1024*1024/4);
+        return n_secs * SCHED_FREQUENCY;
+    } else if ((xfer_dst_initial >= ADDR_AREA4_TEX_REGION_0_FIRST) &&
+               (xfer_dst_initial <= ADDR_AREA4_TEX_REGION_0_LAST)) {
+        if (dc_get_lmmode0() == 0) {
+            // this is accurate because it was empirically measured using the pvr2_mem_test
+            double n_secs =
+                ((n_words_initial*4) * 0.019373669058526 + 10.9678657897639) /
+                (50 * 1024*1024/4);
+            return n_secs * SCHED_FREQUENCY;
+        } else {
+            double n_secs =
+                ((n_words_initial*4) * 0.032643091507195 + 9.09723447094439) /
+                (50 * 1024*1024/4);
+            return n_secs * SCHED_FREQUENCY;
+        }
+    } else if ((xfer_dst_initial >= ADDR_AREA4_TEX_REGION_1_FIRST) &&
+               (xfer_dst_initial <= ADDR_AREA4_TEX_REGION_1_LAST)) {
+        if (dc_get_lmmode1() == 0) {
+            // this is accurate because it was empirically measured using the pvr2_mem_test
+            double n_secs =
+                ((n_words_initial*4) * 0.019373669058526 + 10.9678657897639) /
+                (50 * 1024*1024/4);
+            return n_secs * SCHED_FREQUENCY;
+        } else {
+            double n_secs =
+                ((n_words_initial*4) * 0.032643091507195 + 9.09723447094439) /
+                (50 * 1024*1024/4);
+            return n_secs * SCHED_FREQUENCY;
+        }
+    } else if (xfer_dst_initial >= ADDR_TA_FIFO_YUV_FIRST &&
+               xfer_dst_initial <= ADDR_TA_FIFO_YUV_LAST) {
+        /*
+         * TODO: WE NEED TO BENCMARK.  BELOW TIMING IS
+         * INACCURATE BECAUSE IT IS COPIED FROM NORMAL TEXTURE MEMORY DMA!
+         */
+        double n_secs =
+            ((n_words_initial*4) * 0.019373669058526 + 10.9678657897639) /
+            (50 * 1024*1024/4);
+        return n_secs * SCHED_FREQUENCY;
+    } else {
+        // should never happen because we would have gone into the identical case above
+        error_set_address(xfer_dst_initial);
+        error_set_length(n_words_initial * 4);
+        error_set_feature("channel-2 DMA transfers to an unknown destination");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+    RAISE_ERROR(ERROR_INTEGRITY); // this should be impossible
 }
 
 void dc_get_pvr2_stats(struct pvr2_stat *stats) {

@@ -490,19 +490,16 @@ void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes) {
      * platforms can have different behavior.  Alternatively, use the
      * memory_map.
      */
-    dc_ch2_dma_xfer(transfer_src, transfer_dst, n_words);
+    dc_cycle_stamp_t n_cycles =
+        dc_ch2_dma_xfer(transfer_src, transfer_dst, n_words);
 
     ch2_dma_scheduled = true;
 
     /*
-     * the below delay equation was obtained empirically based on results from
-     * the pvr2_mem_test hw test I've been working on.  The speicific test-case
-     * was only measured for the 64-bit bus, without using the YUV converter.
-     * So actual results may vary for 32-bit bus and/or YUV conversion route.
-     * Other than that, I am confident that this is accurate.
+     * the n_cycles delay was returned from dc_ch2_dma_xfer so that it could
+     * be different for different dma destinations.
      */
-    double n_secs = ((n_words*4) * 0.019373669058526 + 10.9678657897639) / (50 * 1024*1024/4);
-    raise_ch2_dma_int_event.when = clock_cycle_stamp(sh4->clk) + n_secs * SCHED_FREQUENCY;
+    raise_ch2_dma_int_event.when = clock_cycle_stamp(sh4->clk) + n_cycles;
     raise_ch2_dma_int_event.arg_ptr = sh4;
     sched_event(sh4->clk, &raise_ch2_dma_int_event);
 }

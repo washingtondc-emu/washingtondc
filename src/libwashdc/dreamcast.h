@@ -130,7 +130,8 @@ void dc_toggle_overlay(void);
 
 void dc_request_frame_stop(void);
 
-void dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words);
+dc_cycle_stamp_t
+dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words);
 
 /*
  * thin layers over corresponding pvr2 functions.  These are implemented for the
