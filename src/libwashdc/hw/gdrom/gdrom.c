@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -562,7 +562,7 @@ done:
      * to be proportional to some other interrupt delay which it is not
      * currently proportional to.
      */
-    gdrom->dma_delay = bytes_transmitted * ((double)SCHED_FREQUENCY / (double)(1024*1024*4));
+    gdrom->dma_delay = GDROM_INT_DELAY;
 
     gdrom->state = GDROM_STATE_DMA_READING;
     gdrom->stat_reg.check = false;
