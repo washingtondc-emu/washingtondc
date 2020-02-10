@@ -197,6 +197,11 @@ static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
     }
 }
 
+static DEF_ERROR_INT_ATTR(macroblock_count_x)
+static DEF_ERROR_INT_ATTR(macroblock_count_y)
+static DEF_ERROR_INT_ATTR(cur_macroblock_x)
+static DEF_ERROR_INT_ATTR(cur_macroblock_y)
+
 static void pvr2_yuv_input_byte(struct pvr2 *pvr2, unsigned dat) {
     struct pvr2_yuv *yuv = &pvr2->yuv;
     if (yuv->fmt != PVR2_YUV_FMT_420)
@@ -216,8 +221,13 @@ static void pvr2_yuv_input_byte(struct pvr2 *pvr2, unsigned dat) {
         yuv->macroblock_offset = 0;
 
         if (yuv->cur_macroblock_x >= yuv->macroblock_count_x ||
-            yuv->cur_macroblock_y >= yuv->macroblock_count_y)
+            yuv->cur_macroblock_y >= yuv->macroblock_count_y) {
+            error_set_cur_macroblock_x(yuv->cur_macroblock_x);
+            error_set_cur_macroblock_y(yuv->cur_macroblock_y);
+            error_set_macroblock_count_x(yuv->macroblock_count_x);
+            error_set_macroblock_count_y(yuv->macroblock_count_y);
             RAISE_ERROR(ERROR_INTEGRITY);
+        }
 
         pvr2_yuv_macroblock(pvr2);
     }

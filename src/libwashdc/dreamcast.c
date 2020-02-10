@@ -1632,12 +1632,19 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     } else if (xfer_dst_initial >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst_initial <= ADDR_TA_FIFO_YUV_LAST) {
         /*
-         * TODO: WE NEED TO BENCMARK.  BELOW TIMING IS
-         * INACCURATE BECAUSE IT IS COPIED FROM NORMAL TEXTURE MEMORY DMA!
+         * Like the normal DMA timings, this was obtained empirically with the
+         * pvr2_mem_test test program.  Behavior does not appear to be
+         * completely linear in this case, may need to move to a more
+         * complicated model.  In addition to starting off with negative
+         * latency (which gets truncated to zero here), this model also is slightly
+         * slower than an actual Dreamcast in the byte-range where I expect
+         * most YUV DMA conversions would take place.
          */
         double n_secs =
-            ((n_words_initial*4) * 0.019373669058526 + 10.9678657897639) /
+            ((n_words_initial*4) * 0.071500073245219 - 3428.54930631431) /
             (50 * 1024*1024/4);
+        if (n_secs < 0.0)
+            n_secs = 0.0;
         return n_secs * SCHED_FREQUENCY;
     } else {
         // should never happen because we would have gone into the identical case above
