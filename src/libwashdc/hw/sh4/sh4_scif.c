@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -36,8 +36,11 @@
 #include "log.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
+#include "sh4_read_inst.h"
 
 #include "sh4_scif.h"
+
+static int sh4_scif_irq_line(Sh4ExceptionCode *code, void *ctx);
 
 static void sh4_scif_rxi_int_handler(struct SchedEvent *event);
 static void sh4_scif_txi_int_handler(struct SchedEvent *event);
@@ -199,16 +202,22 @@ static inline unsigned rx_fifo_trigger(Sh4 *sh4) {
     return lut[rtrg];
 }
 
-void sh4_scif_init(sh4_scif *scif) {
+void sh4_scif_init(Sh4 *sh4) {
+    sh4_scif *scif = &sh4->scif;
     memset(scif, 0, sizeof(*scif));
 
     text_ring_init(&scif->rxq);
     text_ring_init(&scif->txq);
 
+    sh4_register_irq_line(sh4, SH4_IRQ_SCIF, sh4_scif_irq_line, sh4);
     atomic_flag_test_and_set(&scif->nothing_pending);
 }
 
-void sh4_scif_cleanup(sh4_scif *scif) {
+void sh4_scif_cleanup(Sh4 *sh4) {
+    sh4_scif *scif = &sh4->scif;
+
+    sh4_register_irq_line(sh4, SH4_IRQ_SCIF, NULL, NULL);
+
     memset(scif, 0, sizeof(*scif));
 }
 
@@ -296,6 +305,8 @@ static void check_rx_trig(Sh4 *sh4) {
                 sched_event(sh4->clk, &sh4_scif_rxi_int_event);
             }
         }
+    } else {
+        sh4->scif.irq_state &= ~SH4_EXCP_SCIF_RXI;
     }
 }
 
@@ -313,6 +324,8 @@ static void check_tx_trig(Sh4 *sh4) {
                 sched_event(sh4->clk, &sh4_scif_txi_int_event);
             }
         }
+    } else {
+        sh4->scif.irq_state &= ~SH4_EXCP_SCIF_TXI;
     }
 }
 
@@ -494,11 +507,31 @@ void sh4_scif_periodic(Sh4 *sh4) {
 static void sh4_scif_rxi_int_handler(struct SchedEvent *event) {
     Sh4 *sh4 = (Sh4*)event->arg_ptr;
     sh4_scif_rxi_int_event_scheduled = false;
-    sh4_set_interrupt(sh4, SH4_IRQ_SCIF, SH4_EXCP_SCIF_RXI);
+
+    sh4->scif.irq_state |= SH4_EXCP_SCIF_RXI;
+    sh4_refresh_intc(sh4);
 }
 
 static void sh4_scif_txi_int_handler(struct SchedEvent *event) {
     Sh4 *sh4 = (Sh4*)event->arg_ptr;
     sh4_scif_txi_int_event_scheduled = false;
-    sh4_set_interrupt(sh4, SH4_IRQ_SCIF, SH4_EXCP_SCIF_TXI);
+
+    sh4->scif.irq_state |= SH4_EXCP_SCIF_TXI;
+    sh4_refresh_intc(sh4);
+}
+
+static int sh4_scif_irq_line(Sh4ExceptionCode *code, void *ctx) {
+    Sh4 *sh4 = (Sh4*)ctx;
+
+    if (sh4->scif.irq_state & SH4_SCIF_IRQ_RXI) {
+        *code = SH4_EXCP_SCIF_RXI;
+        return 1;
+    }
+
+    if (sh4->scif.irq_state & SH4_SCIF_IRQ_TXI) {
+        *code = SH4_EXCP_SCIF_TXI;
+        return 1;
+    }
+
+    return 0;
 }

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include <stdio.h>
 
 #include "hw/sh4/sh4_excp.h"
+#include "hw/sh4/sh4_read_inst.h"
 #include "dreamcast.h"
 #include "log.h"
 
@@ -109,12 +110,7 @@ void holly_raise_nrm_int(HollyNrmInt int_type) {
 
     reg_istnrm |= mask;
 
-    if (reg_iml6nrm & mask)
-        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0x9);
-    else if (reg_iml4nrm & mask)
-        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0xb);
-    else if (reg_iml2nrm & mask)
-        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0xd);
+    sh4_refresh_intc(dreamcast_get_cpu());
 }
 
 void holly_clear_nrm_int(HollyNrmInt int_type) {
@@ -129,17 +125,23 @@ void holly_raise_ext_int(HollyExtInt int_type) {
 
     reg_istext |= mask;
 
-    if (reg_iml6ext & mask)
-        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0x9);
-    else if (reg_iml4ext & mask)
-        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0xb);
-    else if (reg_iml2ext & mask)
-        sh4_set_irl_interrupt(dreamcast_get_cpu(), 0xd);
+    sh4_refresh_intc(dreamcast_get_cpu());
 }
 
 void holly_clear_ext_int(HollyExtInt int_type) {
     reg32_t mask = ext_intp_tbl[int_type].mask;
     reg_istext &= ~mask;
+}
+
+int holly_intc_irl_line_fn(void *ctx) {
+    if ((reg_iml6ext & reg_istext) || (reg_iml6nrm & reg_istnrm))
+        return 9;
+    else if ((reg_iml4ext & reg_istext) || (reg_iml4nrm & reg_istnrm))
+        return 0xb;
+    else if ((reg_iml2ext & reg_istext) || (reg_iml2nrm & reg_istnrm))
+        return 0xd;
+    else
+        return 0xf;
 }
 
 uint32_t holly_reg_istnrm_mmio_read(struct mmio_region_sys_block *region,

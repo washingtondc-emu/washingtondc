@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "sh4.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
+#include "sh4_read_inst.h"
 
 #include "sh4_tmu.h"
 
@@ -47,11 +48,14 @@ static inline tmu_cycle_t tmu_cycle_stamp();
 static inline bool chan_enabled(Sh4 *sh4, unsigned chan);
 static inline bool chan_int_enabled(Sh4 *sh4, unsigned chan);
 static inline bool chan_enabled(Sh4 *sh4, unsigned chan);
-static inline void chan_raise_int(Sh4 *sh4, unsigned chan);
 static inline unsigned chan_clock_div(Sh4 *sh4, unsigned chan);
 static void tmu_chan_event_handler(SchedEvent *ev);
 static tmu_cycle_t next_chan_event(Sh4 *sh4, unsigned chan);
 static void chan_event_sched_next(Sh4 *sh4, unsigned chan);
+
+static int sh4_tmu0_irq_line(Sh4ExceptionCode *code, void *ctx);
+static int sh4_tmu1_irq_line(Sh4ExceptionCode *code, void *ctx);
+static int sh4_tmu2_irq_line(Sh4ExceptionCode *code, void *ctx);
 
 static void chan_event_unsched(Sh4 *sh4, unsigned chan) {
     cancel_event(sh4->clk, sh4->tmu.tmu_chan_event + chan);
@@ -93,29 +97,6 @@ static inline bool chan_int_enabled(Sh4 *sh4, unsigned chan) {
     return sh4->reg[chan_tcr[chan]] & SH4_TCR_UNIE_MASK;
 }
 
-static inline void chan_raise_int(Sh4 *sh4, unsigned chan) {
-    Sh4ExceptionCode code;
-    int line = SH4_IRQ_TMU0;
-    switch (chan) {
-    case 0:
-        code = SH4_EXCP_TMU0_TUNI0;
-        line = SH4_IRQ_TMU0;
-        break;
-    case 1:
-        code = SH4_EXCP_TMU1_TUNI1;
-        line = SH4_IRQ_TMU1;
-        break;
-    case 2:
-        code = SH4_EXCP_TMU2_TUNI2;
-        line = SH4_IRQ_TMU2;
-        break;
-    default:
-        RAISE_ERROR(ERROR_INVALID_PARAM);
-    }
-
-    sh4_set_interrupt(sh4, line, code);
-}
-
 /*
  * returns the amount by which the TMU clock divides to get he channel clock.
  * multiply this by TMU_DIV to get the SH4 clock.
@@ -144,15 +125,7 @@ static void tmu_chan_event_handler(SchedEvent *ev) {
     unsigned chan = ev - sh4->tmu.tmu_chan_event;
 
     tmu_chan_sync(sh4, chan);
-
     chan_event_sched_next(sh4, chan);
-    if (sh4->tmu.chan_unf[chan]) {// TODO: should I even check this?
-        sh4->tmu.chan_unf[chan] = false;
-        sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
-
-        if (chan_int_enabled(sh4, chan))
-            chan_raise_int(sh4, chan);
-    }
 }
 
 /*
@@ -165,7 +138,6 @@ static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
     tmu_cycle_t elapsed = stamp_cur - sh4->tmu.stamp_last_sync[chan];
     sh4->tmu.stamp_last_sync[chan] = stamp_cur;
 
-    // chan_unf[chan] = false;
     if (!elapsed)
         return; // nothing to do here
 
@@ -182,9 +154,9 @@ static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
     if (sh4->tmu.chan_accum[chan] >= div) {
         tmu_cycle_t chan_cycles = sh4->tmu.chan_accum[chan] / div;
         if (chan_cycles > chan_get_tcnt(sh4, chan)) {
-            sh4->tmu.chan_unf[chan] = true;
             chan_set_tcnt(sh4, chan, sh4->reg[chan_tcor[chan]]);
             sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
+            sh4_refresh_intc(sh4);
         } else {
             chan_set_tcnt(sh4, chan, chan_get_tcnt(sh4, chan) - chan_cycles);
         }
@@ -202,9 +174,16 @@ void sh4_tmu_init(Sh4 *sh4) {
         sh4->tmu.tmu_chan_event[chan].handler = tmu_chan_event_handler;
         sh4->tmu.tmu_chan_event[chan].arg_ptr = sh4;
     }
+
+    sh4_register_irq_line(sh4, SH4_IRQ_TMU0, sh4_tmu0_irq_line, sh4);
+    sh4_register_irq_line(sh4, SH4_IRQ_TMU1, sh4_tmu1_irq_line, sh4);
+    sh4_register_irq_line(sh4, SH4_IRQ_TMU2, sh4_tmu2_irq_line, sh4);
 }
 
 void sh4_tmu_cleanup(Sh4 *sh4) {
+    sh4_register_irq_line(sh4, SH4_IRQ_TMU2, NULL, NULL);
+    sh4_register_irq_line(sh4, SH4_IRQ_TMU1, NULL, NULL);
+    sh4_register_irq_line(sh4, SH4_IRQ_TMU0, NULL, NULL);
 }
 
 /*
@@ -381,12 +360,12 @@ sh4_reg_val sh4_tmu_tcr_read_handler(Sh4 *sh4,
 void sh4_tmu_tcr_write_handler(Sh4 *sh4,
                                struct Sh4MemMappedReg const *reg_info,
                                sh4_reg_val val) {
-    uint16_t new_val = val;
+    unsigned reg_idx = reg_info->reg_idx;
 
-    uint16_t old_val = sh4->reg[reg_info->reg_idx];
+    uint16_t new_val = val;
+    uint16_t old_val = sh4->reg[reg_idx];
 
     unsigned chan;
-    unsigned reg_idx = reg_info->reg_idx;
     if (reg_idx == SH4_REG_TCR0)
         chan = 0;
     else if (reg_idx == SH4_REG_TCR1)
@@ -407,6 +386,11 @@ void sh4_tmu_tcr_write_handler(Sh4 *sh4,
     }
 
     sh4->reg[reg_idx] = new_val;
+
+    // raise interrupt if it was just enabled while the underflow flag was set
+    if ((new_val & SH4_TCR_UNIE_MASK) &&
+        !(old_val & SH4_TCR_UNIE_MASK) && (new_val & SH4_TCR_UNF_MASK))
+        sh4_refresh_intc(sh4);
 
     tmu_chan_sync(sh4, chan);
 
@@ -464,4 +448,34 @@ void sh4_tmu_tcnt_write_handler(Sh4 *sh4,
     if (sh4->tmu.chan_event_scheduled[chan])
         chan_event_unsched(sh4, chan);
     chan_event_sched_next(sh4, chan);
+}
+
+static int sh4_tmu0_irq_line(Sh4ExceptionCode *code, void *ctx) {
+    Sh4 *sh4 = (Sh4*)ctx;
+    if (chan_int_enabled(sh4, 0) &&
+        (sh4->reg[chan_tcr[0]] & SH4_TCR_UNF_MASK)) {
+        *code = SH4_EXCP_TMU0_TUNI0;
+        return 1;
+    }
+    return 0;
+}
+
+static int sh4_tmu1_irq_line(Sh4ExceptionCode *code, void *ctx) {
+    Sh4 *sh4 = (Sh4*)ctx;
+    if (chan_int_enabled(sh4, 1) &&
+        (sh4->reg[chan_tcr[1]] & SH4_TCR_UNF_MASK)) {
+        *code = SH4_EXCP_TMU1_TUNI1;
+        return 1;
+    }
+    return 0;
+}
+
+static int sh4_tmu2_irq_line(Sh4ExceptionCode *code, void *ctx) {
+    Sh4 *sh4 = (Sh4*)ctx;
+    if (chan_int_enabled(sh4, 2) &&
+        (sh4->reg[chan_tcr[2]] & SH4_TCR_UNF_MASK)) {
+        *code = SH4_EXCP_TMU2_TUNI2;
+        return 1;
+    }
+    return 0;
 }

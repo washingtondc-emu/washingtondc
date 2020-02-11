@@ -35,6 +35,7 @@
 #include "log.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
+#include "sh4_read_inst.h"
 
 static void raise_ch2_dma_int_event_handler(struct SchedEvent *event);
 
@@ -43,6 +44,16 @@ struct SchedEvent raise_ch2_dma_int_event = {
 };
 
 static bool ch2_dma_scheduled;
+
+static int sh4_dmac_irq_line(Sh4ExceptionCode *code, void *ctx);
+
+void sh4_dmac_init(Sh4 *sh4) {
+    sh4_register_irq_line(sh4, SH4_IRQ_DMAC, sh4_dmac_irq_line, sh4);
+}
+
+void sh4_dmac_cleanup(Sh4 *sh4) {
+    sh4_register_irq_line(sh4, SH4_IRQ_DMAC, NULL, NULL);
+}
 
 sh4_reg_val
 sh4_dmac_sar_reg_read_handler(Sh4 *sh4,
@@ -226,6 +237,11 @@ sh4_dmac_chcr_reg_read_handler(Sh4 *sh4,
         RAISE_ERROR(ERROR_INVALID_PARAM);
     }
 
+    sh4_reg_val ret = sh4->dmac.chcr[chan];
+
+    if (ret & SH4_DMAC_CHCR_TE_MASK)
+        sh4->dmac.dma_ack[chan] = true;
+
     /*
      * TODO: I can't print here because KallistiOS programs seem to be
      * constantly accessing CHCR3, and the printf statememnts end up causing a
@@ -236,7 +252,7 @@ sh4_dmac_chcr_reg_read_handler(Sh4 *sh4,
     /* printf("WARNING: reading %08x from SH4 DMAC CHCR%d register\n", */
     /*        (unsigned)sh4->dmac.chcr[chan], chan); */
 
-    return sh4->dmac.chcr[chan];
+    return ret;
 }
 
 void sh4_dmac_chcr_reg_write_handler(Sh4 *sh4,
@@ -258,6 +274,25 @@ void sh4_dmac_chcr_reg_write_handler(Sh4 *sh4,
         break;
     default:
         RAISE_ERROR(ERROR_INVALID_PARAM);
+    }
+
+    sh4_reg_val cur = sh4->dmac.chcr[chan];
+
+    if (val & SH4_DMAC_CHCR_TE_MASK) {
+        // only let them write to TE if it's already set
+        if (!(cur & SH4_DMAC_CHCR_TE_MASK))
+            val &= ~SH4_DMAC_CHCR_TE_MASK;
+    } else {
+        if (cur & SH4_DMAC_CHCR_TE_MASK) {
+            // user might be trying to clear the bit
+            if (sh4->dmac.dma_ack[chan]) {
+                // let them do it
+                sh4->dmac.dma_ack[chan] = false;
+            } else {
+                // don't let them do it.
+                val |= SH4_DMAC_CHCR_TE_MASK;
+            }
+        }
     }
 
     sh4->dmac.chcr[chan] = val;
@@ -516,8 +551,18 @@ static void raise_ch2_dma_int_event_handler(struct SchedEvent *event) {
 
     // raise the interrupt
     sh4->dmac.chcr[2] |= SH4_DMAC_CHCR_TE_MASK;
-    sh4_set_interrupt(sh4, SH4_IRQ_DMAC, SH4_EXCP_DMAC_DMTE2);
+    sh4->dmac.dma_ack[2] = false;
+    sh4_refresh_intc(sh4);
 
     ch2_dma_scheduled = false;
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_CHANNEL2_DMA_COMPLETE);
+}
+
+static int sh4_dmac_irq_line(Sh4ExceptionCode *code, void *ctx) {
+    Sh4 *sh4 = (Sh4*)ctx;
+    if (sh4->dmac.chcr[2] & SH4_DMAC_CHCR_TE_MASK) {
+        *code = SH4_EXCP_DMAC_DMTE2;
+        return 1;
+    }
+    return 0;
 }

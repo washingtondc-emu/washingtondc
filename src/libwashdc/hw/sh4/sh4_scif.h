@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -61,6 +61,12 @@
 
 #define SCIF_BUF_LEN 16
 
+enum sh4_scif_irq_state {
+    SH4_SCIF_IRQ_NONE,
+    SH4_SCIF_IRQ_RXI = 1,
+    SH4_SCIF_IRQ_TXI = 2
+};
+
 struct sh4_scif {
     // for txq, the SCIF is the producer
     // for rxq, the SCIF is the consumer
@@ -85,14 +91,16 @@ struct sh4_scif {
     bool ser_srv_connected;
 
     atomic_flag nothing_pending;
+
+    enum sh4_scif_irq_state irq_state;
 };
 
 typedef struct sh4_scif sh4_scif;
 
 struct Sh4;
 
-void sh4_scif_init(sh4_scif *scif);
-void sh4_scif_cleanup(sh4_scif *scif);
+void sh4_scif_init(Sh4 *sh4);
+void sh4_scif_cleanup(Sh4 *sh4);
 
 void sh4_scif_connect_server(Sh4 *sh4);
 

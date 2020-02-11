@@ -77,6 +77,7 @@
 #include "washdc/sound_intf.h"
 #include "sound.h"
 #include "washdc/hostfile.h"
+#include "hw/sys/holly_intc.h"
 
 #ifdef ENABLE_TCP_SERIAL
 #include "serial_server.h"
@@ -542,6 +543,9 @@ dreamcast_init(char const *gdi_path,
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&sh4_clock);
 
+    // hook up the irl line
+    sh4_register_irl_line(&cpu, holly_intc_irl_line_fn, NULL);
+
     memory_map_init(&mem_map);
     construct_sh4_mem_map(&cpu, &mem_map);
     sh4_set_mem_map(&cpu, &mem_map);
@@ -635,6 +639,9 @@ void dreamcast_cleanup() {
 
     memory_map_cleanup(&arm7_mem_map);
     memory_map_cleanup(&mem_map);
+
+    // disconnect the irl line
+    sh4_register_irl_line(&cpu, NULL, NULL);
 
     maple_cleanup();
     gdrom_cleanup(&gdrom);
@@ -934,13 +941,19 @@ static bool run_to_next_sh4_event_debugger(void *ctxt) {
 
     dc_cycle_stamp_t cycles_after = clock_target_stamp(&sh4_clock);
     while (!(exit_now = dreamcast_check_debugger())) {
+        dc_cycle_stamp_t cycles_adv = 0;
+
+    fetch_decode_exec:
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
-        dc_cycle_stamp_t cycles_adv = inst_cycles * SH4_CLOCK_SCALE;
+        cycles_adv += inst_cycles * SH4_CLOCK_SCALE;
 
         sh4_do_exec_inst(sh4, inst, op);
+
+        if (sh4->delayed_branch)
+            goto fetch_decode_exec;
 
         if (cycles_adv >= clock_countdown(&sh4_clock)) {
             cycles_after = clock_target_stamp(&sh4_clock);
@@ -970,13 +983,19 @@ static bool run_to_next_sh4_event(void *ctxt) {
     Sh4 *sh4 = (void*)ctxt;
 
     for (;;) {
+        dc_cycle_stamp_t cycles_adv = 0;
+
+    fetch_decode_exec:
         inst = sh4_read_inst(sh4);
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
-        dc_cycle_stamp_t cycles_adv = inst_cycles * SH4_CLOCK_SCALE;
+        cycles_adv += inst_cycles * SH4_CLOCK_SCALE;
 
         sh4_do_exec_inst(sh4, inst, op);
+
+        if (sh4->delayed_branch)
+            goto fetch_decode_exec;
 
         if (cycles_adv >= clock_countdown(&sh4_clock)) {
             cycles_after = clock_target_stamp(&sh4_clock);

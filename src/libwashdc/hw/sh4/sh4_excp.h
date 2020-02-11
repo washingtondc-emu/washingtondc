@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -134,6 +134,17 @@ enum {
     SH4_IRQ_COUNT
 };
 
+/*
+ * handler functions for each irq lines.
+ * These will return zero if the line is not active, and nonzero if it is active.
+ *
+ * if the function returns nonzero, then *code will contain the exception code.
+ */
+typedef int(*sh4_irq_line_fn)(Sh4ExceptionCode *code, void *ctx);
+
+// returns the irl value, or 15 for nothing
+typedef int(*sh4_irl_line_fn)(void *ctx);
+
 struct Sh4ExcpMeta {
     /*
      * there's no field for the vector base address because I couldn't
@@ -153,22 +164,21 @@ typedef struct Sh4ExcpMeta Sh4ExcpMeta;
 
 // structure containing all data necessary to activate a pending IRQ
 struct sh4_irq_meta {
-    bool is_irl;
     int code;
-
-    // interrupt line, only valid if is_irl is false
-    unsigned line;
 };
 
 struct sh4_intc {
-    Sh4ExceptionCode irq_lines[SH4_IRQ_COUNT];
+    sh4_irq_line_fn irq_lines[SH4_IRQ_COUNT];
+    void *irq_line_args[SH4_IRQ_COUNT];
 
-    // if true, then there is an interrupt or exception pending
-    bool is_irq_pending;
-
-    // this is only valid if is_irq_pending is true
-    struct sh4_irq_meta pending_irq;
+    sh4_irl_line_fn irl_line;
+    void *irl_line_arg;
 };
+
+void
+sh4_register_irq_line(Sh4 *sh4, int irq_line,
+                      sh4_irq_line_fn fn, void *argp);
+void sh4_register_irl_line(Sh4 *sh4, sh4_irl_line_fn fn, void *argp);
 
 typedef struct sh4_intc sh4_intc;
 
@@ -178,19 +188,7 @@ typedef struct sh4_intc sh4_intc;
  */
 void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector);
 
-void sh4_enter_interrupt(Sh4 *sh4, enum Sh4ExceptionCode vector);
-
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code);
-
-/*
- * set all four IRL lines at once.  the interrupt code is implied to be
- * SH4_EXCP_EXT_0..SH4_EXCP_EXT_E depending on the value of irl_val.
- *
- * irl_val is expected to be in active-low format
- */
-void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val);
-
-void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line, Sh4ExceptionCode intp_code);
 
 /*
  * The following registers (in addition to the IMASK and BL bits in SR) all
@@ -217,15 +215,9 @@ void sh4_excp_iprd_reg_write_handler(Sh4 *sh4,
 // bits in the SR register which (when changed) can effect the intc
 #define SH4_INTC_SR_BITS (SH4_SR_IMASK_MASK | SH4_SR_BL_MASK)
 
-/*
- * call this every time the interrupt controller's state may have changed to
- * check if there are any interrupts that should be pending.
- *
- * DO NOT CALL THIS FROM CPU CONTEXT!
- * If you need this from CPU context, then called sh4_refresh_intc_deferred instead.
- */
-void sh4_refresh_intc(Sh4 *sh4);
-
 void sh4_refresh_intc_deferred(Sh4 *sh4);
+
+// return the highest-priority pending IRQ, or -1 if there are none.
+int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta);
 
 #endif

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -41,8 +41,6 @@ struct sh4_tmu {
     unsigned chan_accum[3];
 
     bool chan_event_scheduled[3];
-
-    bool chan_unf[3];
 };
 
 void sh4_tmu_init(Sh4 *sh4);

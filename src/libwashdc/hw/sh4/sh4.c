@@ -51,7 +51,9 @@ void sh4_init(Sh4 *sh4, struct dc_clock *clk) {
 
     sh4_tmu_init(sh4);
 
-    sh4_scif_init(&sh4->scif);
+    sh4_scif_init(sh4);
+
+    sh4_dmac_init(sh4);
 
     sh4_init_regs(sh4);
 
@@ -74,6 +76,10 @@ void sh4_cleanup(Sh4 *sh4) {
     error_rm_callback(&sh4_error_callback);
 
     sh4_jit_cleanup(sh4);
+
+    sh4_dmac_cleanup(sh4);
+
+    sh4_scif_cleanup(sh4);
 
     sh4_tmu_cleanup(sh4);
 

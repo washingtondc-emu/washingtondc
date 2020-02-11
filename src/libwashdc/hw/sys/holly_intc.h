@@ -59,6 +59,9 @@ enum HollyNrmInt {
 };
 typedef enum HollyNrmInt HollyNrmInt;
 
+// should be hooked up to the sh4 intc's irl line function
+int holly_intc_irl_line_fn(void *ctx);
+
 // when the punch-through polygon list has been successfully input
 #define HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_SHIFT 21
 #define HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_MASK \

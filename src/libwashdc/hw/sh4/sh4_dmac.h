@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #ifndef SH4_DMAC_H_
 #define SH4_DMAC_H_
 
+#include <stdbool.h>
+
 struct Sh4;
 #include "washdc/types.h"
 
@@ -37,6 +39,13 @@ struct sh4_dmac {
     reg32_t dar[4];
     reg32_t dmatcr[4];
     reg32_t chcr[4];
+
+    /*
+     * this is set to true whenever the corresponding chcr is read while its TE
+     * bit is set.  TE will only be cleared if software writes 0 to the TE bit
+     * while dma_ack is set.
+     */
+    bool dma_ack[4];
 
     /*
      * while we're waiting on a DMA xfer to end, sar_pending holds the final
@@ -102,5 +111,8 @@ void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
 
 // perform a DMA transfer using channel 2's settings
 void sh4_dmac_channel2(Sh4 *sh4, addr32_t transfer_dst, unsigned n_bytes);
+
+void sh4_dmac_init(Sh4 *sh4);
+void sh4_dmac_cleanup(Sh4 *sh4);
 
 #endif

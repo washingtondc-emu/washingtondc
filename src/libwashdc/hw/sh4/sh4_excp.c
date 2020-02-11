@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,8 +31,14 @@
 #include "sh4_read_inst.h"
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
+static DEF_ERROR_INT_ATTR(sh4_irq_line)
 
-static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta);
+static int sh4_irq_line(Sh4 const *sh4, int line, Sh4ExceptionCode *code) {
+    sh4_irq_line_fn fn = sh4->intc.irq_lines[line];
+    if (fn)
+        return fn(code, sh4->intc.irq_line_args[line]);
+    return 0;
+}
 
 static Sh4ExcpMeta const sh4_excp_meta[SH4_EXCP_COUNT] = {
     // exception code                         prio_level   prio_order   offset
@@ -134,10 +140,6 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     reg32_t old_sr_val = reg[SH4_REG_SR];
     reg[SH4_REG_SR] = new_sr;
     sh4_on_sr_change(sh4, old_sr_val);
-    /*
-     * XXX There's no need to clear is_irq_pending here because
-     * sh4_on_sr_change will do that for us
-     */
 
     if (vector == SH4_EXCP_POWER_ON_RESET ||
         vector == SH4_EXCP_MANUAL_RESET ||
@@ -161,45 +163,7 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4_enter_exception(sh4, (Sh4ExceptionCode)excp_code);
 }
 
-void sh4_set_interrupt(Sh4 *sh4, unsigned irq_line,
-                       Sh4ExceptionCode intp_code) {
-    sh4->intc.irq_lines[irq_line] = intp_code;
-    sh4_refresh_intc(sh4);
-}
-
-void sh4_set_irl_interrupt(Sh4 *sh4, unsigned irl_val) {
-    irl_val = ~irl_val;
-
-    if (irl_val & 0x1)
-        sh4->intc.irq_lines[SH4_IRQ_IRL0] = SH4_EXCP_IRL0;
-    else
-        sh4->intc.irq_lines[SH4_IRQ_IRL0] = (Sh4ExceptionCode)0;
-
-    if (irl_val & 0x2)
-        sh4->intc.irq_lines[SH4_IRQ_IRL1] = SH4_EXCP_IRL1;
-    else
-        sh4->intc.irq_lines[SH4_IRQ_IRL1] = (Sh4ExceptionCode)0;
-
-    if (irl_val & 0x4)
-        sh4->intc.irq_lines[SH4_IRQ_IRL2] = SH4_EXCP_IRL2;
-    else
-        sh4->intc.irq_lines[SH4_IRQ_IRL2] = (Sh4ExceptionCode)0;
-
-    if (irl_val & 0x8)
-        sh4->intc.irq_lines[SH4_IRQ_IRL3] = SH4_EXCP_IRL3;
-    else
-        sh4->intc.irq_lines[SH4_IRQ_IRL3] = (Sh4ExceptionCode)0;
-
-    sh4_refresh_intc(sh4);
-}
-
 static bool sh4_refresh_intc_event_scheduled;
-
-void sh4_refresh_intc(Sh4 *sh4) {
-    sh4->intc.is_irq_pending =
-        (sh4_get_next_irq_line(sh4, &sh4->intc.pending_irq) >= 0);
-    sh4_check_interrupts(sh4);
-}
 
 static void do_sh4_refresh_intc_deferred(SchedEvent *event) {
     Sh4 *sh4 = (Sh4*)event->arg_ptr;
@@ -220,13 +184,7 @@ void sh4_refresh_intc_deferred(Sh4 *sh4) {
     }
 }
 
-/*
- * return the highest-priority pending IRQ, or -1 if there are none.
- *
- * the exception code will be placed into *code_ptr.  A valid pointer must be
- * provided even if you don't need it.
- */
-static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) {
+int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) {
     if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK)
         return -1;
 
@@ -234,6 +192,7 @@ static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) 
 
     int max_prio = -1;
     unsigned max_prio_line = -1;
+    Sh4ExceptionCode max_prio_code;
 
     /*
      * Skip over SH4_IRQ_IRL3 through SH4_IRQ_IRL0 if those four bits are
@@ -255,7 +214,7 @@ static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) 
                          SH4_SR_IMASK_SHIFT)) {
             // only take the highest priority irq
             // TODO: priority order
-            if (sh4->intc.irq_lines[line] && (prio > max_prio)) {
+            if (sh4_irq_line(sh4, line, &max_prio_code) && (prio > max_prio)) {
                 max_prio = prio;
                 max_prio_line = line;
             }
@@ -264,19 +223,12 @@ static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) 
 
     // Now handle the four-bit IRL interrupt as a special case if it's enabled
     if (!(sh4->reg[SH4_REG_ICR] & SH4_ICR_IRLM_MASK)) {
-        unsigned irl_val = 0;
+        unsigned irl_val;
 
-        if (sh4->intc.irq_lines[SH4_IRQ_IRL0])
-            irl_val |= 1;
-        if (sh4->intc.irq_lines[SH4_IRQ_IRL1])
-            irl_val |= 2;
-        if (sh4->intc.irq_lines[SH4_IRQ_IRL2])
-            irl_val |= 4;
-        if (sh4->intc.irq_lines[SH4_IRQ_IRL3])
-            irl_val |= 8;
-
-        // now make it active-low as it should be
-        irl_val = (~irl_val) & 0xf;
+        if (sh4->intc.irl_line)
+            irl_val = sh4->intc.irl_line(sh4->intc.irl_line_arg) & 0xf;
+        else
+            irl_val = 0xf;
 
         // since it's active-low, 0xf == no interrupt
         if (irl_val != 0xf) {
@@ -356,18 +308,18 @@ static int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) 
             if (prio > max_prio &&
                 (prio > (int)((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
                               SH4_SR_IMASK_SHIFT))) {
-                irq_meta->is_irl = true;
                 irq_meta->code = code;
-
                 return prio;
             }
         }
     }
 
     if (max_prio >= 0) {
-        irq_meta->is_irl = false;
-        irq_meta->code = sh4->intc.irq_lines[max_prio_line];
-        irq_meta->line = max_prio_line;
+        irq_meta->code = max_prio_code;
+
+        if (max_prio_line == SH4_IRQ_GPIO)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
         return max_prio;
     }
 
@@ -407,4 +359,15 @@ void sh4_excp_iprd_reg_write_handler(Sh4 *sh4,
                                      sh4_reg_val val) {
     sh4->reg[SH4_REG_IPRD] = val;
     sh4_refresh_intc_deferred(sh4);
+}
+
+void
+sh4_register_irq_line(Sh4 *sh4, int irq_line, sh4_irq_line_fn fn, void *argp) {
+    sh4->intc.irq_lines[irq_line] = fn;
+    sh4->intc.irq_line_args[irq_line] = argp;
+}
+
+void sh4_register_irl_line(Sh4 *sh4, sh4_irl_line_fn fn, void *argp) {
+    sh4->intc.irl_line = fn;
+    sh4->intc.irl_line_arg = argp;
 }
