@@ -283,7 +283,7 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
      * next call to tmu_sync, it will think that TSR was set for the entire
      * duration from the last call of tmu_sync to the next call to tmu_sync.
      */
-    if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN0_MASK) ^
+    if ((sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN0_MASK) ^
         (tmp & SH4_TSTR_CHAN0_MASK)) {
 
         tmu_chan_sync(sh4, 0);
@@ -296,8 +296,20 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
             if (sh4->tmu.chan_event_scheduled[0])
                 chan_event_unsched(sh4, 0);
         }
+
+        sh4->reg[SH4_REG_TSTR] = tmp;
+
+        tmu_chan_sync(sh4, 1);
+        if (sh4->tmu.chan_event_scheduled[1])
+            chan_event_unsched(sh4, 1);
+        chan_event_sched_next(sh4, 1);
+
+        tmu_chan_sync(sh4, 2);
+        if (sh4->tmu.chan_event_scheduled[2])
+            chan_event_unsched(sh4, 2);
+        chan_event_sched_next(sh4, 2);
     }
-    if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN1_MASK) ^
+    if ((sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN1_MASK) ^
         (tmp & SH4_TSTR_CHAN1_MASK)) {
 
         tmu_chan_sync(sh4, 1);
@@ -310,8 +322,20 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
             if (sh4->tmu.chan_event_scheduled[1])
                 chan_event_unsched(sh4, 1);
         }
+
+        sh4->reg[SH4_REG_TSTR] = tmp;
+
+        tmu_chan_sync(sh4, 0);
+        if (sh4->tmu.chan_event_scheduled[0])
+            chan_event_unsched(sh4, 0);
+        chan_event_sched_next(sh4, 0);
+
+        tmu_chan_sync(sh4, 2);
+        if (sh4->tmu.chan_event_scheduled[2])
+            chan_event_unsched(sh4, 2);
+        chan_event_sched_next(sh4, 2);
     }
-    if (!(sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN2_MASK) ^
+    if ((sh4->reg[SH4_REG_TSTR] & SH4_TSTR_CHAN2_MASK) ^
         (tmp & SH4_TSTR_CHAN2_MASK)) {
 
         tmu_chan_sync(sh4, 2);
@@ -324,15 +348,18 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
             if (sh4->tmu.chan_event_scheduled[2])
                 chan_event_unsched(sh4, 2);
         }
-    }
 
-    sh4->reg[SH4_REG_TSTR] = tmp;
+        sh4->reg[SH4_REG_TSTR] = tmp;
 
-    for (unsigned chan = 0; chan < 3; chan++) {
-        tmu_chan_sync(sh4, chan);
-        if (sh4->tmu.chan_event_scheduled[chan])
-            chan_event_unsched(sh4, chan);
-        chan_event_sched_next(sh4, chan);
+        tmu_chan_sync(sh4, 0);
+        if (sh4->tmu.chan_event_scheduled[0])
+            chan_event_unsched(sh4, 0);
+        chan_event_sched_next(sh4, 0);
+
+        tmu_chan_sync(sh4, 1);
+        if (sh4->tmu.chan_event_scheduled[1])
+            chan_event_unsched(sh4, 1);
+        chan_event_sched_next(sh4, 1);
     }
 }
 
