@@ -128,6 +128,10 @@ static void tmu_chan_event_handler(SchedEvent *ev) {
     chan_event_sched_next(sh4, chan);
 }
 
+static DEF_ERROR_INT_ATTR(tmu_chan);
+static DEF_ERROR_INT_ATTR(accumulated_ticks);
+static DEF_ERROR_INT_ATTR(clock_divider);
+
 /*
  * TODO: need to hook into the sh4->exec_state so we know to do a tmu_sync
  * when it enters standby, and also not to sync again (other than updating
@@ -153,12 +157,27 @@ static void tmu_chan_sync(Sh4 *sh4, unsigned chan) {
 
     if (sh4->tmu.chan_accum[chan] >= div) {
         tmu_cycle_t chan_cycles = sh4->tmu.chan_accum[chan] / div;
-        if (chan_cycles > chan_get_tcnt(sh4, chan)) {
+
+        /*
+         * the reason for the + 1 in these comparisions is that the flag is set
+         * on undeflow.  Therefore, there are (tcnt + 1) ticks until tcnt
+         * undeflows and the undeflow flag gets set.
+         */
+        if (chan_cycles == (1 + chan_get_tcnt(sh4, chan))) {
             chan_set_tcnt(sh4, chan, sh4->reg[chan_tcor[chan]]);
             sh4->reg[chan_tcr[chan]] |= SH4_TCR_UNF_MASK;
             sh4_refresh_intc(sh4);
-        } else {
+        } else if (chan_cycles < (1 + chan_get_tcnt(sh4, chan))) {
             chan_set_tcnt(sh4, chan, chan_get_tcnt(sh4, chan) - chan_cycles);
+        } else {
+            /*
+             * This is considered an error condition because it means that
+             * we're raising the interrupt late.
+             */
+            error_set_tmu_chan(chan);
+            error_set_accumulated_ticks(sh4->tmu.chan_accum[chan]);
+            error_set_clock_divider(div);
+            RAISE_ERROR(ERROR_INTEGRITY);
         }
         sh4->tmu.chan_accum[chan] %= div;
     }
@@ -198,8 +217,8 @@ void sh4_tmu_cleanup(Sh4 *sh4) {
  * function.
  */
 static tmu_cycle_t next_chan_event(Sh4 *sh4, unsigned chan) {
-    unsigned clk_div = chan_clock_div(sh4, chan);
-    return (chan_get_tcnt(sh4, chan) + 1) * clk_div - sh4->tmu.chan_accum[chan];
+    tmu_cycle_t clk_div = chan_clock_div(sh4, chan);
+    return (chan_get_tcnt(sh4, chan) + (tmu_cycle_t)1) * clk_div - (tmu_cycle_t)sh4->tmu.chan_accum[chan];
 }
 
 /*
@@ -268,6 +287,11 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
         tmu_chan_sync(sh4, 0);
         sh4->tmu.chan_accum[0] = 0;
 
+        if (tmp & SH4_TSTR_CHAN0_MASK)
+            sh4->reg[SH4_REG_TSTR] |= SH4_TSTR_CHAN0_MASK;
+        else
+            sh4->reg[SH4_REG_TSTR] &= ~SH4_TSTR_CHAN0_MASK;
+
         if (tmp & SH4_TSTR_CHAN0_MASK) {
             if (!sh4->tmu.chan_event_scheduled[0])
                 chan_event_sched_next(sh4, 0);
@@ -275,8 +299,6 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
             if (sh4->tmu.chan_event_scheduled[0])
                 chan_event_unsched(sh4, 0);
         }
-
-        sh4->reg[SH4_REG_TSTR] = tmp;
 
         tmu_chan_sync(sh4, 1);
         if (sh4->tmu.chan_event_scheduled[1])
@@ -294,6 +316,11 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
         tmu_chan_sync(sh4, 1);
         sh4->tmu.chan_accum[1] = 0;
 
+        if (tmp & SH4_TSTR_CHAN1_MASK)
+            sh4->reg[SH4_REG_TSTR] |= SH4_TSTR_CHAN1_MASK;
+        else
+            sh4->reg[SH4_REG_TSTR] &= ~SH4_TSTR_CHAN1_MASK;
+
         if (tmp & SH4_TSTR_CHAN1_MASK) {
             if (!sh4->tmu.chan_event_scheduled[1])
                 chan_event_sched_next(sh4, 1);
@@ -301,8 +328,6 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
             if (sh4->tmu.chan_event_scheduled[1])
                 chan_event_unsched(sh4, 1);
         }
-
-        sh4->reg[SH4_REG_TSTR] = tmp;
 
         tmu_chan_sync(sh4, 0);
         if (sh4->tmu.chan_event_scheduled[0])
@@ -320,6 +345,11 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
         tmu_chan_sync(sh4, 2);
         sh4->tmu.chan_accum[2] = 0;
 
+        if (tmp & SH4_TSTR_CHAN1_MASK)
+            sh4->reg[SH4_REG_TSTR] |= SH4_TSTR_CHAN2_MASK;
+        else
+            sh4->reg[SH4_REG_TSTR] &= ~SH4_TSTR_CHAN2_MASK;
+
         if (tmp & SH4_TSTR_CHAN2_MASK) {
             if (!sh4->tmu.chan_event_scheduled[2])
                 chan_event_sched_next(sh4, 2);
@@ -327,8 +357,6 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
             if (sh4->tmu.chan_event_scheduled[2])
                 chan_event_unsched(sh4, 2);
         }
-
-        sh4->reg[SH4_REG_TSTR] = tmp;
 
         tmu_chan_sync(sh4, 0);
         if (sh4->tmu.chan_event_scheduled[0])
