@@ -375,6 +375,16 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "DMAOR", 0xffa00040, 4, SH4_REG_DMAOR, true,
       sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
 
+    /* SCI, the Dreamcast's "other" UART which (in theory) is not used */
+    /*
+     * something to do with setting the baud-rate.  This register isn't
+     * actually write-only on real hardware, I just made it that way here so I
+     * can monitor if anything ever tries to use the SCI.  The only game I've
+     * ever seen try to use this is Quake 3 and all it does is write to it.
+     */
+    { "SCBRR1", 0xffe00004, 1, (sh4_reg_idx_t)-1, true,
+      sh4_write_only_read_handler, sh4_ignore_write_handler, 0, 0 },
+
     /* Serial port */
     { "SCSMR2", 0xffe80000, 2, SH4_REG_SCSMR2, false,
       sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
