@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -260,11 +260,11 @@
 #define SH4_TSTR_CHAN0_MASK (1 << SH4_TSTR_CHAN0_SHIFT)
 
 /* TSTR channel 1 enable */
-#define SH4_TSTR_CHAN1_SHIFT 0
+#define SH4_TSTR_CHAN1_SHIFT 1
 #define SH4_TSTR_CHAN1_MASK (1 << SH4_TSTR_CHAN1_SHIFT)
 
 /* TSTR channel 2 enable */
-#define SH4_TSTR_CHAN2_SHIFT 0
+#define SH4_TSTR_CHAN2_SHIFT 2
 #define SH4_TSTR_CHAN2_MASK (1 << SH4_TSTR_CHAN2_SHIFT)
 
 /*******************************************************************************
