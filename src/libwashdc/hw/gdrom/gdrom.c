@@ -1322,7 +1322,9 @@ void gdrom_input_cmd(struct gdrom_ctxt *gdrom, unsigned cmd) {
          * TODO: I think this is supposed to be able to interrupt in-progress
          * operations, but that isn't implemented yet.
          */
-        GDROM_TRACE("WARNING: GDROM_CMD_NOP is not implemented yet\n");
+        LOG_ERROR("GDROM_CMD_NOP is not implemented yet\n");
+        error_set_feature("GDROM_CMD_NOP");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
         break;
     default:
         error_set_feature("unknown GD-ROM command");
