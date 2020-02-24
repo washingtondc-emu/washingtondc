@@ -129,6 +129,8 @@ struct washdc_gameconsole {
 
     struct washdc_snddev snddev;
     struct washdc_texcache texcache;
+
+    void (*do_inject_irq)(char const*);
 };
 
 void washdc_gameconsole_sndchan(struct washdc_gameconsole const *cons,
@@ -147,6 +149,9 @@ void washdc_gameconsole_texinfo(struct washdc_gameconsole const *cons,
 void washdc_gameconsole_texinfo_var(struct washdc_gameconsole const *cons,
                                     struct washdc_texinfo const *texinfo,
                                     unsigned var_no, struct washdc_var *var);
+
+void washdc_gameconsole_inject_irq(struct washdc_gameconsole const *cons,
+                                   char const *irq_id);
 
 #ifdef __cplusplus
 }

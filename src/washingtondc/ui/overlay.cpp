@@ -180,6 +180,47 @@ void overlay::draw() {
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Debug")) {
+            if (ImGui::BeginMenu("IRQ injection")) {
+                char const *irqstr = NULL;
+
+                if (ImGui::MenuItem("HBLANK"))
+                    irqstr = "HBLANK";
+                else if (ImGui::MenuItem("VBLANK-IN"))
+                    irqstr = "VBLANK-IN";
+                else if (ImGui::MenuItem("VBLANK-OUT"))
+                    irqstr = "VBLANK-OUT";
+                else if (ImGui::MenuItem("POLYGON EOL OPAQUE"))
+                    irqstr = "POLYGON EOL OPAQUE";
+                else if (ImGui::MenuItem("POLYGON EOL OPAQUE MOD"))
+                    irqstr = "POLYGON EOL OPAQUE MOD";
+                else if (ImGui::MenuItem("POLYGON EOL TRANSPARENT"))
+                    irqstr = "POLYGON EOL TRANSPARENT";
+                else if (ImGui::MenuItem("POLYGON EOL TRANSPARENT MOD"))
+                    irqstr = "POLYGON EOL TRANSPARENT MOD";
+                else if (ImGui::MenuItem("POLYGON EOL PUNCH-THROUGH"))
+                    irqstr = "POLYGON EOL PUNCH-THROUGH";
+                else if (ImGui::MenuItem("POWERVR2 YUV CONVERSION COMPLETE"))
+                    irqstr = "POWERVR2 YUV CONVERSION COMPLETE";
+                else if (ImGui::MenuItem("POWERVR2 DMA"))
+                    irqstr = "POWERVR2 DMA";
+                else if (ImGui::MenuItem("MAPLE DMA"))
+                    irqstr = "MAPLE DMA";
+                else if (ImGui::MenuItem("AICA DMA"))
+                    irqstr = "AICA DMA";
+                else if (ImGui::MenuItem("AICA (ARM7 TO SH4)"))
+                    irqstr = "AICA (ARM7 TO SH4)";
+                else if (ImGui::MenuItem("GD-ROM"))
+                    irqstr = "GD-ROM";
+
+                if (irqstr)
+                    washdc_gameconsole_inject_irq(console, irqstr);
+
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("About")) {
             ImGui::Checkbox("ImGui demo window", &en_demo_win);
             ImGui::EndMenu();

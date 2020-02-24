@@ -175,6 +175,8 @@ static void dreamcast_enable_serial_server(void);
 
 static void suspend_loop(void);
 
+static void dc_inject_irq(char const *id);
+
 /*
  * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
  * because programs that use the serial port (like KallistiOS) can timeout if
@@ -208,6 +210,43 @@ static void dc_get_sndchan_var(struct washdc_snddev const *dev,
 static void dc_mute_sndchan(struct washdc_snddev const *dev,
                             unsigned chan_no, bool is_muted) {
     aica_mute_chan(&aica, chan_no, is_muted);
+}
+
+static void dc_inject_irq(char const *id) {
+    // TODO: add support for more than just Hollywood IRQs
+
+    LOG_INFO("injecting IRQ %s\n", id);
+
+    if (strcmp(id, "HBLANK") == 0)
+        holly_raise_nrm_int(HOLLY_NRM_INT_HBLANK);
+    else if (strcmp(id, "VBLANK-IN") == 0)
+        holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_IN);
+    else if (strcmp(id, "VBLANK-OUT") == 0)
+        holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_OUT);
+    else if (strcmp(id, "POLYGON EOL OPAQUE") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE);
+    else if (strcmp(id, "POLYGON EOL OPAQUE MOD") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE);
+    else if (strcmp(id, "POLYGON EOL TRANSPARENT") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE);
+    else if (strcmp(id, "POLYGON EOL TRANSPARENT MOD") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE);
+    else if (strcmp(id, "POLYGON EOL PUNCH-THROUGH") == 0)
+        holly_raise_nrm_int(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
+    else if (strcmp(id, "POWERVR2 YUV CONVERSION COMPLETE") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_YUV_COMPLETE);
+    else if (strcmp(id, "POWERVR2 DMA") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_CHANNEL2_DMA_COMPLETE);
+    else if (strcmp(id, "MAPLE DMA") == 0)
+        holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
+    else if (strcmp(id, "AICA DMA") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_AICA_DMA_COMPLETE);
+    else if (strcmp(id, "AICA (ARM7 TO SH4)") == 0)
+        holly_raise_ext_int(HOLLY_EXT_INT_AICA);
+    else if (strcmp(id, "GD-ROM") == 0)
+        holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+    else
+        LOG_ERROR("FAILURE TO INJECT IRQ \"%s\"\n", id);
 }
 
 static void dc_get_texinfo(struct washdc_texcache const *cache,
@@ -404,7 +443,8 @@ static struct washdc_gameconsole dccons = {
         .sz = PVR2_TEX_CACHE_SIZE,
         .get_texinfo = dc_get_texinfo,
         .get_var = dc_get_texinfo_var
-    }
+    },
+    .do_inject_irq = dc_inject_irq
 };
 
 struct washdc_gameconsole const*

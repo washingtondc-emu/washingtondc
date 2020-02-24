@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -50,4 +50,10 @@ void washdc_gameconsole_texinfo_var(struct washdc_gameconsole const *cons,
                                     struct washdc_texinfo const *texinfo,
                                     unsigned var_no, struct washdc_var *var) {
     cons->texcache.get_var(&cons->texcache, texinfo, var_no, var);
+}
+
+void washdc_gameconsole_inject_irq(struct washdc_gameconsole const *cons,
+                                   char const *irq_id) {
+    if (cons->do_inject_irq)
+        cons->do_inject_irq(irq_id);
 }
