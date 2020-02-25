@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -58,6 +58,46 @@ static DEF_ERROR_U32_ATTR(fpscr)
 static DEF_ERROR_U32_ATTR(fpscr_expect)
 static DEF_ERROR_U32_ATTR(fpscr_mask)
 static DEF_ERROR_INT_ATTR(inst_bin)
+
+static inline uint8_t sh4_read8(struct Sh4 *sh4, addr32_t addr) {
+    return memory_map_read_8(sh4->mem.map, addr);
+}
+
+static inline uint16_t sh4_read16(struct Sh4 *sh4, addr32_t addr) {
+    return memory_map_read_16(sh4->mem.map, addr);
+}
+
+static inline uint32_t sh4_read32(struct Sh4 *sh4, addr32_t addr) {
+    return memory_map_read_32(sh4->mem.map, addr);
+}
+
+static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
+    return memory_map_read_float(sh4->mem.map, addr);
+}
+
+static inline double sh4_readdouble(struct Sh4 *sh4, addr32_t addr) {
+    return memory_map_read_double(sh4->mem.map, addr);
+}
+
+static inline void sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
+    memory_map_write_8(sh4->mem.map, addr, val);
+}
+
+static inline void sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
+    memory_map_write_16(sh4->mem.map, addr, val);
+}
+
+static inline void sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
+    memory_map_write_32(sh4->mem.map, addr, val);
+}
+
+static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
+    memory_map_write_float(sh4->mem.map, addr, val);
+}
+
+static inline void sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
+    memory_map_write_double(sh4->mem.map, addr, val);
+}
 
 static inline uint16_t inst_imm8(int inst) {
     return inst & 0xff;
@@ -1776,11 +1816,11 @@ void sh4_inst_binary_andb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = memory_map_read_8(sh4->mem.map, addr);
+    uint8_t val = sh4_read8(sh4, addr);
 
     val &= inst_imm8(inst);
 
-    memory_map_write_8(sh4->mem.map, addr, val);
+    sh4_write8(sh4, addr, val);
 }
 
 #define INST_MASK_11001001iiiiiiii 0xff00
@@ -1809,11 +1849,11 @@ void sh4_inst_binary_orb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = memory_map_read_8(sh4->mem.map, addr);
+    uint8_t val = sh4_read8(sh4, addr);
 
     val |= inst_imm8(inst);
 
-    memory_map_write_8(sh4->mem.map, addr, val);
+    sh4_write8(sh4, addr, val);
 }
 
 #define INST_MASK_11001011iiiiiiii 0xff00
@@ -1858,7 +1898,7 @@ void sh4_inst_binary_tstb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = memory_map_read_8(sh4->mem.map, addr);
+    uint8_t val = sh4_read8(sh4, addr);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     reg32_t flag = !(inst_imm8(inst) & val) <<
@@ -1892,11 +1932,11 @@ void sh4_inst_binary_xorb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = memory_map_read_8(sh4->mem.map, addr);
+    uint8_t val = sh4_read8(sh4, addr);
 
     val ^= inst_imm8(inst);
 
-    memory_map_write_8(sh4->mem.map, addr, val);
+    sh4_write8(sh4, addr, val);
 }
 
 #define INST_MASK_10001011dddddddd 0xff00
@@ -2046,9 +2086,9 @@ void sh4_inst_unary_tasb_gen(void *cpu, cpu_inst_param inst) {
     uint8_t val_new, val_old;
     reg32_t mask;
 
-    val_old = memory_map_read_8(sh4->mem.map, addr);
+    val_old = sh4_read8(sh4, addr);
     val_new = val_old | 0x80;
-    memory_map_write_8(sh4->mem.map, addr, val_new);
+    sh4_write8(sh4, addr, val_new);
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     mask = (!val_old) << SH4_SR_FLAG_T_SHIFT;
@@ -2447,7 +2487,7 @@ void sh4_inst_binary_ldcl_indgeninc_sr(void *cpu, cpu_inst_param inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    val = sh4_read32(sh4, *src_reg);
 
     (*src_reg) += 4;
     reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
@@ -2470,7 +2510,7 @@ void sh4_inst_binary_ldcl_indgeninc_gbr(void *cpu, cpu_inst_param inst) {
     reg32_t *src_reg;
 
     src_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    val = sh4_read32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_GBR] = val;
@@ -2500,7 +2540,7 @@ void sh4_inst_binary_ldcl_indgeninc_vbr(void *cpu, cpu_inst_param inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    val = sh4_read32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_VBR] = val;
@@ -2530,7 +2570,7 @@ void sh4_inst_binary_ldcl_indgenic_ssr(void *cpu, cpu_inst_param inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    val = sh4_read32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_SSR] = val;
@@ -2560,7 +2600,7 @@ void sh4_inst_binary_ldcl_indgeninc_spc(void *cpu, cpu_inst_param inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    val = sh4_read32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_SPC] = val;
@@ -2590,7 +2630,7 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(void *cpu, cpu_inst_param inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    val = sh4_read32(sh4, *src_reg);
 
     (*src_reg) += 4;
     sh4->reg[SH4_REG_DBR] = val;
@@ -2618,7 +2658,7 @@ void sh4_inst_binary_stcl_sr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_SR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SR]);
 
     *regp = addr;
 }
@@ -2636,7 +2676,7 @@ void sh4_inst_binary_stcl_gbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_GBR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_GBR]);
 
     *regp = addr;
 }
@@ -2663,7 +2703,7 @@ void sh4_inst_binary_stcl_vbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_VBR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_VBR]);
 
     *regp = addr;
 }
@@ -2690,7 +2730,7 @@ void sh4_inst_binary_stcl_ssr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_SSR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SSR]);
 
     *regp = addr;
 }
@@ -2717,7 +2757,7 @@ void sh4_inst_binary_stcl_spc_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_SPC]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SPC]);
 
     *regp = addr;
 }
@@ -2744,7 +2784,7 @@ void sh4_inst_binary_stcl_sgr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_SGR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SGR]);
 
     *regp = addr;
 }
@@ -2771,7 +2811,7 @@ void sh4_inst_binary_stcl_dbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_DBR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_DBR]);
 
     *regp = addr;
 }
@@ -2819,7 +2859,7 @@ void sh4_inst_binary_movw_binind_disp_pc_gen(void *cpu, cpu_inst_param inst) {
     int reg_no = (inst >> 8) & 0xf;
     int16_t mem_in;
 
-    mem_in = memory_map_read_16(sh4->mem.map, addr);
+    mem_in = sh4_read16(sh4, addr);
     *sh4_gen_reg(sh4, reg_no) = (int32_t)mem_in;
 }
 
@@ -2838,7 +2878,7 @@ void sh4_inst_binary_movl_binind_disp_pc_gen(void *cpu, cpu_inst_param inst) {
     int reg_no = (inst >> 8) & 0xf;
     int32_t mem_in;
 
-    mem_in = memory_map_read_32(sh4->mem.map, addr);
+    mem_in = sh4_read32(sh4, addr);
     *sh4_gen_reg(sh4, reg_no) = mem_in;
 }
 
@@ -3648,7 +3688,7 @@ void sh4_inst_binary_ldcl_indgeninc_bank(void *cpu, cpu_inst_param inst) {
 #endif
 
     src_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    val = memory_map_read_32(sh4->mem.map, *src_reg);
+    val = sh4_read32(sh4, *src_reg);
 
     (*src_reg) += 4;
     *sh4_bank_reg(sh4, (inst >> 4) & 0x7) = val;
@@ -3701,7 +3741,7 @@ void sh4_inst_binary_stcl_bank_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t src_val = *sh4_bank_reg(sh4, (inst >> 4) & 0x7);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->mem.map, addr, src_val);
+    sh4_write32(sh4, addr, src_val);
 
     *addr_reg = addr;
 }
@@ -3804,7 +3844,7 @@ void sh4_inst_binary_ldsl_indgeninc_mach(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 
-    val = memory_map_read_32(sh4->mem.map, *addr_reg);
+    val = sh4_read32(sh4, *addr_reg);
 
     sh4->reg[SH4_REG_MACH] = val;
 
@@ -3825,7 +3865,7 @@ void sh4_inst_binary_ldsl_indgeninc_macl(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 
-    val = memory_map_read_32(sh4->mem.map, *addr_reg);
+    val = sh4_read32(sh4, *addr_reg);
 
     sh4->reg[SH4_REG_MACL] = val;
 
@@ -3846,7 +3886,7 @@ void sh4_inst_binary_stsl_mach_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_MACH]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_MACH]);
 
     *addr_reg = addr;
 }
@@ -3865,7 +3905,7 @@ void sh4_inst_binary_stsl_macl_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_MACL]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_MACL]);
 
     *addr_reg = addr;
 }
@@ -3884,7 +3924,7 @@ void sh4_inst_binary_ldsl_indgeninc_pr(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 
-    val = memory_map_read_32(sh4->mem.map, *addr_reg);
+    val = sh4_read32(sh4, *addr_reg);
 
     sh4->reg[SH4_REG_PR] = val;
 
@@ -3905,7 +3945,7 @@ void sh4_inst_binary_stsl_pr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_PR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_PR]);
 
     *addr_reg = addr;
 }
@@ -3924,7 +3964,7 @@ void sh4_inst_binary_movb_gen_indgen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint8_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_8(sh4->mem.map, addr, mem_val);
+    sh4_write8(sh4, addr, mem_val);
 }
 
 #define INST_MASK_0010nnnnmmmm0001 0xf00f
@@ -3941,7 +3981,7 @@ void sh4_inst_binary_movw_gen_indgen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint16_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_16(sh4->mem.map, addr, mem_val);
+    sh4_write16(sh4, addr, mem_val);
 }
 
 #define INST_MASK_0010nnnnmmmm0010 0xf00f
@@ -3958,7 +3998,7 @@ void sh4_inst_binary_movl_gen_indgen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint32_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_32(sh4->mem.map, addr, mem_val);
+    sh4_write32(sh4, addr, mem_val);
 }
 
 #define INST_MASK_0110nnnnmmmm0000 0xf00f
@@ -3975,7 +4015,7 @@ void sh4_inst_binary_movb_indgen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t mem_val;
 
-    mem_val = memory_map_read_8(sh4->mem.map, addr);
+    mem_val = sh4_read8(sh4, addr);
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)mem_val;
 }
@@ -3994,7 +4034,7 @@ void sh4_inst_binary_movw_indgen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t mem_val;
 
-    mem_val = memory_map_read_16(sh4->mem.map, addr);
+    mem_val = sh4_read16(sh4, addr);
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)mem_val;
 }
 
@@ -4012,7 +4052,7 @@ void sh4_inst_binary_movl_indgen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int32_t mem_val;
 
-    mem_val = memory_map_read_32(sh4->mem.map, addr);
+    mem_val = sh4_read32(sh4, addr);
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = mem_val;
 }
@@ -4035,7 +4075,7 @@ void sh4_inst_binary_movb_gen_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t dst_reg_val = (*dst_reg) - 1;
     val = *src_reg;
 
-    memory_map_write_8(sh4->mem.map, dst_reg_val, val);
+    sh4_write8(sh4, dst_reg_val, val);
 
     (*dst_reg) = dst_reg_val;
 }
@@ -4059,7 +4099,7 @@ void sh4_inst_binary_movw_gen_inddecgen(void *cpu, cpu_inst_param inst) {
     dst_reg_val -= 2;
     val = *src_reg;
 
-    memory_map_write_16(sh4->mem.map, dst_reg_val, val);
+    sh4_write16(sh4, dst_reg_val, val);
 
     *dst_reg = dst_reg_val;
 }
@@ -4083,7 +4123,7 @@ void sh4_inst_binary_movl_gen_inddecgen(void *cpu, cpu_inst_param inst) {
     dst_reg_val -= 4;
     val = *src_reg;
 
-    memory_map_write_32(sh4->mem.map, dst_reg_val, val);
+    sh4_write32(sh4, dst_reg_val, val);
 
     *dst_reg = dst_reg_val;
 }
@@ -4107,7 +4147,7 @@ void sh4_inst_binary_movb_indgeninc_gen(void *cpu, cpu_inst_param inst) {
     int8_t val;
 
     reg32_t src_addr = *src_reg;
-    val = memory_map_read_8(sh4->mem.map, src_addr);
+    val = sh4_read8(sh4, src_addr);
 
     *dst_reg = (int32_t)val;
 
@@ -4134,7 +4174,7 @@ void sh4_inst_binary_movw_indgeninc_gen(void *cpu, cpu_inst_param inst) {
     int16_t val;
 
     reg32_t src_addr = *src_reg;
-    val = memory_map_read_16(sh4->mem.map, src_addr);
+    val = sh4_read16(sh4, src_addr);
 
     *dst_reg = (int32_t)val;
 
@@ -4161,7 +4201,7 @@ void sh4_inst_binary_movl_indgeninc_gen(void *cpu, cpu_inst_param inst) {
     int32_t val;
 
     reg32_t src_addr = *src_reg;
-    val = memory_map_read_32(sh4->mem.map, src_addr);
+    val = sh4_read32(sh4, src_addr);
 
     *dst_reg = (int32_t)val;
 
@@ -4186,8 +4226,8 @@ void sh4_inst_binary_macl_indgeninc_indgeninc(void *cpu, cpu_inst_param inst) {
     reg32_t *src_addrp = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
     reg32_t lhs, rhs;
-    lhs = memory_map_read_32(sh4->mem.map, *dst_addrp);
-    rhs = memory_map_read_32(sh4->mem.map, *src_addrp);
+    lhs = sh4_read32(sh4, *dst_addrp);
+    rhs = sh4_read32(sh4, *src_addrp);
 
     int64_t product = (int64_t)((int32_t)lhs) * (int64_t)((int32_t)rhs);
     int64_t sum;
@@ -4240,8 +4280,8 @@ void sh4_inst_binary_macw_indgeninc_indgeninc(void *cpu, cpu_inst_param inst) {
     reg32_t *src_addrp = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
     int16_t lhs, rhs;
-    lhs = memory_map_read_16(sh4->mem.map, *dst_addrp);
-    rhs = memory_map_read_16(sh4->mem.map, *src_addrp);
+    lhs = sh4_read16(sh4, *dst_addrp);
+    rhs = sh4_read16(sh4, *src_addrp);
 
     int64_t result = (int64_t)lhs * (int64_t)rhs;
 
@@ -4303,7 +4343,7 @@ void sh4_inst_binary_movb_r0_binind_disp_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst & 0xf) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_8(sh4->mem.map, addr, val);
+    sh4_write8(sh4, addr, val);
 }
 
 #define INST_MASK_10000001nnnndddd 0xff00
@@ -4320,7 +4360,7 @@ void sh4_inst_binary_movw_r0_binind_disp_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = ((inst & 0xf) << 1) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_16(sh4->mem.map, addr, val);
+    sh4_write16(sh4, addr, val);
 }
 
 #define INST_MASK_0001nnnnmmmmdddd 0xf000
@@ -4337,7 +4377,7 @@ void sh4_inst_binary_movl_gen_binind_disp_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = ((inst & 0xf) << 2) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     int32_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_32(sh4->mem.map, addr, val);
+    sh4_write32(sh4, addr, val);
 }
 
 #define INST_MASK_10000100mmmmdddd 0xff00
@@ -4354,7 +4394,7 @@ void sh4_inst_binary_movb_binind_disp_gen_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst & 0xf) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val;
 
-    val = memory_map_read_8(sh4->mem.map, addr);
+    val = sh4_read8(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
@@ -4373,7 +4413,7 @@ void sh4_inst_binary_movw_binind_disp_gen_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = ((inst & 0xf) << 1) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val;
 
-    val = memory_map_read_16(sh4->mem.map, addr);
+    val = sh4_read16(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
@@ -4392,7 +4432,7 @@ void sh4_inst_binary_movl_binind_disp_gen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = ((inst & 0xf) << 2) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int32_t val;
 
-    val = memory_map_read_32(sh4->mem.map, addr);
+    val = sh4_read32(sh4, addr);
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = val;
 }
@@ -4411,7 +4451,7 @@ void sh4_inst_binary_movb_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint8_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_8(sh4->mem.map, addr, val);
+    sh4_write8(sh4, addr, val);
 }
 
 #define INST_MASK_0000nnnnmmmm0101 0xf00f
@@ -4428,7 +4468,7 @@ void sh4_inst_binary_movw_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint16_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_16(sh4->mem.map, addr, val);
+    sh4_write16(sh4, addr, val);
 }
 
 #define INST_MASK_0000nnnnmmmm0110 0xf00f
@@ -4445,7 +4485,7 @@ void sh4_inst_binary_movl_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint32_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_32(sh4->mem.map, addr, val);
+    sh4_write32(sh4, addr, val);
 }
 
 #define INST_MASK_0000nnnnmmmm1100 0xf00f
@@ -4462,7 +4502,7 @@ void sh4_inst_binary_movb_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val;
 
-    val = memory_map_read_8(sh4->mem.map, addr);
+    val = sh4_read8(sh4, addr);
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)val;
 }
@@ -4481,7 +4521,7 @@ void sh4_inst_binary_movw_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val;
 
-    val = memory_map_read_16(sh4->mem.map, addr);
+    val = sh4_read16(sh4, addr);
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)val;
 }
@@ -4500,7 +4540,7 @@ void sh4_inst_binary_movl_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int32_t val;
 
-    val = memory_map_read_32(sh4->mem.map, addr);
+    val = sh4_read32(sh4, addr);
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = val;
 }
@@ -4519,7 +4559,7 @@ void sh4_inst_binary_movb_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
     addr32_t addr = inst_imm8(inst) + sh4->reg[SH4_REG_GBR];
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_8(sh4->mem.map, addr, val);
+    sh4_write8(sh4, addr, val);
 }
 
 #define INST_MASK_11000001dddddddd 0xff00
@@ -4536,7 +4576,7 @@ void sh4_inst_binary_movw_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst_imm8(inst) << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_16(sh4->mem.map, addr, val);
+    sh4_write16(sh4, addr, val);
 }
 
 #define INST_MASK_11000010dddddddd 0xff00
@@ -4553,7 +4593,7 @@ void sh4_inst_binary_movl_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst_imm8(inst) << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val = *sh4_gen_reg(sh4, 0);
 
-    memory_map_write_32(sh4->mem.map, addr, val);
+    sh4_write32(sh4, addr, val);
 }
 
 #define INST_MASK_11000100dddddddd 0xff00
@@ -4570,7 +4610,7 @@ void sh4_inst_binary_movb_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = inst_imm8(inst) + sh4->reg[SH4_REG_GBR];
     int8_t val;
 
-    val = memory_map_read_8(sh4->mem.map, addr);
+    val = sh4_read8(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
@@ -4589,7 +4629,7 @@ void sh4_inst_binary_movw_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst_imm8(inst) << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val;
 
-    val = memory_map_read_16(sh4->mem.map, addr);
+    val = sh4_read16(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
@@ -4608,7 +4648,7 @@ void sh4_inst_binary_movl_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst_imm8(inst) << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val;
 
-    val = memory_map_read_32(sh4->mem.map, addr);
+    val = sh4_read32(sh4, addr);
 
     *sh4_gen_reg(sh4, 0) = val;
 }
@@ -4656,7 +4696,7 @@ void sh4_inst_binary_movcal_r0_indgen(void *cpu, cpu_inst_param inst) {
     uint32_t src_val = *sh4_gen_reg(sh4, 0);
     addr32_t vaddr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 
-    memory_map_write_32(sh4->mem.map, vaddr, src_val);
+    sh4_write32(sh4, vaddr, src_val);
 }
 
 #define INST_MASK_1111nnnn10001101 0xf0ff
@@ -4722,7 +4762,7 @@ void sh4_inst_binary_fmovs_indgen_fr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     float *dst_ptr = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
-    *dst_ptr = memory_map_read_float(sh4->mem.map, addr);
+    *dst_ptr = sh4_readfloat(sh4, addr);
 }
 
 #define INST_MASK_1111nnnnmmmm0110 0xf00f
@@ -4741,7 +4781,7 @@ void sh4_inst_binary_fmovs_binind_r0_gen_fr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     float *dst_ptr = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
-    *dst_ptr = memory_map_read_float(sh4->mem.map, addr);
+    *dst_ptr = sh4_readfloat(sh4, addr);
 }
 
 #define INST_MASK_1111nnnnmmmm1001 0xf00f
@@ -4760,7 +4800,7 @@ void sh4_inst_binary_fmovs_indgeninc_fr(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     float *dst_ptr = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
-    *dst_ptr = memory_map_read_float(sh4->mem.map, *addr_p);
+    *dst_ptr = sh4_readfloat(sh4, *addr_p);
 
     *addr_p += 4;
 }
@@ -4781,7 +4821,7 @@ void sh4_inst_binary_fmovs_fr_indgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     float *src_p = sh4_fpu_fr(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_float(sh4->mem.map, addr, *src_p);
+    sh4_writefloat(sh4, addr, *src_p);
 }
 
 #define INST_MASK_1111nnnnmmmm1011 0xf00f
@@ -4801,7 +4841,7 @@ void sh4_inst_binary_fmovs_fr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *addr_p - 4;
     float *src_p = sh4_fpu_fr(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_float(sh4->mem.map, addr, *src_p);
+    sh4_writefloat(sh4, addr, *src_p);
 
     *addr_p = addr;
 }
@@ -4822,7 +4862,7 @@ void sh4_inst_binary_fmovs_fr_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     float *src_p = sh4_fpu_fr(sh4, (inst >> 4) & 0xf);
 
-    memory_map_write_float(sh4->mem.map, addr, *src_p);
+    sh4_writefloat(sh4, addr, *src_p);
 }
 
 #define INST_MASK_1111nnn0mmm01100 0xf11f
@@ -4856,7 +4896,7 @@ void sh4_inst_binary_fmov_indgen_dr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = memory_map_read_double(sh4->mem.map, addr);
+    *dst_ptr = sh4_readdouble(sh4, addr);
 }
 
 #define INST_MASK_1111nnn0mmmm0110 0xf10f
@@ -4875,7 +4915,7 @@ void sh4_inst_binary_fmov_binind_r0_gen_dr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = memory_map_read_double(sh4->mem.map, addr);
+    *dst_ptr = sh4_readdouble(sh4, addr);
 }
 
 #define INST_MASK_1111nnn0mmmm1001 0xf10f
@@ -4894,7 +4934,7 @@ void sh4_inst_binary_fmov_indgeninc_dr(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = memory_map_read_double(sh4->mem.map, *addr_p);
+    *dst_ptr = sh4_readdouble(sh4, *addr_p);
 
     *addr_p += 8;
 }
@@ -4915,7 +4955,7 @@ void sh4_inst_binary_fmov_dr_indgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     double *src_p = sh4_fpu_dr(sh4, (inst >> 5) & 0x7);
 
-    memory_map_write_double(sh4->mem.map, addr, *src_p);
+    sh4_writedouble(sh4, addr, *src_p);
 }
 
 #define INST_MASK_1111nnnnmmm01011 0xf01f
@@ -4935,7 +4975,7 @@ void sh4_inst_binary_fmov_dr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_dr(sh4, (inst >> 5) & 0x7);
 
-    memory_map_write_double(sh4->mem.map, addr, *src_p);
+    sh4_writedouble(sh4, addr, *src_p);
 
     *addr_p = addr;
 }
@@ -4956,7 +4996,7 @@ void sh4_inst_binary_fmov_dr_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     double *src_p = sh4_fpu_dr(sh4, (inst >> 5) & 0x7);
 
-    memory_map_write_double(sh4->mem.map, addr, *src_p);
+    sh4_writedouble(sh4, addr, *src_p);
 }
 
 #define INST_MASK_1111mmmm00011101 0xf0ff
@@ -5807,7 +5847,7 @@ void sh4_inst_binary_ldsl_indgeninc_fpscr(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 
-    val = memory_map_read_32(sh4->mem.map, *addr_reg);
+    val = sh4_read32(sh4, *addr_reg);
 
     sh4_set_fpscr(sh4, val);
 
@@ -5828,7 +5868,7 @@ void sh4_inst_binary_ldsl_indgeninc_fpul(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 
-    val = memory_map_read_32(sh4->mem.map, *addr_reg);
+    val = sh4_read32(sh4, *addr_reg);
 
     memcpy(sh4->reg + SH4_REG_FPUL, &val, sizeof(sh4->reg[SH4_REG_FPUL]));
 
@@ -5878,7 +5918,7 @@ void sh4_inst_binary_stsl_fpscr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_FPSCR]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPSCR]);
 
     *addr_reg = addr;
 }
@@ -5897,7 +5937,7 @@ void sh4_inst_binary_stsl_fpul_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    memory_map_write_32(sh4->mem.map, addr, sh4->reg[SH4_REG_FPUL]);
+    sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPUL]);
 
     *addr_reg = addr;
 }
@@ -5975,7 +6015,7 @@ void sh4_inst_binary_fmov_indgen_xd(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_xd(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = memory_map_read_double(sh4->mem.map, addr);
+    *dst_ptr = sh4_readdouble(sh4, addr);
 }
 
 #define INST_MASK_1111nnn1mmmm1001 0xf10f
@@ -5994,7 +6034,7 @@ void sh4_inst_binary_fmov_indgeninc_xd(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_xd(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = memory_map_read_double(sh4->mem.map, *addr_p);
+    *dst_ptr = sh4_readdouble(sh4, *addr_p);
 
     *addr_p += 8;
 }
@@ -6058,7 +6098,7 @@ void sh4_inst_binary_fmov_xd_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_xd(sh4, (inst >> 5) & 0x7);
 
-    memory_map_write_double(sh4->mem.map, addr, *src_p);
+    sh4_writedouble(sh4, addr, *src_p);
 
     *addr_p = addr;
 }
