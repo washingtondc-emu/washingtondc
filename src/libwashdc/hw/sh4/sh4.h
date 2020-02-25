@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "washdc/error.h"
 #include "washdc/types.h"
@@ -375,5 +376,11 @@ static inline bool sh4_fpscr_pr(struct Sh4 const *sh4) {
 static inline bool sh4_fpscr_sz(struct Sh4 const *sh4) {
     return (bool)(sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_SZ_MASK);
 }
+
+#ifdef ENABLE_MMU
+static inline bool sh4_mmu_at(struct Sh4 const *sh4) {
+    return (bool)(sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK);
+}
+#endif
 
 #endif

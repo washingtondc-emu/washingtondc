@@ -60,42 +60,72 @@ static DEF_ERROR_U32_ATTR(fpscr_mask)
 static DEF_ERROR_INT_ATTR(inst_bin)
 
 static inline uint8_t sh4_read8(struct Sh4 *sh4, addr32_t addr) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     return memory_map_read_8(sh4->mem.map, addr);
 }
 
 static inline uint16_t sh4_read16(struct Sh4 *sh4, addr32_t addr) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     return memory_map_read_16(sh4->mem.map, addr);
 }
 
 static inline uint32_t sh4_read32(struct Sh4 *sh4, addr32_t addr) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     return memory_map_read_32(sh4->mem.map, addr);
 }
 
 static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     return memory_map_read_float(sh4->mem.map, addr);
 }
 
 static inline double sh4_readdouble(struct Sh4 *sh4, addr32_t addr) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     return memory_map_read_double(sh4->mem.map, addr);
 }
 
 static inline void sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     memory_map_write_8(sh4->mem.map, addr, val);
 }
 
 static inline void sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     memory_map_write_16(sh4->mem.map, addr, val);
 }
 
 static inline void sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     memory_map_write_32(sh4->mem.map, addr, val);
 }
 
 static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     memory_map_write_float(sh4->mem.map, addr, val);
 }
 
 static inline void sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
+#ifdef ENABLE_MMU
+    addr = sh4_utlb_translate_address(sh4, addr);
+#endif
     memory_map_write_double(sh4->mem.map, addr, val);
 }
 

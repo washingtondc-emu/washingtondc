@@ -170,4 +170,8 @@ void sh4_set_mem_map(struct Sh4 *sh4, struct memory_map *map);
 
 extern struct memory_interface sh4_p4_intf;
 
+#ifdef ENABLE_MMU
+uint32_t sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t addr);
+#endif
+
 #endif

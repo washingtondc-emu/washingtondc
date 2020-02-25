@@ -368,6 +368,36 @@ static uint32_t vpn_mask_for_size(enum sh4_tlb_page_sz sz) {
     }
 }
 
+static uint32_t ppn_mask_for_size(enum sh4_tlb_page_sz sz) {
+    switch (sz) {
+    case SH4_TLB_PAGE_1KB:
+        return ~0x3ff;
+    case SH4_TLB_PAGE_4KB:
+        return ~0xfff;
+    case SH4_TLB_PAGE_64KB:
+        return ~0xffff;
+    case SH4_TLB_PAGE_1MB:
+        return ~0xfffff;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+}
+
+static uint32_t page_offset_mask_for_size(enum sh4_tlb_page_sz sz) {
+    switch (sz) {
+    case SH4_TLB_PAGE_1KB:
+        return 0x3ff;
+    case SH4_TLB_PAGE_4KB:
+        return 0xfff;
+    case SH4_TLB_PAGE_64KB:
+        return 0xffff;
+    case SH4_TLB_PAGE_1MB:
+        return 0xfffff;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+}
+
 // vpn should be shifted such that the MSB is at bit 31
 static struct sh4_utlb_ent *
 sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
@@ -546,3 +576,23 @@ sh4_itlb_data_array_2_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 static uint32_t sh4_itlb_data_array_2_read(struct Sh4 *sh4, addr32_t addr) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
+
+#ifdef ENABLE_MMU
+uint32_t sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t addr) {
+    unsigned area = (addr >> 29) & 7;
+    if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7)) {
+        struct sh4_utlb_ent *ent = sh4_utlb_find_ent_associative(sh4, addr);
+        if (!ent) {
+            error_set_address(addr);
+            error_set_feature("page fault exceptions");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        uint32_t ret = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
+
+        /* printf("Translate %08X to %08X\n", (unsigned)addr, (unsigned)ret); */
+        return ret;
+    } else {
+        return addr;
+    }
+}
+#endif
