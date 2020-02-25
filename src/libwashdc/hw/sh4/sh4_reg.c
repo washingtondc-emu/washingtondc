@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2018 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -692,8 +692,18 @@ static void sh4_mmucr_write_handler(Sh4 *sh4,
     sh4->reg[SH4_REG_MMUCR] = val;
 
     if (val & SH4_MMUCR_AT_MASK) {
+#ifdef ENABLE_MMU
+        printf("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
+        LOG_ERROR("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
+
+        if (config_get_jit()) {
+            error_set_feature("SH4 MMU support in JIT mode");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+#else
         error_set_feature("SH4 MMU support");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
     }
 }
 

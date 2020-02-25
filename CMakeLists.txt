@@ -2,7 +2,7 @@
 #
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2016-2019 snickerbockers
+#    Copyright (C) 2016-2020 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -39,6 +39,11 @@ option(JIT_PROFILE "Profile JIT code blocks based on frequency" OFF)
 option(BUILD_WASHINGTONDC "Build the washingtondc frontend program" ON)
 option(BUILD_WASHDC_HEADLESS "Build the washdc-headless frontend program" ON)
 option(ENABLE_TESTS "enable automatic testing" OFF)
+option(ENABLE_MMU "enable the SH4's Memory Management Unit (interpreter only)" OFF)
+
+if (ENABLE_MMU)
+    add_definitions(-DENABLE_MMU)
+endif()
 
 if (ENABLE_TESTS)
     # TODO tests are disabled by default for now until there's some sort of HLE
