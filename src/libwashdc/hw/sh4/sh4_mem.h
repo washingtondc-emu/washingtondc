@@ -25,6 +25,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "sh4_excp.h"
 #include "mem_code.h"
@@ -104,8 +105,8 @@ enum sh4_tlb_page_sz {
 
 struct sh4_utlb_ent {
     unsigned asid : 8;
-    unsigned vpn : 22;
-    unsigned ppn : 19;
+    unsigned vpn /* : 22 */;
+    unsigned ppn /* : 19 */;
 
     /*
      * 2 bits
@@ -133,8 +134,8 @@ struct sh4_utlb_ent {
 
 struct sh4_itlb_ent {
     unsigned asid : 8;
-    unsigned vpn : 22;
-    unsigned ppn : 19;
+    unsigned vpn /* : 22 */;
+    unsigned ppn /* : 19 */;
 
     /*
      * only 1 bit, unlike for utlb
