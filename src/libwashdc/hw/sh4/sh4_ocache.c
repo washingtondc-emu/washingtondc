@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -240,6 +240,14 @@ SH4_SQ_READ_TMPL(uint16_t, 16)
 SH4_SQ_READ_TMPL(uint8_t, 8)
 
 int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
+#ifdef ENABLE_MMU
+    if (sh4_mmu_at(sh4)) {
+        error_set_address(addr);
+        error_set_feature("SH4 store queues with MMU enabled");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+#endif
+
     unsigned sq_sel = (addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT;
     unsigned sq_idx = sq_sel << 3;
     reg32_t qacr = sh4->reg[SH4_REG_QACR0 + sq_sel];
