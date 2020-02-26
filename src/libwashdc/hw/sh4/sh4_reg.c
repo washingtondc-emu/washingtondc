@@ -54,6 +54,9 @@ static void
 sh4_warn_write_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info,
                        sh4_reg_val val);
 
+static sh4_reg_val
+sh4_mmucr_read_handler(Sh4 *sh4,
+                       struct Sh4MemMappedReg const *reg_info);
 static void sh4_mmucr_write_handler(Sh4 *sh4,
                                     struct Sh4MemMappedReg const *reg_info,
                                     sh4_reg_val val);
@@ -141,7 +144,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "INTEVT", 0xff000028, 4, SH4_REG_INTEVT, false,
       sh4_default_read_handler, sh4_default_write_handler, 0, 0x20 },
     { "MMUCR", 0xff000010, 4, SH4_REG_MMUCR, false,
-      sh4_default_read_handler, sh4_mmucr_write_handler, 0, 0 },
+      sh4_mmucr_read_handler, sh4_mmucr_write_handler, 0, 0 },
     { "CCR", 0xff00001c, 4, SH4_REG_CCR, false,
       sh4_default_read_handler, sh4_ccr_write_handler, 0, 0 },
     { "QACR0", 0xff000038, 4, SH4_REG_QACR0, false,
@@ -674,6 +677,13 @@ sh4_zero_only_reg_write_handler(Sh4 *sh4,
         error_set_feature("writing non-zero to a zero-only register");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+}
+
+static sh4_reg_val
+sh4_mmucr_read_handler(Sh4 *sh4,
+                       struct Sh4MemMappedReg const *reg_info) {
+    // the TI bit is always read as 0
+    return sh4->reg[SH4_REG_MMUCR] & ~SH4_MMUCR_TI_MASK;
 }
 
 static void sh4_mmucr_write_handler(Sh4 *sh4,
