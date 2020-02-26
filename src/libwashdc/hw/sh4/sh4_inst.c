@@ -74,9 +74,11 @@ static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
 #ifdef ENABLE_MMU
     int res = sh4_utlb_translate_address(sh4, &addr);
     if (res != 0) {
-        /* error_set_address(addr); */
-        /* error_set_feature("page fault exceptions"); */
-        /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+        LOG_ERROR("DATA TLB READ MISS EXCEPTION\n");
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
         return res;
     }
 #endif
@@ -2935,7 +2937,7 @@ void sh4_inst_binary_movw_binind_disp_pc_gen(void *cpu, cpu_inst_param inst) {
     int16_t mem_in;
 
     if (sh4_read16(sh4, addr, &mem_in) != 0)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
     *sh4_gen_reg(sh4, reg_no) = (int32_t)mem_in;
 }
 
@@ -4113,7 +4115,7 @@ void sh4_inst_binary_movw_indgen_gen(void *cpu, cpu_inst_param inst) {
     int16_t mem_val;
 
     if (sh4_read16(sh4, addr, &mem_val) != 0)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)mem_val;
 }
 
@@ -4256,7 +4258,7 @@ void sh4_inst_binary_movw_indgeninc_gen(void *cpu, cpu_inst_param inst) {
 
     reg32_t src_addr = *src_reg;
     if (sh4_read16(sh4, src_addr, &val) != 0)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
 
     *dst_reg = (int32_t)val;
 
@@ -4364,7 +4366,7 @@ void sh4_inst_binary_macw_indgeninc_indgeninc(void *cpu, cpu_inst_param inst) {
     int16_t lhs, rhs;
     if (sh4_read16(sh4, *dst_addrp, &lhs) != 0 ||
         sh4_read16(sh4, *src_addrp, &rhs) != 0)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
 
     int64_t result = (int64_t)lhs * (int64_t)rhs;
 
@@ -4499,7 +4501,7 @@ void sh4_inst_binary_movw_binind_disp_gen_r0(void *cpu, cpu_inst_param inst) {
     int16_t val;
 
     if (sh4_read16(sh4, addr, &val) != 0)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
@@ -4610,7 +4612,7 @@ void sh4_inst_binary_movw_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
     int16_t val;
 
     if (sh4_read16(sh4, addr, &val) != 0)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)val;
 }
@@ -4721,7 +4723,7 @@ void sh4_inst_binary_movw_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
     int16_t val;
 
     if (sh4_read16(sh4, addr, &val) != 0)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        return;
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
