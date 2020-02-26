@@ -61,70 +61,118 @@ static DEF_ERROR_INT_ATTR(inst_bin)
 
 static inline uint8_t sh4_read8(struct Sh4 *sh4, addr32_t addr) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     return memory_map_read_8(sh4->mem.map, addr);
 }
 
-static inline uint16_t sh4_read16(struct Sh4 *sh4, addr32_t addr) {
+static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    int res = sh4_utlb_translate_address(sh4, &addr);
+    if (res != 0) {
+        /* error_set_address(addr); */
+        /* error_set_feature("page fault exceptions"); */
+        /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+        return res;
+    }
 #endif
-    return memory_map_read_16(sh4->mem.map, addr);
+    *valp = memory_map_read_16(sh4->mem.map, addr);
+    return 0;
 }
 
 static inline uint32_t sh4_read32(struct Sh4 *sh4, addr32_t addr) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     return memory_map_read_32(sh4->mem.map, addr);
 }
 
 static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     return memory_map_read_float(sh4->mem.map, addr);
 }
 
 static inline double sh4_readdouble(struct Sh4 *sh4, addr32_t addr) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     return memory_map_read_double(sh4->mem.map, addr);
 }
 
 static inline void sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     memory_map_write_8(sh4->mem.map, addr, val);
 }
 
-static inline void sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
+static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    int res = sh4_utlb_translate_address(sh4, &addr);
+    if (res != 0) {
+        LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+        return res;
+    }
 #endif
     memory_map_write_16(sh4->mem.map, addr, val);
+    return 0;
 }
 
 static inline void sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     memory_map_write_32(sh4->mem.map, addr, val);
 }
 
 static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     memory_map_write_float(sh4->mem.map, addr, val);
 }
 
 static inline void sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
 #ifdef ENABLE_MMU
-    addr = sh4_utlb_translate_address(sh4, addr);
+    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+        error_set_address(addr);
+        error_set_feature("page fault exceptions");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 #endif
     memory_map_write_double(sh4->mem.map, addr, val);
 }
@@ -2889,7 +2937,8 @@ void sh4_inst_binary_movw_binind_disp_pc_gen(void *cpu, cpu_inst_param inst) {
     int reg_no = (inst >> 8) & 0xf;
     int16_t mem_in;
 
-    mem_in = sh4_read16(sh4, addr);
+    if (sh4_read16(sh4, addr, &mem_in) != 0)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     *sh4_gen_reg(sh4, reg_no) = (int32_t)mem_in;
 }
 
@@ -4011,7 +4060,9 @@ void sh4_inst_binary_movw_gen_indgen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint16_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    sh4_write16(sh4, addr, mem_val);
+    if (sh4_write16(sh4, addr, mem_val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_0010nnnnmmmm0010 0xf00f
@@ -4064,7 +4115,8 @@ void sh4_inst_binary_movw_indgen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t mem_val;
 
-    mem_val = sh4_read16(sh4, addr);
+    if (sh4_read16(sh4, addr, &mem_val) != 0)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)mem_val;
 }
 
@@ -4129,7 +4181,9 @@ void sh4_inst_binary_movw_gen_inddecgen(void *cpu, cpu_inst_param inst) {
     dst_reg_val -= 2;
     val = *src_reg;
 
-    sh4_write16(sh4, dst_reg_val, val);
+    if (sh4_write16(sh4, dst_reg_val, val) != 0) {
+        return;
+    }
 
     *dst_reg = dst_reg_val;
 }
@@ -4204,7 +4258,8 @@ void sh4_inst_binary_movw_indgeninc_gen(void *cpu, cpu_inst_param inst) {
     int16_t val;
 
     reg32_t src_addr = *src_reg;
-    val = sh4_read16(sh4, src_addr);
+    if (sh4_read16(sh4, src_addr, &val) != 0)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     *dst_reg = (int32_t)val;
 
@@ -4310,8 +4365,9 @@ void sh4_inst_binary_macw_indgeninc_indgeninc(void *cpu, cpu_inst_param inst) {
     reg32_t *src_addrp = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
     int16_t lhs, rhs;
-    lhs = sh4_read16(sh4, *dst_addrp);
-    rhs = sh4_read16(sh4, *src_addrp);
+    if (sh4_read16(sh4, *dst_addrp, &lhs) != 0 ||
+        sh4_read16(sh4, *src_addrp, &rhs) != 0)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     int64_t result = (int64_t)lhs * (int64_t)rhs;
 
@@ -4390,7 +4446,9 @@ void sh4_inst_binary_movw_r0_binind_disp_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = ((inst & 0xf) << 1) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    sh4_write16(sh4, addr, val);
+    if (sh4_write16(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_0001nnnnmmmmdddd 0xf000
@@ -4443,7 +4501,8 @@ void sh4_inst_binary_movw_binind_disp_gen_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = ((inst & 0xf) << 1) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val;
 
-    val = sh4_read16(sh4, addr);
+    if (sh4_read16(sh4, addr, &val) != 0)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
@@ -4498,7 +4557,9 @@ void sh4_inst_binary_movw_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint16_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    sh4_write16(sh4, addr, val);
+    if (sh4_write16(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_0000nnnnmmmm0110 0xf00f
@@ -4551,7 +4612,8 @@ void sh4_inst_binary_movw_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int16_t val;
 
-    val = sh4_read16(sh4, addr);
+    if (sh4_read16(sh4, addr, &val) != 0)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)val;
 }
@@ -4606,7 +4668,9 @@ void sh4_inst_binary_movw_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst_imm8(inst) << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val = *sh4_gen_reg(sh4, 0);
 
-    sh4_write16(sh4, addr, val);
+    if (sh4_write16(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_11000010dddddddd 0xff00
@@ -4659,7 +4723,8 @@ void sh4_inst_binary_movw_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst_imm8(inst) << 1) + sh4->reg[SH4_REG_GBR];
     int16_t val;
 
-    val = sh4_read16(sh4, addr);
+    if (sh4_read16(sh4, addr, &val) != 0)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }

@@ -407,6 +407,8 @@ sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
     /* printf("search for VPN %08X\n", (unsigned)vpn); */
     for (idx = 0; idx < SH4_UTLB_LEN; idx++) {
         struct sh4_utlb_ent *curs = sh4->mem.utlb + idx;
+        if (!curs->valid)
+            continue;
         uint32_t mask = vpn_mask_for_size(curs->sz);
         /* printf("compare %08X to %08X\n", (unsigned)(curs->vpn & mask), (unsigned)(vpn & mask)); */
         if ((curs->vpn & mask) == (vpn & mask) && curs->asid == asid) {
@@ -697,21 +699,18 @@ static uint32_t sh4_itlb_data_array_2_read(struct Sh4 *sh4, addr32_t addr) {
 }
 
 #ifdef ENABLE_MMU
-uint32_t sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t addr) {
+int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
+    uint32_t addr = *addrp;
     unsigned area = (addr >> 29) & 7;
     if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7)) {
         struct sh4_utlb_ent *ent = sh4_utlb_find_ent_associative(sh4, addr);
-        if (!ent) {
-            error_set_address(addr);
-            error_set_feature("page fault exceptions");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        uint32_t ret = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
-
+        if (!ent)
+            return -1;
+        addr = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
         /* printf("Translate %08X to %08X\n", (unsigned)addr, (unsigned)ret); */
-        return ret;
-    } else {
-        return addr;
     }
+
+    *addrp = addr;
+    return 0;
 }
 #endif

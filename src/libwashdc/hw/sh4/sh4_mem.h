@@ -172,7 +172,14 @@ void sh4_set_mem_map(struct Sh4 *sh4, struct memory_map *map);
 extern struct memory_interface sh4_p4_intf;
 
 #ifdef ENABLE_MMU
-uint32_t sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t addr);
+/*
+ * translates *addr, if MMU is enabled and addr is in one of the areas where
+ * address translation is possible.
+ *
+ * If the translation was successful, this function returns 0.
+ * Else, it returns non-zero.
+ */
+int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp);
 #endif
 
 #endif
