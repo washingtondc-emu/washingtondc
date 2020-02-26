@@ -713,4 +713,15 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
     *addrp = addr;
     return 0;
 }
+
 #endif
+
+void sh4_mmu_invalidate_tlb(struct Sh4 *sh4) {
+    LOG_WARN("%s is invalidating the entire SH4 TLB\n", __func__);
+
+    unsigned idx;
+    for (idx = 0; idx < SH4_UTLB_LEN; idx++)
+        sh4->mem.utlb[idx].valid = false;
+    for (idx = 0; idx < SH4_ITLB_LEN; idx++)
+        sh4->mem.itlb[idx].valid = false;
+}

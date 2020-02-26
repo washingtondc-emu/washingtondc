@@ -180,6 +180,10 @@ extern struct memory_interface sh4_p4_intf;
  * Else, it returns non-zero.
  */
 int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp);
+
 #endif
+
+// invalidate the entirety of both the ITLB and the UTLB
+void sh4_mmu_invalidate_tlb(struct Sh4 *sh4);
 
 #endif

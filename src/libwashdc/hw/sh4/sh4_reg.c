@@ -691,6 +691,9 @@ static void sh4_mmucr_write_handler(Sh4 *sh4,
                                     sh4_reg_val val) {
     sh4->reg[SH4_REG_MMUCR] = val;
 
+    if (val & SH4_MMUCR_TI_MASK)
+        sh4_mmu_invalidate_tlb(sh4);
+
     if (val & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_MMU
         printf("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
