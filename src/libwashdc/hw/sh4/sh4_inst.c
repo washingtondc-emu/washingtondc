@@ -1283,10 +1283,7 @@ void sh4_inst_ldtlb(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000111000, INST_CONS_0000000000111000);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("0000000000111000");
-    error_set_opcode_name("LDTLB");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_mmu_do_ldtlb((struct Sh4*)cpu);
 }
 
 #define INST_MASK_0000000000001001 0xffff

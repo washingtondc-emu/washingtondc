@@ -699,11 +699,34 @@ static uint32_t sh4_itlb_data_array_2_read(struct Sh4 *sh4, addr32_t addr) {
 }
 
 #ifdef ENABLE_MMU
+
+static void sh4_utlb_increment_urc(struct Sh4 *sh4) {
+    uint32_t mmucr = sh4->reg[SH4_REG_MMUCR];
+    uint32_t urc = (mmucr & BIT_RANGE(10, 15)) >> 10;
+    uint32_t urb = (mmucr & BIT_RANGE(18, 23)) >> 10;
+
+    if (urc < urb) {
+        urc++;
+        if (urb && urc >= urb)
+            urc = 0;
+    } else {
+        /*
+         * if software wrote a value to MMUCR that causes urc > urb,
+         * then urb doesn't take effect until urc overflows.
+         */
+        urc++;
+    }
+
+    sh4->reg[SH4_REG_MMUCR] &= ~BIT_RANGE(10, 15);
+    sh4->reg[SH4_REG_MMUCR] |= ((urc << 10) & BIT_RANGE(10, 15));
+}
+
 int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
     uint32_t addr = *addrp;
     unsigned area = (addr >> 29) & 7;
     if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7)) {
         struct sh4_utlb_ent *ent = sh4_utlb_find_ent_associative(sh4, addr);
+        sh4_utlb_increment_urc(sh4);
         if (!ent)
             return -1;
         addr = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
@@ -724,4 +747,61 @@ void sh4_mmu_invalidate_tlb(struct Sh4 *sh4) {
         sh4->mem.utlb[idx].valid = false;
     for (idx = 0; idx < SH4_ITLB_LEN; idx++)
         sh4->mem.itlb[idx].valid = false;
+}
+
+void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
+    unsigned idx = (sh4->reg[SH4_REG_MMUCR] & BIT_RANGE(10, 15)) >> 10;
+    struct sh4_utlb_ent *ent = sh4->mem.utlb + idx;
+    uint32_t pteh = sh4->reg[SH4_REG_PTEH];
+    uint32_t ptel = sh4->reg[SH4_REG_PTEL];
+    uint32_t ptea = sh4->reg[SH4_REG_PTEA];
+
+    ent->asid = ptea & BIT_RANGE(0, 7);
+    ent->vpn = pteh & BIT_RANGE(10,31);
+    ent->ppn = ptel & BIT_RANGE(10, 28);
+    ent->sz = (enum sh4_tlb_page_sz)
+        (((ptel & (1<<7)) >> 6) | ((ptel >> 4) & 1));
+    ent->shared = (ptel >> 1) & 1;
+    ent->protection = (ptel >> 5) & 3;
+    ent->wt = ptel & 1;
+    ent->cacheable = (ptel >> 3) & 1;
+    ent->dirty = (ptel >> 2) & 1;
+    ent->valid = (ptel >> 8) & 1;
+    ent->sa = ptea & 7;
+    ent->tc = (ptea >> 3) & 1;
+
+    char const *page_sz;
+    switch (ent->sz) {
+    case SH4_TLB_PAGE_1KB:
+        page_sz = "1KB";
+        break;
+    case SH4_TLB_PAGE_4KB:
+        page_sz = "4KB";
+        break;
+    case SH4_TLB_PAGE_64KB:
+        page_sz = "64KB";
+        break;
+    case SH4_TLB_PAGE_1MB:
+        page_sz = "1MB";
+        break;
+    }
+
+    LOG_WARN("LDTLB INTO UTLB INDEX %u:\n"
+             "\tVPN %08X\n"
+             "\tPPN %08X\n"
+             "\tPAGE SIZE %s\n"
+             "\tVALID %s\n"
+             "\tPROTECTION %02X\n"
+             "\tCACHEABLE %s\n"
+             "\tDIRTY %s\n"
+             "\tSHARED %s\n"
+             "\tWT %s\n"
+             "\tSA %08X\n"
+             "\tTC %s\n",
+             idx, ent->vpn, ent->ppn, page_sz, ent->valid ? "TRUE" : "FALSE",
+             ent->protection, ent->cacheable ? "TRUE" : "FALSE",
+             ent->dirty ? "TRUE" : "FALSE",
+             ent->shared ? "TRUE" : "FALSE",
+             ent->wt ? "TRUE" : "FALSE",
+             ent->sa, ent->tc ? "TRUE" : "FALSE");
 }

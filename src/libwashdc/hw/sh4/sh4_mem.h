@@ -186,4 +186,6 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp);
 // invalidate the entirety of both the ITLB and the UTLB
 void sh4_mmu_invalidate_tlb(struct Sh4 *sh4);
 
+void sh4_mmu_do_ldtlb(struct Sh4 *sh4);
+
 #endif
