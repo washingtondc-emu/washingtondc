@@ -76,6 +76,11 @@ static inline void sh4_refresh_intc(Sh4 *sh4) {
 }
 
 static inline cpu_inst_param sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
+
+#ifdef ENABLE_MMU
+    addr = sh4_itlb_translate_address(sh4, addr);
+#endif
+
     /*
      * XXX for the interpreter, this function is actually a pretty big
      * bottleneck.  The problem is that 99.999% of the time when we want to

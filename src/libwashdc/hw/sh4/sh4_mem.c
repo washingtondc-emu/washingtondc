@@ -473,6 +473,19 @@ static void sh4_utlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t v
          *
          * I feel like there's an MMU hardware test coming...
          */
+
+        /*
+         * this actually is implemented, just not tested.  Specifically, I'm
+         * worried about the UTLB->ITLB propagation needs to be tested to make
+         * sure it's correct.
+         *
+         * But it is implemented and it is theory complete and correct, I just
+         * want to make sure that it isn't causiing problems because I don't
+         * have a test case yet.
+         */
+        error_set_feature("Associative UTLB searches");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
         struct sh4_itlb_ent *itlb_ent = sh4_itlb_find_ent_associative(sh4, vpn);
         if (itlb_ent)
             itlb_ent->valid = valid;
@@ -735,6 +748,25 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
 
     *addrp = addr;
     return 0;
+}
+
+uint32_t sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t addr) {
+    unsigned area = (addr >> 29) & 7;
+    if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7)) {
+        struct sh4_itlb_ent *ent = sh4_itlb_find_ent_associative(sh4, addr);
+        if (!ent) {
+            error_set_address(addr);
+            error_set_feature("page fault exceptions");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        uint32_t ret = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
+
+        /* printf("Translate %08X to %08X\n", (unsigned)addr, (unsigned)ret); */
+        return ret;
+    } else {
+        /* printf("PC %08X\n", (unsigned)addr); */
+        return addr;
+    }
 }
 
 #endif
