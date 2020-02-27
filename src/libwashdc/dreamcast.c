@@ -233,6 +233,8 @@ static void dc_inject_irq(char const *id) {
         holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE);
     else if (strcmp(id, "POLYGON EOL PUNCH-THROUGH") == 0)
         holly_raise_nrm_int(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
+    else if (strcmp(id, "POWERVR2 RENDER COMPLETE") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
     else if (strcmp(id, "POWERVR2 YUV CONVERSION COMPLETE") == 0)
         holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_YUV_COMPLETE);
     else if (strcmp(id, "POWERVR2 DMA") == 0)

@@ -200,6 +200,8 @@ void overlay::draw() {
                     irqstr = "POLYGON EOL TRANSPARENT MOD";
                 else if (ImGui::MenuItem("POLYGON EOL PUNCH-THROUGH"))
                     irqstr = "POLYGON EOL PUNCH-THROUGH";
+                else if (ImGui::MenuItem("POWERVR2 RENDER COMPLETE"))
+                    irqstr = "POWERVR2 RENDER COMPLETE";
                 else if (ImGui::MenuItem("POWERVR2 YUV CONVERSION COMPLETE"))
                     irqstr = "POWERVR2 YUV CONVERSION COMPLETE";
                 else if (ImGui::MenuItem("POWERVR2 DMA"))
