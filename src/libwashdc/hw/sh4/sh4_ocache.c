@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <intmath.h>
 
 #include "sh4.h"
 #include "sh4_excp.h"
@@ -240,19 +241,32 @@ SH4_SQ_READ_TMPL(uint16_t, 16)
 SH4_SQ_READ_TMPL(uint8_t, 8)
 
 int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
-#ifdef ENABLE_MMU
-    if (sh4_mmu_at(sh4)) {
-        error_set_address(addr);
-        error_set_feature("SH4 store queues with MMU enabled");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
+    addr32_t addr_actual;
     unsigned sq_sel = (addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT;
     unsigned sq_idx = sq_sel << 3;
-    reg32_t qacr = sh4->reg[SH4_REG_QACR0 + sq_sel];
-    addr32_t addr_actual = (addr & SH4_SQ_ADDR_MASK) |
-        (((qacr & SH4_QACR_MASK) >> SH4_QACR_SHIFT) << 26);
+
+#ifdef ENABLE_MMU
+    if (sh4_mmu_at(sh4)) {
+        addr32_t vpn = addr;
+        if (sh4_utlb_translate_address(sh4, &vpn) != 0) {
+            error_set_feature("SH4 OCACHE PAGE FAULT");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        addr_actual = (vpn & BIT_RANGE(10, 28)) | (addr & BIT_RANGE(5, 9));
+
+        printf("SQ PREF at PC=%08X\n", (unsigned)sh4->reg[SH4_REG_PC]);
+        LOG_ERROR("SQ MMU PREF translated %08X to %08X at PC=%08X\n",
+                  (unsigned)addr, (unsigned)addr_actual,
+                  (unsigned)sh4->reg[SH4_REG_PC]);
+    } else {
+#endif
+        reg32_t qacr = sh4->reg[SH4_REG_QACR0 + sq_sel];
+        addr_actual = (addr & SH4_SQ_ADDR_MASK) |
+            (((qacr & SH4_QACR_MASK) >> SH4_QACR_SHIFT) << 26);
+#ifdef ENABLE_MMU
+    }
+#endif
 
     struct memory_map_region *region =
         memory_map_get_region(sh4->mem.map, addr_actual, 8 * sizeof(uint32_t));
@@ -283,8 +297,8 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
 
         return MEM_ACCESS_SUCCESS;
     } else {
-        uint32_t first_addr = addr;
-        uint32_t last_addr = addr + (8 * sizeof(uint32_t) - 1);
+        uint32_t first_addr = addr_actual;
+        uint32_t last_addr = addr_actual + (8 * sizeof(uint32_t) - 1);
         LOG_ERROR("MEMORY MAP FAILURE TO FIND REGION CORRESPONDING TO BYTE "
                   "RANGE 0x%08x TO 0x%08x\n", (int)first_addr, (int)last_addr);
         error_set_address(addr_actual);

@@ -125,7 +125,7 @@ void sh4_mem_cleanup(Sh4 *sh4) {
     static void                                                         \
     sh4_do_write_p4_##postfix(addr32_t addr, type val, void *ctxt) {    \
         struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
-        if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
+        if (sh4_addr_in_sq_area(addr)) {                                \
             sh4_sq_write_##postfix(sh4, addr, val);                     \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
             sh4_write_mem_mapped_reg_##postfix(sh4, addr, val);         \
@@ -178,7 +178,7 @@ SH4_DO_WRITE_P4_TMPL(double, double)
     static int                                                          \
     sh4_try_write_p4_##postfix(addr32_t addr, type val, void *ctxt) {   \
         struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
-        if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
+        if (sh4_addr_in_sq_area(addr)) {                                \
             sh4_sq_write_##postfix(sh4, addr, val);                     \
             return 0;                                                   \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
@@ -235,7 +235,7 @@ SH4_TRY_WRITE_P4_TMPL(double, double)
     static type sh4_do_read_p4_##postfix(addr32_t addr, void *ctxt) {   \
         struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
                                                                         \
-        if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
+        if (sh4_addr_in_sq_area(addr)) {                                \
             return sh4_sq_read_##postfix(sh4, addr);                    \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
             return sh4_read_mem_mapped_reg_##postfix(sh4, addr);        \
@@ -294,7 +294,7 @@ SH4_DO_READ_P4_TMPL(double, double)
                                          void *ctxt) {                  \
         struct Sh4 *sh4 = (struct Sh4*)ctxt;                            \
                                                                         \
-        if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL) {             \
+        if (sh4_addr_in_sq_area(addr)) {                                \
             *valp = sh4_sq_read_##postfix(sh4, addr);                   \
             return 0;                                                   \
         } else if (addr >= SH4_P4_REGSTART && addr < SH4_P4_REGEND) {   \
@@ -737,13 +737,14 @@ static void sh4_utlb_increment_urc(struct Sh4 *sh4) {
 int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
     uint32_t addr = *addrp;
     unsigned area = (addr >> 29) & 7;
-    if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7)) {
+    if (sh4_mmu_at(sh4) && (sh4_addr_in_sq_area(addr) ||
+                            (area != 4 && area != 5 && area != 7))) {
         struct sh4_utlb_ent *ent = sh4_utlb_find_ent_associative(sh4, addr);
         sh4_utlb_increment_urc(sh4);
         if (!ent)
             return -1;
         addr = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
-        /* printf("Translate %08X to %08X\n", (unsigned)addr, (unsigned)ret); */
+        printf("%s Translate %08X to %08X\n", __func__, (unsigned)*addrp, (unsigned)addr);
     }
 
     *addrp = addr;

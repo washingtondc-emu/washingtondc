@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -64,6 +64,10 @@ void sh4_ocache_clear(struct sh4_ocache *ocache);
  */
 #define SH4_SQ_AREA_MASK 0xfc000000
 #define SH4_SQ_AREA_VAL  0xe0000000
+
+static inline bool sh4_addr_in_sq_area(uint32_t addr) {
+    return (addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL;
+}
 
 // it is not a mistake that this overlaps with SH4_SQ_SELECT_MASK by 1 bit
 #define SH4_SQ_ADDR_MASK 0x03ffffe0

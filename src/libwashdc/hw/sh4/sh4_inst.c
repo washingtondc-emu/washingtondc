@@ -121,7 +121,8 @@ static inline double sh4_readdouble(struct Sh4 *sh4, addr32_t addr) {
 
 static inline void sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 #ifdef ENABLE_MMU
-    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+    if (!sh4_addr_in_sq_area(addr) &&
+        sh4_utlb_translate_address(sh4, &addr) != 0) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -132,14 +133,16 @@ static inline void sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 
 static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
 #ifdef ENABLE_MMU
-    int res = sh4_utlb_translate_address(sh4, &addr);
-    if (res != 0) {
-        LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
-        sh4->reg[SH4_REG_TEA] = addr;
-        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
-        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
-        sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
-        return res;
+    if (!sh4_addr_in_sq_area(addr)) {
+        int res = sh4_utlb_translate_address(sh4, &addr);
+        if (res != 0) {
+            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
+            sh4->reg[SH4_REG_TEA] = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+            sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+            return res;
+        }
     }
 #endif
     memory_map_write_16(sh4->mem.map, addr, val);
@@ -148,7 +151,8 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
 
 static inline void sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 #ifdef ENABLE_MMU
-    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+    if (!sh4_addr_in_sq_area(addr) &&
+        sh4_utlb_translate_address(sh4, &addr) != 0) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -159,7 +163,8 @@ static inline void sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 
 static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
 #ifdef ENABLE_MMU
-    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+    if (!sh4_addr_in_sq_area(addr) &&
+        sh4_utlb_translate_address(sh4, &addr) != 0) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -170,7 +175,8 @@ static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
 
 static inline void sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
 #ifdef ENABLE_MMU
-    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
+    if (!sh4_addr_in_sq_area(addr) &&
+        sh4_utlb_translate_address(sh4, &addr) != 0) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -2222,7 +2228,7 @@ void sh4_inst_unary_pref_indgen(void *cpu, cpu_inst_param inst) {
     unsigned reg_no = (inst >> 8) & 0xf;
     addr32_t addr = *sh4_gen_reg(sh4, reg_no);
 
-    if ((addr & SH4_SQ_AREA_MASK) == SH4_SQ_AREA_VAL)
+    if (sh4_addr_in_sq_area(addr))
         sh4_sq_pref(sh4, addr);
 }
 
