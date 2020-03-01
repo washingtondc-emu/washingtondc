@@ -190,6 +190,22 @@ struct gdrom_ctxt {
     unsigned n_bytes_received;
 
     struct fifo_head bufq;
+
+    /*
+     * this is the delay applied to DMA transfers.  Generally the way this is
+     * implemented is that the first transfer after a read command has a large
+     * delay to simulate disc access, and then after that all transfers are
+     * instant (although there should probably be a very small delay there too).
+     *
+     * I've seen some IP.BIN bootstraps which transfer data from the GD-ROM in
+     * a series of 32-byte DMA transfers, and they expect all of those
+     * transfers to complete instantly except for the first one.  They will
+     * immediately follow up the transfer with an abort so it has to be instant.
+     *
+     * Windows CE games tend to do this, as do homebrew games made with
+     * BootDreams.
+     */
+    dc_cycle_stamp_t additional_dma_delay;
 };
 
 /*

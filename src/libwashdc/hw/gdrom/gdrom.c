@@ -640,7 +640,8 @@ done:
      * to be proportional to some other interrupt delay which it is not
      * currently proportional to.
      */
-    gdrom->dma_delay = GDROM_INT_DELAY;
+    gdrom->dma_delay = gdrom->additional_dma_delay;
+    gdrom->additional_dma_delay = 0;
 
     gdrom_state_transition(gdrom, GDROM_STATE_DMA_READING);
     gdrom->stat_reg.check = false;
@@ -727,6 +728,7 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
     if (gdrom->feat_reg.dma_enable) {
         // wait for them to write 1 to GDST before doing something
         GDROM_TRACE("DMA READ ACCESS\n");
+        gdrom->additional_dma_delay = GDROM_INT_DELAY;
     } else {
         /*
          * TODO: limit based on read bandwidth.  Currently this is implemented
