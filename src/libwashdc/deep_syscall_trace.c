@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "log.h"
 #include "hw/sh4/sh4.h"
 #include "dreamcast.h"
 
@@ -54,6 +55,7 @@ static bool in_syscall;
     do {                                                                \
         printf("SYSCALL: ");                                            \
         printf(msg, ##__VA_ARGS__);                                     \
+        LOG_DBG("SYSCALL: "msg, ##__VA_ARGS__);                         \
     } while (0)
 
 static char const* cmd_name(reg32_t r4) {
@@ -121,6 +123,7 @@ void deep_syscall_notify_jump(addr32_t pc) {
         }
 
         reg32_t r4 = *sh4_gen_reg(sh4, 4);
+        reg32_t r5 = *sh4_gen_reg(sh4, 5);
         reg32_t r6 = *sh4_gen_reg(sh4, 6);
         reg32_t r7 = *sh4_gen_reg(sh4, 7);
         ret_addr = sh4->reg[SH4_REG_PR];
@@ -132,8 +135,8 @@ void deep_syscall_notify_jump(addr32_t pc) {
             } else if (r7 == 1) {
                 SYSCALL_TRACE("MISC_SETVECTOR\n");
             } else {
-                SYSCALL_TRACE("unknown system call (r6=0x%02x, r7=0x%02x)\n",
-                              (unsigned)r6, (unsigned)r7);
+                SYSCALL_TRACE("unknown system call (r4=%08X, r5=%08X, r6=%02X, r7=%02X)\n",
+                              (unsigned)r4, (unsigned)r5, (unsigned)r6, (unsigned)r7);
             }
         } else if (r6 == 0) {
             switch (r7) {
@@ -163,12 +166,12 @@ void deep_syscall_notify_jump(addr32_t pc) {
                 SYSCALL_TRACE("GDROM_SECTOR_MODE\n");
                 break;
             default:
-                SYSCALL_TRACE("unknown system call (r6=0x%02x, r7=0x%02x)\n",
-                              (unsigned)r6, (unsigned)r7);
+                SYSCALL_TRACE("unknown system call (r4=%08X, r5=%08X, r6=%02X, r7=%02X)\n",
+                              (unsigned)r4, (unsigned)r5, (unsigned)r6, (unsigned)r7);
             }
         } else {
-            SYSCALL_TRACE("unknown system call (r6=0x%02x, r7=0x%02x)\n",
-                          (unsigned)r6, (unsigned)r7);
+            SYSCALL_TRACE("unknown system call (r4=%08X, r5=%08X, r6=%02X, r7=%02X)\n",
+                          (unsigned)r4, (unsigned)r5, (unsigned)r6, (unsigned)r7);
         }
     } else if (in_syscall && pc == ret_addr) {
         SYSCALL_TRACE("Returining 0x%08x to 0x%08x\n",
