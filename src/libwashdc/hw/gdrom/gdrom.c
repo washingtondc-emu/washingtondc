@@ -383,6 +383,9 @@ gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
 static uint32_t
 gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
                        unsigned idx, void *ctxt);
+static uint32_t
+gdrom_gdstard_reg_read_handler(struct mmio_region_g1_reg_32 *region,
+                               unsigned idx, void *ctxt);
 
 static float gdrom_reg_read_float(addr32_t addr, void *ctxt);
 static void gdrom_reg_write_float(addr32_t addr, float val, void *ctxt);
@@ -485,6 +488,10 @@ static void gdrom_reg_init(struct gdrom_ctxt *gdrom) {
     g1_mmio_cell_init_32("SB_GDST", 0x5f7418,
                          gdrom_gdst_reg_read_handler,
                          gdrom_gdst_reg_write_handler, gdrom);
+    g1_mmio_cell_init_32("SB_GDSTARD", 0x005f74f4,
+                         gdrom_gdstard_reg_read_handler,
+                         mmio_region_g1_reg_32_readonly_write_error,
+                         gdrom);
     g1_mmio_cell_init_32("SB_GDLEND", 0x005f74f8,
                          gdrom_gdlend_mmio_read,
                          mmio_region_g1_reg_32_readonly_write_error,
@@ -1989,10 +1996,7 @@ gdrom_gdst_reg_write_handler(struct mmio_region_g1_reg_32 *region,
     gdrom_start_dma(gdrom_ctxt);
 }
 
-static uint32_t
-gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
-                       unsigned idx, void *ctxt) {
-    struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
+static void gdrom_dma_progress_update(struct gdrom_ctxt *gdrom) {
     if (gdrom->state == GDROM_STATE_DMA_READING) {
         dc_cycle_stamp_t stamp = clock_cycle_stamp(gdrom->clk);
         dc_cycle_stamp_t delta = stamp - gdrom->dma_start_stamp;
@@ -2004,7 +2008,25 @@ gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
             gdrom->gdlend_reg = gdrom->gdlend_final;
         }
     }
+}
+
+static uint32_t
+gdrom_gdlend_mmio_read(struct mmio_region_g1_reg_32 *region,
+                       unsigned idx, void *ctxt) {
+    struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
+    gdrom_dma_progress_update(gdrom);
 
     GDROM_TRACE("read %08x from GDLEND\n", gdrom->gdlend_reg);
     return gdrom->gdlend_reg;
+}
+
+static uint32_t
+gdrom_gdstard_reg_read_handler(struct mmio_region_g1_reg_32 *region,
+                               unsigned idx, void *ctxt) {
+    struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
+    gdrom_dma_progress_update(gdrom);
+
+    uint32_t val = gdrom->gdlend_reg + gdrom->dma_start_addr_reg;
+    GDROM_TRACE("read %08x from GDSTARD\n", val);
+    return val;
 }
