@@ -1024,7 +1024,9 @@ static bool run_to_next_sh4_event_debugger(void *ctxt) {
         dc_cycle_stamp_t cycles_adv = 0;
 
     fetch_decode_exec:
-        inst = sh4_read_inst(sh4);
+        if (sh4_read_inst(sh4, &inst) != 0)
+            goto fetch_decode_exec;
+
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
@@ -1066,7 +1068,9 @@ static bool run_to_next_sh4_event(void *ctxt) {
         dc_cycle_stamp_t cycles_adv = 0;
 
     fetch_decode_exec:
-        inst = sh4_read_inst(sh4);
+        if (sh4_read_inst(sh4, &inst) != 0)
+            goto fetch_decode_exec;
+
         op = sh4_decode_inst(inst);
         inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
 

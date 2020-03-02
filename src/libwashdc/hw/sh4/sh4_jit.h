@@ -100,7 +100,8 @@ sh4_jit_il_code_block_compile(struct Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
     sh4_jit_new_block();
 
     do {
-        cpu_inst_param inst = sh4_do_read_inst(sh4, addr);
+        cpu_inst_param inst =
+            memory_map_read_16(sh4->mem.map, addr & BIT_RANGE(0, 28));
 
 #ifdef JIT_PROFILE
         uint16_t inst16 = inst;

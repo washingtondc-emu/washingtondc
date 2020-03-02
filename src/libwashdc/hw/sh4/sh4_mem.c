@@ -431,6 +431,8 @@ sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
     unsigned idx;
     for (idx = 0; idx < SH4_ITLB_LEN; idx++) {
         struct sh4_itlb_ent *curs = sh4->mem.itlb + idx;
+        if (!curs->valid)
+            continue;
         uint32_t mask = vpn_mask_for_size(curs->sz);
         if ((curs->vpn & mask) == (vpn & mask) && curs->asid == asid) {
             if (ent) {
@@ -441,6 +443,7 @@ sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
             return ent;
         }
     }
+    LOG_ERROR("FAILED TO LOCATE ITLB ENTRY FOR VPN %08X\n", (unsigned)vpn);
     return NULL;
 }
 
@@ -751,23 +754,104 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
     return 0;
 }
 
-uint32_t sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t addr) {
+static unsigned sh4_mmu_get_lrui(struct Sh4 *sh4) {
+    uint32_t mmucr = sh4->reg[SH4_REG_MMUCR];
+    return (mmucr & SH4_MMUCR_LRUI_MASK) >> SH4_MMUCR_LRUI_SHIFT;
+}
+
+static void sh4_mmu_set_lrui(struct Sh4 *sh4, unsigned lrui) {
+    sh4->reg[SH4_REG_MMUCR] &= ~SH4_MMUCR_LRUI_MASK;
+    sh4->reg[SH4_REG_MMUCR] |= ((lrui << SH4_MMUCR_LRUI_SHIFT) & SH4_MMUCR_LRUI_MASK);
+}
+
+int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
+    uint32_t addr = *addr_p;
+    bool already_searched_utlb = false;
+
     unsigned area = (addr >> 29) & 7;
+ mulligan:
     if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7)) {
-        struct sh4_itlb_ent *ent = sh4_itlb_find_ent_associative(sh4, addr);
-        if (!ent) {
-            error_set_address(addr);
-            error_set_feature("page fault exceptions");
+        struct sh4_itlb_ent *itlb_ent = sh4_itlb_find_ent_associative(sh4, addr);
+        /* LOG_ERROR("ITLB ATTEMPTING TO TRANSLATE INSTRUCTION ADDRESS %08X\n", (unsigned)addr); */
+        if (!itlb_ent) {
+            // ITLB miss ("page fault") exception
+
+            LOG_ERROR("SEARCHING UTLB TO REPLACE ITLB\n");
+
+            if (already_searched_utlb)
+                RAISE_ERROR(ERROR_INTEGRITY);
+
+            unsigned lrui = sh4_mmu_get_lrui(sh4);
+
+            unsigned idx;
+            if ((lrui & BIT_RANGE(3, 5)) == BIT_RANGE(3, 5)) {
+                idx = 0;
+            } else if ((lrui & ((1 << 5) | BIT_RANGE(1, 2))) == 6) {
+                idx = 1;
+            } else if ((lrui & ((1 << 4) | (1 << 2) | 1)) == 1) {
+                idx = 2;
+            } else if ((lrui & (3 | (1 << 3))) == 0) {
+                idx = 3;
+            } else {
+                error_set_feature("Unknown LRUI setting");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            }
+
+            itlb_ent = sh4->mem.itlb + idx;
+
+            struct sh4_utlb_ent *utlb_ent = sh4_utlb_find_ent_associative(sh4, addr);
+            if (!utlb_ent) {
+                LOG_ERROR("ITLB PAGE FAULT SEARCHING FOR %08X\n", (unsigned)addr);
+                return -1; // ITLB miss exception gets raised
+            }
+
+            LOG_ERROR("Copying over UTLB entry %u into ITLB entry %u\n",
+                   (unsigned)(utlb_ent - sh4->mem.utlb), (unsigned)(itlb_ent - sh4->mem.itlb));
+
+            itlb_ent->asid = utlb_ent->asid;
+            itlb_ent->vpn = utlb_ent->vpn;
+            itlb_ent->ppn = utlb_ent->ppn;
+            itlb_ent->protection = utlb_ent->protection & 1;
+            itlb_ent->sa = utlb_ent->sa;
+            itlb_ent->sz = utlb_ent->sz;
+            itlb_ent->valid = utlb_ent->valid;
+            itlb_ent->shared = utlb_ent->shared;
+            itlb_ent->cacheable = utlb_ent->cacheable;
+            itlb_ent->tc = utlb_ent->tc;
+
+            already_searched_utlb = true;
+            goto mulligan;
+        }
+        addr = (addr & page_offset_mask_for_size(itlb_ent->sz)) | (itlb_ent->ppn & ppn_mask_for_size(itlb_ent->sz));
+
+        unsigned idx = itlb_ent - sh4->mem.itlb;
+        unsigned lrui = sh4_mmu_get_lrui(sh4);
+        switch (idx) {
+        case 0:
+            lrui &= BIT_RANGE(3, 5);
+            break;
+        case 1:
+            lrui &= ~((1 << 5) | BIT_RANGE(1, 2));
+            lrui |= 1 << 5;
+            break;
+        case 2:
+            lrui &= ~(1 | (1 << 2) | (1 << 4));
+            lrui |= (1 << 2) | (1 << 4);
+            break;
+        case 3:
+            lrui |= BIT_RANGE(0, 1) | (1 << 3);
+            break;
+        default:
+            error_set_feature("Unknown LRUI setting");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
-        uint32_t ret = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
+        sh4_mmu_set_lrui(sh4, lrui);
 
-        /* printf("Translate %08X to %08X\n", (unsigned)addr, (unsigned)ret); */
-        return ret;
-    } else {
-        /* printf("PC %08X\n", (unsigned)addr); */
-        return addr;
+        /* printf("itlb translate %08X to %08X\n", (unsigned)*addr_p, (unsigned)addr); */
+        *addr_p = addr;
     }
+
+    return 0;
 }
 
 #endif

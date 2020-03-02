@@ -269,7 +269,7 @@ void sh4_jit_new_block(void) {
 static void
 sh4_jit_delay_slot(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                    struct il_code_block *block, unsigned pc) {
-    cpu_inst_param inst = sh4_do_read_inst(sh4, pc);
+    cpu_inst_param inst = memory_map_read_16(sh4->mem.map, pc & BIT_RANGE(0, 28));
     struct InstOpcode const *inst_op = sh4_decode_inst(inst);
     if (inst_op->pc_relative) {
         error_set_feature("illegal slot exceptions in the jit");

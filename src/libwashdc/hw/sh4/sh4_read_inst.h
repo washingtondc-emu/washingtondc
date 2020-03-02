@@ -34,6 +34,7 @@
 #include "dreamcast.h"
 #include "mem_areas.h"
 #include "washdc/MemoryMap.h"
+#include "intmath.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
@@ -75,10 +76,19 @@ static inline void sh4_refresh_intc(Sh4 *sh4) {
     sh4_check_interrupts_no_delay_branch_check(sh4);
 }
 
-static inline cpu_inst_param sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
-
+static inline int
+sh4_do_read_inst(Sh4 *sh4, addr32_t addr, cpu_inst_param *inst_p) {
 #ifdef ENABLE_MMU
-    addr = sh4_itlb_translate_address(sh4, addr);
+    if (sh4_itlb_translate_address(sh4, &addr) != 0) {
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_INST_TLB_MISS);
+
+        printf("ITLB\n");
+        return -1;
+    }
+
 #endif
 
     /*
@@ -102,11 +112,13 @@ static inline cpu_inst_param sh4_do_read_inst(Sh4 *sh4, addr32_t addr) {
      * it's good that things are faster lol.
      */
     addr &= 0x1fffffff;
-    return memory_map_read_16(sh4->mem.map, addr);
+
+    *inst_p = memory_map_read_16(sh4->mem.map, addr);
+    return 0;
 }
 
-static inline cpu_inst_param sh4_read_inst(Sh4 *sh4) {
-    return sh4_do_read_inst(sh4, sh4->reg[SH4_REG_PC]);
+static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p) {
+    return sh4_do_read_inst(sh4, sh4->reg[SH4_REG_PC], inst_p);
 #if 0
     /*
      * this is commented out because you can't leave privileged mode without
