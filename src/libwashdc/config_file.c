@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -81,6 +81,11 @@ static void cfg_create_default_config(void) {
         ";;\n"
         ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
         ";;;;;;;;;;\n"
+        "\n"
+        "; set to true to save system memory to <cwd>/wawashdc_error_dump.bin\n"
+        "; when the emulator raises an error (only useful for debugging \n"
+        "; purposes)\n"
+        "wash.dbg.dump_mem_on_error false\n"
         "\n"
         "; background color (use html hex syntax)\n"
         "ui.bgcolor #3d77c0\n"

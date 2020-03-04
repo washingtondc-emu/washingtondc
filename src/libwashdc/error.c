@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "washdc/fifo.h"
 #include "dreamcast.h"
 #include "log.h"
+#include "washdc/config_file.h"
 
 #include "washdc/error.h"
 
@@ -56,6 +57,11 @@ void error_raise(enum error_type tp) {
     dc_print_perf_stats();
 
     error_print();
+
+    bool dump_mem;
+    if (cfg_get_bool("wash.dbg.dump_mem_on_error", &dump_mem) == 0 && dump_mem)
+        washdc_dump_main_memory("washdc_error_dump.bin");
+
     fflush(stdout);
     fflush(stderr);
     log_flush();
