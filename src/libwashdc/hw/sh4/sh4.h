@@ -381,6 +381,11 @@ static inline bool sh4_fpscr_sz(struct Sh4 const *sh4) {
 static inline bool sh4_mmu_at(struct Sh4 const *sh4) {
     return (bool)(sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_AT_MASK);
 }
+
+static inline bool sh4_fpu_enabled(struct Sh4 const *sh4) {
+    return !(bool)(sh4->reg[SH4_REG_SR] & SH4_SR_FD_MASK);
+}
+
 #endif
 
 #endif
