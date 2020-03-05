@@ -59,15 +59,21 @@ static DEF_ERROR_U32_ATTR(fpscr_expect)
 static DEF_ERROR_U32_ATTR(fpscr_mask)
 static DEF_ERROR_INT_ATTR(inst_bin)
 
-static inline uint8_t sh4_read8(struct Sh4 *sh4, addr32_t addr) {
+static inline int sh4_read8(struct Sh4 *sh4, addr32_t addr, uint8_t *valp) {
 #ifdef ENABLE_MMU
-    if (sh4_utlb_translate_address(sh4, &addr) != 0) {
-        error_set_address(addr);
-        error_set_feature("page fault exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    int res = sh4_utlb_translate_address(sh4, &addr);
+    if (res != 0) {
+        LOG_ERROR("8-BIT DATA TLB READ MISS EXCEPTION VPN %08X\n",
+                  (unsigned)addr);
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
+        return res;
     }
 #endif
-    return memory_map_read_8(sh4->mem.map, addr);
+    *valp = memory_map_read_8(sh4->mem.map, addr);
+    return 0;
 }
 
 static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
@@ -1905,7 +1911,9 @@ void sh4_inst_binary_andb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = sh4_read8(sh4, addr);
+    uint8_t val;
+    if (sh4_read8(sh4, addr, &val) != 0)
+        return;
 
     val &= inst_imm8(inst);
 
@@ -1938,7 +1946,9 @@ void sh4_inst_binary_orb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = sh4_read8(sh4, addr);
+    uint8_t val;
+    if (sh4_read8(sh4, addr, &val) != 0)
+        return;
 
     val |= inst_imm8(inst);
 
@@ -1987,7 +1997,9 @@ void sh4_inst_binary_tstb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = sh4_read8(sh4, addr);
+    uint8_t val;
+    if (sh4_read8(sh4, addr, &val) != 0)
+        return;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     reg32_t flag = !(inst_imm8(inst) & val) <<
@@ -2021,7 +2033,9 @@ void sh4_inst_binary_xorb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     addr32_t addr = *sh4_gen_reg(sh4, 0) + sh4->reg[SH4_REG_GBR];
-    uint8_t val = sh4_read8(sh4, addr);
+    uint8_t val;
+    if (sh4_read8(sh4, addr, &val) != 0)
+        return;
 
     val ^= inst_imm8(inst);
 
@@ -2175,7 +2189,9 @@ void sh4_inst_unary_tasb_gen(void *cpu, cpu_inst_param inst) {
     uint8_t val_new, val_old;
     reg32_t mask;
 
-    val_old = sh4_read8(sh4, addr);
+    if (sh4_read8(sh4, addr, &val_old) != 0)
+        return;
+
     val_new = val_old | 0x80;
     sh4_write8(sh4, addr, val_new);
 
@@ -4123,7 +4139,8 @@ void sh4_inst_binary_movb_indgen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t mem_val;
 
-    mem_val = sh4_read8(sh4, addr);
+    if (sh4_read8(sh4, addr, &mem_val) != 0)
+        return;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)mem_val;
 }
@@ -4259,7 +4276,8 @@ void sh4_inst_binary_movb_indgeninc_gen(void *cpu, cpu_inst_param inst) {
     int8_t val;
 
     reg32_t src_addr = *src_reg;
-    val = sh4_read8(sh4, src_addr);
+    if (sh4_read8(sh4, src_addr, &val) != 0)
+        return;
 
     *dst_reg = (int32_t)val;
 
@@ -4512,7 +4530,8 @@ void sh4_inst_binary_movb_binind_disp_gen_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst & 0xf) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val;
 
-    val = sh4_read8(sh4, addr);
+    if (sh4_read8(sh4, addr, &val) != 0)
+        return;
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
@@ -4624,7 +4643,8 @@ void sh4_inst_binary_movb_binind_r0_gen_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val;
 
-    val = sh4_read8(sh4, addr);
+    if (sh4_read8(sh4, addr, &val) != 0)
+        return;
 
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = (int32_t)val;
 }
@@ -4736,7 +4756,8 @@ void sh4_inst_binary_movb_binind_disp_gbr_r0(void *cpu, cpu_inst_param inst) {
     addr32_t addr = inst_imm8(inst) + sh4->reg[SH4_REG_GBR];
     int8_t val;
 
-    val = sh4_read8(sh4, addr);
+    if (sh4_read8(sh4, addr, &val) != 0)
+        return;
 
     *sh4_gen_reg(sh4, 0) = (int32_t)val;
 }
