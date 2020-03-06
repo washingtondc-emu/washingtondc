@@ -159,15 +159,18 @@ void sh4_set_individual_reg(Sh4 *sh4, unsigned reg_no, reg32_t reg_val) {
 // this function should be called every time sr is written to
 void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr) {
     reg32_t new_sr = sh4->reg[SH4_REG_SR];
-    sh4_bank_switch_maybe(sh4, old_sr, new_sr);
 
-    if ((old_sr & SH4_INTC_SR_BITS) != (new_sr & SH4_INTC_SR_BITS))
-        sh4_refresh_intc_deferred(sh4);
-
+#ifndef ENABLE_MMU
     if (!(new_sr & SH4_SR_MD_MASK)) {
         error_set_feature("unprivileged mode");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+#endif
+
+    sh4_bank_switch_maybe(sh4, old_sr, new_sr);
+
+    if ((old_sr & SH4_INTC_SR_BITS) != (new_sr & SH4_INTC_SR_BITS))
+        sh4_refresh_intc_deferred(sh4);
 }
 
 void sh4_set_fpscr(void *cpu, reg32_t new_val) {
