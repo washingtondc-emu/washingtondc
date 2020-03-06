@@ -35,6 +35,7 @@
 #include "mem_areas.h"
 #include "washdc/MemoryMap.h"
 #include "intmath.h"
+#include "log.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
@@ -118,6 +119,30 @@ sh4_do_read_inst(Sh4 *sh4, addr32_t addr, cpu_inst_param *inst_p) {
 }
 
 static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p) {
+#ifdef ENABLE_MMU
+    if (sh4->reg[SH4_REG_PC] & 1) {
+        // instruction address error for non-aligned PC fetch.
+        sh4->reg[SH4_REG_TEA] = sh4->reg[SH4_REG_PC];
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (sh4->reg[SH4_REG_PC] & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
+
+        LOG_ERROR("INSTRUCTION FETCH ADDRESS ERROR AT PC=%08X\n",
+                  (sh4->reg[SH4_REG_PC] & BIT_RANGE(0, 28)));
+        return -1;
+    } else if ((sh4->reg[SH4_REG_PC] & BIT_RANGE(29, 31)) == BIT_RANGE(29, 31)) {
+        /*
+         * I'm pretty sure this should be an instruction fetch address exception
+         * like above, but AFAIK the SH4 spec doesn't explicitly say that except
+         * for the case where the CPU is not in priveleged mode.  So for now we
+         * treat it as an unimplemented behavior error even though I'm pretty
+         * sure I know exactly what to do.
+         */
+        error_set_address(sh4->reg[SH4_REG_PC]);
+        error_set_feature("P4 instruction execution address error exception");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+#endif
     return sh4_do_read_inst(sh4, sh4->reg[SH4_REG_PC], inst_p);
 #if 0
     /*
