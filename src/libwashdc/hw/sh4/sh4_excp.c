@@ -123,7 +123,10 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
         RAISE_ERROR(ERROR_UNKNOWN_EXCP_CODE);
     }
 
-    reg[SH4_REG_SPC] = reg[SH4_REG_PC];
+    if (sh4->delayed_branch)
+        reg[SH4_REG_SPC] = sh4->delayed_branch_pc_addr;
+    else
+        reg[SH4_REG_SPC] = reg[SH4_REG_PC];
     reg[SH4_REG_SSR] = reg[SH4_REG_SR];
     reg[SH4_REG_SGR] = reg[SH4_REG_R15];
 

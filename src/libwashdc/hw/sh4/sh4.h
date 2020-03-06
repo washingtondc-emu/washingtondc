@@ -92,6 +92,13 @@ struct Sh4 {
     addr32_t delayed_branch_addr;
 
     /*
+     * annoying special case: when there's an MMU exception in a delay slot,
+     * the SPC should point to the delayed branch instruction instead of the
+     * instruction that caused the exception.
+     */
+    uint32_t delayed_branch_pc_addr;
+
+    /*
      * if true, the PC will not be incremented between instructions
      * (interpreter-mode only).  The purpose of this is to make sure the PC
      * isn't incremented after a CPU exception has pointed the PC to an

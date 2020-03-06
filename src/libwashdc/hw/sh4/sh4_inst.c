@@ -69,6 +69,7 @@ static inline int sh4_read8(struct Sh4 *sh4, addr32_t addr, uint8_t *valp) {
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
+        if (sh4->delayed_branch) RAISE_ERROR(ERROR_UNIMPLEMENTED);
         return res;
     }
 #endif
@@ -85,6 +86,7 @@ static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
+        if (sh4->delayed_branch) RAISE_ERROR(ERROR_UNIMPLEMENTED);
         return res;
     }
 #endif
@@ -96,12 +98,13 @@ static inline int sh4_read32(struct Sh4 *sh4, addr32_t addr, uint32_t *valp) {
 #ifdef ENABLE_MMU
     int res = sh4_utlb_translate_address(sh4, &addr, false);
     if (res != 0) {
-        LOG_ERROR("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X\n",
-                  (unsigned)addr);
+        LOG_ERROR("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
+                  (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
+        if (sh4->delayed_branch) RAISE_ERROR(ERROR_UNIMPLEMENTED);
         return res;
     }
 #endif
@@ -141,6 +144,7 @@ static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+        if (sh4->delayed_branch) RAISE_ERROR(ERROR_UNIMPLEMENTED);
             return res;
         }
     }
@@ -159,6 +163,7 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+        if (sh4->delayed_branch) RAISE_ERROR(ERROR_UNIMPLEMENTED);
             return res;
         }
     }
@@ -172,11 +177,12 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     if (!sh4_addr_in_sq_area(addr)) {
         int res = sh4_utlb_translate_address(sh4, &addr, true);
         if (res != 0) {
-            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
+            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION PC=%08X\n", sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+            /* if (sh4->delayed_branch) RAISE_ERROR(ERROR_UNIMPLEMENTED); */
             return res;
         }
     }
@@ -1260,6 +1266,7 @@ void sh4_inst_rts(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PR];
 }
 
@@ -1342,6 +1349,7 @@ void sh4_inst_rte(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
 
     /*
      * TODO: this, along with all other delayed branch instructions, may have
@@ -1887,6 +1895,7 @@ void sh4_inst_unary_braf_gen(void *cpu, cpu_inst_param inst) {
     int reg_no = (inst >> 8) & 0xf;
 
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, reg_no) + 4;
 }
 
@@ -1904,6 +1913,7 @@ void sh4_inst_unary_bsrf_gen(void *cpu, cpu_inst_param inst) {
     int reg_no = (inst >> 8) & 0xf;
 
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, reg_no) + 4;
 }
@@ -2107,6 +2117,7 @@ void sh4_inst_unary_bfs_disp(void *cpu, cpu_inst_param inst) {
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) {
         sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm8(inst)) << 1) + 4;
         sh4->delayed_branch = true;
+        sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
     }
 }
 
@@ -2143,6 +2154,7 @@ void sh4_inst_unary_bts_disp(void *cpu, cpu_inst_param inst) {
     if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) {
         sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm8(inst)) << 1) + 4;
         sh4->delayed_branch = true;
+        sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
     }
 }
 
@@ -2158,6 +2170,7 @@ void sh4_inst_unary_bra_disp(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm12(inst)) << 1) + 4;
 }
 
@@ -2175,6 +2188,7 @@ void sh4_inst_unary_bsr_disp(void *cpu, cpu_inst_param inst) {
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm12(inst)) << 1) + 4;
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
 }
 
 #define INST_MASK_11000011iiiiiiii 0xff00
@@ -2300,6 +2314,7 @@ void sh4_inst_unary_jmp_indgen(void *cpu, cpu_inst_param inst) {
 
     sh4->delayed_branch_addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
 }
 
 #define INST_MASK_0100nnnn00001011 0xf0ff
@@ -2316,6 +2331,7 @@ void sh4_inst_unary_jsr_indgen(void *cpu, cpu_inst_param inst) {
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
     sh4->delayed_branch_addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     sh4->delayed_branch = true;
+    sh4->delayed_branch_pc_addr = sh4->reg[SH4_REG_PC];
 }
 
 #define INST_MASK_0100mmmm00001110 0xf0ff
