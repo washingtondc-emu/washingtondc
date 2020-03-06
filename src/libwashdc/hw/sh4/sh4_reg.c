@@ -152,7 +152,7 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "QACR1", 0xff00003c, 4, SH4_REG_QACR1, false,
       sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "PTEH", 0xff000000, 4, SH4_REG_PTEH, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "PTEL", 0xff000004, 4, SH4_REG_PTEL, false,
       sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "TTB", 0xff000008, 4, SH4_REG_TTB, false,

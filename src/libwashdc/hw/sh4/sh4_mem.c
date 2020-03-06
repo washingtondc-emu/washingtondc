@@ -454,7 +454,7 @@ sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
             return ent;
         }
     }
-    LOG_ERROR("FAILED TO LOCATE ITLB ENTRY FOR VPN %08X\n", (unsigned)vpn);
+    LOG_ERROR("FAILED TO LOCATE ITLB ENTRY FOR VPN %08X ASID %08X\n", (unsigned)vpn, asid);
     return NULL;
 }
 
@@ -889,7 +889,7 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
     uint32_t ptel = sh4->reg[SH4_REG_PTEL];
     uint32_t ptea = sh4->reg[SH4_REG_PTEA];
 
-    ent->asid = ptea & BIT_RANGE(0, 7);
+    ent->asid = pteh & BIT_RANGE(0, 7);
     ent->vpn = pteh & BIT_RANGE(10,31);
     ent->ppn = ptel & BIT_RANGE(10, 28);
     ent->sz = (enum sh4_tlb_page_sz)
