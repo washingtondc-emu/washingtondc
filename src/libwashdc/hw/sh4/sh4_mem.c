@@ -863,7 +863,7 @@ int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
             itlb_ent->asid = utlb_ent->asid;
             itlb_ent->vpn = utlb_ent->vpn;
             itlb_ent->ppn = utlb_ent->ppn;
-            itlb_ent->protection = utlb_ent->protection & 1;
+            itlb_ent->protection = (utlb_ent->protection >> 1) & 1;
             itlb_ent->sa = utlb_ent->sa;
             itlb_ent->sz = utlb_ent->sz;
             itlb_ent->valid = utlb_ent->valid;
