@@ -152,6 +152,8 @@ sh4_do_exec_inst(Sh4 *sh4, cpu_inst_param inst, InstOpcode const *op) {
         bool delayed_branch_tmp = sh4->delayed_branch;
         addr32_t delayed_branch_addr_tmp = sh4->delayed_branch_addr;
 
+        sh4->dont_increment_pc = false;
+
 #ifdef DEEP_SYSCALL_TRACE
         deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
 #endif
@@ -164,7 +166,7 @@ sh4_do_exec_inst(Sh4 *sh4, cpu_inst_param inst, InstOpcode const *op) {
          * expects the PC that it receives from the stub to always point to the
          * TRAPA instruciton and not the instruction after the TRAPA.
          */
-        if (sh4_inst_increments_pc(inst))
+        if (!sh4->dont_increment_pc)
             sh4->reg[SH4_REG_PC] += 2;
 
 #ifdef ENABLE_DEBUGGER

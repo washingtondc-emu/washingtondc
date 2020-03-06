@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -32,17 +32,6 @@
 
 struct Sh4;
 typedef struct Sh4 Sh4;
-
-/*
- * this function returns true if the given instruction should increment the PC.
- * This function is not performant, and should only be called when the debugger
- * is being used.  For now it only handles TRAPA, but it may need to handle
- * SLEEP as well.
- */
-static inline bool sh4_inst_increments_pc(cpu_inst_param inst) {
-    // TRAPA
-    return (inst & 0xff00) != 0xc300;
-}
 
 /*
  * the lut is a static (global) table that will be shared by all sh4

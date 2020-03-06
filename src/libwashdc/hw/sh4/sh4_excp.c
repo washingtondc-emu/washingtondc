@@ -160,6 +160,22 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4->reg[SH4_REG_EXPEVT] = (excp_code << SH4_EXPEVT_CODE_SHIFT) &
         SH4_EXPEVT_CODE_MASK;
 
+    /*
+     * Raise an error if there's a CPU exception in JIT mode.  The problem is
+     * that the saved PC will point to the wrong instruction because there's
+     * currently no way to end a basic block prematurely in WashingtonDC's JIT.
+     *
+     * This is only a problme for CPU-initiated exceptions.  Interrupts which
+     * are initiated by external devices don't have this problem because we can
+     * fudge the timing and say that the IRQ happened at the end of the basic
+     * block.  From a guest-program's point-of-view, the only
+     * potentially-visible artifact from this would be the CPU briefly becoming
+     * faster for a few instructions.
+     */
+    if (config_get_jit())
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+    sh4->dont_increment_pc = true;
     sh4_enter_exception(sh4, (Sh4ExceptionCode)excp_code);
 }
 

@@ -91,6 +91,15 @@ struct Sh4 {
     bool delayed_branch;
     addr32_t delayed_branch_addr;
 
+    /*
+     * if true, the PC will not be incremented between instructions
+     * (interpreter-mode only).  The purpose of this is to make sure the PC
+     * isn't incremented after a CPU exception has pointed the PC to an
+     * exception handler.  This value will be automatically reset to false
+     * between instructions.
+     */
+    bool dont_increment_pc;
+
     struct sh4_tmu tmu;
 
     /*
