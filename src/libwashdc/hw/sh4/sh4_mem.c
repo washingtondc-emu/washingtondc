@@ -922,6 +922,7 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
     LOG_WARN("LDTLB INTO UTLB INDEX %u:\n"
              "\tVPN %08X\n"
              "\tPPN %08X\n"
+             "\tASID %08X\n"
              "\tPAGE SIZE %s\n"
              "\tVALID %s\n"
              "\tPROTECTION %02X\n"
@@ -931,7 +932,7 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
              "\tWT %s\n"
              "\tSA %08X\n"
              "\tTC %s\n",
-             idx, ent->vpn, ent->ppn, page_sz, ent->valid ? "TRUE" : "FALSE",
+             idx, ent->vpn, ent->ppn, ent->asid, page_sz, ent->valid ? "TRUE" : "FALSE",
              ent->protection, ent->cacheable ? "TRUE" : "FALSE",
              ent->dirty ? "TRUE" : "FALSE",
              ent->shared ? "TRUE" : "FALSE",
