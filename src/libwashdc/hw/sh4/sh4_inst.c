@@ -161,16 +161,22 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
     return 0;
 }
 
-static inline void sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
+static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 #ifdef ENABLE_MMU
-    if (!sh4_addr_in_sq_area(addr) &&
-        sh4_utlb_translate_address(sh4, &addr) != 0) {
-        error_set_address(addr);
-        error_set_feature("page fault exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (!sh4_addr_in_sq_area(addr)) {
+        int res = sh4_utlb_translate_address(sh4, &addr);
+        if (res != 0) {
+            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
+            sh4->reg[SH4_REG_TEA] = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+            sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+            return res;
+        }
     }
 #endif
     memory_map_write_32(sh4->mem.map, addr, val);
+    return 0;
 }
 
 static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
@@ -2788,7 +2794,9 @@ void sh4_inst_binary_stcl_sr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SR]);
+
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_SR]) != 0)
+        return;
 
     *regp = addr;
 }
@@ -2806,7 +2814,9 @@ void sh4_inst_binary_stcl_gbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_GBR]);
+
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_GBR]) != 0)
+        return;
 
     *regp = addr;
 }
@@ -2833,7 +2843,9 @@ void sh4_inst_binary_stcl_vbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_VBR]);
+
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_VBR]) != 0)
+        return;
 
     *regp = addr;
 }
@@ -2860,7 +2872,9 @@ void sh4_inst_binary_stcl_ssr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SSR]);
+
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_SSR]) != 0)
+        return;
 
     *regp = addr;
 }
@@ -2887,7 +2901,9 @@ void sh4_inst_binary_stcl_spc_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SPC]);
+
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_SPC]) != 0)
+        return;
 
     *regp = addr;
 }
@@ -2914,7 +2930,9 @@ void sh4_inst_binary_stcl_sgr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_SGR]);
+
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_SGR]) != 0)
+        return;
 
     *regp = addr;
 }
@@ -2941,7 +2959,9 @@ void sh4_inst_binary_stcl_dbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_DBR]);
+
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_DBR]) != 0)
+        return;
 
     *regp = addr;
 }
@@ -3874,7 +3894,8 @@ void sh4_inst_binary_stcl_bank_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t src_val = *sh4_bank_reg(sh4, (inst >> 4) & 0x7);
     addr32_t addr = *addr_reg - 4;
 
-    sh4_write32(sh4, addr, src_val);
+    if (sh4_write32(sh4, addr, src_val) != 0)
+        return;
 
     *addr_reg = addr;
 }
@@ -4021,7 +4042,8 @@ void sh4_inst_binary_stsl_mach_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_MACH]);
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_MACH]) != 0)
+        return;
 
     *addr_reg = addr;
 }
@@ -4040,7 +4062,8 @@ void sh4_inst_binary_stsl_macl_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_MACL]);
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_MACL]) != 0)
+        return;
 
     *addr_reg = addr;
 }
@@ -4081,7 +4104,8 @@ void sh4_inst_binary_stsl_pr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_PR]);
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_PR]) != 0)
+        return;
 
     *addr_reg = addr;
 }
@@ -4136,7 +4160,9 @@ void sh4_inst_binary_movl_gen_indgen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint32_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    sh4_write32(sh4, addr, mem_val);
+    if (sh4_write32(sh4, addr, mem_val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_0110nnnnmmmm0000 0xf00f
@@ -4266,7 +4292,8 @@ void sh4_inst_binary_movl_gen_inddecgen(void *cpu, cpu_inst_param inst) {
     dst_reg_val -= 4;
     val = *src_reg;
 
-    sh4_write32(sh4, dst_reg_val, val);
+    if (sh4_write32(sh4, dst_reg_val, val) != 0)
+        return;
 
     *dst_reg = dst_reg_val;
 }
@@ -4527,7 +4554,9 @@ void sh4_inst_binary_movl_gen_binind_disp_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = ((inst & 0xf) << 2) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     int32_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    sh4_write32(sh4, addr, val);
+    if (sh4_write32(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_10000100mmmmdddd 0xff00
@@ -4640,7 +4669,9 @@ void sh4_inst_binary_movl_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint32_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    sh4_write32(sh4, addr, val);
+    if (sh4_write32(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_0000nnnnmmmm1100 0xf00f
@@ -4753,7 +4784,9 @@ void sh4_inst_binary_movl_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst_imm8(inst) << 2) + sh4->reg[SH4_REG_GBR];
     int32_t val = *sh4_gen_reg(sh4, 0);
 
-    sh4_write32(sh4, addr, val);
+    if (sh4_write32(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_11000100dddddddd 0xff00
@@ -4859,7 +4892,9 @@ void sh4_inst_binary_movcal_r0_indgen(void *cpu, cpu_inst_param inst) {
     uint32_t src_val = *sh4_gen_reg(sh4, 0);
     addr32_t vaddr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
 
-    sh4_write32(sh4, vaddr, src_val);
+    if (sh4_write32(sh4, vaddr, src_val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111nnnn10001101 0xf0ff
@@ -6440,7 +6475,8 @@ void sh4_inst_binary_stsl_fpscr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPSCR]);
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPSCR]) != 0)
+        return;
 
     *addr_reg = addr;
 }
@@ -6466,7 +6502,8 @@ void sh4_inst_binary_stsl_fpul_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPUL]);
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPUL]) != 0)
+        return;
 
     *addr_reg = addr;
 }
