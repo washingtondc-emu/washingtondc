@@ -398,6 +398,17 @@ static uint32_t page_offset_mask_for_size(enum sh4_tlb_page_sz sz) {
     }
 }
 
+static bool
+asid_check(struct Sh4 *sh4, bool shared, unsigned asid1, unsigned asid2) {
+    if (!shared &&
+        (!(sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SV_MASK) ||
+         !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))) {
+        return asid1 == asid2;
+    } else {
+        return true;
+    }
+}
+
 // vpn should be shifted such that the MSB is at bit 31
 static struct sh4_utlb_ent *
 sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
@@ -411,7 +422,7 @@ sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
             continue;
         uint32_t mask = vpn_mask_for_size(curs->sz);
         /* printf("compare %08X to %08X\n", (unsigned)(curs->vpn & mask), (unsigned)(vpn & mask)); */
-        if ((curs->vpn & mask) == (vpn & mask) && curs->asid == asid) {
+        if ((curs->vpn & mask) == (vpn & mask) && asid_check(sh4, curs->shared, asid, curs->asid)) {
             if (ent) {
                 error_set_feature("UTLB multiple hit exception");
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -434,7 +445,7 @@ sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
         if (!curs->valid)
             continue;
         uint32_t mask = vpn_mask_for_size(curs->sz);
-        if ((curs->vpn & mask) == (vpn & mask) && curs->asid == asid) {
+        if ((curs->vpn & mask) == (vpn & mask) && asid_check(sh4, curs->shared, asid, curs->asid)) {
             if (ent) {
                 error_set_feature("ITLB multiple hit exception");
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
