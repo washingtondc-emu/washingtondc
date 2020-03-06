@@ -748,7 +748,7 @@ static void sh4_utlb_increment_urc(struct Sh4 *sh4) {
     sh4->reg[SH4_REG_MMUCR] |= ((urc << 10) & BIT_RANGE(10, 15));
 }
 
-int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
+int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
     uint32_t addr = *addrp;
     unsigned area = (addr >> 29) & 7;
     if (sh4_mmu_at(sh4) && (sh4_addr_in_sq_area(addr) ||
@@ -759,6 +759,11 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp) {
             return -1;
         addr = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
         printf("%s Translate %08X to %08X\n", __func__, (unsigned)*addrp, (unsigned)addr);
+
+        if (write && !ent->dirty) {
+            error_set_feature("UTLB initial write exception");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
     }
 
     *addrp = addr;

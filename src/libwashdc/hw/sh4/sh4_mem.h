@@ -179,7 +179,7 @@ extern struct memory_interface sh4_p4_intf;
  * If the translation was successful, this function returns 0.
  * Else, it returns non-zero.
  */
-int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp);
+int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write);
 int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p);
 
 #endif

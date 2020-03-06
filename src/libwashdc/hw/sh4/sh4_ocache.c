@@ -248,7 +248,7 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
 #ifdef ENABLE_MMU
     if (sh4_mmu_at(sh4)) {
         addr32_t vpn = addr;
-        if (sh4_utlb_translate_address(sh4, &vpn) != 0) {
+        if (sh4_utlb_translate_address(sh4, &vpn, true) != 0) {
             error_set_feature("SH4 OCACHE PAGE FAULT");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
