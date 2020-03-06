@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -209,8 +209,30 @@ void sh4_bank_switch(Sh4 *sh4) {
 }
 
 void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
-    if ((old_sr & SH4_SR_RB_MASK) != (new_sr & SH4_SR_RB_MASK))
-        sh4_bank_switch(sh4);
+
+    // old and new are in user-mode ; nothing changes
+    if (!(old_sr & SH4_SR_MD_MASK) && !(new_sr & SH4_SR_MD_MASK))
+        return;
+
+    // switching from user-mode to privilege mode
+    if (!(old_sr & SH4_SR_MD_MASK) && (new_sr & SH4_SR_MD_MASK)) {
+        LOG_ERROR("Context switch user-mode=>privilege\n");
+        if (new_sr & SH4_SR_RB_MASK)
+            sh4_bank_switch(sh4);
+    }
+
+    // switching from privilege-mode to user-mode
+    if ((old_sr & SH4_SR_MD_MASK) && !(new_sr & SH4_SR_MD_MASK)) {
+        LOG_ERROR("Context switch privilege=>user-mode\n");
+        if (old_sr & SH4_SR_RB_MASK)
+            sh4_bank_switch(sh4);
+    }
+
+    // old and new are both in privilege mode
+    if ((old_sr & SH4_SR_MD_MASK) && (new_sr & SH4_SR_MD_MASK)) {
+        if ((old_sr & SH4_SR_RB_MASK) != (new_sr & SH4_SR_RB_MASK))
+            sh4_bank_switch(sh4);
+    }
 }
 
 void sh4_fpu_bank_switch(Sh4 *sh4) {
