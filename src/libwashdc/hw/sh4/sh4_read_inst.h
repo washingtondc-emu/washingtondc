@@ -80,14 +80,27 @@ static inline void sh4_refresh_intc(Sh4 *sh4) {
 static inline int
 sh4_do_read_inst(Sh4 *sh4, addr32_t addr, cpu_inst_param *inst_p) {
 #ifdef ENABLE_MMU
-    if (sh4_itlb_translate_address(sh4, &addr) != 0) {
+    switch (sh4_itlb_translate_address(sh4, &addr)) {
+    case SH4_ITLB_SUCCESS:
+        break;
+    case SH4_ITLB_MISS:
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_INST_TLB_MISS);
 
-        printf("ITLB\n");
+        LOG_ERROR("ITLB MISS\n");
         return -1;
+    case SH4_ITLB_PROT_VIOL:
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_INST_TLB_PROT_VIOL);
+
+        LOG_ERROR("ITLB protection violation %08X\n", (unsigned)addr);
+        return -1;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
 #endif

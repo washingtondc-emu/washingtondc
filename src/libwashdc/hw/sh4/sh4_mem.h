@@ -172,6 +172,13 @@ void sh4_set_mem_map(struct Sh4 *sh4, struct memory_map *map);
 extern struct memory_interface sh4_p4_intf;
 
 #ifdef ENABLE_MMU
+
+enum {
+    SH4_ITLB_SUCCESS = 0,
+    SH4_ITLB_MISS = -1,
+    SH4_ITLB_PROT_VIOL = -2
+};
+
 /*
  * translates *addr, if MMU is enabled and addr is in one of the areas where
  * address translation is possible.

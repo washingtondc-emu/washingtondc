@@ -758,11 +758,47 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
         if (!ent)
             return -1;
         addr = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
-        printf("%s Translate %08X to %08X\n", __func__, (unsigned)*addrp, (unsigned)addr);
+        /* printf("%s Translate %08X to %08X\n", __func__, (unsigned)*addrp, (unsigned)addr); */
 
-        if (write && !ent->dirty) {
-            error_set_feature("UTLB initial write exception");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) {
+            // privlege mode
+            switch (ent->protection) {
+            case 0:
+            case 2:
+                if (write) {
+                    error_set_feature("UTLB protection violation");
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                }
+                break;
+            case 1:
+            case 3:
+                if (write && !ent->dirty) {
+                    error_set_feature("UTLB initial write exception");
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                }
+                break;
+            }
+        } else {
+            // user mode
+            switch (ent->protection) {
+            case 0:
+            case 1:
+                error_set_feature("UTLB protection violation exception");
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                break;
+            case 2:
+                if (write) {
+                    error_set_feature("UTLB protection violation exception");
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                }
+                break;
+            case 3:
+                if (write && !ent->dirty) {
+                    error_set_feature("UTLB initial write exception");
+                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                }
+                break;
+            }
         }
     }
 
@@ -818,7 +854,7 @@ int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
             struct sh4_utlb_ent *utlb_ent = sh4_utlb_find_ent_associative(sh4, addr);
             if (!utlb_ent) {
                 LOG_ERROR("ITLB PAGE FAULT SEARCHING FOR %08X\n", (unsigned)addr);
-                return -1; // ITLB miss exception gets raised
+                return SH4_ITLB_MISS; // ITLB miss exception gets raised
             }
 
             LOG_ERROR("Copying over UTLB entry %u into ITLB entry %u\n",
@@ -839,6 +875,10 @@ int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
             goto mulligan;
         }
         addr = (addr & page_offset_mask_for_size(itlb_ent->sz)) | (itlb_ent->ppn & ppn_mask_for_size(itlb_ent->sz));
+
+        if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && !itlb_ent->protection) {
+            return SH4_ITLB_PROT_VIOL;
+        }
 
         unsigned idx = itlb_ent - sh4->mem.itlb;
         unsigned lrui = sh4_mmu_get_lrui(sh4);
@@ -867,7 +907,7 @@ int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
         *addr_p = addr;
     }
 
-    return 0;
+    return SH4_ITLB_SUCCESS;
 }
 
 #endif
