@@ -131,16 +131,22 @@ static inline double sh4_readdouble(struct Sh4 *sh4, addr32_t addr) {
     return memory_map_read_double(sh4->mem.map, addr);
 }
 
-static inline void sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
+static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 #ifdef ENABLE_MMU
-    if (!sh4_addr_in_sq_area(addr) &&
-        sh4_utlb_translate_address(sh4, &addr) != 0) {
-        error_set_address(addr);
-        error_set_feature("page fault exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (!sh4_addr_in_sq_area(addr)) {
+        int res = sh4_utlb_translate_address(sh4, &addr);
+        if (res != 0) {
+            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
+            sh4->reg[SH4_REG_TEA] = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+            sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+            return res;
+        }
     }
 #endif
     memory_map_write_8(sh4->mem.map, addr, val);
+    return 0;
 }
 
 static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
@@ -1937,7 +1943,9 @@ void sh4_inst_binary_andb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
 
     val &= inst_imm8(inst);
 
-    sh4_write8(sh4, addr, val);
+    if (sh4_write8(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_11001001iiiiiiii 0xff00
@@ -1972,7 +1980,9 @@ void sh4_inst_binary_orb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
 
     val |= inst_imm8(inst);
 
-    sh4_write8(sh4, addr, val);
+    if (sh4_write8(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_11001011iiiiiiii 0xff00
@@ -2059,7 +2069,9 @@ void sh4_inst_binary_xorb_imm_r0_gbr(void *cpu, cpu_inst_param inst) {
 
     val ^= inst_imm8(inst);
 
-    sh4_write8(sh4, addr, val);
+    if (sh4_write8(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_10001011dddddddd 0xff00
@@ -2213,7 +2225,8 @@ void sh4_inst_unary_tasb_gen(void *cpu, cpu_inst_param inst) {
         return;
 
     val_new = val_old | 0x80;
-    sh4_write8(sh4, addr, val_new);
+    if (sh4_write8(sh4, addr, val_new) != 0)
+        return;
 
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
     mask = (!val_old) << SH4_SR_FLAG_T_SHIFT;
@@ -4124,7 +4137,9 @@ void sh4_inst_binary_movb_gen_indgen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint8_t mem_val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    sh4_write8(sh4, addr, mem_val);
+    if (sh4_write8(sh4, addr, mem_val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_0010nnnnmmmm0001 0xf00f
@@ -4242,7 +4257,8 @@ void sh4_inst_binary_movb_gen_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t dst_reg_val = (*dst_reg) - 1;
     val = *src_reg;
 
-    sh4_write8(sh4, dst_reg_val, val);
+    if (sh4_write8(sh4, dst_reg_val, val) != 0)
+        return;
 
     (*dst_reg) = dst_reg_val;
 }
@@ -4518,7 +4534,9 @@ void sh4_inst_binary_movb_r0_binind_disp_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = (inst & 0xf) + *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    sh4_write8(sh4, addr, val);
+    if (sh4_write8(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_10000001nnnndddd 0xff00
@@ -4633,7 +4651,9 @@ void sh4_inst_binary_movb_gen_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     uint8_t val = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
 
-    sh4_write8(sh4, addr, val);
+    if (sh4_write8(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_0000nnnnmmmm0101 0xf00f
@@ -4748,7 +4768,9 @@ void sh4_inst_binary_movb_r0_binind_disp_gbr(void *cpu, cpu_inst_param inst) {
     addr32_t addr = inst_imm8(inst) + sh4->reg[SH4_REG_GBR];
     int8_t val = *sh4_gen_reg(sh4, 0);
 
-    sh4_write8(sh4, addr, val);
+    if (sh4_write8(sh4, addr, val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_11000001dddddddd 0xff00
