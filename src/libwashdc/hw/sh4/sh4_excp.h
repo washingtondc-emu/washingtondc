@@ -111,8 +111,6 @@ enum Sh4ExceptionCode {
 
 typedef enum Sh4ExceptionCode Sh4ExceptionCode;
 
-#define SH4_EXCP_COUNT (9 + 16 + 16 + 2 + 16 + 5)
-
 enum {
     SH4_IRQ_RTC,
     SH4_IRQ_TMU2,
@@ -145,22 +143,6 @@ typedef int(*sh4_irq_line_fn)(Sh4ExceptionCode *code, void *ctx);
 // returns the irl value, or 15 for nothing
 typedef int(*sh4_irl_line_fn)(void *ctx);
 
-struct Sh4ExcpMeta {
-    /*
-     * there's no field for the vector base address because I couldn't
-     * figure out an elegant way to express that (since it can be either a
-     * constant or a register) and also because it's pretty easy to
-     * hardcode this into enter_exception (since there's only one constant
-     * and two registers that can be used)
-     */
-
-    enum Sh4ExceptionCode code;
-    int prio_level;
-    int prio_order;
-    addr32_t offset;
-};
-
-typedef struct Sh4ExcpMeta Sh4ExcpMeta;
 
 // structure containing all data necessary to activate a pending IRQ
 struct sh4_irq_meta {
