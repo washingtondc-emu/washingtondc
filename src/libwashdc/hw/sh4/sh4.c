@@ -210,29 +210,17 @@ void sh4_bank_switch(Sh4 *sh4) {
 
 void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
 
-    // old and new are in user-mode ; nothing changes
-    if (!(old_sr & SH4_SR_MD_MASK) && !(new_sr & SH4_SR_MD_MASK))
-        return;
+    bool old_sr_rb = old_sr & SH4_SR_RB_MASK;
+    bool new_sr_rb = new_sr & SH4_SR_RB_MASK;
 
-    // switching from user-mode to privilege mode
-    if (!(old_sr & SH4_SR_MD_MASK) && (new_sr & SH4_SR_MD_MASK)) {
-        LOG_ERROR("Context switch user-mode=>privilege\n");
-        if (new_sr & SH4_SR_RB_MASK)
-            sh4_bank_switch(sh4);
-    }
+    // user-mode can't access the banked registers
+    if (!(old_sr & SH4_SR_MD_MASK))
+        old_sr_rb = false;
+    if (!(new_sr & SH4_SR_MD_MASK))
+        new_sr_rb = false;
 
-    // switching from privilege-mode to user-mode
-    if ((old_sr & SH4_SR_MD_MASK) && !(new_sr & SH4_SR_MD_MASK)) {
-        LOG_ERROR("Context switch privilege=>user-mode\n");
-        if (old_sr & SH4_SR_RB_MASK)
-            sh4_bank_switch(sh4);
-    }
-
-    // old and new are both in privilege mode
-    if ((old_sr & SH4_SR_MD_MASK) && (new_sr & SH4_SR_MD_MASK)) {
-        if ((old_sr & SH4_SR_RB_MASK) != (new_sr & SH4_SR_RB_MASK))
-            sh4_bank_switch(sh4);
-    }
+    if (new_sr_rb != old_sr_rb)
+        sh4_bank_switch(sh4);
 }
 
 void sh4_fpu_bank_switch(Sh4 *sh4) {
