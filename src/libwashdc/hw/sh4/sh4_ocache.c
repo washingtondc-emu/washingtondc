@@ -246,6 +246,11 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     unsigned sq_idx = sq_sel << 3;
 
 #ifdef ENABLE_MMU
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK))
+        if (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK) {
+            error_set_feature("store queue address error exception");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
     if (sh4_mmu_at(sh4)) {
         addr32_t vpn = addr;
         if (sh4_utlb_translate_address(sh4, &vpn, true) != 0) {
