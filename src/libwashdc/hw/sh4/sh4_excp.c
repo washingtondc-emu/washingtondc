@@ -124,9 +124,26 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
         RAISE_ERROR(ERROR_UNKNOWN_EXCP_CODE);
     }
 
-    if (sh4->delayed_branch)
-        reg[SH4_REG_SPC] = sh4->delayed_branch_pc_addr;
-    else
+    /*
+     * XXX SH4 behavior is somewhat confusing regarding how CPU exceptions
+     * interract with branch delay slots.
+     *
+     * For a re-execution exception (which is everything except for TRAPA and
+     * debug breaks) the SPC needs to point to the instruction that just
+     * executed even if that instruction is part of a branch delay slot.  It
+     * appears that the result of the preceding branch is actually discarded.
+     *
+     * See page 115 of the sh7750 hardware manual.  I am still somewhat unsure
+     * about this because the implication is that it's extremely dangerous to
+     * access memory during a branch delay slot in a user-mode program, but
+     * that does appear to be what the manual says.
+     *
+     * Also note that if you uncomment the below code, you'll also have to make
+     * sh4_set_exception stop clearing sh4->delayed_branch in order for it to work.
+     */
+    /* if (sh4->delayed_branch) */
+    /*     reg[SH4_REG_SPC] = sh4->delayed_branch_pc_addr; */
+    /* else */
         reg[SH4_REG_SPC] = reg[SH4_REG_PC];
     reg[SH4_REG_SSR] = reg[SH4_REG_SR];
     reg[SH4_REG_SGR] = reg[SH4_REG_R15];

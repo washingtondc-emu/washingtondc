@@ -47,6 +47,13 @@ sh4_enter_irq_from_meta(Sh4 *sh4, struct sh4_irq_meta *irq_meta) {
         (irq_meta->code << SH4_INTEVT_CODE_SHIFT) &
         SH4_INTEVT_CODE_MASK;
 
+    /*
+     * XXX this check should be unnecessary since (in INVARIANTS mode at least)
+     * we already would have done that in sh4_refresh_intc
+     */
+    if (sh4->delayed_branch)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
     sh4_enter_exception(sh4, (Sh4ExceptionCode)irq_meta->code);
 
     // exit sleep/standby mode
