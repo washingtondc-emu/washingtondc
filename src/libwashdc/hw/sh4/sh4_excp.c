@@ -29,6 +29,7 @@
 #include "dreamcast.h"
 #include "dc_sched.h"
 #include "sh4_read_inst.h"
+#include "config.h"
 
 static DEF_ERROR_INT_ATTR(sh4_exception_code)
 static DEF_ERROR_INT_ATTR(sh4_irq_line)
@@ -159,7 +160,15 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
     }
 }
 
+static DEF_ERROR_INT_ATTR(excp_code)
+
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
+    if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK) {
+        error_set_excp_code(excp_code);
+        error_set_feature("reset due to exception while exceptions are masked");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     sh4->reg[SH4_REG_EXPEVT] = (excp_code << SH4_EXPEVT_CODE_SHIFT) &
         SH4_EXPEVT_CODE_MASK;
 
