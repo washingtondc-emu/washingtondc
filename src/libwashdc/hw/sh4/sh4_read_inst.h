@@ -206,6 +206,8 @@ sh4_do_exec_inst(Sh4 *sh4, cpu_inst_param inst, InstOpcode const *op) {
          */
         if (!sh4->dont_increment_pc)
             sh4->reg[SH4_REG_PC] += 2;
+        else if (delayed_branch_tmp)
+            delayed_branch_tmp = false;
 
 #ifdef ENABLE_DEBUGGER
         if (!sh4->aborted_operation) {

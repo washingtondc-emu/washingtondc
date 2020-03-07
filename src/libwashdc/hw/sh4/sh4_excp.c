@@ -163,6 +163,10 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
 static DEF_ERROR_INT_ATTR(excp_code)
 
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
+    // clear this because the exception we jump to won't be a branch delay slot
+    if (sh4->delayed_branch)
+        sh4->delayed_branch = false;
+
     if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK) {
         error_set_excp_code(excp_code);
         error_set_feature("reset due to exception while exceptions are masked");
