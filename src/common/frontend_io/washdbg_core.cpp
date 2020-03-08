@@ -125,6 +125,7 @@ enum washdbg_state {
     WASHDBG_STATE_CMD_BPLIST,
     WASHDBG_STATE_CMD_PRINT,
     WASHDBG_STATE_CMD_TRANS_ITLB,
+    WASHDBG_STATE_CMD_TRANS_UTLB,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -243,6 +244,7 @@ void washdbg_do_help(int argc, char **argv) {
         "step         - single-step\n"
 #ifdef ENABLE_MMU
         "trans_itlb   - translate pointer using ITLB or UTLB\n"
+        "trans_utlb   - translate pointer using UTLB only\n"
 #endif
         "x            - eXamine memory address\n";
 
@@ -960,6 +962,47 @@ static void washdbg_trans_itlb(int argc, char **argv) {
 #endif
 }
 
+#define WASHDBG_TRANS_UTLB_STR_LEN 64
+
+static struct trans_utlb_state {
+    char msg[WASHDBG_TRANS_UTLB_STR_LEN];
+    struct washdbg_txt_state txt;
+} trans_utlb_state;
+
+static bool washdbg_is_trans_utlb_cmd(char const *str) {
+    return strcmp(str, "trans_utlb") == 0;
+}
+
+static void washdbg_trans_utlb(int argc, char **argv) {
+#ifdef ENABLE_MMU
+    if (argc != 2) {
+        washdbg_print_error("usage: trans_utlb <address>.\n");
+        return;
+    }
+
+    uint32_t addr;
+    if (parse_int_str(argv[1], &addr) != 0)
+        return;
+
+    uint32_t addr_phys = addr;
+    if (debug_trans_utlb(DEBUG_CONTEXT_SH4, &addr) != 0) {
+        washdbg_print_error("Address not found in UTLB.\n");
+        return;
+    }
+
+    snprintf(trans_utlb_state.msg, sizeof(trans_utlb_state.msg),
+             "0x%08x => 0x%08x\n", (unsigned)addr_phys, (unsigned)addr);
+    trans_utlb_state.msg[WASHDBG_TRANS_UTLB_STR_LEN - 1] = '\0';
+    trans_utlb_state.txt.txt = trans_utlb_state.msg;
+    trans_utlb_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_CMD_TRANS_UTLB;
+
+#else
+    washdbg_print_error("the trans_utlb command is not available; rebuild "
+                        "WashingtonDC with -DENABLE_MMU=On.\n");
+#endif
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1018,6 +1061,10 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_CMD_TRANS_ITLB:
         if (washdbg_print_buffer(&trans_itlb_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_TRANS_UTLB:
+        if (washdbg_print_buffer(&trans_utlb_state.txt) == 0)
             washdbg_print_prompt();
         break;
     default:
@@ -1130,6 +1177,8 @@ static void washdbg_process_input(void) {
                 washdbg_memwatch(argc, argv);
             } else if (washdbg_is_trans_itlb_cmd(cmd)) {
                 washdbg_trans_itlb(argc, argv);
+            } else if (washdbg_is_trans_utlb_cmd(cmd)) {
+                washdbg_trans_utlb(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
