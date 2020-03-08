@@ -689,6 +689,9 @@ sh4_mmucr_read_handler(Sh4 *sh4,
 static void sh4_mmucr_write_handler(Sh4 *sh4,
                                     struct Sh4MemMappedReg const *reg_info,
                                     sh4_reg_val val) {
+#ifdef ENABLE_MMU
+    uint32_t old_val = sh4->reg[SH4_REG_MMUCR];
+#endif
     sh4->reg[SH4_REG_MMUCR] = val;
 
     if (val & SH4_MMUCR_TI_MASK)
@@ -696,8 +699,8 @@ static void sh4_mmucr_write_handler(Sh4 *sh4,
 
     if (val & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_MMU
-        printf("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
-        LOG_ERROR("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
+        if (!(old_val & SH4_MMUCR_AT_MASK))
+            LOG_ERROR("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
 
         if (config_get_jit()) {
             error_set_feature("SH4 MMU support in JIT mode");
@@ -706,6 +709,11 @@ static void sh4_mmucr_write_handler(Sh4 *sh4,
 #else
         error_set_feature("SH4 MMU support");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+#endif
+    } else {
+#ifdef ENABLE_MMU
+        if (old_val & SH4_MMUCR_AT_MASK)
+            LOG_ERROR("**** DISABLING SH4 MMU ADDRESS TRANSLATION ****\n");
 #endif
     }
 }
