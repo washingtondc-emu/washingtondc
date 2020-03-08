@@ -126,6 +126,7 @@ enum washdbg_state {
     WASHDBG_STATE_CMD_PRINT,
     WASHDBG_STATE_CMD_TRANS_ITLB,
     WASHDBG_STATE_CMD_TRANS_UTLB,
+    WASHDBG_STATE_CMD_ASID,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -225,6 +226,7 @@ void washdbg_do_help(int argc, char **argv) {
     static char const *help_msg =
         "WashDbg command list\n"
         "\n"
+        "asid         - print current address space\n"
         "bpdel        - delete a breakpoint\n"
         "bpdis        - disable a breakpoint\n"
         "bpen         - enable a breakpoint\n"
@@ -1003,6 +1005,37 @@ static void washdbg_trans_utlb(int argc, char **argv) {
 #endif
 }
 
+#define WASHDBG_ASID_STR_LEN 64
+
+static struct asid_state {
+    char msg[WASHDBG_ASID_STR_LEN];
+    struct washdbg_txt_state txt;
+} asid_state;
+
+static bool washdbg_is_asid_cmd(char const *str) {
+    return strcmp(str, "asid") == 0;
+}
+
+static void washdbg_asid(int argc, char **argv) {
+    if (argc != 1) {
+        washdbg_print_error("usage: asid.\n");
+        return;
+    }
+
+    uint32_t val;
+    if (debug_read_mem(DEBUG_CONTEXT_SH4, &val, 0xff000000, 4) != 0) {
+        washdbg_print_error("unable to read from PTEH\n");
+        return;
+    }
+
+    snprintf(asid_state.msg, sizeof(asid_state.msg), "0x%08x\n",
+             (unsigned)(val & 0xff));
+    asid_state.msg[WASHDBG_ASID_STR_LEN - 1] = '\0';
+    asid_state.txt.txt = asid_state.msg;
+    asid_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_CMD_ASID;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1065,6 +1098,10 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_CMD_TRANS_UTLB:
         if (washdbg_print_buffer(&trans_utlb_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_ASID:
+        if (washdbg_print_buffer(&asid_state.txt) == 0)
             washdbg_print_prompt();
         break;
     default:
@@ -1179,6 +1216,8 @@ static void washdbg_process_input(void) {
                 washdbg_trans_itlb(argc, argv);
             } else if (washdbg_is_trans_utlb_cmd(cmd)) {
                 washdbg_trans_utlb(argc, argv);
+            } else if (washdbg_is_asid_cmd(cmd)) {
+                washdbg_asid(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
