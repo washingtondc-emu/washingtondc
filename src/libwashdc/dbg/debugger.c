@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -34,6 +34,10 @@
 #include "hw/arm7/arm7.h"
 
 #include "washdc/debugger.h"
+
+#ifdef ENABLE_MMU
+#include "hw/sh4/sh4_mem.h"
+#endif
 
 #ifndef ENABLE_DEBUGGER
 #error This file should not be included unless the debugger is enabled
@@ -1100,4 +1104,38 @@ bool debug_mem_cond(enum dbg_context_id ctx, uint32_t addr,
     return false;
 }
 
+#endif
+
+#ifdef ENABLE_MMU
+int debug_trans_itlb(enum dbg_context_id id, uint32_t *addr_p) {
+    if (id != DEBUG_CONTEXT_SH4)
+        return -1;
+
+    uint32_t addr = *addr_p;
+
+    struct sh4_itlb_ent *ent =
+        sh4_itlb_find_ent_associative(dbg.contexts[id].cpu, addr);
+
+    if (!ent)
+        return debug_trans_utlb(id, addr_p);
+
+    *addr_p = sh4_itlb_ent_translate_addr(ent, addr);
+    return 0;
+}
+
+int debug_trans_utlb(enum dbg_context_id id, uint32_t *addr_p) {
+    if (id != DEBUG_CONTEXT_SH4)
+        return -1;
+
+    uint32_t addr = *addr_p;
+
+    struct sh4_utlb_ent *ent =
+        sh4_utlb_find_ent_associative(dbg.contexts[id].cpu, addr);
+
+    if (!ent)
+        return -1;
+
+    *addr_p = sh4_utlb_ent_translate_addr(ent, addr);
+    return 0;
+}
 #endif

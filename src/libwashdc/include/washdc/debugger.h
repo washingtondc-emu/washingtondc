@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -302,6 +302,20 @@ int debug_write_mem(enum dbg_context_id id, void const *input,
                     addr32_t addr, unsigned len);
 
 uint32_t debug_pc_next(enum dbg_context_id id);
+
+#ifdef ENABLE_MMU
+/*
+ * return 0 on success, nonzero on failure.
+ *
+ * addr_p points to the address to translate, and will be updated with the
+ * translation if it did not fail.
+ *
+ * debug_trans_itlb will also query the utlb if the itlb query fails.
+ * debug_trans_utlb will only query the utlb.
+ */
+int debug_trans_itlb(enum dbg_context_id id, uint32_t *addr_p);
+int debug_trans_utlb(enum dbg_context_id id, uint32_t *addr_p);
+#endif
 
 #ifdef __cplusplus
 }

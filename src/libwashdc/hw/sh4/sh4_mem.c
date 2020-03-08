@@ -410,7 +410,7 @@ asid_check(struct Sh4 *sh4, bool shared, unsigned asid1, unsigned asid2) {
 }
 
 // vpn should be shifted such that the MSB is at bit 31
-static struct sh4_utlb_ent *
+struct sh4_utlb_ent *
 sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
     struct sh4_utlb_ent *ent = NULL;
     unsigned asid = sh4->reg[SH4_REG_PTEH] & BIT_RANGE(0, 7);
@@ -435,7 +435,7 @@ sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
 }
 
 // vpn should be shifted such that the MSB is at bit 31
-static struct sh4_itlb_ent *
+struct sh4_itlb_ent *
 sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
     struct sh4_itlb_ent *ent = NULL;
     unsigned asid = sh4->reg[SH4_REG_PTEH] & BIT_RANGE(0, 7);
@@ -757,7 +757,7 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
         sh4_utlb_increment_urc(sh4);
         if (!ent)
             return -1;
-        addr = (addr & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
+        addr = sh4_utlb_ent_translate_addr(ent, addr);
         /* printf("%s Translate %08X to %08X\n", __func__, (unsigned)*addrp, (unsigned)addr); */
 
         if (sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) {
@@ -874,7 +874,7 @@ int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
             already_searched_utlb = true;
             goto mulligan;
         }
-        addr = (addr & page_offset_mask_for_size(itlb_ent->sz)) | (itlb_ent->ppn & ppn_mask_for_size(itlb_ent->sz));
+        addr = sh4_itlb_ent_translate_addr(itlb_ent, addr);
 
         if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && !itlb_ent->protection) {
             return SH4_ITLB_PROT_VIOL;
@@ -908,6 +908,15 @@ int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
     }
 
     return SH4_ITLB_SUCCESS;
+}
+
+uint32_t sh4_itlb_ent_translate_addr(struct sh4_itlb_ent const *ent, uint32_t vpn) {
+    return (vpn & page_offset_mask_for_size(ent->sz)) |
+        (ent->ppn & ppn_mask_for_size(ent->sz));
+}
+
+uint32_t sh4_utlb_ent_translate_addr(struct sh4_utlb_ent const *ent, uint32_t vpn) {
+    return (vpn & page_offset_mask_for_size(ent->sz)) | (ent->ppn & ppn_mask_for_size(ent->sz));
 }
 
 #endif

@@ -185,9 +185,31 @@ enum {
  *
  * If the translation was successful, this function returns 0.
  * Else, it returns non-zero.
+ *
+ * These functions can modify the state of the sh4, so the lower-level
+ * sh4_utlb_find_ent_associative and sh4_itlb_find_ent_associative should be
+ * used instead if all you want to do is passively query the TLB without
+ * modifying anything.
  */
 int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write);
 int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p);
+
+/*
+ * These functions search the itlb or the utlb for the given entry and return a
+ * pointer to it, or NULL if the entry was not found.
+ */
+struct sh4_utlb_ent *
+sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn);
+struct sh4_itlb_ent *
+sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn);
+
+/*
+ * translate the given address based on the given tlb entry.
+ * No error checking is performed; it is assumed that the caller
+ * has already verified that the vpns match up.
+ */
+uint32_t sh4_itlb_ent_translate_addr(struct sh4_itlb_ent const *ent, uint32_t vpn);
+uint32_t sh4_utlb_ent_translate_addr(struct sh4_utlb_ent const *ent, uint32_t vpn);
 
 #endif
 

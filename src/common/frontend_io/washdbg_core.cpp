@@ -91,7 +91,7 @@ static unsigned parse_dec_str(char const *str);
 static bool is_hex_str(char const *str);
 static unsigned parse_hex_str(char const *str);
 
-#ifdef ENABLE_DBG_COND
+#if defined(ENABLE_DBG_COND) || defined(ENABLE_MMU)
 static int parse_int_str(char const *valstr, uint32_t *out);
 #endif
 
@@ -124,6 +124,7 @@ enum washdbg_state {
     WASHDBG_STATE_CMD_BPSET,
     WASHDBG_STATE_CMD_BPLIST,
     WASHDBG_STATE_CMD_PRINT,
+    WASHDBG_STATE_CMD_TRANS_ITLB,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -240,6 +241,9 @@ void washdbg_do_help(int argc, char **argv) {
         "regwatch     - watch for a register to be set to a given value\n"
 #endif
         "step         - single-step\n"
+#ifdef ENABLE_MMU
+        "trans_itlb   - translate pointer using ITLB or UTLB\n"
+#endif
         "x            - eXamine memory address\n";
 
     help_state.txt.txt = help_msg;
@@ -915,6 +919,47 @@ static void washdbg_memwatch(int argc, char **argv) {
 #endif
 }
 
+#define WASHDBG_TRANS_ITLB_STR_LEN 64
+
+static struct trans_itlb_state {
+    char msg[WASHDBG_TRANS_ITLB_STR_LEN];
+    struct washdbg_txt_state txt;
+} trans_itlb_state;
+
+static bool washdbg_is_trans_itlb_cmd(char const *str) {
+    return strcmp(str, "trans_itlb") == 0;
+}
+
+static void washdbg_trans_itlb(int argc, char **argv) {
+#ifdef ENABLE_MMU
+    if (argc != 2) {
+        washdbg_print_error("usage: trans_itlb <address>.\n");
+        return;
+    }
+
+    uint32_t addr;
+    if (parse_int_str(argv[1], &addr) != 0)
+        return;
+
+    uint32_t addr_phys = addr;
+    if (debug_trans_itlb(DEBUG_CONTEXT_SH4, &addr) != 0) {
+        washdbg_print_error("Address not found in ITLB.\n");
+        return;
+    }
+
+    snprintf(trans_itlb_state.msg, sizeof(trans_itlb_state.msg),
+             "0x%08x => 0x%08x\n", (unsigned)addr_phys, (unsigned)addr);
+    trans_itlb_state.msg[WASHDBG_TRANS_ITLB_STR_LEN - 1] = '\0';
+    trans_itlb_state.txt.txt = trans_itlb_state.msg;
+    trans_itlb_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_CMD_TRANS_ITLB;
+
+#else
+    washdbg_print_error("the trans_itlb command is not available; rebuild "
+                        "WashingtonDC with -DENABLE_MMU=On.\n");
+#endif
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -969,6 +1014,10 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_CMD_PRINT:
         if (washdbg_print_buffer(&print_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_TRANS_ITLB:
+        if (washdbg_print_buffer(&trans_itlb_state.txt) == 0)
             washdbg_print_prompt();
         break;
     default:
@@ -1079,6 +1128,8 @@ static void washdbg_process_input(void) {
                 washdbg_regwatch(argc, argv);
             } else if (washdbg_is_memwatch_cmd(cmd)) {
                 washdbg_memwatch(argc, argv);
+            } else if (washdbg_is_trans_itlb_cmd(cmd)) {
+                washdbg_trans_itlb(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
@@ -1618,7 +1669,7 @@ static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val) {
     return buf;
 }
 
-#ifdef ENABLE_DBG_COND
+#if defined(ENABLE_DBG_COND) || defined(ENABLE_MMU)
 static int parse_int_str(char const *valstr, uint32_t *out) {
     if (is_dec_str(valstr)) {
         *out = parse_dec_str(valstr);
