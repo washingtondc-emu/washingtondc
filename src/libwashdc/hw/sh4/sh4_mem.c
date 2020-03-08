@@ -428,10 +428,9 @@ sh4_utlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
             ent = curs;
-            return ent;
         }
     }
-    return NULL;
+    return ent;
 }
 
 // vpn should be shifted such that the MSB is at bit 31
@@ -451,11 +450,12 @@ sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
             ent = curs;
-            return ent;
         }
     }
-    LOG_ERROR("FAILED TO LOCATE ITLB ENTRY FOR VPN %08X ASID %08X\n", (unsigned)vpn, asid);
-    return NULL;
+    if (!ent)
+        LOG_ERROR("FAILED TO LOCATE ITLB ENTRY FOR VPN %08X ASID %08X\n",
+                  (unsigned)vpn, asid);
+    return ent;
 }
 
 void sh4_set_mem_map(struct Sh4 *sh4, struct memory_map *map) {
