@@ -223,7 +223,12 @@ static inline reg32_t *sh4_bank_reg(Sh4 *sh4, int idx) {
 static inline sh4_reg_idx_t sh4_bank0_reg_idx(Sh4 *sh4, int idx) {
     assert(!(idx & ~0x7));
 
-    if (sh4->reg[SH4_REG_SR] & SH4_SR_RB_MASK)
+    uint32_t sr = sh4->reg[SH4_REG_SR];
+    bool sr_rb = sr & SH4_SR_RB_MASK;
+    if (!(sr & SH4_SR_MD_MASK))
+        sr_rb = false;
+
+    if (sr_rb)
         return (sh4_reg_idx_t)(SH4_REG_R0_BANK + idx);
     return (sh4_reg_idx_t)(SH4_REG_R0 + idx);
 }
@@ -235,7 +240,12 @@ static inline reg32_t *sh4_bank0_reg(Sh4 *sh4, int idx) {
 static inline sh4_reg_idx_t sh4_bank1_reg_idx(Sh4 *sh4, int idx) {
     assert(!(idx & ~0x7));
 
-    if (sh4->reg[SH4_REG_SR] & SH4_SR_RB_MASK)
+    uint32_t sr = sh4->reg[SH4_REG_SR];
+    bool sr_rb = sr & SH4_SR_RB_MASK;
+    if (!(sr & SH4_SR_MD_MASK))
+        sr_rb = false;
+
+    if (sr_rb)
         return (sh4_reg_idx_t)(SH4_REG_R0 + idx);
     return (sh4_reg_idx_t)(SH4_REG_R0_BANK + idx);
 }
