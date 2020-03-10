@@ -92,13 +92,6 @@ struct Sh4 {
     addr32_t delayed_branch_addr;
 
     /*
-     * annoying special case: when there's an MMU exception in a delay slot,
-     * the SPC should point to the delayed branch instruction instead of the
-     * instruction that caused the exception.
-     */
-    uint32_t delayed_branch_pc_addr;
-
-    /*
      * if true, the PC will not be incremented between instructions
      * (interpreter-mode only).  The purpose of this is to make sure the PC
      * isn't incremented after a CPU exception has pointed the PC to an
@@ -141,16 +134,6 @@ struct Sh4 {
      * would have been executed by the second pipeline on a real sh4.
      */
      sh4_inst_group_t last_inst_type;
-
-#ifdef ENABLE_DEBUGGER
-    /*
-     * this member is used to implement watchpoints.  When a watchpoint
-     * is hit by sh4_write_mem or sh4_read_mem, this will be set to true
-     * so that lower layers in the call-stack know the operation was aborted.
-     * This is needed to handle watchpoints that happen in delayed-branch slots.
-     */
-    bool aborted_operation;
-#endif
 };
 
 typedef struct Sh4 Sh4;

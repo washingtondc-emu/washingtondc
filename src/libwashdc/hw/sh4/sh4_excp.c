@@ -147,27 +147,7 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
         RAISE_ERROR(ERROR_UNKNOWN_EXCP_CODE);
     }
 
-    /*
-     * XXX SH4 behavior is somewhat confusing regarding how CPU exceptions
-     * interract with branch delay slots.
-     *
-     * For a re-execution exception (which is everything except for TRAPA and
-     * debug breaks) the SPC needs to point to the instruction that just
-     * executed even if that instruction is part of a branch delay slot.  It
-     * appears that the result of the preceding branch is actually discarded.
-     *
-     * See page 115 of the sh7750 hardware manual.  I am still somewhat unsure
-     * about this because the implication is that it's extremely dangerous to
-     * access memory during a branch delay slot in a user-mode program, but
-     * that does appear to be what the manual says.
-     *
-     * Also note that if you uncomment the below code, you'll also have to make
-     * sh4_set_exception stop clearing sh4->delayed_branch in order for it to work.
-     */
-    /* if (sh4->delayed_branch) */
-    /*     reg[SH4_REG_SPC] = sh4->delayed_branch_pc_addr; */
-    /* else */
-        reg[SH4_REG_SPC] = reg[SH4_REG_PC];
+    reg[SH4_REG_SPC] = reg[SH4_REG_PC];
     reg[SH4_REG_SSR] = reg[SH4_REG_SR];
     reg[SH4_REG_SGR] = reg[SH4_REG_R15];
 
@@ -203,9 +183,19 @@ void sh4_enter_exception(Sh4 *sh4, enum Sh4ExceptionCode vector) {
 static DEF_ERROR_INT_ATTR(excp_code)
 
 void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
-    // clear this because the exception we jump to won't be a branch delay slot
+    /*
+     * the problem with having delayed_branch set is that the next instruction
+     * *after* the exception go to to the delayed branch destination even though
+     * the exception should prevent that from happening.
+     *
+     * This should be impossible because sh4->delayed_branch would have been
+     * cleared in sh4_do_exec_inst before executing the instruction, and any
+     * branch instruction which encounters an exception shouldn't be setting
+     * the delayed_branch flag because the exception should prevent the
+     * instruction from having side-effects.
+     */
     if (sh4->delayed_branch)
-        sh4->delayed_branch = false;
+        RAISE_ERROR(ERROR_INTEGRITY);
 
     if (sh4->reg[SH4_REG_SR] & SH4_SR_BL_MASK) {
         error_set_excp_code(excp_code);

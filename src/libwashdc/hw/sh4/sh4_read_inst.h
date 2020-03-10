@@ -138,19 +138,19 @@ sh4_do_read_inst(Sh4 *sh4, addr32_t addr, cpu_inst_param *inst_p) {
     return 0;
 }
 
-static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p) {
+static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p, uint32_t pc) {
 #ifdef ENABLE_MMU
-    if (sh4->reg[SH4_REG_PC] & 1) {
+    if (pc & 1) {
         // instruction address error for non-aligned PC fetch.
-        sh4->reg[SH4_REG_TEA] = sh4->reg[SH4_REG_PC];
+        sh4->reg[SH4_REG_TEA] = pc;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
-        sh4->reg[SH4_REG_PTEH] |= (sh4->reg[SH4_REG_PC] & BIT_RANGE(10, 31));
+        sh4->reg[SH4_REG_PTEH] |= (pc & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
 
         LOG_ERROR("INSTRUCTION FETCH ADDRESS ERROR AT PC=%08X\n",
-                  (sh4->reg[SH4_REG_PC] & BIT_RANGE(0, 28)));
+                  (pc & BIT_RANGE(0, 28)));
         return -1;
-    } else if ((sh4->reg[SH4_REG_PC] & BIT_RANGE(29, 31)) == BIT_RANGE(29, 31)) {
+    } else if ((pc & BIT_RANGE(29, 31)) == BIT_RANGE(29, 31)) {
         /*
          * I'm pretty sure this should be an instruction fetch address exception
          * like above, but AFAIK the SH4 spec doesn't explicitly say that except
@@ -158,101 +158,80 @@ static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p) {
          * treat it as an unimplemented behavior error even though I'm pretty
          * sure I know exactly what to do.
          */
-        error_set_address(sh4->reg[SH4_REG_PC]);
+        error_set_address(pc);
         error_set_feature("P4 instruction execution address error exception");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
-    return sh4_do_read_inst(sh4, sh4->reg[SH4_REG_PC], inst_p);
-#if 0
-    /*
-     * this is commented out because you can't leave privileged mode without
-     * raising an EROR_UNIMPLEMENTED (see sh4_on_sr_change in sh4.c)
-     */
-    bool privileged = sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK ? true : false;
-
-    if (virt_area != SH4_AREA_P0 && !privileged) {
-        /*
-         * The spec says user-mode processes can only access the U0 area
-         * (which overlaps with P0) and the store queue area but I can't find
-         * the part where it describes what needs to be done.  Raising the
-         * SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL exception seems incorrect since that
-         * looks like it's for instances where the page can be looked up in the
-         * TLB.
-         */
-        error_set_feature("CPU exception for unprivileged "
-                          "access to high memory areas");
-        PENDING_ERROR(ERROR_UNIMPLEMENTED);
-        return MEM_ACCESS_FAILURE;
-    }
-#endif
+    return sh4_do_read_inst(sh4, pc, inst_p);
 }
 
-static inline void
-sh4_do_exec_inst(Sh4 *sh4, cpu_inst_param inst, InstOpcode const *op) {
-    cpu_inst_param oa = inst;
-
-    if (!(sh4->delayed_branch && op->pc_relative)) {
-        opcode_func_t op_func = op->func;
-        bool delayed_branch_tmp = sh4->delayed_branch;
-        addr32_t delayed_branch_addr_tmp = sh4->delayed_branch_addr;
-
-        sh4->dont_increment_pc = false;
+static inline unsigned
+sh4_do_exec_inst(Sh4 *sh4) {
+#ifdef INVARIANTS
+    if (sh4->delayed_branch || sh4->dont_increment_pc)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
 #ifdef DEEP_SYSCALL_TRACE
-        deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
+    deep_syscall_notify_jump(sh4->reg[SH4_REG_PC]);
 #endif
-        op_func(sh4, oa);
+
+    cpu_inst_param inst;
+    while (sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]) != 0)
+        ;
+    InstOpcode const *op = sh4_decode_inst(inst);
+
+    unsigned n_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
+    op->func(sh4, inst);
+
+    if (sh4->dont_increment_pc) {
+        // an exception was just raised
+        sh4->dont_increment_pc = false;
+        sh4->delayed_branch = false;
+        return n_cycles;
+    }
+
+    if (sh4->delayed_branch) {
+        sh4->delayed_branch = false;
+
+        // instruction address error in a branch delay slot makes no sense
+        if (sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC] + 2) != 0)
+            RAISE_ERROR(ERROR_INTEGRITY);
+        op = sh4_decode_inst(inst);
+        n_cycles += sh4_count_inst_cycles(op, &sh4->last_inst_type);
+
+        if (op->pc_relative) {
+            // raise exception for illegal slot instruction
+            LOG_ERROR("**** RAISING SLOT-ILLEGAL INSTRUCTION EXCEPTION ****\n");
+            sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
+            return n_cycles;
+        }
+        op->func(sh4, inst);
+
+        if (sh4->dont_increment_pc) {
+            sh4->dont_increment_pc = false;
+            return n_cycles;
+        }
+        sh4->reg[SH4_REG_PC] = sh4->delayed_branch_addr;
 
         /*
-         * TRAPA is not supposed to increment the PC.  Ideally it's supposed to
-         * jump to an exception handler, but since WashDC implements its own
-         * debugger, the emulator needs to handle TRAPA itself.  remote GDB
-         * expects the PC that it receives from the stub to always point to the
-         * TRAPA instruciton and not the instruction after the TRAPA.
+         * XXX (March 2020) I don't remember what I was on about when I wrote
+         * the below comment.  This function call may not even be necessary
+         * anymore since delay slots and the branches that precede them are
+         * indeed treated beingas atomic units now.
+         *
+         * We need to re-check this since any interrupts which happened
+         * during the delay slot will not have been raised.  In the
+         * future, it would be better to handle delay slots and the
+         * instructions which precede them as atomic units so I don't
+         * have to do this.
          */
-        if (!sh4->dont_increment_pc)
-            sh4->reg[SH4_REG_PC] += 2;
-        else if (delayed_branch_tmp)
-            delayed_branch_tmp = false;
-
-#ifdef ENABLE_DEBUGGER
-        if (!sh4->aborted_operation) {
-            if (delayed_branch_tmp) {
-                sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
-                sh4->delayed_branch = false;
-
-                /*
-                 * We need to re-check this since any interrupts which happened
-                 * during the delay slot will not have been raised.  In the
-                 * future, it would be better to handle delay slots and the
-                 * instructions which precede them as atomic units so I don't
-                 * have to do this.
-                 */
-                sh4_check_interrupts_no_delay_branch_check(sh4);
-            }
-        } else {
-            sh4->aborted_operation = false;
-        }
-#else
-        if (delayed_branch_tmp) {
-            sh4->reg[SH4_REG_PC] = delayed_branch_addr_tmp;
-            sh4->delayed_branch = false;
-
-            /*
-             * We need to re-check this since any interrupts which happened
-             * during the delay slot will not have been raised.  In the
-             * future, it would be better to handle delay slots and the
-             * instructions which precede them as atomic units so I don't
-             * have to do this.
-             */
-            sh4_check_interrupts_no_delay_branch_check(sh4);
-        }
-#endif
+        sh4_check_interrupts_no_delay_branch_check(sh4);
     } else {
-        // raise exception for illegal slot instruction
-        sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
+        sh4->reg[SH4_REG_PC] += 2;
     }
+    return n_cycles;
 }
 
 #endif

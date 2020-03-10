@@ -1009,9 +1009,6 @@ static bool dreamcast_check_debugger(void) {
 
 static bool run_to_next_sh4_event_debugger(void *ctxt) {
     Sh4 *sh4 = (void*)ctxt;
-    cpu_inst_param inst;
-    InstOpcode const *op;
-    unsigned inst_cycles;
     bool exit_now;
 
     debug_set_context(DEBUG_CONTEXT_SH4);
@@ -1023,20 +1020,8 @@ static bool run_to_next_sh4_event_debugger(void *ctxt) {
     while (!(exit_now = dreamcast_check_debugger())) {
         dc_cycle_stamp_t cycles_adv = 0;
 
-    fetch_decode_exec:
-        if (sh4_read_inst(sh4, &inst) != 0)
-            goto fetch_decode_exec;
-
-        op = sh4_decode_inst(inst);
-        inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
-
-        cycles_adv += inst_cycles * SH4_CLOCK_SCALE;
-
-        sh4_do_exec_inst(sh4, inst, op);
-
-        if (sh4->delayed_branch)
-            goto fetch_decode_exec;
-
+        cycles_adv +=
+            (dc_cycle_stamp_t)sh4_do_exec_inst(sh4) * SH4_CLOCK_SCALE;
         if (cycles_adv >= clock_countdown(&sh4_clock)) {
             cycles_after = clock_target_stamp(&sh4_clock);
             break;
@@ -1057,9 +1042,6 @@ static bool run_to_next_sh4_event_debugger(void *ctxt) {
 #endif
 
 static bool run_to_next_sh4_event(void *ctxt) {
-    cpu_inst_param inst;
-    InstOpcode const *op;
-    unsigned inst_cycles;
     dc_cycle_stamp_t cycles_after;
 
     Sh4 *sh4 = (void*)ctxt;
@@ -1067,20 +1049,8 @@ static bool run_to_next_sh4_event(void *ctxt) {
     for (;;) {
         dc_cycle_stamp_t cycles_adv = 0;
 
-    fetch_decode_exec:
-        if (sh4_read_inst(sh4, &inst) != 0)
-            goto fetch_decode_exec;
-
-        op = sh4_decode_inst(inst);
-        inst_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
-
-        cycles_adv += inst_cycles * SH4_CLOCK_SCALE;
-
-        sh4_do_exec_inst(sh4, inst, op);
-
-        if (sh4->delayed_branch)
-            goto fetch_decode_exec;
-
+        cycles_adv +=
+            (dc_cycle_stamp_t)sh4_do_exec_inst(sh4) * SH4_CLOCK_SCALE;
         if (cycles_adv >= clock_countdown(&sh4_clock)) {
             cycles_after = clock_target_stamp(&sh4_clock);
             break;
