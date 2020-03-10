@@ -800,6 +800,15 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
                 break;
             }
         }
+
+        /*
+         * remap area 7 VPNs to P4 PPNs
+         * SH4 does this because external memory addresses are 28 bits, which
+         * means it's impossible to reference the P4 area in a PPN since that
+         * requires setting bits 29-31.
+         */
+        if ((addr & BIT_RANGE(24, 28)) == BIT_RANGE(24, 28))
+            addr |= BIT_RANGE(29, 31);
     }
 
     *addrp = addr;
