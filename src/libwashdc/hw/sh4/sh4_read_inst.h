@@ -195,9 +195,10 @@ sh4_do_exec_inst(Sh4 *sh4) {
     if (sh4->delayed_branch) {
         sh4->delayed_branch = false;
 
-        // instruction address error in a branch delay slot makes no sense
-        if (sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC] + 2) != 0)
-            RAISE_ERROR(ERROR_INTEGRITY);
+        if (sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC] + 2) != 0) {
+            sh4->dont_increment_pc = false;
+            return n_cycles;
+        }
         op = sh4_decode_inst(inst);
         n_cycles += sh4_count_inst_cycles(op, &sh4->last_inst_type);
 
