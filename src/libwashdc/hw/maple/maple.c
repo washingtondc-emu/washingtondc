@@ -80,23 +80,17 @@
 
 static void maple_dma_complete_int_event_handler(struct SchedEvent *event);
 
-static struct SchedEvent maple_dma_complete_int_event = {
-    .handler = maple_dma_complete_int_event_handler
-};
+static void maple_dma_complete(struct maple *ctxt);
 
-static bool maple_dma_complete_int_event_scheduled;
-
-static void maple_dma_complete(void);
-
-static void maple_handle_devinfo(struct maple_frame *frame);
-static void maple_handle_getcond(struct maple_frame *frame);
+static void maple_handle_devinfo(struct maple *ctxt, struct maple_frame *frame);
+static void maple_handle_getcond(struct maple *ctxt, struct maple_frame *frame);
 
 static void maple_decode_frame(struct maple_frame *frame_out,
                                uint32_t const dat[3]);
 
 static DEF_ERROR_INT_ATTR(maple_command);
 
-void maple_handle_frame(struct maple_frame *frame) {
+static void maple_handle_frame(struct maple *ctxt, struct maple_frame *frame) {
     MAPLE_TRACE("frame received!\n");
     MAPLE_TRACE("\tlength: %u\n", frame->input_len);
     MAPLE_TRACE("\tport: %u\n", frame->port);
@@ -123,10 +117,10 @@ void maple_handle_frame(struct maple_frame *frame) {
 
     switch (frame->cmd) {
     case MAPLE_CMD_DEVINFO:
-        maple_handle_devinfo(frame);
+        maple_handle_devinfo(ctxt, frame);
         break;
     case MAPLE_CMD_GETCOND:
-        maple_handle_getcond(frame);
+        maple_handle_getcond(ctxt, frame);
         break;
     /* case MAPLE_CMD_NOP: */
     /*     frame->output_len = 0; */
@@ -141,10 +135,11 @@ void maple_handle_frame(struct maple_frame *frame) {
     }
 }
 
-static void maple_handle_devinfo(struct maple_frame *frame) {
+static void
+maple_handle_devinfo(struct maple *ctxt, struct maple_frame *frame) {
     MAPLE_TRACE("DEVINFO maplebus frame received\n");
 
-    struct maple_device *dev = maple_device_get(frame->maple_addr);
+    struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
 
     if (dev->enable) {
         struct maple_devinfo devinfo;
@@ -158,13 +153,14 @@ static void maple_handle_devinfo(struct maple_frame *frame) {
         maple_write_frame_resp(frame, MAPLE_RESP_NONE);
     }
 
-    maple_dma_complete();
+    maple_dma_complete(ctxt);
 }
 
-static void maple_handle_getcond(struct maple_frame *frame) {
+static void
+maple_handle_getcond(struct maple *ctxt, struct maple_frame *frame) {
     MAPLE_TRACE("GETCOND maplebus frame received\n");
 
-    struct maple_device *dev = maple_device_get(frame->maple_addr);
+    struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
 
     if (dev->enable) {
         struct maple_cond cond;
@@ -186,7 +182,7 @@ static void maple_handle_getcond(struct maple_frame *frame) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    maple_dma_complete();
+    maple_dma_complete(ctxt);
 }
 
 void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code) {
@@ -235,7 +231,7 @@ static void maple_decode_frame(struct maple_frame *frame_out,
     }
 }
 
-void maple_process_dma(uint32_t src_addr) {
+void maple_process_dma(struct maple *ctxt, uint32_t src_addr) {
     bool xfer_complete;
     unsigned ptrn;
     struct maple_frame frame;
@@ -272,7 +268,7 @@ void maple_process_dma(uint32_t src_addr) {
 
         src_addr += frame.input_len;
 
-        maple_handle_frame(&frame);
+        maple_handle_frame(ctxt, &frame);
 
     } while (!xfer_complete);
 }
@@ -319,31 +315,37 @@ unsigned maple_addr_pack(unsigned port, unsigned unit) {
     return addr;
 }
 
-static struct dc_clock *maple_clk;
-
-static void maple_dma_complete(void) {
-    if (!maple_dma_complete_int_event_scheduled) {
-        maple_dma_complete_int_event_scheduled = true;
-        maple_dma_complete_int_event.when =
-            clock_cycle_stamp(maple_clk) + MAPLE_DMA_COMPLETE_DELAY;
-        sched_event(maple_clk, &maple_dma_complete_int_event);
+static void maple_dma_complete(struct maple *ctxt) {
+    if (!ctxt->dma_complete_int_event_scheduled) {
+        ctxt->dma_complete_int_event_scheduled = true;
+        ctxt->dma_complete_int_event.arg_ptr = ctxt;
+        ctxt->dma_complete_int_event.handler =
+            maple_dma_complete_int_event_handler;
+        ctxt->dma_complete_int_event.when =
+            clock_cycle_stamp(ctxt->maple_clk) + MAPLE_DMA_COMPLETE_DELAY;
+        sched_event(ctxt->maple_clk, &ctxt->dma_complete_int_event);
     }
 }
 
 static void maple_dma_complete_int_event_handler(struct SchedEvent *event) {
-    maple_dma_complete_int_event_scheduled = false;
+    struct maple *ctxt = (struct maple*)event->arg_ptr;
+    ctxt->dma_complete_int_event_scheduled = false;
     holly_raise_nrm_int(HOLLY_MAPLE_ISTNRM_DMA_COMPLETE);
 }
 
-void maple_init(struct dc_clock *clk) {
-    maple_clk = clk;
+void maple_init(struct maple *maple_ctxt, struct dc_clock *clk) {
+    memset(maple_ctxt, 0, sizeof(*maple_ctxt));
 
-    maple_reg_init();
+    maple_ctxt->maple_dma_prot_bot = 0;
+    maple_ctxt->maple_dma_prot_top = (0x1 << 27) | (0x7f << 20);
+    maple_ctxt->maple_clk = clk;
+
+    maple_reg_init(maple_ctxt);
 }
 
-void maple_cleanup(void) {
+void maple_cleanup(struct maple *maple_ctxt) {
     // TODO: don't hardcode this
-    maple_device_cleanup(maple_addr_pack(0, 0));
+    maple_device_cleanup(maple_ctxt, maple_addr_pack(0, 0));
 
-    maple_reg_cleanup();
+    maple_reg_cleanup(maple_ctxt);
 }

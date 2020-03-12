@@ -31,6 +31,7 @@
 #include "washdc/serial_server.h"
 #include "washdc/gameconsole.h"
 #include "washdc/gfx/gfx_all.h"
+#include "washdc/washdc.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "washdc/debugger.h"
@@ -168,4 +169,13 @@ void dc_set_lmmode1(unsigned val);
 unsigned dc_get_lmmode0(void);
 unsigned dc_get_lmmode1(void);
 
+void dc_controller_press_buttons(unsigned port_no, uint32_t btns);
+void dc_controller_release_buttons(unsigned port_no, uint32_t btns);
+void dc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
+
+void dc_keyboard_set_key(unsigned port_no, unsigned btn_no, bool is_pressed);
+void dc_keyboard_press_special(unsigned port_no,
+                               enum washdc_keyboard_special_keys which);
+void dc_keyboard_release_special(unsigned port_no,
+                                 enum washdc_keyboard_special_keys which);
 #endif

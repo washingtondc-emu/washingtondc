@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -89,17 +89,22 @@ struct maple_controller {
     unsigned axes[MAPLE_CONTROLLER_N_AXES];
 };
 
+struct maple;
+
 /*
  * CONTROLLER API
  * These two functions can be safely called from any thread.
  */
 // mark all buttons in btns as being pressed
-void maple_controller_press_btns(unsigned port_no, uint32_t btns);
+void maple_controller_press_btns(struct maple *maple, unsigned port_no,
+                                 uint32_t btns);
 
 // mark all buttons in btns as being released
-void maple_controller_release_btns(unsigned port_no, uint32_t btns);
+void maple_controller_release_btns(struct maple *maple, unsigned port_no,
+                                   uint32_t btns);
 
 // 0 = min, 255 = max, 128 = half
-void maple_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
+void maple_controller_set_axis(struct maple *maple, unsigned port_no,
+                               unsigned axis, unsigned val);
 
 #endif

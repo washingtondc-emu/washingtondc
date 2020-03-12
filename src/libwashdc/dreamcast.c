@@ -102,6 +102,7 @@ static struct memory_map arm7_mem_map;
 static struct aica aica;
 static struct gdrom_ctxt gdrom;
 static struct pvr2 dc_pvr2;
+static struct maple maple;
 
 static atomic_bool is_running = ATOMIC_VAR_INIT(false);
 static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
@@ -591,7 +592,7 @@ dreamcast_init(char const *gdi_path,
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
     pvr2_init(&dc_pvr2, &sh4_clock);
     gdrom_init(&gdrom, &sh4_clock);
-    maple_init(&sh4_clock);
+    maple_init(&maple, &sh4_clock);
 
     char const *ctrl_0 = cfg_get_node("wash.dc.port.0.0");
     char const *ctrl_1 = cfg_get_node("wash.dc.port.1.0");
@@ -599,28 +600,40 @@ dreamcast_init(char const *gdi_path,
     char const *ctrl_3 = cfg_get_node("wash.dc.port.3.0");
 
     if (ctrl_0) {
-        if (strcmp(ctrl_0, "dreamcast_controller") == 0)
-            maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_CONTROLLER);
-        else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0)
-            maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_KEYBOARD);
+        if (strcmp(ctrl_0, "dreamcast_controller") == 0) {
+            maple_device_init(&maple, maple_addr_pack(0, 0),
+                              MAPLE_DEVICE_CONTROLLER);
+        } else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0) {
+            maple_device_init(&maple, maple_addr_pack(0, 0),
+                              MAPLE_DEVICE_KEYBOARD);
+        }
     }
     if (ctrl_1) {
-        if (strcmp(ctrl_1, "dreamcast_controller") == 0)
-            maple_device_init(maple_addr_pack(1, 0), MAPLE_DEVICE_CONTROLLER);
-        else if (strcmp(ctrl_1, "dreamcast_keyboard_us") == 0)
-            maple_device_init(maple_addr_pack(1, 0), MAPLE_DEVICE_KEYBOARD);
+        if (strcmp(ctrl_1, "dreamcast_controller") == 0) {
+            maple_device_init(&maple, maple_addr_pack(1, 0),
+                              MAPLE_DEVICE_CONTROLLER);
+        } else if (strcmp(ctrl_1, "dreamcast_keyboard_us") == 0) {
+            maple_device_init(&maple, maple_addr_pack(1, 0),
+                              MAPLE_DEVICE_KEYBOARD);
+        }
     }
     if (ctrl_2) {
-        if (strcmp(ctrl_2, "dreamcast_controller") == 0)
-            maple_device_init(maple_addr_pack(2, 0), MAPLE_DEVICE_CONTROLLER);
-        else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0)
-            maple_device_init(maple_addr_pack(2, 0), MAPLE_DEVICE_KEYBOARD);
+        if (strcmp(ctrl_2, "dreamcast_controller") == 0) {
+            maple_device_init(&maple, maple_addr_pack(2, 0),
+                              MAPLE_DEVICE_CONTROLLER);
+        } else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0) {
+            maple_device_init(&maple, maple_addr_pack(2, 0),
+                              MAPLE_DEVICE_KEYBOARD);
+        }
     }
     if (ctrl_3) {
-        if (strcmp(ctrl_3, "dreamcast_controller") == 0)
-            maple_device_init(maple_addr_pack(3, 0), MAPLE_DEVICE_CONTROLLER);
-        else if (strcmp(ctrl_3, "dreamcast_keyboard_us") == 0)
-            maple_device_init(maple_addr_pack(3, 0), MAPLE_DEVICE_KEYBOARD);
+        if (strcmp(ctrl_3, "dreamcast_controller") == 0) {
+            maple_device_init(&maple, maple_addr_pack(3, 0),
+                              MAPLE_DEVICE_CONTROLLER);
+        } else if (strcmp(ctrl_3, "dreamcast_keyboard_us") == 0) {
+            maple_device_init(&maple, maple_addr_pack(3, 0),
+                              MAPLE_DEVICE_KEYBOARD);
+        }
     }
 
     // hook up the irl line
@@ -723,7 +736,7 @@ void dreamcast_cleanup() {
     // disconnect the irl line
     sh4_register_irl_line(&cpu, NULL, NULL);
 
-    maple_cleanup();
+    maple_cleanup(&maple);
     gdrom_cleanup(&gdrom);
     pvr2_cleanup(&dc_pvr2);
     aica_cleanup(&aica);
@@ -1411,7 +1424,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &sys_block_intf, NULL);
     memory_map_add(map, ADDR_MAPLE_FIRST, ADDR_MAPLE_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &maple_intf, NULL);
+                   &maple_intf, &maple);
     memory_map_add(map, ADDR_G2_FIRST, ADDR_G2_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g2_intf, NULL);
@@ -1735,6 +1748,125 @@ int dc_try_read32(uint32_t addr, uint32_t *valp) {
 
 void dc_get_pvr2_stats(struct pvr2_stat *stats) {
     *stats = dc_pvr2.stat;
+}
+
+static uint32_t trans_bind_washdc_to_maple(uint32_t wash) {
+    uint32_t ret = 0;
+
+    if (wash & WASHDC_CONT_BTN_C_MASK)
+        ret |= MAPLE_CONT_BTN_C_MASK;
+    if (wash & WASHDC_CONT_BTN_B_MASK)
+        ret |= MAPLE_CONT_BTN_B_MASK;
+    if (wash & WASHDC_CONT_BTN_A_MASK)
+        ret |= MAPLE_CONT_BTN_A_MASK;
+    if (wash & WASHDC_CONT_BTN_START_MASK)
+        ret |= MAPLE_CONT_BTN_START_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_UP_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_UP_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_DOWN_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_DOWN_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_LEFT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_LEFT_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD_RIGHT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD_RIGHT_MASK;
+    if (wash & WASHDC_CONT_BTN_Z_MASK)
+        ret |= MAPLE_CONT_BTN_Z_MASK;
+    if (wash & WASHDC_CONT_BTN_Y_MASK)
+        ret |= MAPLE_CONT_BTN_Y_MASK;
+    if (wash & WASHDC_CONT_BTN_X_MASK)
+        ret |= MAPLE_CONT_BTN_X_MASK;
+    if (wash & WASHDC_CONT_BTN_D_MASK)
+        ret |= MAPLE_CONT_BTN_D_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_UP_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_UP_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_DOWN_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_DOWN_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_LEFT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_LEFT_MASK;
+    if (wash & WASHDC_CONT_BTN_DPAD2_RIGHT_MASK)
+        ret |= MAPLE_CONT_BTN_DPAD2_RIGHT_MASK;
+
+    return ret;
+}
+
+void dc_controller_press_buttons(unsigned port_no, uint32_t btns) {
+    maple_controller_press_btns(&maple, port_no, trans_bind_washdc_to_maple(btns));
+}
+
+void dc_controller_release_buttons(unsigned port_no, uint32_t btns) {
+    maple_controller_release_btns(&maple, port_no, trans_bind_washdc_to_maple(btns));
+}
+
+static int trans_axis_washdc_to_maple(int axis) {
+    switch (axis) {
+    case WASHDC_CONTROLLER_AXIS_R_TRIG:
+        return MAPLE_CONTROLLER_AXIS_R_TRIG;
+    case WASHDC_CONTROLLER_AXIS_L_TRIG:
+        return MAPLE_CONTROLLER_AXIS_L_TRIG;
+    case WASHDC_CONTROLLER_AXIS_JOY1_Y:
+        return MAPLE_CONTROLLER_AXIS_JOY1_Y;
+    case WASHDC_CONTROLLER_AXIS_JOY2_X:
+        return MAPLE_CONTROLLER_AXIS_JOY2_X;
+    case WASHDC_CONTROLLER_AXIS_JOY2_Y:
+        return MAPLE_CONTROLLER_AXIS_JOY2_Y;
+    default:
+        LOG_ERROR("unknown axis %d\n", axis);
+    case WASHDC_CONTROLLER_AXIS_JOY1_X:
+        return MAPLE_CONTROLLER_AXIS_JOY1_X;
+    }
+}
+
+void dc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
+    maple_controller_set_axis(&maple, port_no,
+                              trans_axis_washdc_to_maple(axis), val);
+}
+
+void dc_keyboard_set_key(unsigned port_no, unsigned btn_no, bool is_pressed) {
+    maple_keyboard_press_key(&maple, port_no, btn_no, is_pressed);
+}
+
+void dc_keyboard_press_special(unsigned port_no,
+                               enum washdc_keyboard_special_keys which) {
+    enum maple_keyboard_special_keys spec = MAPLE_KEYBOARD_NONE;
+    if (which & WASHDC_KEYBOARD_LEFT_CTRL)
+        spec |= MAPLE_KEYBOARD_LEFT_CTRL;
+    if (which & WASHDC_KEYBOARD_LEFT_SHIFT)
+        spec |= MAPLE_KEYBOARD_LEFT_SHIFT;
+    if (which & WASHDC_KEYBOARD_LEFT_ALT)
+        spec |= MAPLE_KEYBOARD_LEFT_ALT;
+    if (which & WASHDC_KEYBOARD_S1)
+        spec |= MAPLE_KEYBOARD_S1;
+    if (which & WASHDC_KEYBOARD_RIGHT_CTRL)
+        spec |= MAPLE_KEYBOARD_RIGHT_CTRL;
+    if (which & WASHDC_KEYBOARD_RIGHT_SHIFT)
+        spec |= MAPLE_KEYBOARD_RIGHT_SHIFT;
+    if (which & WASHDC_KEYBOARD_RIGHT_ALT)
+        spec |= MAPLE_KEYBOARD_RIGHT_ALT;
+    if (which & WASHDC_KEYBOARD_S2)
+        spec |= MAPLE_KEYBOARD_S2;
+    maple_keyboard_press_special(&maple, port_no, spec);
+}
+
+void dc_keyboard_release_special(unsigned port_no,
+                                 enum washdc_keyboard_special_keys which) {
+    enum maple_keyboard_special_keys spec = MAPLE_KEYBOARD_NONE;
+    if (which & WASHDC_KEYBOARD_LEFT_CTRL)
+        spec |= MAPLE_KEYBOARD_LEFT_CTRL;
+    if (which & WASHDC_KEYBOARD_LEFT_SHIFT)
+        spec |= MAPLE_KEYBOARD_LEFT_SHIFT;
+    if (which & WASHDC_KEYBOARD_LEFT_ALT)
+        spec |= MAPLE_KEYBOARD_LEFT_ALT;
+    if (which & WASHDC_KEYBOARD_S1)
+        spec |= MAPLE_KEYBOARD_S1;
+    if (which & WASHDC_KEYBOARD_RIGHT_CTRL)
+        spec |= MAPLE_KEYBOARD_RIGHT_CTRL;
+    if (which & WASHDC_KEYBOARD_RIGHT_SHIFT)
+        spec |= MAPLE_KEYBOARD_RIGHT_SHIFT;
+    if (which & WASHDC_KEYBOARD_RIGHT_ALT)
+        spec |= MAPLE_KEYBOARD_RIGHT_ALT;
+    if (which & WASHDC_KEYBOARD_S2)
+        spec |= MAPLE_KEYBOARD_S2;
+    maple_keyboard_release_special(&maple, port_no, spec);
 }
 
 static float sh4_unmapped_readfloat(uint32_t addr, void *ctxt) {

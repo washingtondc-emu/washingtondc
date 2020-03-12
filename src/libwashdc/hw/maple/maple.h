@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,14 @@
 #include <stdbool.h>
 
 #include "dc_sched.h"
+#include "washdc/types.h"
+#include "mem_areas.h"
+#include "mmio.h"
+#include "maple_device.h"
+
+#define N_MAPLE_REGS (ADDR_MAPLE_LAST - ADDR_MAPLE_FIRST + 1)
+
+DECL_MMIO_REGION(maple_reg, N_MAPLE_REGS, ADDR_MAPLE_FIRST, uint32_t)
 
 enum maple_cmd {
     // maplebus response codes
@@ -63,7 +71,21 @@ struct maple_frame {
     uint8_t output_data[MAPLE_FRAME_OUTPUT_DATA_LEN];
 };
 
-void maple_handle_frame(struct maple_frame *frame);
+#define MAPLE_PORT_COUNT 4
+#define MAPLE_UNIT_COUNT 6
+
+struct maple {
+    struct dc_clock *maple_clk;
+    struct SchedEvent dma_complete_int_event;
+    bool dma_complete_int_event_scheduled;
+
+    addr32_t maple_dma_prot_bot, maple_dma_prot_top, maple_dma_cmd_start;
+
+    struct maple_device devs[MAPLE_PORT_COUNT][MAPLE_UNIT_COUNT];
+
+    struct mmio_region_maple_reg mmio_region_maple_reg;
+    uint8_t reg_backing[N_MAPLE_REGS];
+};
 
 void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code);
 
@@ -72,15 +94,12 @@ void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code);
 // don't call this directly, use the MAPLE_TRACE macro instead
 void maple_do_trace(char const *msg, ...);
 
-#define MAPLE_PORT_COUNT 4
-#define MAPLE_UNIT_COUNT 6
-
 unsigned maple_addr_pack(unsigned port, unsigned unit);
 void maple_addr_unpack(unsigned addr, unsigned *port_out, unsigned *unit_out);
 
-void maple_init(struct dc_clock *clk);
-void maple_cleanup(void);
+void maple_init(struct maple *ctxt, struct dc_clock *clk);
+void maple_cleanup(struct maple *ctxt);
 
-void maple_process_dma(uint32_t src_addr);
+void maple_process_dma(struct maple *ctxt, uint32_t src_addr);
 
 #endif

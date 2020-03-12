@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,21 +31,20 @@
 
 #include "maple_device.h"
 
-struct maple_device devs[MAPLE_PORT_COUNT][MAPLE_UNIT_COUNT];
-
-struct maple_device *maple_device_get(unsigned addr) {
+struct maple_device *maple_device_get(struct maple *maple, unsigned addr) {
     unsigned port, unit;
     maple_addr_unpack(addr, &port, &unit);
 
     if (port >= MAPLE_PORT_COUNT || unit >= MAPLE_UNIT_COUNT)
         RAISE_ERROR(ERROR_INTEGRITY);
-    return &devs[port][unit];
+    return &maple->devs[port][unit];
 }
 
-int maple_device_init(unsigned maple_addr, enum maple_device_type tp) {
+int maple_device_init(struct maple *maple, unsigned maple_addr,
+                      enum maple_device_type tp) {
     unsigned port, unit;
     maple_addr_unpack(maple_addr, &port, &unit);
-    struct maple_device *dev = &devs[port][unit];
+    struct maple_device *dev = &maple->devs[port][unit];
 
     if (dev->enable)
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -68,10 +67,10 @@ int maple_device_init(unsigned maple_addr, enum maple_device_type tp) {
     return 0;
 }
 
-void maple_device_cleanup(unsigned addr) {
+void maple_device_cleanup(struct maple *maple, unsigned addr) {
     unsigned port, unit;
     maple_addr_unpack(addr, &port, &unit);
-    struct maple_device *dev = &devs[port][unit];
+    struct maple_device *dev = &maple->devs[port][unit];
 
     if (dev->sw->dev_cleanup)
         dev->sw->dev_cleanup(dev);

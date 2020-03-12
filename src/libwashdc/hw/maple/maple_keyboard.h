@@ -58,13 +58,13 @@ struct maple_keyboard {
 extern struct maple_switch_table maple_keyboard_switch_table;
 
 void
-maple_keyboard_press_special(unsigned port_no,
+maple_keyboard_press_special(struct maple *maple, unsigned port_no,
                              enum maple_keyboard_special_keys which);
 void
-maple_keyboard_release_special(unsigned port_no,
+maple_keyboard_release_special(struct maple *maple, unsigned port_no,
                                enum maple_keyboard_special_keys which);
 void
-maple_keyboard_press_key(unsigned port_no,
+maple_keyboard_press_key(struct maple *maple, unsigned port_no,
                          unsigned which_key, bool is_pressed);
 
 #ifdef __cplusplus

@@ -121,10 +121,10 @@ static void keyboard_dev_get_cond(struct maple_device *dev,
 }
 
 void
-maple_keyboard_press_key(unsigned port_no,
+maple_keyboard_press_key(struct maple *maple, unsigned port_no,
                          unsigned which_key, bool is_pressed) {
     unsigned addr = maple_addr_pack(port_no, 0);
-    struct maple_device *dev = maple_device_get(addr);
+    struct maple_device *dev = maple_device_get(maple, addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_KEYBOARD))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "
@@ -158,10 +158,10 @@ maple_keyboard_press_key(unsigned port_no,
 }
 
 void
-maple_keyboard_press_special(unsigned port_no,
+maple_keyboard_press_special(struct maple *maple, unsigned port_no,
                              enum maple_keyboard_special_keys which) {
     unsigned addr = maple_addr_pack(port_no, 0);
-    struct maple_device *dev = maple_device_get(addr);
+    struct maple_device *dev = maple_device_get(maple, addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_KEYBOARD))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "
@@ -173,10 +173,10 @@ maple_keyboard_press_special(unsigned port_no,
 }
 
 void
-maple_keyboard_release_special(unsigned port_no,
+maple_keyboard_release_special(struct maple *maple, unsigned port_no,
                                enum maple_keyboard_special_keys which) {
     unsigned addr = maple_addr_pack(port_no, 0);
-    struct maple_device *dev = maple_device_get(addr);
+    struct maple_device *dev = maple_device_get(maple, addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_KEYBOARD))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "

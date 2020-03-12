@@ -126,9 +126,10 @@ static void controller_dev_get_cond(struct maple_device *dev,
 }
 
 // mark all buttons in btns as being pressed
-void maple_controller_press_btns(unsigned port_no, uint32_t btns) {
+void maple_controller_press_btns(struct maple *maple, unsigned port_no,
+                                 uint32_t btns) {
     unsigned addr = maple_addr_pack(port_no, 0);
-    struct maple_device *dev = maple_device_get(addr);
+    struct maple_device *dev = maple_device_get(maple, addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "
@@ -142,9 +143,10 @@ void maple_controller_press_btns(unsigned port_no, uint32_t btns) {
 }
 
 // mark all buttons in btns as being released
-void maple_controller_release_btns(unsigned port_no, uint32_t btns) {
+void maple_controller_release_btns(struct maple *maple, unsigned port_no,
+                                   uint32_t btns) {
     unsigned addr = maple_addr_pack(port_no, 0);
-    struct maple_device *dev = maple_device_get(addr);
+    struct maple_device *dev = maple_device_get(maple, addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "
@@ -157,9 +159,10 @@ void maple_controller_release_btns(unsigned port_no, uint32_t btns) {
     cont->btns &= ~btns;
 }
 
-void maple_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
+void maple_controller_set_axis(struct maple *maple, unsigned port_no,
+                               unsigned axis, unsigned val) {
     unsigned addr = maple_addr_pack(port_no, 0);
-    struct maple_device *dev = maple_device_get(addr);
+    struct maple_device *dev = maple_device_get(maple, addr);
 
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "

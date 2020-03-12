@@ -38,8 +38,6 @@
 #include "log.h"
 #include "washdc/config_file.h"
 
-static uint32_t trans_bind_washdc_to_maple(uint32_t wash);
-static int trans_axis_washdc_to_maple(int axis);
 static struct washdc_hostfile_api const *hostfile_api;
 
 static enum dc_boot_mode translate_boot_mode(enum washdc_boot_mode mode) {
@@ -114,68 +112,34 @@ int washdc_save_screenshot_dir(void) {
 
 // mark all buttons in btns as being pressed
 void washdc_controller_press_btns(unsigned port_no, uint32_t btns) {
-    maple_controller_press_btns(port_no, trans_bind_washdc_to_maple(btns));
+    dc_controller_press_buttons(port_no, btns);
 }
 
 // mark all buttons in btns as being released
 void washdc_controller_release_btns(unsigned port_no, uint32_t btns) {
-    maple_controller_release_btns(port_no, trans_bind_washdc_to_maple(btns));
+    dc_controller_release_buttons(port_no, btns);
 }
 
 void
 washdc_keyboard_set_btn(unsigned port_no, unsigned btn_no, bool is_pressed) {
-    maple_keyboard_press_key(port_no, btn_no, is_pressed);
+    dc_keyboard_set_key(port_no, btn_no, is_pressed);
 }
 
 void
 washdc_keyboard_press_special(unsigned port_no,
                               enum washdc_keyboard_special_keys which) {
-    enum maple_keyboard_special_keys spec = MAPLE_KEYBOARD_NONE;
-    if (which & WASHDC_KEYBOARD_LEFT_CTRL)
-        spec |= MAPLE_KEYBOARD_LEFT_CTRL;
-    if (which & WASHDC_KEYBOARD_LEFT_SHIFT)
-        spec |= MAPLE_KEYBOARD_LEFT_SHIFT;
-    if (which & WASHDC_KEYBOARD_LEFT_ALT)
-        spec |= MAPLE_KEYBOARD_LEFT_ALT;
-    if (which & WASHDC_KEYBOARD_S1)
-        spec |= MAPLE_KEYBOARD_S1;
-    if (which & WASHDC_KEYBOARD_RIGHT_CTRL)
-        spec |= MAPLE_KEYBOARD_RIGHT_CTRL;
-    if (which & WASHDC_KEYBOARD_RIGHT_SHIFT)
-        spec |= MAPLE_KEYBOARD_RIGHT_SHIFT;
-    if (which & WASHDC_KEYBOARD_RIGHT_ALT)
-        spec |= MAPLE_KEYBOARD_RIGHT_ALT;
-    if (which & WASHDC_KEYBOARD_S2)
-        spec |= MAPLE_KEYBOARD_S2;
-    maple_keyboard_press_special(port_no, spec);
+    dc_keyboard_press_special(port_no, which);
 }
 
 void
 washdc_keyboard_release_special(unsigned port_no,
                                 enum washdc_keyboard_special_keys which) {
-    enum maple_keyboard_special_keys spec = MAPLE_KEYBOARD_NONE;
-    if (which & WASHDC_KEYBOARD_LEFT_CTRL)
-        spec |= MAPLE_KEYBOARD_LEFT_CTRL;
-    if (which & WASHDC_KEYBOARD_LEFT_SHIFT)
-        spec |= MAPLE_KEYBOARD_LEFT_SHIFT;
-    if (which & WASHDC_KEYBOARD_LEFT_ALT)
-        spec |= MAPLE_KEYBOARD_LEFT_ALT;
-    if (which & WASHDC_KEYBOARD_S1)
-        spec |= MAPLE_KEYBOARD_S1;
-    if (which & WASHDC_KEYBOARD_RIGHT_CTRL)
-        spec |= MAPLE_KEYBOARD_RIGHT_CTRL;
-    if (which & WASHDC_KEYBOARD_RIGHT_SHIFT)
-        spec |= MAPLE_KEYBOARD_RIGHT_SHIFT;
-    if (which & WASHDC_KEYBOARD_RIGHT_ALT)
-        spec |= MAPLE_KEYBOARD_RIGHT_ALT;
-    if (which & WASHDC_KEYBOARD_S2)
-        spec |= MAPLE_KEYBOARD_S2;
-    maple_keyboard_release_special(port_no, spec);
+    dc_keyboard_release_special(port_no, which);
 }
 
 // 0 = min, 255 = max, 128 = half
 void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
-    maple_controller_set_axis(port_no, trans_axis_washdc_to_maple(axis), val);
+    dc_controller_set_axis(port_no, axis, val);
 }
 
 void washdc_on_expose(void) {
@@ -196,64 +160,6 @@ void washdc_gfx_toggle_wireframe(void) {
 
 void washdc_gfx_toggle_filter(void) {
     gfx_toggle_output_filter();
-}
-
-static uint32_t trans_bind_washdc_to_maple(uint32_t wash) {
-    uint32_t ret = 0;
-
-    if (wash & WASHDC_CONT_BTN_C_MASK)
-        ret |= MAPLE_CONT_BTN_C_MASK;
-    if (wash & WASHDC_CONT_BTN_B_MASK)
-        ret |= MAPLE_CONT_BTN_B_MASK;
-    if (wash & WASHDC_CONT_BTN_A_MASK)
-        ret |= MAPLE_CONT_BTN_A_MASK;
-    if (wash & WASHDC_CONT_BTN_START_MASK)
-        ret |= MAPLE_CONT_BTN_START_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD_UP_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD_UP_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD_DOWN_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD_DOWN_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD_LEFT_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD_LEFT_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD_RIGHT_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD_RIGHT_MASK;
-    if (wash & WASHDC_CONT_BTN_Z_MASK)
-        ret |= MAPLE_CONT_BTN_Z_MASK;
-    if (wash & WASHDC_CONT_BTN_Y_MASK)
-        ret |= MAPLE_CONT_BTN_Y_MASK;
-    if (wash & WASHDC_CONT_BTN_X_MASK)
-        ret |= MAPLE_CONT_BTN_X_MASK;
-    if (wash & WASHDC_CONT_BTN_D_MASK)
-        ret |= MAPLE_CONT_BTN_D_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD2_UP_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD2_UP_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD2_DOWN_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD2_DOWN_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD2_LEFT_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD2_LEFT_MASK;
-    if (wash & WASHDC_CONT_BTN_DPAD2_RIGHT_MASK)
-        ret |= MAPLE_CONT_BTN_DPAD2_RIGHT_MASK;
-
-    return ret;
-}
-
-static int trans_axis_washdc_to_maple(int axis) {
-    switch (axis) {
-    case WASHDC_CONTROLLER_AXIS_R_TRIG:
-        return MAPLE_CONTROLLER_AXIS_R_TRIG;
-    case WASHDC_CONTROLLER_AXIS_L_TRIG:
-        return MAPLE_CONTROLLER_AXIS_L_TRIG;
-    case WASHDC_CONTROLLER_AXIS_JOY1_Y:
-        return MAPLE_CONTROLLER_AXIS_JOY1_Y;
-    case WASHDC_CONTROLLER_AXIS_JOY2_X:
-        return MAPLE_CONTROLLER_AXIS_JOY2_X;
-    case WASHDC_CONTROLLER_AXIS_JOY2_Y:
-        return MAPLE_CONTROLLER_AXIS_JOY2_Y;
-    default:
-        LOG_ERROR("unknown axis %d\n", axis);
-    case WASHDC_CONTROLLER_AXIS_JOY1_X:
-        return MAPLE_CONTROLLER_AXIS_JOY1_X;
-    }
 }
 
 void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat) {

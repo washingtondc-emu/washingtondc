@@ -30,6 +30,7 @@
 #include "maple_keyboard.h"
 
 struct maple_device;
+struct maple;
 
 #define MAPLE_FUNC_CONTROLLER 0x01000000
 #define MAPLE_FUNC_KEYBOARD   0x40000000
@@ -150,9 +151,10 @@ struct maple_device {
     union maple_device_ctxt ctxt;
 };
 
-int maple_device_init(unsigned maple_addr, enum maple_device_type tp);
+int maple_device_init(struct maple *maple, unsigned maple_addr,
+                      enum maple_device_type tp);
 
-void maple_device_cleanup(unsigned addr);
+void maple_device_cleanup(struct maple *maple, unsigned addr);
 
 void maple_device_info(struct maple_device *dev, struct maple_devinfo *devinfo);
 
@@ -160,7 +162,7 @@ void maple_device_cond(struct maple_device *dev, struct maple_cond *cond);
 
 extern struct maple_switch_table maple_controller_switch_table;
 
-struct maple_device *maple_device_get(unsigned addr);
+struct maple_device *maple_device_get(struct maple *maple, unsigned addr);
 
 // out must be at least MAPLE_DEVINFO_SIZE bytes long
 void maple_compile_devinfo(struct maple_devinfo const *devinfo, void *out);
