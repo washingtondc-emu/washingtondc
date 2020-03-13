@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -64,12 +64,19 @@ struct pvr2_spg {
 
     unsigned raster_x, raster_y;
 
-    SchedEvent hblank_event, vblank_in_event, vblank_out_event;
+    /*
+     * we need a pointer to the maple context because maple has a DMA mode that
+     * is triggered one scanline before each vblank-out
+     */
+    struct maple *maple;
+
+    SchedEvent hblank_event, vblank_in_event,
+        vblank_out_event, pre_vblank_out_event;
     bool hblank_event_scheduled, vblank_in_event_scheduled,
-        vblank_out_event_scheduled;
+        vblank_out_event_scheduled, pre_vblank_out_event_scheduled;
 };
 
-void spg_init(struct pvr2 *pvr2);
+void spg_init(struct pvr2 *pvr2, struct maple *maple);
 void spg_cleanup(struct pvr2 *pvr2);
 
 // val should be either 1 or 2

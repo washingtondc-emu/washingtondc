@@ -101,7 +101,8 @@ struct pvr2 {
     struct pvr2_stat stat;
 };
 
-void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk);
+struct maple;
+void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk, struct maple *maple);
 void pvr2_cleanup(struct pvr2 *pvr2);
 
 #endif

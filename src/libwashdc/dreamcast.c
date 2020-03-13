@@ -590,7 +590,7 @@ dreamcast_init(char const *gdi_path,
     g1_init();
     g2_init();
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
-    pvr2_init(&dc_pvr2, &sh4_clock);
+    pvr2_init(&dc_pvr2, &sh4_clock, &maple);
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&maple, &sh4_clock);
 

@@ -74,10 +74,20 @@ struct maple_frame {
 #define MAPLE_PORT_COUNT 4
 #define MAPLE_UNIT_COUNT 6
 
+enum maple_dma_init_mode {
+    MAPLE_DMA_INIT_MANUAL = 0,
+    MAPLE_DMA_INIT_VBLANK = 1
+};
+
 struct maple {
     struct dc_clock *maple_clk;
     struct SchedEvent dma_complete_int_event;
     bool dma_complete_int_event_scheduled;
+
+    enum maple_dma_init_mode dma_init_mode;
+    bool vblank_init_unlocked;
+    bool vblank_autoinit;
+    bool dma_en;
 
     addr32_t maple_dma_prot_bot, maple_dma_prot_top, maple_dma_cmd_start;
 
@@ -85,6 +95,7 @@ struct maple {
 
     struct mmio_region_maple_reg mmio_region_maple_reg;
     uint8_t reg_backing[N_MAPLE_REGS];
+    uint32_t reg_msys;
 };
 
 void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code);
@@ -101,5 +112,12 @@ void maple_init(struct maple *ctxt, struct dc_clock *clk);
 void maple_cleanup(struct maple *ctxt);
 
 void maple_process_dma(struct maple *ctxt, uint32_t src_addr);
+
+/*
+ * maple has a DMA mode that's automatically triggered one line before a vblank
+ * interrupt.  This function gets called by the SPG to let it know that it's
+ * time for that.
+ */
+void maple_notify_pre_vblank(struct maple *ctxt);
 
 #endif

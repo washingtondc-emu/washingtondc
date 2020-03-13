@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "dreamcast.h"
 #include "log.h"
 #include "pvr2.h"
+#include "hw/maple/maple.h"
 
 #include "spg.h"
 
@@ -107,20 +108,23 @@ static inline unsigned get_vbend(struct pvr2 *pvr2);
 static void sched_next_hblank_event(struct pvr2 *pvr2);
 static void sched_next_vblank_in_event(struct pvr2 *pvr2);
 static void sched_next_vblank_out_event(struct pvr2 *pvr2);
+static void sched_next_pre_vblank_out_event(struct pvr2 *pvr2);
 
 static void spg_handle_hblank(SchedEvent *event);
 static void spg_handle_vblank_in(SchedEvent *event);
 static void spg_handle_vblank_out(SchedEvent *event);
+static void spg_handle_pre_vblank_out(SchedEvent *event);
 
 static void spg_unsched_all(struct pvr2 *pvr2);
 
 static inline bool get_interlace(struct pvr2 *pvr2);
 static inline unsigned get_pclk_div(struct pvr2 *pvr2);
 
-void spg_init(struct pvr2 *pvr2) {
+void spg_init(struct pvr2 *pvr2, struct maple *maple) {
     struct pvr2_spg *spg = &pvr2->spg;
 
     spg->pclk_div = 2;
+    spg->maple = maple;
 
     spg->reg[SPG_HBLANK_INT] = 0x31d << 16;
     spg->reg[SPG_VBLANK_INT] = 0x00150104;
@@ -131,14 +135,17 @@ void spg_init(struct pvr2 *pvr2) {
     spg->hblank_event.handler = spg_handle_hblank;
     spg->vblank_in_event.handler = spg_handle_vblank_in;
     spg->vblank_out_event.handler = spg_handle_vblank_out;
+    spg->pre_vblank_out_event.handler = spg_handle_pre_vblank_out;
 
     spg->hblank_event.arg_ptr = pvr2;
     spg->vblank_in_event.arg_ptr = pvr2;
     spg->vblank_out_event.arg_ptr = pvr2;
+    spg->pre_vblank_out_event.arg_ptr = pvr2;
 
     sched_next_hblank_event(pvr2);
     sched_next_vblank_in_event(pvr2);
     sched_next_vblank_out_event(pvr2);
+    sched_next_pre_vblank_out_event(pvr2);
 }
 
 void spg_cleanup(struct pvr2 *pvr2) {
@@ -160,6 +167,11 @@ static void spg_unsched_all(struct pvr2 *pvr2) {
     if (spg->vblank_out_event_scheduled) {
         cancel_event(pvr2->clk, &spg->vblank_out_event);
         spg->vblank_out_event_scheduled = false;
+    }
+
+    if (spg->pre_vblank_out_event_scheduled) {
+        cancel_event(pvr2->clk, &spg->pre_vblank_out_event);
+        spg->pre_vblank_out_event_scheduled = false;
     }
 }
 
@@ -248,6 +260,14 @@ static void spg_handle_vblank_out(SchedEvent *event) {
     spg_sync(pvr2);
     holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_OUT);
     sched_next_vblank_out_event(pvr2);
+}
+
+static void spg_handle_pre_vblank_out(SchedEvent *event) {
+    struct pvr2 *pvr2 = (struct pvr2*)event->arg_ptr;
+
+    spg_sync(pvr2);
+    maple_notify_pre_vblank(pvr2->spg.maple);
+    sched_next_pre_vblank_out_event(pvr2);
 }
 
 /*
@@ -365,6 +385,43 @@ static void sched_next_vblank_out_event(struct pvr2 *pvr2) {
     spg->vblank_out_event_scheduled = true;
 }
 
+/*
+ * Make sure you call spg_sync before calling this function
+ * also make sure the event isn't already scheduled
+ */
+static void sched_next_pre_vblank_out_event(struct pvr2 *pvr2) {
+    struct pvr2_spg *spg = &pvr2->spg;
+    unsigned hcount = get_hcount(pvr2);
+    unsigned vcount = get_vcount(pvr2);
+    unsigned line = get_vblank_out_int_line(pvr2);
+
+    if (line)
+        line--;
+    else
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    unsigned lines_until_pre_vblank_out;
+    if (spg->raster_y < line)
+        lines_until_pre_vblank_out = line - spg->raster_y;
+    else
+        lines_until_pre_vblank_out = vcount - spg->raster_y + line;
+
+    unsigned pixels_until_pre_vblank_out =
+        lines_until_pre_vblank_out * hcount - spg->raster_x;
+    spg->pre_vblank_out_event.when = (SPG_VCLK_DIV * get_pclk_div(pvr2)) *
+        (pixels_until_pre_vblank_out + clock_cycle_stamp(pvr2->clk) /
+         (SPG_VCLK_DIV * get_pclk_div(pvr2)));
+
+#ifdef INVARIANTS
+    if (spg->pre_vblank_out_event.when - clock_cycle_stamp(pvr2->clk) >=
+        SCHED_FREQUENCY)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    sched_event(pvr2->clk, &spg->pre_vblank_out_event);
+    spg->pre_vblank_out_event_scheduled = true;
+}
+
 void spg_set_pclk_div(struct pvr2 *pvr2, unsigned val) {
     if (val != 1 && val != 2)
         RAISE_ERROR(ERROR_INVALID_PARAM);
@@ -379,6 +436,7 @@ void spg_set_pclk_div(struct pvr2 *pvr2, unsigned val) {
     sched_next_hblank_event(pvr2);
     sched_next_vblank_in_event(pvr2);
     sched_next_vblank_out_event(pvr2);
+    sched_next_pre_vblank_out_event(pvr2);
 }
 
 void spg_set_pix_double_x(struct pvr2 *pvr2, bool val) {
@@ -453,6 +511,7 @@ void pvr2_spg_set_hblank_int(struct pvr2 *pvr2, uint32_t val) {
     sched_next_hblank_event(pvr2);
     sched_next_vblank_in_event(pvr2);
     sched_next_vblank_out_event(pvr2);
+    sched_next_pre_vblank_out_event(pvr2);
 }
 
 uint32_t pvr2_spg_get_vblank_int(struct pvr2 *pvr2) {
@@ -470,6 +529,7 @@ void pvr2_spg_set_vblank_int(struct pvr2 *pvr2, uint32_t val) {
     sched_next_hblank_event(pvr2);
     sched_next_vblank_in_event(pvr2);
     sched_next_vblank_out_event(pvr2);
+    sched_next_pre_vblank_out_event(pvr2);
 }
 
 uint32_t pvr2_spg_get_load(struct pvr2 *pvr2) {
@@ -487,6 +547,7 @@ void pvr2_spg_set_load(struct pvr2 *pvr2, uint32_t val) {
     sched_next_hblank_event(pvr2);
     sched_next_vblank_in_event(pvr2);
     sched_next_vblank_out_event(pvr2);
+    sched_next_pre_vblank_out_event(pvr2);
 }
 
 uint32_t pvr2_spg_get_control(struct pvr2 *pvr2) {

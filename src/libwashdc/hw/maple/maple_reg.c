@@ -110,10 +110,18 @@ static uint32_t mden_reg_mmio_read(struct mmio_region_maple_reg *region,
 static void
 mden_reg_mmio_write(struct mmio_region_maple_reg *region,
                     unsigned idx, uint32_t val, void *ctxt) {
-    if (val)
+    struct maple *maple = (struct maple*)ctxt;
+    if (val) {
         MAPLE_TRACE("WARNING: enabling DMA\n");
-    else
+        maple->dma_en = true;
+    } else {
         MAPLE_TRACE("WARNING: aborting DMA\n");
+        maple->dma_en = false;
+        if (maple->dma_complete_int_event_scheduled) {
+            error_set_feature("aborting maple DMA");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+    }
 }
 
 static uint32_t
@@ -142,9 +150,16 @@ mdtsel_reg_mmio_read(struct mmio_region_maple_reg *region,
 
 static void mdtsel_reg_mmio_write(struct mmio_region_maple_reg *region,
                                   unsigned idx, uint32_t val, void *ctxt) {
-    if (val) {
-        error_set_feature("vblank Maple-DMA initialization");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    struct maple *maple = (struct maple*)ctxt;
+    enum maple_dma_init_mode dma_init_mode =
+        (val & 1) ? MAPLE_DMA_INIT_VBLANK : MAPLE_DMA_INIT_MANUAL;
+    if (dma_init_mode != maple->dma_init_mode) {
+        MAPLE_TRACE("maple dma trigger mode set to %s\n",
+                    dma_init_mode == MAPLE_DMA_INIT_VBLANK ?
+                    "VBLANK" : "MANUAL");
+        maple->dma_init_mode = dma_init_mode;
+        if (dma_init_mode == MAPLE_DMA_INIT_VBLANK)
+            maple->vblank_init_unlocked = true;
     }
 }
 
@@ -165,8 +180,40 @@ mdst_reg_mmio_write(struct mmio_region_maple_reg *region,
                     (unsigned)maple->maple_dma_cmd_start);
         MAPLE_TRACE("SH4 PC address is 0x%08x\n", (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);
 
-        maple_process_dma(maple, maple->maple_dma_cmd_start);
+        if (maple->dma_init_mode == MAPLE_DMA_INIT_VBLANK) {
+            LOG_ERROR("MAPLE DMA START REQUEST IGNORED: MAPLE IS CONFIGURED "
+                      "FOR AUTOMATIC DMA INITIATION ON VBLANK\n");
+        } else if (maple->dma_en) {
+            maple_process_dma(maple, maple->maple_dma_cmd_start);
+        }
     }
+}
+
+static void mshtcl_reg_mmio_write(struct mmio_region_maple_reg *region,
+                                  unsigned idx, uint32_t val, void *ctxt) {
+    struct maple *maple = (struct maple*)ctxt;
+    if ((val & 1) &&
+        (maple->dma_init_mode == MAPLE_DMA_INIT_VBLANK) &&
+        !maple->vblank_autoinit) {
+        maple->vblank_init_unlocked = true;
+    }
+}
+
+static uint32_t
+msys_reg_mmio_read(struct mmio_region_maple_reg *region,
+                   unsigned idx, void *ctxt) {
+    struct maple *maple = (struct maple*)ctxt;
+    uint32_t msys = maple->reg_msys;
+    MAPLE_TRACE("READING %08X FROM MSYS\n", (unsigned)msys);
+    return msys;
+}
+
+static void
+msys_reg_mmio_write(struct mmio_region_maple_reg *region,
+                    unsigned idx, uint32_t val, void *ctxt) {
+    struct maple *maple = (struct maple*)ctxt;
+    maple->reg_msys = val;
+    maple->vblank_autoinit = (val >> 12) & 1;
 }
 
 void maple_reg_init(struct maple *ctxt) {
@@ -191,8 +238,13 @@ void maple_reg_init(struct maple *ctxt) {
                                     mdst_reg_mmio_write, ctxt);
     mmio_region_maple_reg_init_cell(&ctxt->mmio_region_maple_reg,
                                     "SB_MSYS", 0x5f6c80,
-                                    mmio_region_maple_reg_warn_read_handler,
-                                    mmio_region_maple_reg_warn_write_handler,
+                                    msys_reg_mmio_read,
+                                    msys_reg_mmio_write,
+                                    ctxt);
+    mmio_region_maple_reg_init_cell(&ctxt->mmio_region_maple_reg,
+                                    "SB_MSHTCL", 0x5f6c88,
+                                    mmio_region_maple_reg_writeonly_read_error,
+                                    mshtcl_reg_mmio_write,
                                     ctxt);
     mmio_region_maple_reg_init_cell(&ctxt->mmio_region_maple_reg,
                                     "SB_MDAPRO", 0x5f6c8c,

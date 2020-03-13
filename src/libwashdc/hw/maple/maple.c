@@ -237,6 +237,11 @@ void maple_process_dma(struct maple *ctxt, uint32_t src_addr) {
     struct maple_frame frame;
     uint32_t frame_meta[3];
 
+#ifdef INVARIANTS
+    if (!ctxt->dma_en)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
     do {
         sh4_dmac_transfer_from_mem(dreamcast_get_cpu(), src_addr,
                                    sizeof(frame_meta[0]), 1, frame_meta);
@@ -348,4 +353,14 @@ void maple_cleanup(struct maple *maple_ctxt) {
     maple_device_cleanup(maple_ctxt, maple_addr_pack(0, 0));
 
     maple_reg_cleanup(maple_ctxt);
+}
+
+void maple_notify_pre_vblank(struct maple *ctxt) {
+    if ((ctxt->vblank_init_unlocked || ctxt->vblank_autoinit) && ctxt->dma_en) {
+        MAPLE_TRACE("Initiating Maple DMA transfer automatically due to "
+                    "incoming VBLANK.\n");
+        maple_process_dma(ctxt, ctxt->maple_dma_cmd_start);
+        if (!ctxt->vblank_autoinit)
+            ctxt->vblank_init_unlocked = false;
+    }
 }
