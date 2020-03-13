@@ -1378,7 +1378,17 @@ void sh4_inst_ldtlb(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_0000000000111000, INST_CONS_0000000000111000);
 
-    sh4_mmu_do_ldtlb((struct Sh4*)cpu);
+    struct Sh4 *sh4 = (struct Sh4*)cpu;
+
+#ifdef ENABLE_MMU
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("exception for using privileged instructions in "
+                          "usermode");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+#endif
+
+    sh4_mmu_do_ldtlb(sh4);
 }
 
 #define INST_MASK_0000000000001001 0xffff
@@ -1403,6 +1413,14 @@ void sh4_inst_rte(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_0000000000101011, INST_CONS_0000000000101011);
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
+
+#ifdef ENABLE_MMU
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("exception for using privileged instructions in "
+                          "usermode");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+#endif
 
     sh4->delayed_branch = true;
 
@@ -1481,6 +1499,14 @@ void sh4_inst_sleep(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_0000000000011011, INST_CONS_0000000000011011);
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
+
+#ifdef ENABLE_MMU
+    if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
+        error_set_feature("exception for using privileged instructions in "
+                          "usermode");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+#endif
 
     if (sh4->exec_state == SH4_EXEC_STATE_NORM) {
         if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
@@ -2392,7 +2418,7 @@ void sh4_inst_binary_ldc_gen_sr(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2431,7 +2457,7 @@ void sh4_inst_binary_ldc_gen_vbr(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2454,7 +2480,7 @@ void sh4_inst_binary_ldc_gen_ssr(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2477,7 +2503,7 @@ void sh4_inst_binary_ldc_gen_spc(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2500,7 +2526,7 @@ void sh4_inst_binary_ldc_gen_dbr(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2523,7 +2549,7 @@ void sh4_inst_binary_stc_sr_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2560,7 +2586,7 @@ void sh4_inst_binary_stc_vbr_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2583,7 +2609,7 @@ void sh4_inst_binary_stc_ssr_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2606,7 +2632,7 @@ void sh4_inst_binary_stc_spc_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2629,7 +2655,7 @@ void sh4_inst_binary_stc_sgr_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2652,7 +2678,7 @@ void sh4_inst_binary_stc_dbr_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2678,7 +2704,7 @@ void sh4_inst_binary_ldcl_indgeninc_sr(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *src_reg;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2734,7 +2760,7 @@ void sh4_inst_binary_ldcl_indgeninc_vbr(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *src_reg;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2766,7 +2792,7 @@ void sh4_inst_binary_ldcl_indgenic_ssr(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *src_reg;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2798,7 +2824,7 @@ void sh4_inst_binary_ldcl_indgeninc_spc(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *src_reg;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2830,7 +2856,7 @@ void sh4_inst_binary_ldcl_indgeninc_dbr(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *src_reg;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2859,7 +2885,7 @@ void sh4_inst_binary_stcl_sr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2908,7 +2934,7 @@ void sh4_inst_binary_stcl_vbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2937,7 +2963,7 @@ void sh4_inst_binary_stcl_ssr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2966,7 +2992,7 @@ void sh4_inst_binary_stcl_spc_inddecgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -2995,7 +3021,7 @@ void sh4_inst_binary_stcl_sgr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -3024,7 +3050,7 @@ void sh4_inst_binary_stcl_dbr_inddecgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -3879,7 +3905,7 @@ void sh4_inst_binary_ldc_gen_bank(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -3906,7 +3932,7 @@ void sh4_inst_binary_ldcl_indgeninc_bank(void *cpu, cpu_inst_param inst) {
     uint32_t val;
     reg32_t *src_reg;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -3934,7 +3960,7 @@ void sh4_inst_binary_stc_bank_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
@@ -3957,7 +3983,7 @@ void sh4_inst_binary_stcl_bank_inddecgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_SH4_MMU
+#ifdef ENABLE_MMU
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK)) {
         error_set_feature("CPU exception for using a "
                           "privileged exception in an "
