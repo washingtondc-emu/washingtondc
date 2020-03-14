@@ -2576,7 +2576,10 @@ void sh4_inst_binary_stc_sr_gen(void *cpu, cpu_inst_param inst) {
     }
 #endif
 
-    *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_SR];
+    // unused bits should always be read back as 0
+    uint32_t mask = ~(BIT_RANGE(2, 3) | BIT_RANGE(10, 14) |
+                      BIT_RANGE(16, 27) | (1 << 31));
+    *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_SR] & mask;
 }
 
 #define INST_MASK_0000nnnn00010010 0xf0ff
@@ -2915,7 +2918,10 @@ void sh4_inst_binary_stcl_sr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *regp = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *regp - 4;
 
-    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_SR]) != 0)
+    // unused bits should always be read back as 0
+    uint32_t mask = ~(BIT_RANGE(2, 3) | BIT_RANGE(10, 14) |
+                      BIT_RANGE(16, 27) | (1 << 31));
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_SR] & mask) != 0)
         return;
 
     *regp = addr;
