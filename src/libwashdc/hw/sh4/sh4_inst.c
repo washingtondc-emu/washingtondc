@@ -6553,7 +6553,8 @@ void sh4_inst_binary_sts_fpscr_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-    *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_FPSCR];
+    uint32_t mask = ~BIT_RANGE(22, 31);
+    *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_FPSCR] & mask;
 }
 
 #define INST_MASK_0000nnnn01011010 0xf0ff
@@ -6592,7 +6593,8 @@ void sh4_inst_binary_stsl_fpscr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_reg = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     addr32_t addr = *addr_reg - 4;
 
-    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPSCR]) != 0)
+    uint32_t mask = ~BIT_RANGE(22, 31);
+    if (sh4_write32(sh4, addr, sh4->reg[SH4_REG_FPSCR] & mask) != 0)
         return;
 
     *addr_reg = addr;
