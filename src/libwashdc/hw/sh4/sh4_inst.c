@@ -6431,14 +6431,6 @@ void sh4_inst_binary_lds_gen_fpscr(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_0100mmmm01101010, INST_CONS_0100mmmm01101010);
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
-
-#ifdef ENABLE_MMU
-    if (!sh4_fpu_enabled(sh4)) {
-        error_set_feature("FPU-disabled exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     sh4_set_fpscr(sh4, *sh4_gen_reg(sh4, (inst >> 8) & 0xf));
 }
 
@@ -6452,14 +6444,6 @@ void sh4_inst_binary_gen_fpul(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_0100mmmm01011010, INST_CONS_0100mmmm01011010);
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
-
-#ifdef ENABLE_MMU
-    if (!sh4_fpu_enabled(sh4)) {
-        error_set_feature("FPU-disabled exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     memcpy(sh4->reg + SH4_REG_FPUL, sh4_gen_reg(sh4, (inst >> 8) & 0xf),
            sizeof(sh4->reg[SH4_REG_FPUL]));
 }
@@ -6533,13 +6517,6 @@ void sh4_inst_binary_sts_fpscr_gen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-#ifdef ENABLE_MMU
-    if (!sh4_fpu_enabled(sh4)) {
-        error_set_feature("FPU-disabled exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
-
     *sh4_gen_reg(sh4, (inst >> 8) & 0xf) = sh4->reg[SH4_REG_FPSCR];
 }
 
@@ -6553,13 +6530,6 @@ void sh4_inst_binary_sts_fpul_gen(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_0000nnnn01011010, INST_CONS_0000nnnn01011010);
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
-
-#ifdef ENABLE_MMU
-    if (!sh4_fpu_enabled(sh4)) {
-        error_set_feature("FPU-disabled exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
-#endif
 
     memcpy(sh4_gen_reg(sh4, (inst >> 8) & 0xf), sh4->reg + SH4_REG_FPUL,
            sizeof(sh4->reg[SH4_REG_FPUL]));
