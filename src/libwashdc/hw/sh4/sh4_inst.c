@@ -2300,13 +2300,17 @@ void sh4_inst_unary_trapa_disp(void *cpu, cpu_inst_param inst) {
     if (dc_debugger_enabled()) {
         debug_on_softbreak(inst, sh4->reg[SH4_REG_PC]);
         return;
+    } else {
+#endif
+        sh4->reg[SH4_REG_TRA] = (inst & BIT_RANGE(0, 7)) << 2;
+        LOG_ERROR("SH4 TRAPA #%08X INSTRUCTION ISSUED AT PC=%08X\n",
+                  (unsigned)sh4->reg[SH4_REG_TRA],
+                  (unsigned)sh4->reg[SH4_REG_PC]);
+        sh4->reg[SH4_REG_PC] += 2; // SPC needs to point to the next instruction
+        sh4_set_exception(sh4, SH4_EXCP_UNCONDITIONAL_TRAP);
+#ifdef ENABLE_DEBUGGER
     }
-#endif /* ifdef ENABLE_DEBUGGER */
-
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("11000011iiiiiiii");
-    error_set_opcode_name("TRAPA #immed");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+#endif
 }
 
 #define INST_MASK_0100nnnn00011011 0xf0ff
