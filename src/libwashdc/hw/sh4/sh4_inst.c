@@ -144,10 +144,16 @@ static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
     return memory_map_read_float(sh4->mem.map, addr);
 }
 
-static inline double sh4_readdouble(struct Sh4 *sh4, addr32_t addr) {
+static inline int sh4_readdouble(struct Sh4 *sh4, addr32_t addr, double *valp) {
 #ifdef ENABLE_MMU
-    if ((addr & 7) ||
-        (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000)) {
+    if (addr & 7) {
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_DATA_ADDR_READ);
+
+        return -1;
+    } else if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000) {
         error_set_feature("TLB DATA ADDRESS ERROR");
         error_set_address(addr);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -159,7 +165,8 @@ static inline double sh4_readdouble(struct Sh4 *sh4, addr32_t addr) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
-    return memory_map_read_double(sh4->mem.map, addr);
+    *valp = memory_map_read_double(sh4->mem.map, addr);
+    return 0;
 }
 
 static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
@@ -5282,7 +5289,9 @@ void sh4_inst_binary_fmov_indgen_dr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = sh4_readdouble(sh4, addr);
+    if (sh4_readdouble(sh4, addr, dst_ptr) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111nnn0mmmm0110 0xf10f
@@ -5308,7 +5317,9 @@ void sh4_inst_binary_fmov_binind_r0_gen_dr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = sh4_readdouble(sh4, addr);
+    if (sh4_readdouble(sh4, addr, dst_ptr) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111nnn0mmmm1001 0xf10f
@@ -5334,7 +5345,9 @@ void sh4_inst_binary_fmov_indgeninc_dr(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_dr(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = sh4_readdouble(sh4, *addr_p);
+    if (sh4_readdouble(sh4, *addr_p, dst_ptr) != 0) {
+        return;
+    }
 
     *addr_p += 8;
 }
@@ -6690,7 +6703,9 @@ void sh4_inst_binary_fmov_indgen_xd(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_xd(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = sh4_readdouble(sh4, addr);
+    if (sh4_readdouble(sh4, addr, dst_ptr) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111nnn1mmmm1001 0xf10f
@@ -6716,7 +6731,9 @@ void sh4_inst_binary_fmov_indgeninc_xd(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     double *dst_ptr = sh4_fpu_xd(sh4, (inst >> 9) & 0x7);
 
-    *dst_ptr = sh4_readdouble(sh4, *addr_p);
+    if (sh4_readdouble(sh4, *addr_p, dst_ptr) != 0) {
+        return;
+    }
 
     *addr_p += 8;
 }
