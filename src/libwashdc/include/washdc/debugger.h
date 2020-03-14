@@ -315,6 +315,8 @@ uint32_t debug_pc_next(enum dbg_context_id id);
  */
 int debug_trans_itlb(enum dbg_context_id id, uint32_t *addr_p);
 int debug_trans_utlb(enum dbg_context_id id, uint32_t *addr_p);
+
+int debug_set_at_mode(enum dbg_context_id id, bool en);
 #endif
 
 #ifdef __cplusplus

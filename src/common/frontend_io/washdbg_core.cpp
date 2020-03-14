@@ -127,6 +127,8 @@ enum washdbg_state {
     WASHDBG_STATE_CMD_TRANS_ITLB,
     WASHDBG_STATE_CMD_TRANS_UTLB,
     WASHDBG_STATE_CMD_ASID,
+    WASHDBG_STAT_CMD_AT_MODE,
+    WASHDBG_STATE_CMD_AT_MODE,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -227,6 +229,9 @@ void washdbg_do_help(int argc, char **argv) {
         "WashDbg command list\n"
         "\n"
         "asid         - print current address space\n"
+#ifdef ENABLE_MMU
+        "at-mode      - allow automatic address translation based on MMU\n"
+#endif
         "bpdel        - delete a breakpoint\n"
         "bpdis        - disable a breakpoint\n"
         "bpen         - enable a breakpoint\n"
@@ -1036,6 +1041,48 @@ static void washdbg_asid(int argc, char **argv) {
     cur_state = WASHDBG_STATE_CMD_ASID;
 }
 
+#define WASHDBG_AT_MODE_STR_LEN 64
+
+static struct at_mode_state {
+    char msg[WASHDBG_AT_MODE_STR_LEN];
+    struct washdbg_txt_state txt;
+} at_mode_state;
+
+static bool washdbg_is_at_mode_cmd(char const *str) {
+    return strcmp(str, "at-mode") == 0;
+}
+
+static void washdbg_at_mode(int argc, char **argv) {
+#ifdef ENABLE_MMU
+    if (argc != 2 || !(strcmp(argv[1], "on") == 0 ||
+                       strcmp(argv[1], "off") == 0)) {
+        washdbg_print_error("usage: at-mode on|off.\n");
+        return;
+    }
+
+    bool en = strcmp(argv[1], "on") == 0;
+
+    if (debug_set_at_mode(DEBUG_CONTEXT_SH4, en) == 0) {
+        if (en)
+            strncpy(at_mode_state.msg, "at-mode enabled", sizeof(at_mode_state.msg));
+        else
+            strncpy(at_mode_state.msg, "at-mode disabled", sizeof(at_mode_state.msg));
+        at_mode_state.msg[sizeof(at_mode_state.msg) - 1] = '\0';
+    } else {
+        snprintf(at_mode_state.msg, sizeof(at_mode_state.msg),
+                 "Failed to %s at-mode", en ? "enable" : "disable");
+    }
+
+    at_mode_state.txt.txt = at_mode_state.msg;
+    at_mode_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_CMD_AT_MODE;
+#else
+    washdbg_print_error("this command is not available in non-mmu builds.  "
+                        "Reconfigure cmake with -DENABLE_MMU=On and then "
+                        "rebuild WashingtonDC.\n");
+#endif
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1102,6 +1149,10 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_CMD_ASID:
         if (washdbg_print_buffer(&asid_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_AT_MODE:
+        if (washdbg_print_buffer(&at_mode_state.txt) == 0)
             washdbg_print_prompt();
         break;
     default:
@@ -1218,6 +1269,8 @@ static void washdbg_process_input(void) {
                 washdbg_trans_utlb(argc, argv);
             } else if (washdbg_is_asid_cmd(cmd)) {
                 washdbg_asid(argc, argv);
+            } else if (washdbg_is_at_mode_cmd(cmd)) {
+                washdbg_at_mode(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }

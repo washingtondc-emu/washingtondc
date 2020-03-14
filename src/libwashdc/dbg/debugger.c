@@ -61,6 +61,10 @@ struct debug_context {
     void *cpu;
     struct memory_map *map;
 
+#ifdef ENABLE_MMU
+    bool at_mode;
+#endif
+
     struct breakpoint breakpoints[DEBUG_N_BREAKPOINTS];
     struct watchpoint w_watchpoints[DEBUG_N_W_WATCHPOINTS];
     struct watchpoint r_watchpoints[DEBUG_N_R_WATCHPOINTS];
@@ -763,6 +767,25 @@ int debug_read_mem(enum dbg_context_id id, void *out,
 
     uint8_t *out_byte_ptr = out;
 
+#ifdef ENABLE_MMU
+    if (ctxt->at_mode) {
+        if (id != DEBUG_CONTEXT_SH4) {
+            LOG_ERROR("at-mode is only supported for SH4\n");
+        } else {
+            struct Sh4 *sh4 = (struct Sh4*)ctxt->cpu;
+            unsigned area = (addr >> 29) & 7;
+            if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7)) {
+                /*
+                 * TODO: selectively use the itlb for instruction-reads only, and
+                 * the utlb otherwise.
+                 */
+                if (debug_trans_itlb(id, &addr) != 0)
+                    LOG_ERROR("Failed to translate address %08X\n", (unsigned)addr);
+            }
+        }
+    }
+#endif
+
     int err;
     while (n_units) {
         switch (unit_len) {
@@ -800,6 +823,25 @@ int debug_write_mem(enum dbg_context_id id, void const *input,
 
     DBG_TRACE("request to write %u bytes to 0x%08x\n",
               (unsigned)len, (unsigned)addr);
+
+#ifdef ENABLE_MMU
+    if (ctxt->at_mode) {
+        if (id != DEBUG_CONTEXT_SH4) {
+            LOG_ERROR("at-mode is only supported for SH4\n");
+        } else {
+            struct Sh4 *sh4 = (struct Sh4*)ctxt->cpu;
+            unsigned area = (addr >> 29) & 7;
+
+            /*
+             * TODO: selectively use the itlb for instruction-reads only, and
+             * the utlb otherwise.
+             */
+            if (sh4_mmu_at(sh4) && !(area == 4 || area == 5 || area == 7))
+                if (debug_trans_itlb(id, &addr) != 0)
+                    LOG_ERROR("Failed to translate address %08X\n", (unsigned)addr);
+        }
+    }
+#endif
 
     /*
      * Ideally none of the writes would go through if there's a
@@ -1136,6 +1178,14 @@ int debug_trans_utlb(enum dbg_context_id id, uint32_t *addr_p) {
         return -1;
 
     *addr_p = sh4_utlb_ent_translate_addr(ent, addr);
+    return 0;
+}
+
+int debug_set_at_mode(enum dbg_context_id id, bool en) {
+    if (id == DEBUG_CONTEXT_SH4)
+        dbg.contexts[id].at_mode = en;
+    else if (en)
+        return -1;
     return 0;
 }
 #endif
