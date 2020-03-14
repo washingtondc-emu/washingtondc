@@ -154,13 +154,13 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "PTEH", 0xff000000, 4, SH4_REG_PTEH, false,
       sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "PTEL", 0xff000004, 4, SH4_REG_PTEL, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "TTB", 0xff000008, 4, SH4_REG_TTB, false,
       sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
     { "TEA", 0xff00000c, 4, SH4_REG_TEA, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "PTEA", 0xff000034, 4, SH4_REG_PTEA, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "TRA", 0xff000020, 4, SH4_REG_TRA, false,
       sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
 
@@ -872,8 +872,9 @@ sh4_warn_read_handler(Sh4 *sh4,
                       struct Sh4MemMappedReg const *reg_info) {
     sh4_reg_val val = sh4->reg[reg_info->reg_idx];
 
-    LOG_WARN("Read 0x%08x (%u bytes) from register %s\n",
-             (unsigned)val, reg_info->len, reg_info->reg_name);
+    LOG_WARN("Read 0x%08x (%u bytes) from register %s at PC=%08X\n",
+             (unsigned)val, reg_info->len, reg_info->reg_name,
+             (unsigned)sh4->reg[SH4_REG_PC]);
 
     return val;
 }
@@ -881,8 +882,9 @@ sh4_warn_read_handler(Sh4 *sh4,
 static void
 sh4_warn_write_handler(Sh4 *sh4, struct Sh4MemMappedReg const *reg_info,
                        sh4_reg_val val) {
-    LOG_WARN("Write 0x%08x (%u bytes) to register %s\n",
-             (unsigned)val, reg_info->len, reg_info->reg_name);
+    LOG_WARN("Write 0x%08x (%u bytes) to register %s at PC=%08X\n",
+             (unsigned)val, reg_info->len, reg_info->reg_name,
+             (unsigned)sh4->reg[SH4_REG_PC]);
     sh4->reg[reg_info->reg_idx] = val;
 }
 
