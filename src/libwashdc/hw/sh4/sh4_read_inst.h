@@ -96,6 +96,13 @@ sh4_do_read_inst(Sh4 *sh4, addr32_t addr, cpu_inst_param *inst_p) {
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_INST_TLB_MISS);
 
+        /*
+         * sh4_set_exception would have set this to true.  Here we override it
+         * because we weren't going to increment the PC after a failed
+         * instruction fetch anyways.
+         */
+        sh4->dont_increment_pc = false;
+
         LOG_ERROR("ITLB MISS\n");
         return -1;
     case SH4_ITLB_PROT_VIOL:
@@ -103,6 +110,13 @@ sh4_do_read_inst(Sh4 *sh4, addr32_t addr, cpu_inst_param *inst_p) {
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_INST_TLB_PROT_VIOL);
+
+        /*
+         * sh4_set_exception would have set this to true.  Here we override it
+         * because we weren't going to increment the PC after a failed
+         * instruction fetch anyways.
+         */
+        sh4->dont_increment_pc = false;
 
         LOG_ERROR("ITLB protection violation %08X\n", (unsigned)addr);
         return -1;
@@ -147,6 +161,13 @@ static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p, uint32_t pc) {
         sh4->reg[SH4_REG_PTEH] |= (pc & BIT_RANGE(10, 31));
         sh4_set_exception(sh4, SH4_EXCP_INST_ADDR_ERR);
 
+        /*
+         * sh4_set_exception would have set this to true.  Here we override it
+         * because we weren't going to increment the PC after a failed
+         * instruction fetch anyways.
+         */
+        sh4->dont_increment_pc = false;
+
         LOG_ERROR("INSTRUCTION FETCH ADDRESS ERROR AT PC=%08X\n",
                   (pc & BIT_RANGE(0, 28)));
         return -1;
@@ -178,8 +199,8 @@ sh4_do_exec_inst(Sh4 *sh4) {
 #endif
 
     cpu_inst_param inst;
-    while (sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]) != 0)
-        ;
+    if (sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC]) != 0)
+        return 0;
     InstOpcode const *op = sh4_decode_inst(inst);
 
     unsigned n_cycles = sh4_count_inst_cycles(op, &sh4->last_inst_type);
