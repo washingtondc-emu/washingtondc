@@ -3884,9 +3884,14 @@ void sh4_inst_binary_shad_gen_gen(void *cpu, cpu_inst_param inst) {
     int32_t dst = (int32_t)*dstp;
 
     if (src >= 0) {
-        dst <<= src;
+        dst <<= (src & 0x1f);
+    } else if (!(src & 0x1f)) {
+        if (dst < 0)
+            dst = -1;
+        else
+            dst = 0;
     } else {
-        dst >>= -src;
+        dst >>= ((~src) & 0x1f) + 1;
     }
 
     *dstp = dst;
