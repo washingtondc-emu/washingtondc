@@ -260,10 +260,16 @@ static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
     memory_map_write_float(sh4->mem.map, addr, val);
 }
 
-static inline void sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
+static inline int sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
 #ifdef ENABLE_MMU
-    if ((addr & 7) ||
-        (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000)) {
+    if (addr & 7) {
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_DATA_ADDR_WRITE);
+
+        return -1;
+    } else if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000) {
         error_set_feature("TLB DATA ADDRESS ERROR");
         error_set_address(addr);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -277,6 +283,7 @@ static inline void sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
     }
 #endif
     memory_map_write_double(sh4->mem.map, addr, val);
+    return 0;
 }
 
 static inline uint16_t inst_imm8(int inst) {
@@ -5375,7 +5382,9 @@ void sh4_inst_binary_fmov_dr_indgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     double *src_p = sh4_fpu_dr(sh4, (inst >> 5) & 0x7);
 
-    sh4_writedouble(sh4, addr, *src_p);
+    if (sh4_writedouble(sh4, addr, *src_p) != 0) {
+        // nothing to do herew
+    }
 }
 
 #define INST_MASK_1111nnnnmmm01011 0xf01f
@@ -5402,7 +5411,9 @@ void sh4_inst_binary_fmov_dr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_dr(sh4, (inst >> 5) & 0x7);
 
-    sh4_writedouble(sh4, addr, *src_p);
+    if (sh4_writedouble(sh4, addr, *src_p) != 0) {
+        return;
+    }
 
     *addr_p = addr;
 }
@@ -5430,7 +5441,9 @@ void sh4_inst_binary_fmov_dr_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     double *src_p = sh4_fpu_dr(sh4, (inst >> 5) & 0x7);
 
-    sh4_writedouble(sh4, addr, *src_p);
+    if (sh4_writedouble(sh4, addr, *src_p) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111mmmm00011101 0xf0ff
@@ -6818,7 +6831,9 @@ void sh4_inst_binary_fmov_xd_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *addr_p - 8;
     double *src_p = sh4_fpu_xd(sh4, (inst >> 5) & 0x7);
 
-    sh4_writedouble(sh4, addr, *src_p);
+    if (sh4_writedouble(sh4, addr, *src_p) != 0) {
+        return;
+    }
 
     *addr_p = addr;
 }
