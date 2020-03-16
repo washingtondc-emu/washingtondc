@@ -569,7 +569,7 @@ sh4_utlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 
     unsigned ppn = (val & BIT_RANGE(10, 28));
     enum sh4_tlb_page_sz sz =
-        (enum sh4_tlb_page_sz)(((val >> 4) & 1) | ((val >> 7) & 2));
+        (enum sh4_tlb_page_sz)(((val >> 4) & 1) | ((val >> 6) & 2));
     bool valid = (val >> 8) & 1;
     unsigned protection = (val >> 5) & 3;
     bool cacheable = (val >> 3) & 1;
@@ -667,7 +667,7 @@ sh4_itlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     ent->ppn = val & BIT_RANGE(10, 28);
     ent->valid = (val >> 8) & 1;
     ent->protection = (val >> 6) & 1;
-    ent->sz = (enum sh4_tlb_page_sz)(((val >> 4) & 1) | ((val >> 7) & 2));
+    ent->sz = (enum sh4_tlb_page_sz)(((val >> 4) & 1) | ((val >> 6) & 2));
     ent->cacheable = (val >> 3) & 1;
     ent->shared = (val >> 1) & 1;
 
