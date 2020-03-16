@@ -520,7 +520,7 @@ static void sh4_utlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t v
             itlb_ent->asid = ent->asid;
             itlb_ent->vpn = ent->vpn;
             itlb_ent->ppn = ent->ppn;
-            itlb_ent->protection = ent->protection & 2;
+            itlb_ent->protection = ent->protection & 2 ? 1 : 0;
             itlb_ent->sa = ent->sa;
             itlb_ent->sz = ent->sz;
             itlb_ent->shared = ent->shared;
