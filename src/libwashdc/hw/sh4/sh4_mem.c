@@ -489,16 +489,12 @@ static void sh4_utlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t v
          */
 
         /*
-         * this actually is implemented, just not tested.  Specifically, I'm
-         * worried about the UTLB->ITLB propagation needs to be tested to make
-         * sure it's correct.
-         *
-         * But it is implemented and it is theory complete and correct, I just
-         * want to make sure that it isn't causiing problems because I don't
-         * have a test case yet.
+         * This seems to work, but I'm still a little uneasy due to vague
+         * SH4 documentation.  NetBSD uses this to invalidate pages.  Windows
+         * does not appear to use it at all.
          */
-        error_set_feature("Associative UTLB searches");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        LOG_ERROR("%s CALLED - RADICALLY UNTESTED UTLB ASSOCIATIVE ADDRESS "
+                  "ARRAY WRITE\n", __func__);
 
         struct sh4_itlb_ent *itlb_ent = sh4_itlb_find_ent_associative(sh4, vpn);
         if (itlb_ent)
