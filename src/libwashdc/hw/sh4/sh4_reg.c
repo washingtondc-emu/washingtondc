@@ -140,9 +140,9 @@ static struct Sh4MemMappedReg sh4_sdmr3_reg = {
 
 static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "EXPEVT", 0xff000024, 4, SH4_REG_EXPEVT, false,
-      sh4_default_read_handler, sh4_expevt_reg_write_handler, 0, 0x20 },
+      sh4_warn_read_handler, sh4_expevt_reg_write_handler, 0, 0x20 },
     { "INTEVT", 0xff000028, 4, SH4_REG_INTEVT, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0x20 },
+      sh4_warn_read_handler, sh4_default_write_handler, 0, 0x20 },
     { "MMUCR", 0xff000010, 4, SH4_REG_MMUCR, false,
       sh4_mmucr_read_handler, sh4_mmucr_write_handler, 0, 0 },
     { "CCR", 0xff00001c, 4, SH4_REG_CCR, false,
@@ -156,13 +156,13 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
     { "PTEL", 0xff000004, 4, SH4_REG_PTEL, false,
       sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "TTB", 0xff000008, 4, SH4_REG_TTB, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "TEA", 0xff00000c, 4, SH4_REG_TEA, false,
       sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "PTEA", 0xff000034, 4, SH4_REG_PTEA, false,
       sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
     { "TRA", 0xff000020, 4, SH4_REG_TRA, false,
-      sh4_default_read_handler, sh4_default_write_handler, 0, 0 },
+      sh4_warn_read_handler, sh4_warn_write_handler, 0, 0 },
 
     /*
      * this is an odd one.  This register doesn't appear in any documentation
@@ -683,7 +683,10 @@ static sh4_reg_val
 sh4_mmucr_read_handler(Sh4 *sh4,
                        struct Sh4MemMappedReg const *reg_info) {
     // the TI bit is always read as 0
-    return sh4->reg[SH4_REG_MMUCR] & ~SH4_MMUCR_TI_MASK;
+    sh4_reg_val ret = sh4->reg[SH4_REG_MMUCR] & ~SH4_MMUCR_TI_MASK;
+    LOG_DBG("Read %08X from MMUCR at PC=%08X\n",
+            (unsigned)ret, (unsigned)sh4->reg[SH4_REG_PC]);
+    return ret;
 }
 
 static void sh4_mmucr_write_handler(Sh4 *sh4,
@@ -692,6 +695,9 @@ static void sh4_mmucr_write_handler(Sh4 *sh4,
 #ifdef ENABLE_MMU
     uint32_t old_val = sh4->reg[SH4_REG_MMUCR];
 #endif
+
+    LOG_DBG("Write %08X to MMUCR at PC=%08X\n",
+            (unsigned)val, (unsigned)sh4->reg[SH4_REG_PC]);
     sh4->reg[SH4_REG_MMUCR] = val;
 
     if (val & SH4_MMUCR_TI_MASK)

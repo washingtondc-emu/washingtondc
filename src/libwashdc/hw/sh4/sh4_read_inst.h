@@ -156,6 +156,13 @@ static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p, uint32_t pc) {
 #ifdef ENABLE_MMU
     if (pc & 1) {
         // instruction address error for non-aligned PC fetch.
+
+        LOG_ERROR("INSTRUCTION FETCH ADDRESS ERROR AT PC=%08X\n"
+                  "\tR4=%08X, R5=%08X, R6=%08X, R7=%08X\n",
+                  (pc & BIT_RANGE(0, 28)),
+                  *sh4_gen_reg(sh4, 4), *sh4_gen_reg(sh4, 5),
+                  *sh4_gen_reg(sh4, 6), *sh4_gen_reg(sh4, 7));
+
         sh4->reg[SH4_REG_TEA] = pc;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (pc & BIT_RANGE(10, 31));
@@ -167,9 +174,6 @@ static inline int sh4_read_inst(Sh4 *sh4, cpu_inst_param *inst_p, uint32_t pc) {
          * instruction fetch anyways.
          */
         sh4->dont_increment_pc = false;
-
-        LOG_ERROR("INSTRUCTION FETCH ADDRESS ERROR AT PC=%08X\n",
-                  (pc & BIT_RANGE(0, 28)));
         return -1;
     } else if ((pc & BIT_RANGE(29, 31)) == BIT_RANGE(29, 31)) {
         /*
