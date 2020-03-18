@@ -148,6 +148,18 @@ void dc_get_pvr2_stats(struct pvr2_stat *stats);
 unsigned dc_get_frame_count(void);
 
 /*
+ * attempt to read a 4-byte value from the sh4's memory map.
+ * returns 0 on success, -1 on failure.
+ *
+ * This function is intended for debugging/logging code.  It's usage should be
+ * kept to a minimum.
+ *
+ * If ENABLE_MMU is defined and address-translation is enabled, this function
+ * will attempt to perform address translation on the given address.
+ */
+int dc_try_read32(uint32_t addr, uint32_t *valp);
+
+/*
  * control whether ADDR_AREA4_TEX_REGION_0 and ADDR_AREA4_TEX_REGION_1 map to
  * 64-bit or 32-bit texture bus.
  */

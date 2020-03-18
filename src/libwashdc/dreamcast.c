@@ -1755,6 +1755,10 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     RAISE_ERROR(ERROR_INTEGRITY); // this should be impossible
 }
 
+int dc_try_read32(uint32_t addr, uint32_t *valp) {
+    return memory_map_try_read_32(&mem_map, addr, valp);
+}
+
 void dc_get_pvr2_stats(struct pvr2_stat *stats) {
     *stats = dc_pvr2.stat;
 }

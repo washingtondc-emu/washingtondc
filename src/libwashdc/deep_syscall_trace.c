@@ -156,8 +156,30 @@ void deep_syscall_notify_jump(addr32_t pc) {
             case 4:
                 SYSCALL_TRACE("GDROM_CHECK_DRIVE\n");
                 break;
+            case 6: {
+                SYSCALL_TRACE("GDROM_DMA_BEGIN\n");
+                SYSCALL_TRACE("\treq_id %08X\n", (unsigned)r4);
+                SYSCALL_TRACE("\tparams %08X\n", (unsigned)r5);
+                uint32_t addr_dst;
+                if (dc_try_read32(r5, &addr_dst) == 0) {
+                    SYSCALL_TRACE("\t\tdst %08X\n", (unsigned)addr_dst);
+                } else {
+                    SYSCALL_TRACE("\t\tdst <unable to read from %08X>\n",
+                                  (unsigned)r5);
+                }
+                uint32_t n_bytes;
+                if (dc_try_read32(r5+4, &n_bytes) == 0) {
+                    SYSCALL_TRACE("\t\tn_bytes %08X\n", (unsigned)n_bytes);
+                } else {
+                    SYSCALL_TRACE("\t\tdst <unable to read from %08X>\n",
+                                  (unsigned)(r5+4));
+                }
+            }
+                break;
             case 8:
                 SYSCALL_TRACE("GDROM_ABORT_COMMAND\n");
+                SYSCALL_TRACE("\treq_id = 0x%02x\n",
+                              (unsigned)r4);
                 break;
             case 9:
                 SYSCALL_TRACE("GDROM_RESET\n");
