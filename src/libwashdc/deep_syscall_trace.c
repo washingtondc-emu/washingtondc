@@ -114,6 +114,13 @@ static char const* cmd_name(reg32_t r4) {
     return cmd_name_buf;
 }
 
+static struct syscall_stat {
+    int id;
+    union {
+        uint32_t n_bytes_addr;
+    };
+} syscall_stat;
+
 void deep_syscall_notify_jump(addr32_t pc) {
     Sh4 *sh4 = dreamcast_get_cpu();
     if (pc == GDROM_SYSCALL_ADDR) {
@@ -128,6 +135,7 @@ void deep_syscall_notify_jump(addr32_t pc) {
         reg32_t r7 = *sh4_gen_reg(sh4, 7);
         ret_addr = sh4->reg[SH4_REG_PR];
         in_syscall = true;
+        syscall_stat.id = -1;
 
         if (r6 == -1) {
             if (r7 == 0) {
@@ -139,6 +147,7 @@ void deep_syscall_notify_jump(addr32_t pc) {
                               (unsigned)r4, (unsigned)r5, (unsigned)r6, (unsigned)r7);
             }
         } else if (r6 == 0) {
+            syscall_stat.id = r7;
             switch (r7) {
             case 0:
                 SYSCALL_TRACE("GDROM_SEND_COMMAND <0x%02x> %s\n",
@@ -176,6 +185,12 @@ void deep_syscall_notify_jump(addr32_t pc) {
                 }
             }
                 break;
+            case 7:
+                SYSCALL_TRACE("GDROM_DMA_CHECK\n");
+                SYSCALL_TRACE("\treq_id %08X\n", (unsigned)r4);
+                SYSCALL_TRACE("\tparams %08X\n", (unsigned)r5);
+                syscall_stat.n_bytes_addr = r5;
+                break;
             case 8:
                 SYSCALL_TRACE("GDROM_ABORT_COMMAND\n");
                 SYSCALL_TRACE("\treq_id = 0x%02x\n",
@@ -196,6 +211,17 @@ void deep_syscall_notify_jump(addr32_t pc) {
                           (unsigned)r4, (unsigned)r5, (unsigned)r6, (unsigned)r7);
         }
     } else if (in_syscall && pc == ret_addr) {
+        if (syscall_stat.id == 7) {
+            uint32_t n_bytes;
+            if (dc_try_read32(syscall_stat.n_bytes_addr, &n_bytes) == 0) {
+                SYSCALL_TRACE("\tn_bytes <returned> %08X\n",
+                              (unsigned)n_bytes);
+            } else {
+                SYSCALL_TRACE("\t\tn_bytes <returned> <unable to read "
+                              "from %08X>\n",
+                              (unsigned)syscall_stat.n_bytes_addr);
+            }
+        }
         SYSCALL_TRACE("Returining 0x%08x to 0x%08x\n",
                       (unsigned)*sh4_gen_reg(sh4, 0), ret_addr);
         in_syscall = false;
