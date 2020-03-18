@@ -1743,6 +1743,13 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
 }
 
 int dc_try_read32(uint32_t addr, uint32_t *valp) {
+#ifdef ENABLE_MMU
+    struct sh4_utlb_ent *ent =
+        sh4_utlb_find_ent_associative(&cpu, addr);
+    if (ent)
+        addr = sh4_utlb_ent_translate_addr(ent, addr);
+#endif
+
     return memory_map_try_read_32(&mem_map, addr, valp);
 }
 
