@@ -118,6 +118,8 @@ static struct syscall_stat {
     int id;
     union {
         uint32_t n_bytes_addr;
+        uint32_t check_cmd_out_addr;
+        uint32_t check_drive_out_addr;
     };
 } syscall_stat;
 
@@ -149,24 +151,51 @@ void deep_syscall_notify_jump(addr32_t pc) {
         } else if (r6 == 0) {
             syscall_stat.id = r7;
             switch (r7) {
-            case 0:
+            case 0: {
                 SYSCALL_TRACE("GDROM_SEND_COMMAND <0x%02x> %s\n",
                               (unsigned)r4, cmd_name(r4));
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
+                SYSCALL_TRACE("\tCOMMAND %02X\n", (unsigned)r4);
+                uint32_t n_dwords_addr = 0x8c0012e8 + 0x4e8 + r4 * 4;
+                uint32_t n_dwords;
+                if (dc_try_read32(n_dwords_addr, &n_dwords) == 0) {
+                    SYSCALL_TRACE("\tparams %08X\n", (unsigned)r5);
+                    unsigned idx;
+                    for (idx = 0; idx < n_dwords; idx++) {
+                        uint32_t val;
+                        if (dc_try_read32(r5 + idx * 4, &val) == 0)
+                            SYSCALL_TRACE("\t\tparams[%u] %08X\n", idx, (unsigned)val);
+                        else
+                            SYSCALL_TRACE("\t\tparams[%u] <ERROR>\n", idx);
+                    }
+                } else {
+                    SYSCALL_TRACE("\t<unable to determine parameter length>\n");
+                }
+            }
                 break;
             case 1:
                 SYSCALL_TRACE("GDROM_CHECK_COMMAND\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
+                SYSCALL_TRACE("\treq_id %08X\n", (unsigned)r4);
+                SYSCALL_TRACE("\tparams %08X\n", (unsigned)r5);
                 break;
             case 2:
                 SYSCALL_TRACE("GDROM_MAINLOOP\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
                 break;
             case 3:
                 SYSCALL_TRACE("GDROM_INIT\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
                 break;
             case 4:
                 SYSCALL_TRACE("GDROM_CHECK_DRIVE\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
+                SYSCALL_TRACE("\tparams %08X\n", (unsigned)r4);
+                syscall_stat.check_drive_out_addr = r4;
                 break;
             case 6: {
                 SYSCALL_TRACE("GDROM_DMA_BEGIN\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
                 SYSCALL_TRACE("\treq_id %08X\n", (unsigned)r4);
                 SYSCALL_TRACE("\tparams %08X\n", (unsigned)r5);
                 uint32_t addr_dst;
@@ -187,20 +216,24 @@ void deep_syscall_notify_jump(addr32_t pc) {
                 break;
             case 7:
                 SYSCALL_TRACE("GDROM_DMA_CHECK\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
                 SYSCALL_TRACE("\treq_id %08X\n", (unsigned)r4);
                 SYSCALL_TRACE("\tparams %08X\n", (unsigned)r5);
                 syscall_stat.n_bytes_addr = r5;
                 break;
             case 8:
                 SYSCALL_TRACE("GDROM_ABORT_COMMAND\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
                 SYSCALL_TRACE("\treq_id = 0x%02x\n",
                               (unsigned)r4);
                 break;
             case 9:
                 SYSCALL_TRACE("GDROM_RESET\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
                 break;
             case 10:
                 SYSCALL_TRACE("GDROM_SECTOR_MODE\n");
+                SYSCALL_TRACE("\treturn_addr %08X\n", (unsigned)ret_addr);
                 break;
             default:
                 SYSCALL_TRACE("unknown system call (r4=%08X, r5=%08X, r6=%02X, r7=%02X)\n",
@@ -211,7 +244,102 @@ void deep_syscall_notify_jump(addr32_t pc) {
                           (unsigned)r4, (unsigned)r5, (unsigned)r6, (unsigned)r7);
         }
     } else if (in_syscall && pc == ret_addr) {
-        if (syscall_stat.id == 7) {
+        switch (syscall_stat.id) {
+        case 1: {
+            // GDROM_CHECK_COMMAND
+            uint32_t param;
+            unsigned idx;
+            for (idx = 0; idx < 4; idx++) {
+                if (dc_try_read32(syscall_stat.check_cmd_out_addr + 4 * idx, &param) == 0) {
+                    SYSCALL_TRACE("\tparams[%u] <returned> %08X\n", idx,
+                                  (unsigned)param);
+                } else {
+                    SYSCALL_TRACE("\t\tparams[%u] <returned> <unable to read "
+                                  "from %08X>\n", idx,
+                                  (unsigned)syscall_stat.check_cmd_out_addr + 4 * idx);
+                }
+            }
+        }
+            break;
+        case 4: {
+            uint32_t drive_stat, disc_fmt;
+            if (dc_try_read32(syscall_stat.check_drive_out_addr,
+                              &drive_stat) == 0) {
+                char const *drive_stat_str;
+                switch (drive_stat) {
+                case 0:
+                    drive_stat_str = "BUSY";
+                    break;
+                case 1:
+                    drive_stat_str = "PAUSE";
+                    break;
+                case 2:
+                    drive_stat_str = "STANDBY";
+                    break;
+                case 3:
+                    drive_stat_str = "PLAY";
+                    break;
+                case 4:
+                    drive_stat_str = "SEEK";
+                    break;
+                case 5:
+                    drive_stat_str = "SCAN";
+                    break;
+                case 6:
+                    drive_stat_str = "OPEN";
+                    break;
+                case 7:
+                    drive_stat_str = "NO_DISC";
+                    break;
+                case 8:
+                    drive_stat_str = "RETRY";
+                    break;
+                case 9:
+                    drive_stat_str = "ERROR";
+                    break;
+                default:
+                    drive_stat_str = "UNKNOWN (EMULATOR OR FIRMWARE ERROR)";
+                }
+                SYSCALL_TRACE("\tdrive_status <returned> %08X <%s>\n",
+                              (unsigned)drive_stat, drive_stat_str);
+            } else {
+                SYSCALL_TRACE("\tdrive_status <returned> <unable to read "
+                              "from %08X>\n",
+                              (unsigned)syscall_stat.check_drive_out_addr);
+            }
+            if (dc_try_read32(syscall_stat.check_drive_out_addr + 4,
+                              &disc_fmt) == 0) {
+                char const *disc_fmt_str;
+                switch(disc_fmt) {
+                case 0x00:
+                    disc_fmt_str = "CD DIGITAL AUDIO";
+                    break;
+                case 0x10:
+                    disc_fmt_str = "CD-ROM";
+                    break;
+                case 0x20:
+                    disc_fmt_str = "CD-ROM XA";
+                    break;
+                case 0x30:
+                    disc_fmt_str = "CD-I";
+                    break;
+                case 0x80:
+                    disc_fmt_str = "GD-ROM";
+                    break;
+                default:
+                    disc_fmt_str = "UNKNOWN (EMULATOR OR FIRMWARE ERROR)";
+                }
+                SYSCALL_TRACE("\tdisc_format <returned> %08X <%s>\n",
+                              (unsigned)disc_fmt, disc_fmt_str);
+            } else {
+                SYSCALL_TRACE("\tdisc_format <returned> <unable to read "
+                              "from %08X>\n",
+                              (unsigned)syscall_stat.check_drive_out_addr + 4);
+            }
+        }
+            break;
+        case 7: {
+            // GDROM DMA CHECK
             uint32_t n_bytes;
             if (dc_try_read32(syscall_stat.n_bytes_addr, &n_bytes) == 0) {
                 SYSCALL_TRACE("\tn_bytes <returned> %08X\n",
@@ -221,6 +349,8 @@ void deep_syscall_notify_jump(addr32_t pc) {
                               "from %08X>\n",
                               (unsigned)syscall_stat.n_bytes_addr);
             }
+        }
+            break;
         }
         SYSCALL_TRACE("Returining 0x%08x to 0x%08x\n",
                       (unsigned)*sh4_gen_reg(sh4, 0), ret_addr);
