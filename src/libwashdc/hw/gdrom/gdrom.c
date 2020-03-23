@@ -1408,13 +1408,18 @@ void gdrom_input_cmd(struct gdrom_ctxt *gdrom, unsigned cmd) {
         gdrom_cmd_identify(gdrom);
         break;
     case GDROM_CMD_NOP:
-        /*
-         * TODO: I think this is supposed to be able to interrupt in-progress
-         * operations, but that isn't implemented yet.
-         */
-        LOG_ERROR("GDROM_CMD_NOP is not implemented yet\n");
-        error_set_feature("GDROM_CMD_NOP");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        if (gdrom->gdrom_int_scheduled) {
+            error_set_feature("using GDROM_CMD_NOP to abort during an interrupt");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        } else {
+            GDROM_INFO("ATA NOP command received\n");
+            gdrom->stat_reg.bsy = false;
+            gdrom->stat_reg.check = true;
+            gdrom_state_transition(gdrom, GDROM_STATE_NORM);
+            gdrom->error_reg.abrt = true;
+            if (!gdrom->dev_ctrl_reg.nien)
+                holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        }
         break;
     default:
         error_set_feature("unknown GD-ROM command");
