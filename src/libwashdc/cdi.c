@@ -181,10 +181,15 @@ static inline unsigned get_sector_size(unsigned mode) {
 }
 
 static inline unsigned get_sector_data_offset(unsigned mode) {
-    if (mode == CDI_SECTOR_SEMIRAW_MODE2)
+    switch (mode) {
+    case CDI_SECTOR_SEMIRAW_MODE2:
         return 8;
-    error_set_cdrom_mode(mode);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    case CDI_SECTOR_CDDA:
+        return 0; // TODO: not sure how accurate this is but it seems right
+    default:
+        error_set_cdrom_mode(mode);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 #define CDROM_SECTOR_SIZE(mode) get_sector_size(mode)
@@ -500,6 +505,12 @@ static int cdi_read_sector(struct mount *mount, void *buf, unsigned fad) {
                     + get_sector_data_offset(track->mode) + track->offset;
                 LOG_INFO("\tbyte_offset is %X\n", byte_offset);
                 LOG_INFO("\tmode is %X\n", track->mode);
+
+                if (track->mode == CDI_SECTOR_CDDA) {
+                    LOG_WARN("\tThis track is a CDDA track.  I'm not sure if "
+                             "you\'re supposed to be able to read data from "
+                             "it or not.\n");
+                }
 
                 washdc_hostfile_seek(info->fp, byte_offset, WASHDC_HOSTFILE_SEEK_BEG);
                 if (washdc_hostfile_read(info->fp, buf, 2048) != 2048)
