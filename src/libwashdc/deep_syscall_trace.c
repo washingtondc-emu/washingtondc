@@ -116,6 +116,7 @@ static char const* cmd_name(reg32_t r4) {
 
 static struct syscall_stat {
     int id;
+    uint32_t initial_state;
     union {
         uint32_t n_bytes_addr;
         uint32_t check_cmd_out_addr;
@@ -138,6 +139,9 @@ void deep_syscall_notify_jump(addr32_t pc) {
         ret_addr = sh4->reg[SH4_REG_PR];
         in_syscall = true;
         syscall_stat.id = -1;
+
+        if (dc_try_read32(0x8c0012e8 + 20, &syscall_stat.initial_state) != 0)
+            SYSCALL_TRACE("FAILURE TO READ GDROM SYSCALL STATE\n");
 
         if (r6 == -1) {
             if (r7 == 0) {
@@ -352,6 +356,18 @@ void deep_syscall_notify_jump(addr32_t pc) {
         }
             break;
         }
+        uint32_t gdrom_syscall_state;
+        if (dc_try_read32(0x8c0012e8 + 20, &gdrom_syscall_state) == 0) {
+            if (syscall_stat.initial_state != gdrom_syscall_state) {
+                SYSCALL_TRACE("gd-rom syscall state changed from %d to %d "
+                              "during system call\n",
+                              (int)syscall_stat.initial_state,
+                              (int)gdrom_syscall_state);
+            }
+        } else {
+            SYSCALL_TRACE("FAILURE TO READ GDROM SYSCALL STATE\n");
+        }
+
         SYSCALL_TRACE("Returining 0x%08x to 0x%08x\n",
                       (unsigned)*sh4_gen_reg(sh4, 0), ret_addr);
         in_syscall = false;
