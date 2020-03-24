@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -42,6 +42,6 @@ void rend_update_tex(unsigned tex_no);
 // tell the renderer to release the given texture from the cache
 void rend_release_tex(unsigned tex_no);
 
-struct rend_if const * gfx_rend_ifp;
+extern struct rend_if const * gfx_rend_ifp;
 
 #endif

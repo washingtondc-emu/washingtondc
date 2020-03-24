@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -246,7 +246,7 @@ enum mount_disc_type gdrom_get_disc_type(void);
  */
 enum gdrom_disc_state gdrom_get_drive_state(void);
 
-struct memory_interface gdrom_reg_intf;
+extern struct memory_interface gdrom_reg_intf;
 
 void gdrom_start_dma(struct gdrom_ctxt *gdrom);
 
