@@ -726,9 +726,9 @@ static uint32_t sh4_itlb_data_array_2_read(struct Sh4 *sh4, addr32_t addr) {
 static void sh4_utlb_increment_urc(struct Sh4 *sh4) {
     uint32_t mmucr = sh4->reg[SH4_REG_MMUCR];
     uint32_t urc = (mmucr & BIT_RANGE(10, 15)) >> 10;
-    uint32_t urb = (mmucr & BIT_RANGE(18, 23)) >> 10;
+    uint32_t urb = (mmucr & BIT_RANGE(18, 23)) >> 18;
 
-    if (urc < urb) {
+    if (urb != 0 && (urc < urb)) {
         urc++;
         if (urb && urc >= urb)
             urc = 0;
