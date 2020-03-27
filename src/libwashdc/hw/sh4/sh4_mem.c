@@ -744,7 +744,8 @@ static void sh4_utlb_increment_urc(struct Sh4 *sh4) {
     sh4->reg[SH4_REG_MMUCR] |= ((urc << 10) & BIT_RANGE(10, 15));
 }
 
-int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
+enum sh4_utlb_translate_result
+sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
     uint32_t addr = *addrp;
     unsigned area = (addr >> 29) & 7;
     if (sh4_mmu_at(sh4) && (sh4_addr_in_sq_area(addr) ||
@@ -752,7 +753,7 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
         struct sh4_utlb_ent *ent = sh4_utlb_find_ent_associative(sh4, addr);
         sh4_utlb_increment_urc(sh4);
         if (!ent)
-            return -1;
+            return SH4_UTLB_MISS;
         addr = sh4_utlb_ent_translate_addr(ent, addr);
         /* printf("%s Translate %08X to %08X\n", __func__, (unsigned)*addrp, (unsigned)addr); */
 
@@ -784,7 +785,7 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
                 break;
             case 2:
                 if (write) {
-                    return -2;
+                    return SH4_UTLB_PROT_VIOL;
                 }
                 break;
             case 3:
@@ -807,7 +808,7 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
     }
 
     *addrp = addr;
-    return 0;
+    return SH4_UTLB_SUCCESS;
 }
 
 static unsigned sh4_mmu_get_lrui(struct Sh4 *sh4) {
@@ -820,7 +821,8 @@ static void sh4_mmu_set_lrui(struct Sh4 *sh4, unsigned lrui) {
     sh4->reg[SH4_REG_MMUCR] |= ((lrui << SH4_MMUCR_LRUI_SHIFT) & SH4_MMUCR_LRUI_MASK);
 }
 
-int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
+enum sh4_itlb_translate_result
+sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
     uint32_t addr = *addr_p;
     bool already_searched_utlb = false;
 

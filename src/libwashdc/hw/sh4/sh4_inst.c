@@ -61,8 +61,13 @@ static DEF_ERROR_INT_ATTR(inst_bin)
 
 static inline int sh4_read8(struct Sh4 *sh4, addr32_t addr, uint8_t *valp) {
 #ifdef ENABLE_MMU
-    int res = sh4_utlb_translate_address(sh4, &addr, false);
-    if (res == -1) {
+    enum sh4_utlb_translate_result res =
+        sh4_utlb_translate_address(sh4, &addr, false);
+
+    switch (res) {
+    case SH4_UTLB_SUCCESS:
+        break;
+    case SH4_UTLB_MISS:
         LOG_ERROR("8-BIT DATA TLB READ MISS EXCEPTION VPN %08X\n",
                   (unsigned)addr);
         sh4->reg[SH4_REG_TEA] = addr;
@@ -71,7 +76,7 @@ static inline int sh4_read8(struct Sh4 *sh4, addr32_t addr, uint8_t *valp) {
         sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
 
         return res;
-    } else if (res != 0) {
+    default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -88,8 +93,12 @@ static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    int res = sh4_utlb_translate_address(sh4, &addr, false);
-    if (res == -1) {
+    enum sh4_utlb_translate_result res =
+        sh4_utlb_translate_address(sh4, &addr, false);
+    switch (res) {
+    case SH4_UTLB_SUCCESS:
+        break;
+    case SH4_UTLB_MISS:
         LOG_ERROR("DATA TLB READ MISS EXCEPTION\n");
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
@@ -97,7 +106,7 @@ static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
         sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
 
         return res;
-    } else if (res != 0) {
+    default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -114,8 +123,12 @@ static inline int sh4_read32(struct Sh4 *sh4, addr32_t addr, uint32_t *valp) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    int res = sh4_utlb_translate_address(sh4, &addr, false);
-    if (res == -1) {
+    enum sh4_utlb_translate_result res =
+        sh4_utlb_translate_address(sh4, &addr, false);
+    switch (res) {
+    case SH4_UTLB_SUCCESS:
+        break;
+    case SH4_UTLB_MISS:
         LOG_ERROR("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
                   (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
         sh4->reg[SH4_REG_TEA] = addr;
@@ -124,7 +137,7 @@ static inline int sh4_read32(struct Sh4 *sh4, addr32_t addr, uint32_t *valp) {
         sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
 
         return res;
-    } else if (res != 0) {
+    default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -141,7 +154,7 @@ static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (sh4_utlb_translate_address(sh4, &addr, false) != 0) {
+    if (sh4_utlb_translate_address(sh4, &addr, false) != SH4_UTLB_SUCCESS) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -165,7 +178,7 @@ static inline int sh4_readdouble(struct Sh4 *sh4, addr32_t addr, double *valp) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (sh4_utlb_translate_address(sh4, &addr, false) != 0) {
+    if (sh4_utlb_translate_address(sh4, &addr, false) != SH4_UTLB_SUCCESS) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -178,8 +191,12 @@ static inline int sh4_readdouble(struct Sh4 *sh4, addr32_t addr, double *valp) {
 static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 #ifdef ENABLE_MMU
     if (!sh4_addr_in_sq_area(addr)) {
-        int res = sh4_utlb_translate_address(sh4, &addr, true);
-        if (res == -1) {
+        enum sh4_utlb_translate_result res =
+            sh4_utlb_translate_address(sh4, &addr, true);
+        switch (res) {
+        case SH4_UTLB_SUCCESS:
+            break;
+        case SH4_UTLB_MISS:
             LOG_ERROR("DATA TLB WRITE MISS EXCEPTION %s\n", __func__);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
@@ -187,7 +204,7 @@ static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
 
             return res;
-        } else if (res != 0) {
+        default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
@@ -206,8 +223,12 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
     }
 
     if (!sh4_addr_in_sq_area(addr)) {
-        int res = sh4_utlb_translate_address(sh4, &addr, true);
-        if (res == -1) {
+        enum sh4_utlb_translate_result res =
+            sh4_utlb_translate_address(sh4, &addr, true);
+        switch (res) {
+        case SH4_UTLB_SUCCESS:
+            break;
+        case SH4_UTLB_MISS:
             LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
@@ -215,7 +236,7 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
 
             return res;
-        } else if (res != 0) {
+        default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
@@ -234,8 +255,12 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     }
 
     if (!sh4_addr_in_sq_area(addr)) {
-        int res = sh4_utlb_translate_address(sh4, &addr, true);
-        if (res == -1) {
+        enum sh4_utlb_translate_result res =
+            sh4_utlb_translate_address(sh4, &addr, true);
+        switch (res) {
+        case SH4_UTLB_SUCCESS:
+            break;
+        case SH4_UTLB_MISS:
             LOG_ERROR("DATA TLB WRITE MISS EXCEPTION VPN %08X PC=%08X\n",
                       (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
@@ -244,7 +269,7 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
 
             return res;
-        } else if (res == -2) {
+        case SH4_UTLB_PROT_VIOL:
             LOG_ERROR("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
                       "PC=%08X\n", (unsigned)addr,
                       (unsigned)sh4->reg[SH4_REG_PC]);
@@ -254,7 +279,7 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
 
             return res;
-        } else if (res != 0) {
+        default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
@@ -273,7 +298,7 @@ static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
     }
 
     if (!sh4_addr_in_sq_area(addr) &&
-        sh4_utlb_translate_address(sh4, &addr, true) != 0) {
+        sh4_utlb_translate_address(sh4, &addr, true) != SH4_UTLB_SUCCESS) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -298,7 +323,7 @@ static inline int sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
     }
 
     if (!sh4_addr_in_sq_area(addr) &&
-        sh4_utlb_translate_address(sh4, &addr, true) != 0) {
+        sh4_utlb_translate_address(sh4, &addr, true) != SH4_UTLB_SUCCESS) {
         error_set_address(addr);
         error_set_feature("page fault exceptions");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);

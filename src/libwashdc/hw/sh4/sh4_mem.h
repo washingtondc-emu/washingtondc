@@ -173,7 +173,13 @@ extern struct memory_interface sh4_p4_intf;
 
 #ifdef ENABLE_MMU
 
-enum {
+enum sh4_utlb_translate_result {
+    SH4_UTLB_SUCCESS = 0,
+    SH4_UTLB_MISS = -1,
+    SH4_UTLB_PROT_VIOL = -2
+};
+
+enum sh4_itlb_translate_result {
     SH4_ITLB_SUCCESS = 0,
     SH4_ITLB_MISS = -1,
     SH4_ITLB_PROT_VIOL = -2
@@ -191,8 +197,10 @@ enum {
  * used instead if all you want to do is passively query the TLB without
  * modifying anything.
  */
-int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write);
-int sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p);
+enum sh4_utlb_translate_result
+sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write);
+enum sh4_itlb_translate_result
+sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p);
 
 /*
  * These functions search the itlb or the utlb for the given entry and return a
