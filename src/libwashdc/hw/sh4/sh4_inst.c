@@ -58,6 +58,7 @@ static DEF_ERROR_U32_ATTR(fpscr)
 static DEF_ERROR_U32_ATTR(fpscr_expect)
 static DEF_ERROR_U32_ATTR(fpscr_mask)
 static DEF_ERROR_INT_ATTR(inst_bin)
+static DEF_ERROR_INT_ATTR(mmu_excp_tp)
 
 static inline int sh4_read8(struct Sh4 *sh4, addr32_t addr, uint8_t *valp) {
 #ifdef ENABLE_MMU
@@ -77,6 +78,8 @@ static inline int sh4_read8(struct Sh4 *sh4, addr32_t addr, uint8_t *valp) {
 
         return res;
     default:
+        error_set_address(addr);
+        error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -107,6 +110,8 @@ static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
 
         return res;
     default:
+        error_set_address(addr);
+        error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -138,6 +143,8 @@ static inline int sh4_read32(struct Sh4 *sh4, addr32_t addr, uint32_t *valp) {
 
         return res;
     default:
+        error_set_address(addr);
+        error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -154,9 +161,11 @@ static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (sh4_utlb_translate_address(sh4, &addr, false) != SH4_UTLB_SUCCESS) {
+    enum sh4_utlb_translate_result res;
+    if ((res = sh4_utlb_translate_address(sh4, &addr, false)) !=
+        SH4_UTLB_SUCCESS) {
         error_set_address(addr);
-        error_set_feature("page fault exceptions");
+        error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -178,9 +187,11 @@ static inline int sh4_readdouble(struct Sh4 *sh4, addr32_t addr, double *valp) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    if (sh4_utlb_translate_address(sh4, &addr, false) != SH4_UTLB_SUCCESS) {
+    enum sh4_utlb_translate_result res;
+    if ((res = sh4_utlb_translate_address(sh4, &addr, false)) !=
+        SH4_UTLB_SUCCESS) {
         error_set_address(addr);
-        error_set_feature("page fault exceptions");
+        error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -205,6 +216,8 @@ static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 
             return res;
         default:
+            error_set_address(addr);
+            error_set_mmu_excp_tp((int)res);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
@@ -237,6 +250,8 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
 
             return res;
         default:
+            error_set_address(addr);
+            error_set_mmu_excp_tp((int)res);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
@@ -280,6 +295,8 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 
             return res;
         default:
+            error_set_address(addr);
+            error_set_mmu_excp_tp((int)res);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     }
@@ -297,10 +314,12 @@ static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
+    enum sh4_utlb_translate_result res;
     if (!sh4_addr_in_sq_area(addr) &&
-        sh4_utlb_translate_address(sh4, &addr, true) != SH4_UTLB_SUCCESS) {
+        (res = sh4_utlb_translate_address(sh4, &addr, true)) !=
+        SH4_UTLB_SUCCESS) {
         error_set_address(addr);
-        error_set_feature("page fault exceptions");
+        error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
@@ -322,10 +341,12 @@ static inline int sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
+    enum sh4_utlb_translate_result res;
     if (!sh4_addr_in_sq_area(addr) &&
-        sh4_utlb_translate_address(sh4, &addr, true) != SH4_UTLB_SUCCESS) {
+        (res = sh4_utlb_translate_address(sh4, &addr, true)) !=
+        SH4_UTLB_SUCCESS) {
         error_set_address(addr);
-        error_set_feature("page fault exceptions");
+        error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 #endif
