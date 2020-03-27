@@ -784,8 +784,7 @@ int sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
                 break;
             case 2:
                 if (write) {
-                    error_set_feature("UTLB protection violation exception");
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+                    return -2;
                 }
                 break;
             case 3:
