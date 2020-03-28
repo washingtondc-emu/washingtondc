@@ -762,17 +762,13 @@ sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
             switch (ent->protection) {
             case 0:
             case 2:
-                if (write) {
-                    error_set_feature("UTLB protection violation");
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                }
+                if (write)
+                    return SH4_UTLB_PROT_VIOL;
                 break;
             case 1:
             case 3:
-                if (write && !ent->dirty) {
-                    error_set_feature("UTLB initial write exception");
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                }
+                if (write && !ent->dirty)
+                    return SH4_UTLB_INITIAL_WRITE;
                 break;
             }
         } else {
@@ -780,19 +776,14 @@ sh4_utlb_translate_address(struct Sh4 *sh4, uint32_t *addrp, bool write) {
             switch (ent->protection) {
             case 0:
             case 1:
-                error_set_feature("UTLB protection violation exception");
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                break;
+                return SH4_UTLB_PROT_VIOL;
             case 2:
-                if (write) {
+                if (write)
                     return SH4_UTLB_PROT_VIOL;
-                }
                 break;
             case 3:
-                if (write && !ent->dirty) {
-                    error_set_feature("UTLB initial write exception");
-                    RAISE_ERROR(ERROR_UNIMPLEMENTED);
-                }
+                if (write && !ent->dirty)
+                    return SH4_UTLB_INITIAL_WRITE;
                 break;
             }
         }

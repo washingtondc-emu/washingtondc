@@ -176,7 +176,8 @@ extern struct memory_interface sh4_p4_intf;
 enum sh4_utlb_translate_result {
     SH4_UTLB_SUCCESS = 0,
     SH4_UTLB_MISS = -1,
-    SH4_UTLB_PROT_VIOL = -2
+    SH4_UTLB_PROT_VIOL = -2,
+    SH4_UTLB_INITIAL_WRITE = -3
 };
 
 enum sh4_itlb_translate_result {
