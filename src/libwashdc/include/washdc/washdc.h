@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -205,6 +205,13 @@ void washdc_controller_release_btns(unsigned port_no, uint32_t btns);
 
 // 0 = min, 255 = max, 128 = half
 void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
+
+enum washdc_controller_tp {
+    WASHDC_CONTROLLER_TP_NONE,
+    WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER
+};
+
+enum washdc_controller_tp washdc_controller_type(unsigned port_no);
 
 enum washdc_pvr2_poly_group {
     WASHDC_PVR2_POLY_GROUP_OPAQUE,

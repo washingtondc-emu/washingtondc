@@ -220,6 +220,17 @@ static void win_glfw_init(unsigned width, unsigned height) {
      */
     bind_ctrl_from_cfg("exit-now", "wash.ctrl.exit");
 
+    /*
+     * pN_1 and pN_2 both refer to the same buttons on player N's controller.
+     * It's there to provide a way to have two different bindings for the same
+     * button.
+     */
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Player 1
+    //
+    ///////////////////////////////////////////////////////////////////////////
     bind_ctrl_from_cfg("p1_1.dpad-up", "dc.ctrl.p1.dpad-up");
     bind_ctrl_from_cfg("p1_1.dpad-left", "dc.ctrl.p1.dpad-left");
     bind_ctrl_from_cfg("p1_1.dpad-down", "dc.ctrl.p1.dpad-down");
@@ -236,11 +247,6 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("p1_1.trig-l", "dc.ctrl.p1.trig-l");
     bind_ctrl_from_cfg("p1_1.trig-r", "dc.ctrl.p1.trig-r");
 
-    /*
-     * p1_1 and p1_2 both refer to the same buttons on player 1's controller.
-     * It's there to provide a way to have two different bindings for the same
-     * button.
-     */
     bind_ctrl_from_cfg("p1_2.dpad-up", "dc.ctrl.p1.dpad-up(1)");
     bind_ctrl_from_cfg("p1_2.dpad-left", "dc.ctrl.p1.dpad-left(1)");
     bind_ctrl_from_cfg("p1_2.dpad-down", "dc.ctrl.p1.dpad-down(1)");
@@ -256,6 +262,117 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("p1_2.stick-down", "dc.ctrl.p1.stick-down(1)");
     bind_ctrl_from_cfg("p1_2.trig-l", "dc.ctrl.p1.trig-l(1)");
     bind_ctrl_from_cfg("p1_2.trig-r", "dc.ctrl.p1.trig-r(1)");
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Player 2
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    bind_ctrl_from_cfg("p2_1.dpad-up", "dc.ctrl.p2.dpad-up");
+    bind_ctrl_from_cfg("p2_1.dpad-left", "dc.ctrl.p2.dpad-left");
+    bind_ctrl_from_cfg("p2_1.dpad-down", "dc.ctrl.p2.dpad-down");
+    bind_ctrl_from_cfg("p2_1.dpad-right", "dc.ctrl.p2.dpad-right");
+    bind_ctrl_from_cfg("p2_1.btn_a", "dc.ctrl.p2.btn-a");
+    bind_ctrl_from_cfg("p2_1.btn_b", "dc.ctrl.p2.btn-b");
+    bind_ctrl_from_cfg("p2_1.btn_x", "dc.ctrl.p2.btn-x");
+    bind_ctrl_from_cfg("p2_1.btn_y", "dc.ctrl.p2.btn-y");
+    bind_ctrl_from_cfg("p2_1.btn_start", "dc.ctrl.p2.btn-start");
+    bind_ctrl_from_cfg("p2_1.stick-left", "dc.ctrl.p2.stick-left");
+    bind_ctrl_from_cfg("p2_1.stick-right", "dc.ctrl.p2.stick-right");
+    bind_ctrl_from_cfg("p2_1.stick-up", "dc.ctrl.p2.stick-up");
+    bind_ctrl_from_cfg("p2_1.stick-down", "dc.ctrl.p2.stick-down");
+    bind_ctrl_from_cfg("p2_1.trig-l", "dc.ctrl.p2.trig-l");
+    bind_ctrl_from_cfg("p2_1.trig-r", "dc.ctrl.p2.trig-r");
+
+    bind_ctrl_from_cfg("p2_2.dpad-up", "dc.ctrl.p2.dpad-up(1)");
+    bind_ctrl_from_cfg("p2_2.dpad-left", "dc.ctrl.p2.dpad-left(1)");
+    bind_ctrl_from_cfg("p2_2.dpad-down", "dc.ctrl.p2.dpad-down(1)");
+    bind_ctrl_from_cfg("p2_2.dpad-right", "dc.ctrl.p2.dpad-right(1)");
+    bind_ctrl_from_cfg("p2_2.btn_a", "dc.ctrl.p2.btn-a(1)");
+    bind_ctrl_from_cfg("p2_2.btn_b", "dc.ctrl.p2.btn-b(1)");
+    bind_ctrl_from_cfg("p2_2.btn_x", "dc.ctrl.p2.btn-x(1)");
+    bind_ctrl_from_cfg("p2_2.btn_y", "dc.ctrl.p2.btn-y(1)");
+    bind_ctrl_from_cfg("p2_2.btn_start", "dc.ctrl.p2.btn-start(1)");
+    bind_ctrl_from_cfg("p2_2.stick-left", "dc.ctrl.p2.stick-left(1)");
+    bind_ctrl_from_cfg("p2_2.stick-right", "dc.ctrl.p2.stick-right(1)");
+    bind_ctrl_from_cfg("p2_2.stick-up", "dc.ctrl.p2.stick-up(1)");
+    bind_ctrl_from_cfg("p2_2.stick-down", "dc.ctrl.p2.stick-down(1)");
+    bind_ctrl_from_cfg("p2_2.trig-l", "dc.ctrl.p2.trig-l(1)");
+    bind_ctrl_from_cfg("p2_2.trig-r", "dc.ctrl.p2.trig-r(1)");
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Player 3
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    bind_ctrl_from_cfg("p3_1.dpad-up", "dc.ctrl.p3.dpad-up");
+    bind_ctrl_from_cfg("p3_1.dpad-left", "dc.ctrl.p3.dpad-left");
+    bind_ctrl_from_cfg("p3_1.dpad-down", "dc.ctrl.p3.dpad-down");
+    bind_ctrl_from_cfg("p3_1.dpad-right", "dc.ctrl.p3.dpad-right");
+    bind_ctrl_from_cfg("p3_1.btn_a", "dc.ctrl.p3.btn-a");
+    bind_ctrl_from_cfg("p3_1.btn_b", "dc.ctrl.p3.btn-b");
+    bind_ctrl_from_cfg("p3_1.btn_x", "dc.ctrl.p3.btn-x");
+    bind_ctrl_from_cfg("p3_1.btn_y", "dc.ctrl.p3.btn-y");
+    bind_ctrl_from_cfg("p3_1.btn_start", "dc.ctrl.p3.btn-start");
+    bind_ctrl_from_cfg("p3_1.stick-left", "dc.ctrl.p3.stick-left");
+    bind_ctrl_from_cfg("p3_1.stick-right", "dc.ctrl.p3.stick-right");
+    bind_ctrl_from_cfg("p3_1.stick-up", "dc.ctrl.p3.stick-up");
+    bind_ctrl_from_cfg("p3_1.stick-down", "dc.ctrl.p3.stick-down");
+    bind_ctrl_from_cfg("p3_1.trig-l", "dc.ctrl.p3.trig-l");
+    bind_ctrl_from_cfg("p3_1.trig-r", "dc.ctrl.p3.trig-r");
+
+    bind_ctrl_from_cfg("p3_2.dpad-up", "dc.ctrl.p3.dpad-up(1)");
+    bind_ctrl_from_cfg("p3_2.dpad-left", "dc.ctrl.p3.dpad-left(1)");
+    bind_ctrl_from_cfg("p3_2.dpad-down", "dc.ctrl.p3.dpad-down(1)");
+    bind_ctrl_from_cfg("p3_2.dpad-right", "dc.ctrl.p3.dpad-right(1)");
+    bind_ctrl_from_cfg("p3_2.btn_a", "dc.ctrl.p3.btn-a(1)");
+    bind_ctrl_from_cfg("p3_2.btn_b", "dc.ctrl.p3.btn-b(1)");
+    bind_ctrl_from_cfg("p3_2.btn_x", "dc.ctrl.p3.btn-x(1)");
+    bind_ctrl_from_cfg("p3_2.btn_y", "dc.ctrl.p3.btn-y(1)");
+    bind_ctrl_from_cfg("p3_2.btn_start", "dc.ctrl.p3.btn-start(1)");
+    bind_ctrl_from_cfg("p3_2.stick-left", "dc.ctrl.p3.stick-left(1)");
+    bind_ctrl_from_cfg("p3_2.stick-right", "dc.ctrl.p3.stick-right(1)");
+    bind_ctrl_from_cfg("p3_2.stick-up", "dc.ctrl.p3.stick-up(1)");
+    bind_ctrl_from_cfg("p3_2.stick-down", "dc.ctrl.p3.stick-down(1)");
+    bind_ctrl_from_cfg("p3_2.trig-l", "dc.ctrl.p3.trig-l(1)");
+    bind_ctrl_from_cfg("p3_2.trig-r", "dc.ctrl.p3.trig-r(1)");
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
+    // Player 4
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    bind_ctrl_from_cfg("p4_1.dpad-up", "dc.ctrl.p4.dpad-up");
+    bind_ctrl_from_cfg("p4_1.dpad-left", "dc.ctrl.p4.dpad-left");
+    bind_ctrl_from_cfg("p4_1.dpad-down", "dc.ctrl.p4.dpad-down");
+    bind_ctrl_from_cfg("p4_1.dpad-right", "dc.ctrl.p4.dpad-right");
+    bind_ctrl_from_cfg("p4_1.btn_a", "dc.ctrl.p4.btn-a");
+    bind_ctrl_from_cfg("p4_1.btn_b", "dc.ctrl.p4.btn-b");
+    bind_ctrl_from_cfg("p4_1.btn_x", "dc.ctrl.p4.btn-x");
+    bind_ctrl_from_cfg("p4_1.btn_y", "dc.ctrl.p4.btn-y");
+    bind_ctrl_from_cfg("p4_1.btn_start", "dc.ctrl.p4.btn-start");
+    bind_ctrl_from_cfg("p4_1.stick-left", "dc.ctrl.p4.stick-left");
+    bind_ctrl_from_cfg("p4_1.stick-right", "dc.ctrl.p4.stick-right");
+    bind_ctrl_from_cfg("p4_1.stick-up", "dc.ctrl.p4.stick-up");
+    bind_ctrl_from_cfg("p4_1.stick-down", "dc.ctrl.p4.stick-down");
+    bind_ctrl_from_cfg("p4_1.trig-l", "dc.ctrl.p4.trig-l");
+    bind_ctrl_from_cfg("p4_1.trig-r", "dc.ctrl.p4.trig-r");
+
+    bind_ctrl_from_cfg("p4_2.dpad-up", "dc.ctrl.p4.dpad-up(1)");
+    bind_ctrl_from_cfg("p4_2.dpad-left", "dc.ctrl.p4.dpad-left(1)");
+    bind_ctrl_from_cfg("p4_2.dpad-down", "dc.ctrl.p4.dpad-down(1)");
+    bind_ctrl_from_cfg("p4_2.dpad-right", "dc.ctrl.p4.dpad-right(1)");
+    bind_ctrl_from_cfg("p4_2.btn_a", "dc.ctrl.p4.btn-a(1)");
+    bind_ctrl_from_cfg("p4_2.btn_b", "dc.ctrl.p4.btn-b(1)");
+    bind_ctrl_from_cfg("p4_2.btn_x", "dc.ctrl.p4.btn-x(1)");
+    bind_ctrl_from_cfg("p4_2.btn_y", "dc.ctrl.p4.btn-y(1)");
+    bind_ctrl_from_cfg("p4_2.btn_start", "dc.ctrl.p4.btn-start(1)");
+    bind_ctrl_from_cfg("p4_2.stick-left", "dc.ctrl.p4.stick-left(1)");
+    bind_ctrl_from_cfg("p4_2.stick-right", "dc.ctrl.p4.stick-right(1)");
+    bind_ctrl_from_cfg("p4_2.stick-up", "dc.ctrl.p4.stick-up(1)");
+    bind_ctrl_from_cfg("p4_2.stick-down", "dc.ctrl.p4.stick-down(1)");
+    bind_ctrl_from_cfg("p4_2.trig-l", "dc.ctrl.p4.trig-l(1)");
+    bind_ctrl_from_cfg("p4_2.trig-r", "dc.ctrl.p4.trig-r(1)");
 
     glfwSetMouseButtonCallback(win, mouse_btn_cb);
     glfwSetCharCallback(win, text_input_cb);
@@ -307,20 +424,33 @@ enum joystick_hat {
     GAMEPAD_HAT_COUNT
 };
 
-static void scan_input(void) {
+static char const *bind_name(unsigned ctrlr, char const *bind) {
+    static char name[CTRL_BIND_NAME_LEN];
+    snprintf(name, sizeof(name), "p%u%s", ctrlr + 1, bind);
+    name[sizeof(name)-1] = '\0';
+    return name;
+}
+
+static void scan_input_for_controller(unsigned which) {
+    if (which >= 4 ||
+        (washdc_controller_type(which) !=
+         WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER)) {
+        return;
+    }
+
     bool btns[GAMEPAD_BTN_COUNT];
     bool hat[GAMEPAD_HAT_COUNT];
 
-    float trig_l_real_1 = ctrl_get_axis("p1_1.trig-l") + 1.0f;
-    float trig_l_real_2 = ctrl_get_axis("p1_2.trig-l") + 1.0f;
+    float trig_l_real_1 = ctrl_get_axis(bind_name(which, "_1.trig-l")) + 1.0f;
+    float trig_l_real_2 = ctrl_get_axis(bind_name(which, "_2.trig-l")) + 1.0f;
     float trig_l_real = trig_l_real_1 + trig_l_real_2;
     if (trig_l_real < 0.0f)
         trig_l_real = 0.0f;
     else if (trig_l_real > 1.0f)
         trig_l_real = 1.0f;
 
-    float trig_r_real_1 = ctrl_get_axis("p1_1.trig-r") + 1.0f;
-    float trig_r_real_2 = ctrl_get_axis("p1_2.trig-r") + 1.0f;
+    float trig_r_real_1 = ctrl_get_axis(bind_name(which, "_1.trig-r")) + 1.0f;
+    float trig_r_real_2 = ctrl_get_axis(bind_name(which, "_2.trig-r")) + 1.0f;
     float trig_r_real = trig_r_real_1 + trig_r_real_2;
     if (trig_r_real < 0.0f)
         trig_r_real = 0.0f;
@@ -330,14 +460,14 @@ static void scan_input(void) {
     int trig_l = trig_l_real * 255;
     int trig_r = trig_r_real * 255;
 
-    float stick_up_real_1 = ctrl_get_axis("p1_1.stick-up");
-    float stick_down_real_1 = ctrl_get_axis("p1_1.stick-down");
-    float stick_left_real_1 = ctrl_get_axis("p1_1.stick-left");
-    float stick_right_real_1 = ctrl_get_axis("p1_1.stick-right");
-    float stick_up_real_2 = ctrl_get_axis("p1_2.stick-up");
-    float stick_down_real_2 = ctrl_get_axis("p1_2.stick-down");
-    float stick_left_real_2 = ctrl_get_axis("p1_2.stick-left");
-    float stick_right_real_2 = ctrl_get_axis("p1_2.stick-right");
+    float stick_up_real_1 = ctrl_get_axis(bind_name(which, "_1.stick-up"));
+    float stick_down_real_1 = ctrl_get_axis(bind_name(which, "_1.stick-down"));
+    float stick_left_real_1 = ctrl_get_axis(bind_name(which, "_1.stick-left"));
+    float stick_right_real_1 = ctrl_get_axis(bind_name(which, "_1.stick-right"));
+    float stick_up_real_2 = ctrl_get_axis(bind_name(which, "_2.stick-up"));
+    float stick_down_real_2 = ctrl_get_axis(bind_name(which, "_2.stick-down"));
+    float stick_left_real_2 = ctrl_get_axis(bind_name(which, "_2.stick-left"));
+    float stick_right_real_2 = ctrl_get_axis(bind_name(which, "_2.stick-right"));
 
     if (stick_up_real_1 < 0.0f)
         stick_up_real_1 = 0.0f;
@@ -398,70 +528,77 @@ static void scan_input(void) {
     if (trig_r < 0)
         trig_r = 0;
 
-    btns[GAMEPAD_BTN_A] = ctrl_get_button("p1_1.btn_a") ||
-        ctrl_get_button("p1_2.btn_a");
-    btns[GAMEPAD_BTN_B] = ctrl_get_button("p1_1.btn_b") ||
-        ctrl_get_button("p1_2.btn_b");
-    btns[GAMEPAD_BTN_X] = ctrl_get_button("p1_1.btn_x") ||
-        ctrl_get_button("p1_2.btn_x");
-    btns[GAMEPAD_BTN_Y] = ctrl_get_button("p1_1.btn_y") ||
-        ctrl_get_button("p1_2.btn_y");
-    btns[GAMEPAD_BTN_START] = ctrl_get_button("p1_1.btn_start") ||
-        ctrl_get_button("p1_2.btn_start");
+    btns[GAMEPAD_BTN_A] = ctrl_get_button(bind_name(which, "_1.btn_a")) ||
+        ctrl_get_button(bind_name(which, "_2.btn_a"));
+    btns[GAMEPAD_BTN_B] = ctrl_get_button(bind_name(which, "_1.btn_b")) ||
+        ctrl_get_button(bind_name(which, "_2.btn_b"));
+    btns[GAMEPAD_BTN_X] = ctrl_get_button(bind_name(which, "_1.btn_x")) ||
+        ctrl_get_button(bind_name(which, "_2.btn_x"));
+    btns[GAMEPAD_BTN_Y] = ctrl_get_button(bind_name(which, "_1.btn_y")) ||
+        ctrl_get_button(bind_name(which, "_2.btn_y"));
+    btns[GAMEPAD_BTN_START] = ctrl_get_button(bind_name(which, "_1.btn_start")) ||
+        ctrl_get_button(bind_name(which, "_2.btn_start"));
 
-    hat[GAMEPAD_HAT_UP] = ctrl_get_button("p1_1.dpad-up") ||
-        ctrl_get_button("p1_2.dpad-up");
-    hat[GAMEPAD_HAT_DOWN] = ctrl_get_button("p1_1.dpad-down") ||
-        ctrl_get_button("p1_2.dpad-down");
-    hat[GAMEPAD_HAT_LEFT] = ctrl_get_button("p1_1.dpad-left") ||
-        ctrl_get_button("p1_2.dpad-left");
-    hat[GAMEPAD_HAT_RIGHT] = ctrl_get_button("p1_1.dpad-right") ||
-        ctrl_get_button("p1_2.dpad-right");
+    hat[GAMEPAD_HAT_UP] = ctrl_get_button(bind_name(which, "_1.dpad-up")) ||
+        ctrl_get_button(bind_name(which, "_2.dpad-up"));
+    hat[GAMEPAD_HAT_DOWN] = ctrl_get_button(bind_name(which, "_1.dpad-down")) ||
+        ctrl_get_button(bind_name(which, "_2.dpad-down"));
+    hat[GAMEPAD_HAT_LEFT] = ctrl_get_button(bind_name(which, "_1.dpad-left")) ||
+        ctrl_get_button(bind_name(which, "_2.dpad-left"));
+    hat[GAMEPAD_HAT_RIGHT] = ctrl_get_button(bind_name(which, "_1.dpad-right")) ||
+        ctrl_get_button(bind_name(which, "_2.dpad-right"));
 
     if (btns[GAMEPAD_BTN_A])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_A_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_A_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_A_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_A_MASK);
     if (btns[GAMEPAD_BTN_B])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_B_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_B_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_B_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_B_MASK);
     if (btns[GAMEPAD_BTN_X])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_X_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_X_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_X_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_X_MASK);
     if (btns[GAMEPAD_BTN_Y])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_Y_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_Y_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_Y_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_Y_MASK);
     if (btns[GAMEPAD_BTN_START])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_START_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_START_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_START_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_START_MASK);
 
     if (hat[GAMEPAD_HAT_UP])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_UP_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_DPAD_UP_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_UP_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_DPAD_UP_MASK);
     if (hat[GAMEPAD_HAT_DOWN])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_DOWN_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_DPAD_DOWN_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_DOWN_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_DPAD_DOWN_MASK);
     if (hat[GAMEPAD_HAT_LEFT])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_LEFT_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_DPAD_LEFT_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_LEFT_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_DPAD_LEFT_MASK);
     if (hat[GAMEPAD_HAT_RIGHT])
-        washdc_controller_press_btns(0, WASHDC_CONT_BTN_DPAD_RIGHT_MASK);
+        washdc_controller_press_btns(which, WASHDC_CONT_BTN_DPAD_RIGHT_MASK);
     else
-        washdc_controller_release_btns(0, WASHDC_CONT_BTN_DPAD_RIGHT_MASK);
+        washdc_controller_release_btns(which, WASHDC_CONT_BTN_DPAD_RIGHT_MASK);
 
-    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_R_TRIG, trig_r);
-    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_L_TRIG, trig_l);
-    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY1_X, stick_hor);
-    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY1_Y, stick_vert);
-    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY2_X, 0);
-    washdc_controller_set_axis(0, WASHDC_CONTROLLER_AXIS_JOY2_Y, 0);
+    washdc_controller_set_axis(which, WASHDC_CONTROLLER_AXIS_R_TRIG, trig_r);
+    washdc_controller_set_axis(which, WASHDC_CONTROLLER_AXIS_L_TRIG, trig_l);
+    washdc_controller_set_axis(which, WASHDC_CONTROLLER_AXIS_JOY1_X, stick_hor);
+    washdc_controller_set_axis(which, WASHDC_CONTROLLER_AXIS_JOY1_Y, stick_vert);
+    washdc_controller_set_axis(which, WASHDC_CONTROLLER_AXIS_JOY2_X, 0);
+    washdc_controller_set_axis(which, WASHDC_CONTROLLER_AXIS_JOY2_Y, 0);
+}
+
+static void scan_input(void) {
+    scan_input_for_controller(0);
+    scan_input_for_controller(1);
+    scan_input_for_controller(2);
+    scan_input_for_controller(3);
 
     // Allow the user to toggle the overlay by pressing F2
     static bool overlay_key_prev = false;

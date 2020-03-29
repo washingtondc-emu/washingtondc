@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -132,6 +132,7 @@ void maple_controller_press_btns(unsigned port_no, uint32_t btns) {
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "
                   "there is no controller plugged in.\n", port_no);
+        return;
     }
 
     struct maple_controller *cont = &dev->ctxt.cont;
@@ -147,6 +148,7 @@ void maple_controller_release_btns(unsigned port_no, uint32_t btns) {
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "
                   "there is no controller plugged in.\n", port_no);
+        return;
     }
 
     struct maple_controller *cont = &dev->ctxt.cont;
@@ -161,6 +163,7 @@ void maple_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER))) {
         LOG_ERROR("Error: unable to press buttons on port %u because "
                   "there is no controller plugged in.\n", port_no);
+        return;
     }
 
     struct maple_controller *cont = &dev->ctxt.cont;

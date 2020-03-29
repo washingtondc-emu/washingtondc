@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <stdio.h>
 #include <stdarg.h>
 
 #include "washdc/washdc.h"
@@ -34,6 +35,7 @@
 #include "washdc/win.h"
 #include "hw/pvr2/pvr2.h"
 #include "log.h"
+#include "washdc/config_file.h"
 
 static uint32_t trans_bind_washdc_to_maple(uint32_t wash);
 static int trans_axis_washdc_to_maple(int axis);
@@ -338,4 +340,16 @@ washdc_hostfile washdc_hostfile_open_screenshot(char const *name,
 
 char washdc_hostfile_pathsep(void) {
     return hostfile_api->pathsep;
+}
+
+enum washdc_controller_tp washdc_controller_type(unsigned port_no) {
+    char tmp[32];
+    snprintf(tmp, sizeof(tmp), "wash.dc.port.%u.0", port_no);
+    tmp[sizeof(tmp) - 1] = '\0';
+    char const *tpstr = cfg_get_node(tmp);
+    if (tpstr) {
+        if (strcmp(tpstr, "dreamcast_controller") == 0)
+            return WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER;
+    }
+    return WASHDC_CONTROLLER_TP_NONE;
 }
