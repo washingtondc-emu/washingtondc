@@ -197,18 +197,41 @@ enum {
     WASHDC_CONTROLLER_N_AXES
 };
 
+enum washdc_keyboard_special_keys {
+    WASHDC_KEYBOARD_NONE = 0,
+    WASHDC_KEYBOARD_LEFT_CTRL = 1,
+    WASHDC_KEYBOARD_LEFT_SHIFT = 2,
+    WASHDC_KEYBOARD_LEFT_ALT = 4,
+    WASHDC_KEYBOARD_S1 = 8,
+    WASHDC_KEYBOARD_RIGHT_CTRL = 16,
+    WASHDC_KEYBOARD_RIGHT_SHIFT = 32,
+    WASHDC_KEYBOARD_RIGHT_ALT = 64,
+    WASHDC_KEYBOARD_S2 = 128
+};
+
 // mark all buttons in btns as being pressed
 void washdc_controller_press_btns(unsigned port_no, uint32_t btns);
 
 // mark all buttons in btns as being released
 void washdc_controller_release_btns(unsigned port_no, uint32_t btns);
 
+void
+washdc_keyboard_set_btn(unsigned port_no, unsigned btn_no, bool is_pressed);
+
+void
+washdc_keyboard_press_special(unsigned port_no,
+                              enum washdc_keyboard_special_keys which);
+void
+washdc_keyboard_release_special(unsigned port_no,
+                                enum washdc_keyboard_special_keys which);
+
 // 0 = min, 255 = max, 128 = half
 void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
 
 enum washdc_controller_tp {
     WASHDC_CONTROLLER_TP_NONE,
-    WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER
+    WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER,
+    WASHDC_CONTROLLER_TP_DREAMCAST_KEYBOARD
 };
 
 enum washdc_controller_tp washdc_controller_type(unsigned port_no);

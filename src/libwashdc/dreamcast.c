@@ -598,14 +598,30 @@ dreamcast_init(char const *gdi_path,
     char const *ctrl_2 = cfg_get_node("wash.dc.port.2.0");
     char const *ctrl_3 = cfg_get_node("wash.dc.port.3.0");
 
-    if (ctrl_0 && strcmp(ctrl_0, "dreamcast_controller") == 0)
-        maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_CONTROLLER);
-    if (ctrl_1 && strcmp(ctrl_1, "dreamcast_controller") == 0)
-        maple_device_init(maple_addr_pack(1, 0), MAPLE_DEVICE_CONTROLLER);
-    if (ctrl_2 && strcmp(ctrl_2, "dreamcast_controller") == 0)
-        maple_device_init(maple_addr_pack(2, 0), MAPLE_DEVICE_CONTROLLER);
-    if (ctrl_3 && strcmp(ctrl_3, "dreamcast_controller") == 0)
-        maple_device_init(maple_addr_pack(3, 0), MAPLE_DEVICE_CONTROLLER);
+    if (ctrl_0) {
+        if (strcmp(ctrl_0, "dreamcast_controller") == 0)
+            maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_CONTROLLER);
+        else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0)
+            maple_device_init(maple_addr_pack(0, 0), MAPLE_DEVICE_KEYBOARD);
+    }
+    if (ctrl_1) {
+        if (strcmp(ctrl_1, "dreamcast_controller") == 0)
+            maple_device_init(maple_addr_pack(1, 0), MAPLE_DEVICE_CONTROLLER);
+        else if (strcmp(ctrl_1, "dreamcast_keyboard_us") == 0)
+            maple_device_init(maple_addr_pack(1, 0), MAPLE_DEVICE_KEYBOARD);
+    }
+    if (ctrl_2) {
+        if (strcmp(ctrl_2, "dreamcast_controller") == 0)
+            maple_device_init(maple_addr_pack(2, 0), MAPLE_DEVICE_CONTROLLER);
+        else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0)
+            maple_device_init(maple_addr_pack(2, 0), MAPLE_DEVICE_KEYBOARD);
+    }
+    if (ctrl_3) {
+        if (strcmp(ctrl_3, "dreamcast_controller") == 0)
+            maple_device_init(maple_addr_pack(3, 0), MAPLE_DEVICE_CONTROLLER);
+        else if (strcmp(ctrl_3, "dreamcast_keyboard_us") == 0)
+            maple_device_init(maple_addr_pack(3, 0), MAPLE_DEVICE_KEYBOARD);
+    }
 
     // hook up the irl line
     sh4_register_irl_line(&cpu, holly_intc_irl_line_fn, NULL);

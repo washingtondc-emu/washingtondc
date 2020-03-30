@@ -54,6 +54,9 @@ int maple_device_init(unsigned maple_addr, enum maple_device_type tp) {
     case MAPLE_DEVICE_CONTROLLER:
         dev->sw = &maple_controller_switch_table;
         break;
+    case MAPLE_DEVICE_KEYBOARD:
+        dev->sw = &maple_keyboard_switch_table;
+        break;
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
     }
@@ -119,21 +122,36 @@ void maple_compile_devinfo(struct maple_devinfo const *devinfo_in, void *out) {
 }
 
 void maple_compile_cond(struct maple_cond const *cond, void *out) {
-    uint8_t *cond_out = (uint8_t*)out;
+    char *cond_out = (char*)out;
 
-    memcpy(cond_out, &cond->func, sizeof(cond->func));
-    cond_out += sizeof(cond->func);
-    memcpy(cond_out, &cond->btn, sizeof(cond->btn));
-    cond_out += sizeof(cond->btn);
-    memcpy(cond_out, &cond->trig_r, sizeof(cond->trig_r));
-    cond_out += sizeof(cond->trig_r);
-    memcpy(cond_out, &cond->trig_l, sizeof(cond->trig_l));
-    cond_out += sizeof(cond->trig_l);
-    memcpy(cond_out, &cond->js_x, sizeof(cond->js_x));
-    cond_out += sizeof(cond->js_x);
-    memcpy(cond_out, &cond->js_y, sizeof(cond->js_y));
-    cond_out += sizeof(cond->js_y);
-    memcpy(cond_out, &cond->js_x2, sizeof(cond->js_x2));
-    cond_out += sizeof(cond->js_x2);
-    memcpy(cond_out, &cond->js_y2, sizeof(cond->js_y2));
+    switch (cond->tp) {
+    case MAPLE_COND_TYPE_CONTROLLER:
+        memcpy(cond_out, &cond->cont.func, sizeof(cond->cont.func));
+        cond_out += sizeof(cond->cont.func);
+        memcpy(cond_out, &cond->cont.btn, sizeof(cond->cont.btn));
+        cond_out += sizeof(cond->cont.btn);
+        memcpy(cond_out, &cond->cont.trig_r, sizeof(cond->cont.trig_r));
+        cond_out += sizeof(cond->cont.trig_r);
+        memcpy(cond_out, &cond->cont.trig_l, sizeof(cond->cont.trig_l));
+        cond_out += sizeof(cond->cont.trig_l);
+        memcpy(cond_out, &cond->cont.js_x, sizeof(cond->cont.js_x));
+        cond_out += sizeof(cond->cont.js_x);
+        memcpy(cond_out, &cond->cont.js_y, sizeof(cond->cont.js_y));
+        cond_out += sizeof(cond->cont.js_y);
+        memcpy(cond_out, &cond->cont.js_x2, sizeof(cond->cont.js_x2));
+        cond_out += sizeof(cond->cont.js_x2);
+        memcpy(cond_out, &cond->cont.js_y2, sizeof(cond->cont.js_y2));
+        break;
+    case MAPLE_COND_TYPE_KEYBOARD:
+        memcpy(cond_out, &cond->kbd.func, sizeof(cond->kbd.func));
+        cond_out += sizeof(cond->kbd.func);
+        memcpy(cond_out, &cond->kbd.mods, sizeof(cond->kbd.mods));
+        cond_out += sizeof(cond->kbd.mods);
+        memcpy(cond_out, &cond->kbd.leds, sizeof(cond->kbd.leds));
+        cond_out += sizeof(cond->kbd.leds);
+        memcpy(cond_out, &cond->kbd.keys, sizeof(cond->kbd.keys));
+        break;
+    default:
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }

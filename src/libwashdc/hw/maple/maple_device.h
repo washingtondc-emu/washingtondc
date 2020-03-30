@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017 snickerbockers
+ *    Copyright (C) 2017, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,10 +27,12 @@
 #include <stdbool.h>
 
 #include "maple_controller.h"
+#include "maple_keyboard.h"
 
 struct maple_device;
 
 #define MAPLE_FUNC_CONTROLLER 0x01000000
+#define MAPLE_FUNC_KEYBOARD   0x40000000
 
 #define MAPLE_DEV_NAME_LEN 30
 #define MAPLE_DEV_LICENSE_LEN 60
@@ -46,10 +48,12 @@ struct maple_device;
         sizeof(uint16_t) +      \
         sizeof(uint16_t))
 
-#define MAPLE_COND_SIZE ( \
-        sizeof(uint32_t) + \
-        sizeof(uint16_t) + \
-        sizeof(uint8_t) * 6)
+#define MAPLE_CONTROLLER_COND_SIZE ( \
+     sizeof(uint32_t) +              \
+     sizeof(uint16_t) +              \
+     sizeof(uint8_t) * 6)
+
+#define MAPLE_KEYBOARD_COND_SIZE (sizeof(uint32_t) + sizeof(uint8_t) * 8)
 
 // device information (response to MAPLE_CMD_DEVINFO)
 struct maple_devinfo {
@@ -67,8 +71,7 @@ struct maple_devinfo {
     uint16_t max_power;
 };
 
-// controller state (response to MAPLE_CMD_GETCOND)
-struct maple_cond {
+struct maple_controller_cond {
     uint32_t func;
 
     // button flags
@@ -85,6 +88,28 @@ struct maple_cond {
     // apparently the protocol has support for two analog sticks
     uint8_t js_x2;
     uint8_t js_y2;
+};
+
+struct maple_keyboard_cond {
+    uint32_t func;
+
+    uint8_t mods;
+    uint8_t leds;
+    uint8_t keys[6];
+};
+
+enum MAPLE_COND_TYPE {
+    MAPLE_COND_TYPE_CONTROLLER,
+    MAPLE_COND_TYPE_KEYBOARD
+};
+
+// controller state (response to MAPLE_CMD_GETCOND)
+struct maple_cond {
+    enum MAPLE_COND_TYPE tp;
+    union {
+        struct maple_controller_cond cont;
+        struct maple_keyboard_cond kbd;
+    };
 };
 
 struct maple_switch_table {
@@ -104,11 +129,13 @@ struct maple_switch_table {
 };
 
 enum maple_device_type {
-    MAPLE_DEVICE_CONTROLLER
+    MAPLE_DEVICE_CONTROLLER,
+    MAPLE_DEVICE_KEYBOARD
 };
 
 union maple_device_ctxt {
     struct maple_controller cont;
+    struct maple_keyboard kbd;
 };
 
 struct maple_device {
@@ -138,7 +165,7 @@ struct maple_device *maple_device_get(unsigned addr);
 // out must be at least MAPLE_DEVINFO_SIZE bytes long
 void maple_compile_devinfo(struct maple_devinfo const *devinfo, void *out);
 
-// out must be at least MAPLE_COND_SIZE bytes long
+// out must be at least MAPLE_CONTROLLER_COND_SIZE bytes long
 void maple_compile_cond(struct maple_cond const *cond, void *out);
 
 #endif

@@ -171,7 +171,14 @@ static void maple_handle_getcond(struct maple_frame *frame) {
 
         maple_device_cond(dev, &cond);
         maple_compile_cond(&cond, frame->output_data);
-        frame->output_len = MAPLE_COND_SIZE;
+        switch (cond.tp) {
+        case MAPLE_COND_TYPE_CONTROLLER:
+            frame->output_len = MAPLE_CONTROLLER_COND_SIZE;
+            break;
+        case MAPLE_COND_TYPE_KEYBOARD:
+            frame->output_len = MAPLE_KEYBOARD_COND_SIZE;
+            break;
+        }
         maple_write_frame_resp(frame, MAPLE_RESP_DATATRF);
     } else {
         error_set_feature("proper response for when the guest tries to send "

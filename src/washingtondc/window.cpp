@@ -265,6 +265,238 @@ static void win_glfw_init(unsigned width, unsigned height) {
 
     ///////////////////////////////////////////////////////////////////////////
     //
+    // Player 1 keyboard
+    //
+    ///////////////////////////////////////////////////////////////////////////
+    bind_ctrl_from_cfg("p1_1.kbd_unused_00h", "dc.ctrl.p1_1.kbd-us.unused_00h");
+    bind_ctrl_from_cfg("p1_1.kbd_unused_01h", "dc.ctrl.p1_1.kbd-us.unused_01h");
+    bind_ctrl_from_cfg("p1_1.kbd_unused_02h", "dc.ctrl.p1_1.kbd-us.unused_02h");
+    bind_ctrl_from_cfg("p1_1.kbd_unused_03h", "dc.ctrl.p1_1.kbd-us.unused_03h");
+    bind_ctrl_from_cfg("p1_1.kbd_a", "dc.ctrl.p1_1.kbd-us.a");
+    bind_ctrl_from_cfg("p1_1.kbd_b", "dc.ctrl.p1_1.kbd-us.b");
+    bind_ctrl_from_cfg("p1_1.kbd_c", "dc.ctrl.p1_1.kbd-us.c");
+    bind_ctrl_from_cfg("p1_1.kbd_d", "dc.ctrl.p1_1.kbd-us.d");
+    bind_ctrl_from_cfg("p1_1.kbd_e", "dc.ctrl.p1_1.kbd-us.e");
+    bind_ctrl_from_cfg("p1_1.kbd_f", "dc.ctrl.p1_1.kbd-us.f");
+    bind_ctrl_from_cfg("p1_1.kbd_g", "dc.ctrl.p1_1.kbd-us.g");
+    bind_ctrl_from_cfg("p1_1.kbd_h", "dc.ctrl.p1_1.kbd-us.h");
+    bind_ctrl_from_cfg("p1_1.kbd_i", "dc.ctrl.p1_1.kbd-us.i");
+    bind_ctrl_from_cfg("p1_1.kbd_j", "dc.ctrl.p1_1.kbd-us.j");
+    bind_ctrl_from_cfg("p1_1.kbd_k", "dc.ctrl.p1_1.kbd-us.k");
+    bind_ctrl_from_cfg("p1_1.kbd_l", "dc.ctrl.p1_1.kbd-us.l");
+    bind_ctrl_from_cfg("p1_1.kbd_m", "dc.ctrl.p1_1.kbd-us.m");
+    bind_ctrl_from_cfg("p1_1.kbd_n", "dc.ctrl.p1_1.kbd-us.n");
+    bind_ctrl_from_cfg("p1_1.kbd_o", "dc.ctrl.p1_1.kbd-us.o");
+    bind_ctrl_from_cfg("p1_1.kbd_p", "dc.ctrl.p1_1.kbd-us.p");
+    bind_ctrl_from_cfg("p1_1.kbd_q", "dc.ctrl.p1_1.kbd-us.q");
+    bind_ctrl_from_cfg("p1_1.kbd_r", "dc.ctrl.p1_1.kbd-us.r");
+    bind_ctrl_from_cfg("p1_1.kbd_s", "dc.ctrl.p1_1.kbd-us.s");
+    bind_ctrl_from_cfg("p1_1.kbd_t", "dc.ctrl.p1_1.kbd-us.t");
+    bind_ctrl_from_cfg("p1_1.kbd_u", "dc.ctrl.p1_1.kbd-us.u");
+    bind_ctrl_from_cfg("p1_1.kbd_v", "dc.ctrl.p1_1.kbd-us.v");
+    bind_ctrl_from_cfg("p1_1.kbd_w", "dc.ctrl.p1_1.kbd-us.w");
+    bind_ctrl_from_cfg("p1_1.kbd_x", "dc.ctrl.p1_1.kbd-us.x");
+    bind_ctrl_from_cfg("p1_1.kbd_y", "dc.ctrl.p1_1.kbd-us.y");
+    bind_ctrl_from_cfg("p1_1.kbd_z", "dc.ctrl.p1_1.kbd-us.z");
+    bind_ctrl_from_cfg("p1_1.kbd_1", "dc.ctrl.p1_1.kbd-us.1");
+    bind_ctrl_from_cfg("p1_1.kbd_2", "dc.ctrl.p1_1.kbd-us.2");
+    bind_ctrl_from_cfg("p1_1.kbd_3", "dc.ctrl.p1_1.kbd-us.3");
+    bind_ctrl_from_cfg("p1_1.kbd_4", "dc.ctrl.p1_1.kbd-us.4");
+    bind_ctrl_from_cfg("p1_1.kbd_5", "dc.ctrl.p1_1.kbd-us.5");
+    bind_ctrl_from_cfg("p1_1.kbd_6", "dc.ctrl.p1_1.kbd-us.6");
+    bind_ctrl_from_cfg("p1_1.kbd_7", "dc.ctrl.p1_1.kbd-us.7");
+    bind_ctrl_from_cfg("p1_1.kbd_8", "dc.ctrl.p1_1.kbd-us.8");
+    bind_ctrl_from_cfg("p1_1.kbd_9", "dc.ctrl.p1_1.kbd-us.9");
+    bind_ctrl_from_cfg("p1_1.kbd_0", "dc.ctrl.p1_1.kbd-us.0");
+    bind_ctrl_from_cfg("p1_1.kbd_enter", "dc.ctrl.p1_1.kbd-us.enter");
+    bind_ctrl_from_cfg("p1_1.kbd_escape", "dc.ctrl.p1_1.kbd-us.escape");
+    bind_ctrl_from_cfg("p1_1.kbd_backspace", "dc.ctrl.p1_1.kbd-us.backspace");
+    bind_ctrl_from_cfg("p1_1.kbd_tab", "dc.ctrl.p1_1.kbd-us.tab");
+    bind_ctrl_from_cfg("p1_1.kbd_space", "dc.ctrl.p1_1.kbd-us.space");
+    bind_ctrl_from_cfg("p1_1.kbd_minus", "dc.ctrl.p1_1.kbd-us.minus");
+    bind_ctrl_from_cfg("p1_1.kbd_equal", "dc.ctrl.p1_1.kbd-us.equal");
+    bind_ctrl_from_cfg("p1_1.kbd_leftbrace", "dc.ctrl.p1_1.kbd-us.leftbrace");
+    bind_ctrl_from_cfg("p1_1.kbd_rightbrace", "dc.ctrl.p1_1.kbd-us.rightbrace");
+    bind_ctrl_from_cfg("p1_1.kbd_backslash", "dc.ctrl.p1_1.kbd-us.backslash");
+    bind_ctrl_from_cfg("p1_1.kbd_unused_32h", "dc.ctrl.p1_1.kbd-us.unused_32h");
+    bind_ctrl_from_cfg("p1_1.kbd_semicolon", "dc.ctrl.p1_1.kbd-us.semicolon");
+    bind_ctrl_from_cfg("p1_1.kbd_singlequote", "dc.ctrl.p1_1.kbd-us.singlequote");
+    bind_ctrl_from_cfg("p1_1.kbd_backquote", "dc.ctrl.p1_1.kbd-us.backquote");
+    bind_ctrl_from_cfg("p1_1.kbd_comma", "dc.ctrl.p1_1.kbd-us.comma");
+    bind_ctrl_from_cfg("p1_1.kbd_dot", "dc.ctrl.p1_1.kbd-us.dot");
+    bind_ctrl_from_cfg("p1_1.kbd_slash", "dc.ctrl.p1_1.kbd-us.slash");
+    bind_ctrl_from_cfg("p1_1.kbd_capslock", "dc.ctrl.p1_1.kbd-us.capslock");
+
+    bind_ctrl_from_cfg("p1_1.kbd_f1", "dc.ctrl.p1_1.kbd-us.f1");
+    bind_ctrl_from_cfg("p1_1.kbd_f2", "dc.ctrl.p1_1.kbd-us.f2");
+    bind_ctrl_from_cfg("p1_1.kbd_f3", "dc.ctrl.p1_1.kbd-us.f3");
+    bind_ctrl_from_cfg("p1_1.kbd_f4", "dc.ctrl.p1_1.kbd-us.f4");
+    bind_ctrl_from_cfg("p1_1.kbd_f5", "dc.ctrl.p1_1.kbd-us.f5");
+    bind_ctrl_from_cfg("p1_1.kbd_f6", "dc.ctrl.p1_1.kbd-us.f6");
+    bind_ctrl_from_cfg("p1_1.kbd_f7", "dc.ctrl.p1_1.kbd-us.f7");
+    bind_ctrl_from_cfg("p1_1.kbd_f8", "dc.ctrl.p1_1.kbd-us.f8");
+    bind_ctrl_from_cfg("p1_1.kbd_f9", "dc.ctrl.p1_1.kbd-us.f9");
+    bind_ctrl_from_cfg("p1_1.kbd_f10", "dc.ctrl.p1_1.kbd-us.f10");
+    bind_ctrl_from_cfg("p1_1.kbd_f11", "dc.ctrl.p1_1.kbd-us.f11");
+    bind_ctrl_from_cfg("p1_1.kbd_f12", "dc.ctrl.p1_1.kbd-us.f12");
+
+    bind_ctrl_from_cfg("p1_1.kbd_printscreen", "dc.ctrl.p1_1.kbd-us.printscreen");
+    bind_ctrl_from_cfg("p1_1.kbd_scrollock", "dc.ctrl.p1_1.kbd-us.scrollock");
+    bind_ctrl_from_cfg("p1_1.kbd_pause", "dc.ctrl.p1_1.kbd-us.pause");
+    bind_ctrl_from_cfg("p1_1.kbd_insert", "dc.ctrl.p1_1.kbd-us.insert");
+    bind_ctrl_from_cfg("p1_1.kbd_home", "dc.ctrl.p1_1.kbd-us.home");
+    bind_ctrl_from_cfg("p1_1.kbd_pageup", "dc.ctrl.p1_1.kbd-us.pageup");
+    bind_ctrl_from_cfg("p1_1.kbd_del", "dc.ctrl.p1_1.kbd-us.del");
+    bind_ctrl_from_cfg("p1_1.kbd_end", "dc.ctrl.p1_1.kbd-us.end");
+    bind_ctrl_from_cfg("p1_1.kbd_pagedown", "dc.ctrl.p1_1.kbd-us.pagedown");
+    bind_ctrl_from_cfg("p1_1.kbd_right", "dc.ctrl.p1_1.kbd-us.right");
+    bind_ctrl_from_cfg("p1_1.kbd_left", "dc.ctrl.p1_1.kbd-us.left");
+    bind_ctrl_from_cfg("p1_1.kbd_down", "dc.ctrl.p1_1.kbd-us.down");
+    bind_ctrl_from_cfg("p1_1.kbd_up", "dc.ctrl.p1_1.kbd-us.up");
+    bind_ctrl_from_cfg("p1_1.kbd_numlock", "dc.ctrl.p1_1.kbd-us.numlock");
+
+    bind_ctrl_from_cfg("p1_1.kbd_keypadslash", "dc.ctrl.p1_1.kbd-us.keypadslash");
+    bind_ctrl_from_cfg("p1_1.kbd_keypadasterisk", "dc.ctrl.p1_1.kbd-us.keypadasterisk");
+    bind_ctrl_from_cfg("p1_1.kbd_keypadminus", "dc.ctrl.p1_1.kbd-us.keypadminus");
+    bind_ctrl_from_cfg("p1_1.kbd_keypadplus", "dc.ctrl.p1_1.kbd-us.keypadplus");
+    bind_ctrl_from_cfg("p1_1.kbd_keypadenter", "dc.ctrl.p1_1.kbd-us.keypadenter");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad1", "dc.ctrl.p1_1.kbd-us.keypad1");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad2", "dc.ctrl.p1_1.kbd-us.keypad2");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad3", "dc.ctrl.p1_1.kbd-us.keypad3");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad4", "dc.ctrl.p1_1.kbd-us.keypad4");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad5", "dc.ctrl.p1_1.kbd-us.keypad5");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad6", "dc.ctrl.p1_1.kbd-us.keypad6");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad7", "dc.ctrl.p1_1.kbd-us.keypad7");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad8", "dc.ctrl.p1_1.kbd-us.keypad8");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad9", "dc.ctrl.p1_1.kbd-us.keypad9");
+    bind_ctrl_from_cfg("p1_1.kbd_keypad0", "dc.ctrl.p1_1.kbd-us.keypad0");
+    bind_ctrl_from_cfg("p1_1.kbd_keypaddot", "dc.ctrl.p1_1.kbd-us.keypaddot");
+    bind_ctrl_from_cfg("p1_1.kbd_s3", "dc.ctrl.p1_1.kbd-us.s3");
+    bind_ctrl_from_cfg("p1_1.kbd_lctrl", "dc.ctrl.p1_1.kbd-us.lctrl");
+    bind_ctrl_from_cfg("p1_1.kbd_lshift", "dc.ctrl.p1_1.kbd-us.lshift");
+    bind_ctrl_from_cfg("p1_1.kbd_lalt", "dc.ctrl.p1_1.kbd-us.lalt");
+    bind_ctrl_from_cfg("p1_1.kbd_s1", "dc.ctrl.p1_1.kbd-us.s1");
+    bind_ctrl_from_cfg("p1_1.kbd_rctrl", "dc.ctrl.p1_1.kbd-us.rctrl");
+    bind_ctrl_from_cfg("p1_1.kbd_rshift", "dc.ctrl.p1_1.kbd-us.rshift");
+    bind_ctrl_from_cfg("p1_1.kbd_ralt", "dc.ctrl.p1_1.kbd-us.ralt");
+    bind_ctrl_from_cfg("p1_1.kbd_s2", "dc.ctrl.p1_1.kbd-us.s2");
+
+    bind_ctrl_from_cfg("p1_2.kbd_unused_00h", "dc.ctrl.p1_2.kbd-us.unused_00h");
+    bind_ctrl_from_cfg("p1_2.kbd_unused_01h", "dc.ctrl.p1_2.kbd-us.unused_01h");
+    bind_ctrl_from_cfg("p1_2.kbd_unused_02h", "dc.ctrl.p1_2.kbd-us.unused_02h");
+    bind_ctrl_from_cfg("p1_2.kbd_unused_03h", "dc.ctrl.p1_2.kbd-us.unused_03h");
+    bind_ctrl_from_cfg("p1_2.kbd_a", "dc.ctrl.p1_2.kbd-us.a");
+    bind_ctrl_from_cfg("p1_2.kbd_b", "dc.ctrl.p1_2.kbd-us.b");
+    bind_ctrl_from_cfg("p1_2.kbd_c", "dc.ctrl.p1_2.kbd-us.c");
+    bind_ctrl_from_cfg("p1_2.kbd_d", "dc.ctrl.p1_2.kbd-us.d");
+    bind_ctrl_from_cfg("p1_2.kbd_e", "dc.ctrl.p1_2.kbd-us.e");
+    bind_ctrl_from_cfg("p1_2.kbd_f", "dc.ctrl.p1_2.kbd-us.f");
+    bind_ctrl_from_cfg("p1_2.kbd_g", "dc.ctrl.p1_2.kbd-us.g");
+    bind_ctrl_from_cfg("p1_2.kbd_h", "dc.ctrl.p1_2.kbd-us.h");
+    bind_ctrl_from_cfg("p1_2.kbd_i", "dc.ctrl.p1_2.kbd-us.i");
+    bind_ctrl_from_cfg("p1_2.kbd_j", "dc.ctrl.p1_2.kbd-us.j");
+    bind_ctrl_from_cfg("p1_2.kbd_k", "dc.ctrl.p1_2.kbd-us.k");
+    bind_ctrl_from_cfg("p1_2.kbd_l", "dc.ctrl.p1_2.kbd-us.l");
+    bind_ctrl_from_cfg("p1_2.kbd_m", "dc.ctrl.p1_2.kbd-us.m");
+    bind_ctrl_from_cfg("p1_2.kbd_n", "dc.ctrl.p1_2.kbd-us.n");
+    bind_ctrl_from_cfg("p1_2.kbd_o", "dc.ctrl.p1_2.kbd-us.o");
+    bind_ctrl_from_cfg("p1_2.kbd_p", "dc.ctrl.p1_2.kbd-us.p");
+    bind_ctrl_from_cfg("p1_2.kbd_q", "dc.ctrl.p1_2.kbd-us.q");
+    bind_ctrl_from_cfg("p1_2.kbd_r", "dc.ctrl.p1_2.kbd-us.r");
+    bind_ctrl_from_cfg("p1_2.kbd_s", "dc.ctrl.p1_2.kbd-us.s");
+    bind_ctrl_from_cfg("p1_2.kbd_t", "dc.ctrl.p1_2.kbd-us.t");
+    bind_ctrl_from_cfg("p1_2.kbd_u", "dc.ctrl.p1_2.kbd-us.u");
+    bind_ctrl_from_cfg("p1_2.kbd_v", "dc.ctrl.p1_2.kbd-us.v");
+    bind_ctrl_from_cfg("p1_2.kbd_w", "dc.ctrl.p1_2.kbd-us.w");
+    bind_ctrl_from_cfg("p1_2.kbd_x", "dc.ctrl.p1_2.kbd-us.x");
+    bind_ctrl_from_cfg("p1_2.kbd_y", "dc.ctrl.p1_2.kbd-us.y");
+    bind_ctrl_from_cfg("p1_2.kbd_z", "dc.ctrl.p1_2.kbd-us.z");
+    bind_ctrl_from_cfg("p1_2.kbd_1", "dc.ctrl.p1_2.kbd-us.1");
+    bind_ctrl_from_cfg("p1_2.kbd_2", "dc.ctrl.p1_2.kbd-us.2");
+    bind_ctrl_from_cfg("p1_2.kbd_3", "dc.ctrl.p1_2.kbd-us.3");
+    bind_ctrl_from_cfg("p1_2.kbd_4", "dc.ctrl.p1_2.kbd-us.4");
+    bind_ctrl_from_cfg("p1_2.kbd_5", "dc.ctrl.p1_2.kbd-us.5");
+    bind_ctrl_from_cfg("p1_2.kbd_6", "dc.ctrl.p1_2.kbd-us.6");
+    bind_ctrl_from_cfg("p1_2.kbd_7", "dc.ctrl.p1_2.kbd-us.7");
+    bind_ctrl_from_cfg("p1_2.kbd_8", "dc.ctrl.p1_2.kbd-us.8");
+    bind_ctrl_from_cfg("p1_2.kbd_9", "dc.ctrl.p1_2.kbd-us.9");
+    bind_ctrl_from_cfg("p1_2.kbd_0", "dc.ctrl.p1_2.kbd-us.0");
+    bind_ctrl_from_cfg("p1_2.kbd_enter", "dc.ctrl.p1_2.kbd-us.enter");
+    bind_ctrl_from_cfg("p1_2.kbd_escape", "dc.ctrl.p1_2.kbd-us.escape");
+    bind_ctrl_from_cfg("p1_2.kbd_backspace", "dc.ctrl.p1_2.kbd-us.backspace");
+    bind_ctrl_from_cfg("p1_2.kbd_tab", "dc.ctrl.p1_2.kbd-us.tab");
+    bind_ctrl_from_cfg("p1_2.kbd_space", "dc.ctrl.p1_2.kbd-us.space");
+    bind_ctrl_from_cfg("p1_2.kbd_minus", "dc.ctrl.p1_2.kbd-us.minus");
+    bind_ctrl_from_cfg("p1_2.kbd_equal", "dc.ctrl.p1_2.kbd-us.equal");
+    bind_ctrl_from_cfg("p1_2.kbd_leftbrace", "dc.ctrl.p1_2.kbd-us.leftbrace");
+    bind_ctrl_from_cfg("p1_2.kbd_rightbrace", "dc.ctrl.p1_2.kbd-us.rightbrace");
+    bind_ctrl_from_cfg("p1_2.kbd_backslash", "dc.ctrl.p1_2.kbd-us.backslash");
+    bind_ctrl_from_cfg("p1_2.kbd_unused_32h", "dc.ctrl.p1_2.kbd-us.unused_32h");
+    bind_ctrl_from_cfg("p1_2.kbd_semicolon", "dc.ctrl.p1_2.kbd-us.semicolon");
+    bind_ctrl_from_cfg("p1_2.kbd_singlequote", "dc.ctrl.p1_2.kbd-us.singlequote");
+    bind_ctrl_from_cfg("p1_2.kbd_backquote", "dc.ctrl.p1_2.kbd-us.backquote");
+    bind_ctrl_from_cfg("p1_2.kbd_comma", "dc.ctrl.p1_2.kbd-us.comma");
+    bind_ctrl_from_cfg("p1_2.kbd_dot", "dc.ctrl.p1_2.kbd-us.dot");
+    bind_ctrl_from_cfg("p1_2.kbd_slash", "dc.ctrl.p1_2.kbd-us.slash");
+
+    bind_ctrl_from_cfg("p1_2.kbd_capslock", "dc.ctrl.p1_2.kbd-us.capslock");
+
+    bind_ctrl_from_cfg("p1_2.kbd_f1", "dc.ctrl.p1_2.kbd-us.f1");
+    bind_ctrl_from_cfg("p1_2.kbd_f2", "dc.ctrl.p1_2.kbd-us.f2");
+    bind_ctrl_from_cfg("p1_2.kbd_f3", "dc.ctrl.p1_2.kbd-us.f3");
+    bind_ctrl_from_cfg("p1_2.kbd_f4", "dc.ctrl.p1_2.kbd-us.f4");
+    bind_ctrl_from_cfg("p1_2.kbd_f5", "dc.ctrl.p1_2.kbd-us.f5");
+    bind_ctrl_from_cfg("p1_2.kbd_f6", "dc.ctrl.p1_2.kbd-us.f6");
+    bind_ctrl_from_cfg("p1_2.kbd_f7", "dc.ctrl.p1_2.kbd-us.f7");
+    bind_ctrl_from_cfg("p1_2.kbd_f8", "dc.ctrl.p1_2.kbd-us.f8");
+    bind_ctrl_from_cfg("p1_2.kbd_f9", "dc.ctrl.p1_2.kbd-us.f9");
+    bind_ctrl_from_cfg("p1_2.kbd_f10", "dc.ctrl.p1_2.kbd-us.f10");
+    bind_ctrl_from_cfg("p1_2.kbd_f11", "dc.ctrl.p1_2.kbd-us.f11");
+    bind_ctrl_from_cfg("p1_2.kbd_f12", "dc.ctrl.p1_2.kbd-us.f12");
+
+    bind_ctrl_from_cfg("p1_2.kbd_printscreen", "dc.ctrl.p1_2.kbd-us.printscreen");
+    bind_ctrl_from_cfg("p1_2.kbd_scrollock", "dc.ctrl.p1_2.kbd-us.scrollock");
+    bind_ctrl_from_cfg("p1_2.kbd_pause", "dc.ctrl.p1_2.kbd-us.pause");
+    bind_ctrl_from_cfg("p1_2.kbd_insert", "dc.ctrl.p1_2.kbd-us.insert");
+    bind_ctrl_from_cfg("p1_2.kbd_home", "dc.ctrl.p1_2.kbd-us.home");
+    bind_ctrl_from_cfg("p1_2.kbd_pageup", "dc.ctrl.p1_2.kbd-us.pageup");
+    bind_ctrl_from_cfg("p1_2.kbd_del", "dc.ctrl.p1_2.kbd-us.del");
+    bind_ctrl_from_cfg("p1_2.kbd_end", "dc.ctrl.p1_2.kbd-us.end");
+    bind_ctrl_from_cfg("p1_2.kbd_pagedown", "dc.ctrl.p1_2.kbd-us.pagedown");
+    bind_ctrl_from_cfg("p1_2.kbd_right", "dc.ctrl.p1_2.kbd-us.right");
+    bind_ctrl_from_cfg("p1_2.kbd_left", "dc.ctrl.p1_2.kbd-us.left");
+    bind_ctrl_from_cfg("p1_2.kbd_down", "dc.ctrl.p1_2.kbd-us.down");
+    bind_ctrl_from_cfg("p1_2.kbd_up", "dc.ctrl.p1_2.kbd-us.up");
+    bind_ctrl_from_cfg("p1_2.kbd_numlock", "dc.ctrl.p1_2.kbd-us.numlock");
+
+    bind_ctrl_from_cfg("p1_2.kbd_keypadslash", "dc.ctrl.p1_2.kbd-us.keypadslash");
+    bind_ctrl_from_cfg("p1_2.kbd_keypadasterisk", "dc.ctrl.p1_2.kbd-us.keypadasterisk");
+    bind_ctrl_from_cfg("p1_2.kbd_keypadminus", "dc.ctrl.p1_2.kbd-us.keypadminus");
+    bind_ctrl_from_cfg("p1_2.kbd_keypadplus", "dc.ctrl.p1_2.kbd-us.keypadplus");
+    bind_ctrl_from_cfg("p1_2.kbd_keypadenter", "dc.ctrl.p1_2.kbd-us.keypadenter");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad1", "dc.ctrl.p1_2.kbd-us.keypad1");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad2", "dc.ctrl.p1_2.kbd-us.keypad2");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad3", "dc.ctrl.p1_2.kbd-us.keypad3");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad4", "dc.ctrl.p1_2.kbd-us.keypad4");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad5", "dc.ctrl.p1_2.kbd-us.keypad5");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad6", "dc.ctrl.p1_2.kbd-us.keypad6");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad7", "dc.ctrl.p1_2.kbd-us.keypad7");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad8", "dc.ctrl.p1_2.kbd-us.keypad8");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad9", "dc.ctrl.p1_2.kbd-us.keypad9");
+    bind_ctrl_from_cfg("p1_2.kbd_keypad0", "dc.ctrl.p1_2.kbd-us.keypad0");
+    bind_ctrl_from_cfg("p1_2.kbd_keypaddot", "dc.ctrl.p1_2.kbd-us.keypaddot");
+    bind_ctrl_from_cfg("p1_2.kbd_s3", "dc.ctrl.p1_2.kbd-us.s3");
+    bind_ctrl_from_cfg("p1_2.kbd_lctrl", "dc.ctrl.p1_2.kbd-us.lctrl");
+    bind_ctrl_from_cfg("p1_2.kbd_lshift", "dc.ctrl.p1_2.kbd-us.lshift");
+    bind_ctrl_from_cfg("p1_2.kbd_lalt", "dc.ctrl.p1_2.kbd-us.lalt");
+    bind_ctrl_from_cfg("p1_2.kbd_s1", "dc.ctrl.p1_2.kbd-us.s1");
+    bind_ctrl_from_cfg("p1_2.kbd_rctrl", "dc.ctrl.p1_2.kbd-us.rctrl");
+    bind_ctrl_from_cfg("p1_2.kbd_rshift", "dc.ctrl.p1_2.kbd-us.rshift");
+    bind_ctrl_from_cfg("p1_2.kbd_ralt", "dc.ctrl.p1_2.kbd-us.ralt");
+    bind_ctrl_from_cfg("p1_2.kbd_s2", "dc.ctrl.p1_2.kbd-us.s2");
+
+    ///////////////////////////////////////////////////////////////////////////
+    //
     // Player 2
     //
     ///////////////////////////////////////////////////////////////////////////
@@ -594,11 +826,282 @@ static void scan_input_for_controller(unsigned which) {
     washdc_controller_set_axis(which, WASHDC_CONTROLLER_AXIS_JOY2_Y, 0);
 }
 
+static void scan_input_for_keyboard(unsigned which) {
+    if (which >= 4 ||
+        (washdc_controller_type(which) !=
+         WASHDC_CONTROLLER_TP_DREAMCAST_KEYBOARD)) {
+        return;
+    }
+
+    static char const* kbd_bind_names[] = {
+        "_1.kbd_unused_00h",
+        "_1.kbd_unused_01h",
+        "_1.kbd_unused_02h",
+        "_1.kbd_unused_03h",
+
+        "_1.kbd_a",
+        "_1.kbd_b",
+        "_1.kbd_c",
+        "_1.kbd_d",
+        "_1.kbd_e",
+        "_1.kbd_f",
+        "_1.kbd_g",
+        "_1.kbd_h",
+        "_1.kbd_i",
+        "_1.kbd_j",
+        "_1.kbd_k",
+        "_1.kbd_l",
+        "_1.kbd_m",
+        "_1.kbd_n",
+        "_1.kbd_o",
+        "_1.kbd_p",
+        "_1.kbd_q",
+        "_1.kbd_r",
+        "_1.kbd_s",
+        "_1.kbd_t",
+        "_1.kbd_u",
+        "_1.kbd_v",
+        "_1.kbd_w",
+        "_1.kbd_x",
+        "_1.kbd_y",
+        "_1.kbd_z",
+
+        "_1.kbd_1",
+        "_1.kbd_2",
+        "_1.kbd_3",
+        "_1.kbd_4",
+        "_1.kbd_5",
+        "_1.kbd_6",
+        "_1.kbd_7",
+        "_1.kbd_8",
+        "_1.kbd_9",
+        "_1.kbd_0",
+
+        "_1.kbd_enter",
+        "_1.kbd_escape",
+        "_1.kbd_backspace",
+        "_1.kbd_tab",
+        "_1.kbd_space",
+        "_1.kbd_minus",
+        "_1.kbd_equal",
+        "_1.kbd_leftbrace",
+        "_1.kbd_rightbrace",
+        "_1.kbd_backslash",
+
+        "_1.kbd_unused_32h",
+
+        "_1.kbd_semicolon",
+        "_1.kbd_singlequote",
+        "_1.kbd_backquote",
+        "_1.kbd_comma",
+        "_1.kbd_dot",
+        "_1.kbd_slash",
+        "_1.kbd_capslock",
+
+        "_1.kbd_f1",
+        "_1.kbd_f2",
+        "_1.kbd_f3",
+        "_1.kbd_f4",
+        "_1.kbd_f5",
+        "_1.kbd_f6",
+        "_1.kbd_f7",
+        "_1.kbd_f8",
+        "_1.kbd_f9",
+        "_1.kbd_f10",
+        "_1.kbd_f11",
+        "_1.kbd_f12",
+
+        "_1.kbd_printscreen",
+        "_1.kbd_scrollock",
+        "_1.kbd_pause",
+        "_1.kbd_insert",
+        "_1.kbd_home",
+        "_1.kbd_pageup",
+        "_1.kbd_del",
+        "_1.kbd_end",
+        "_1.kbd_pagedown",
+        "_1.kbd_right",
+        "_1.kbd_left",
+        "_1.kbd_down",
+        "_1.kbd_up",
+        "_1.kbd_numlock",
+
+        "_1.kbd_keypadslash",
+        "_1.kbd_keypadasterisk",
+        "_1.kbd_keypadminus",
+        "_1.kbd_keypadplus",
+        "_1.kbd_keypadenter",
+        "_1.kbd_keypad1",
+        "_1.kbd_keypad2",
+        "_1.kbd_keypad3",
+        "_1.kbd_keypad4",
+        "_1.kbd_keypad5",
+        "_1.kbd_keypad6",
+        "_1.kbd_keypad7",
+        "_1.kbd_keypad8",
+        "_1.kbd_keypad9",
+        "_1.kbd_keypad0",
+        "_1.kbd_keypaddot",
+        "_1.kbd_s3",
+
+        "_2.kbd_unused_00h",
+        "_2.kbd_unused_01h",
+        "_2.kbd_unused_02h",
+        "_2.kbd_unused_03h",
+
+        "_2.kbd_a",
+        "_2.kbd_b",
+        "_2.kbd_c",
+        "_2.kbd_d",
+        "_2.kbd_e",
+        "_2.kbd_f",
+        "_2.kbd_g",
+        "_2.kbd_h",
+        "_2.kbd_i",
+        "_2.kbd_j",
+        "_2.kbd_k",
+        "_2.kbd_l",
+        "_2.kbd_m",
+        "_2.kbd_n",
+        "_2.kbd_o",
+        "_2.kbd_p",
+        "_2.kbd_q",
+        "_2.kbd_r",
+        "_2.kbd_s",
+        "_2.kbd_t",
+        "_2.kbd_u",
+        "_2.kbd_v",
+        "_2.kbd_w",
+        "_2.kbd_x",
+        "_2.kbd_y",
+        "_2.kbd_z",
+
+        "_2.kbd_1",
+        "_2.kbd_2",
+        "_2.kbd_3",
+        "_2.kbd_4",
+        "_2.kbd_5",
+        "_2.kbd_6",
+        "_2.kbd_7",
+        "_2.kbd_8",
+        "_2.kbd_9",
+        "_2.kbd_0",
+
+        "_2.kbd_enter",
+        "_2.kbd_escape",
+        "_2.kbd_backspace",
+        "_2.kbd_tab",
+        "_2.kbd_space",
+        "_2.kbd_minus",
+        "_2.kbd_equal",
+        "_2.kbd_leftbrace",
+        "_2.kbd_rightbrace",
+        "_2.kbd_backslash",
+
+        "_2.kbd_unused_32h",
+
+        "_2.kbd_semicolon",
+        "_2.kbd_singlequote",
+        "_2.kbd_backquote",
+        "_2.kbd_comma",
+        "_2.kbd_dot",
+        "_2.kbd_slash",
+        "_2.kbd_capslock",
+
+        "_2.kbd_f1",
+        "_2.kbd_f2",
+        "_2.kbd_f3",
+        "_2.kbd_f4",
+        "_2.kbd_f5",
+        "_2.kbd_f6",
+        "_2.kbd_f7",
+        "_2.kbd_f8",
+        "_2.kbd_f9",
+        "_2.kbd_f10",
+        "_2.kbd_f11",
+        "_2.kbd_f12",
+
+        "_2.kbd_printscreen",
+        "_2.kbd_scrollock",
+        "_2.kbd_pause",
+        "_2.kbd_insert",
+        "_2.kbd_home",
+        "_2.kbd_pageup",
+        "_2.kbd_del",
+        "_2.kbd_end",
+        "_2.kbd_pagedown",
+        "_2.kbd_right",
+        "_2.kbd_left",
+        "_2.kbd_down",
+        "_2.kbd_up",
+        "_2.kbd_numlock",
+
+        "_2.kbd_keypadslash",
+        "_2.kbd_keypadasterisk",
+        "_2.kbd_keypadminus",
+        "_2.kbd_keypadplus",
+        "_2.kbd_keypadenter",
+        "_2.kbd_keypad1",
+        "_2.kbd_keypad2",
+        "_2.kbd_keypad3",
+        "_2.kbd_keypad4",
+        "_2.kbd_keypad5",
+        "_2.kbd_keypad6",
+        "_2.kbd_keypad7",
+        "_2.kbd_keypad8",
+        "_2.kbd_keypad9",
+        "_2.kbd_keypad0",
+        "_2.kbd_keypaddot",
+
+        NULL
+    };
+
+    int idx = 0;
+    char const **curs = kbd_bind_names;
+    while (*curs) {
+        washdc_keyboard_set_btn(which, idx++,
+                                ctrl_get_button(bind_name(which, *curs++)));
+    }
+
+    int mods = WASHDC_KEYBOARD_NONE;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_lctrl")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_lctrl")))
+        mods |= WASHDC_KEYBOARD_LEFT_CTRL;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_lshift")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_lshift")))
+        mods |= WASHDC_KEYBOARD_LEFT_SHIFT;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_lalt")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_lalt")))
+        mods |= WASHDC_KEYBOARD_LEFT_ALT;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_s1")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_s1")))
+        mods |= WASHDC_KEYBOARD_S1;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_rctrl")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_rctrl")))
+        mods |= WASHDC_KEYBOARD_RIGHT_CTRL;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_rshift")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_rshift")))
+        mods |= WASHDC_KEYBOARD_RIGHT_SHIFT;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_ralt")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_ralt")))
+        mods |= WASHDC_KEYBOARD_RIGHT_ALT;
+    if (ctrl_get_button(bind_name(which, "_1.kbd_s2")) ||
+        ctrl_get_button(bind_name(which, "_2.kbd_s2")))
+        mods |= WASHDC_KEYBOARD_S1;
+
+    washdc_keyboard_press_special(which, (enum washdc_keyboard_special_keys)mods);
+    washdc_keyboard_release_special(which, (enum washdc_keyboard_special_keys)~mods);
+}
+
 static void scan_input(void) {
     scan_input_for_controller(0);
     scan_input_for_controller(1);
     scan_input_for_controller(2);
     scan_input_for_controller(3);
+    scan_input_for_keyboard(0);
+    scan_input_for_keyboard(1);
+    scan_input_for_keyboard(2);
+    scan_input_for_keyboard(3);
 
     // Allow the user to toggle the overlay by pressing F2
     static bool overlay_key_prev = false;

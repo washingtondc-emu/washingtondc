@@ -29,6 +29,7 @@
 #include "dreamcast.h"
 #include "screenshot.h"
 #include "hw/maple/maple_controller.h"
+#include "hw/maple/maple_keyboard.h"
 #include "gfx/gfx.h"
 #include "gfx/gfx_config.h"
 #include "title.h"
@@ -119,6 +120,57 @@ void washdc_controller_press_btns(unsigned port_no, uint32_t btns) {
 // mark all buttons in btns as being released
 void washdc_controller_release_btns(unsigned port_no, uint32_t btns) {
     maple_controller_release_btns(port_no, trans_bind_washdc_to_maple(btns));
+}
+
+void
+washdc_keyboard_set_btn(unsigned port_no, unsigned btn_no, bool is_pressed) {
+    maple_keyboard_press_key(port_no, btn_no, is_pressed);
+}
+
+void
+washdc_keyboard_press_special(unsigned port_no,
+                              enum washdc_keyboard_special_keys which) {
+    enum maple_keyboard_special_keys spec = MAPLE_KEYBOARD_NONE;
+    if (which & WASHDC_KEYBOARD_LEFT_CTRL)
+        spec |= MAPLE_KEYBOARD_LEFT_CTRL;
+    if (which & WASHDC_KEYBOARD_LEFT_SHIFT)
+        spec |= MAPLE_KEYBOARD_LEFT_SHIFT;
+    if (which & WASHDC_KEYBOARD_LEFT_ALT)
+        spec |= MAPLE_KEYBOARD_LEFT_ALT;
+    if (which & WASHDC_KEYBOARD_S1)
+        spec |= MAPLE_KEYBOARD_S1;
+    if (which & WASHDC_KEYBOARD_RIGHT_CTRL)
+        spec |= MAPLE_KEYBOARD_RIGHT_CTRL;
+    if (which & WASHDC_KEYBOARD_RIGHT_SHIFT)
+        spec |= MAPLE_KEYBOARD_RIGHT_SHIFT;
+    if (which & WASHDC_KEYBOARD_RIGHT_ALT)
+        spec |= MAPLE_KEYBOARD_RIGHT_ALT;
+    if (which & WASHDC_KEYBOARD_S2)
+        spec |= MAPLE_KEYBOARD_S2;
+    maple_keyboard_press_special(port_no, spec);
+}
+
+void
+washdc_keyboard_release_special(unsigned port_no,
+                                enum washdc_keyboard_special_keys which) {
+    enum maple_keyboard_special_keys spec = MAPLE_KEYBOARD_NONE;
+    if (which & WASHDC_KEYBOARD_LEFT_CTRL)
+        spec |= MAPLE_KEYBOARD_LEFT_CTRL;
+    if (which & WASHDC_KEYBOARD_LEFT_SHIFT)
+        spec |= MAPLE_KEYBOARD_LEFT_SHIFT;
+    if (which & WASHDC_KEYBOARD_LEFT_ALT)
+        spec |= MAPLE_KEYBOARD_LEFT_ALT;
+    if (which & WASHDC_KEYBOARD_S1)
+        spec |= MAPLE_KEYBOARD_S1;
+    if (which & WASHDC_KEYBOARD_RIGHT_CTRL)
+        spec |= MAPLE_KEYBOARD_RIGHT_CTRL;
+    if (which & WASHDC_KEYBOARD_RIGHT_SHIFT)
+        spec |= MAPLE_KEYBOARD_RIGHT_SHIFT;
+    if (which & WASHDC_KEYBOARD_RIGHT_ALT)
+        spec |= MAPLE_KEYBOARD_RIGHT_ALT;
+    if (which & WASHDC_KEYBOARD_S2)
+        spec |= MAPLE_KEYBOARD_S2;
+    maple_keyboard_release_special(port_no, spec);
 }
 
 // 0 = min, 255 = max, 128 = half
@@ -350,6 +402,8 @@ enum washdc_controller_tp washdc_controller_type(unsigned port_no) {
     if (tpstr) {
         if (strcmp(tpstr, "dreamcast_controller") == 0)
             return WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER;
+        else if (strcmp(tpstr, "dreamcast_keyboard_us") == 0)
+            return WASHDC_CONTROLLER_TP_DREAMCAST_KEYBOARD;
     }
     return WASHDC_CONTROLLER_TP_NONE;
 }

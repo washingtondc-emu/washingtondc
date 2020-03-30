@@ -109,19 +109,20 @@ static void controller_dev_get_cond(struct maple_device *dev,
     struct maple_controller *cont = &dev->ctxt.cont;
 
     memset(cond, 0, sizeof(*cond));
+    cond->tp = MAPLE_COND_TYPE_CONTROLLER;
 
-    cond->func = MAPLE_FUNC_CONTROLLER;
+    cond->cont.func = MAPLE_FUNC_CONTROLLER;
 
     // invert because Dreamcast controller has active-low buttons
-    cond->btn = ~cont->btns;
+    cond->cont.btn = ~cont->btns;
 
-    cond->trig_r = cont->axes[MAPLE_CONTROLLER_AXIS_R_TRIG];
-    cond->trig_l = cont->axes[MAPLE_CONTROLLER_AXIS_L_TRIG];
+    cond->cont.trig_r = cont->axes[MAPLE_CONTROLLER_AXIS_R_TRIG];
+    cond->cont.trig_l = cont->axes[MAPLE_CONTROLLER_AXIS_L_TRIG];
 
-    cond->js_x = cont->axes[MAPLE_CONTROLLER_AXIS_JOY1_X];
-    cond->js_y = cont->axes[MAPLE_CONTROLLER_AXIS_JOY1_Y];
-    cond->js_x2 = cont->axes[MAPLE_CONTROLLER_AXIS_JOY2_X];
-    cond->js_y2 = cont->axes[MAPLE_CONTROLLER_AXIS_JOY2_X];
+    cond->cont.js_x = cont->axes[MAPLE_CONTROLLER_AXIS_JOY1_X];
+    cond->cont.js_y = cont->axes[MAPLE_CONTROLLER_AXIS_JOY1_Y];
+    cond->cont.js_x2 = cont->axes[MAPLE_CONTROLLER_AXIS_JOY2_X];
+    cond->cont.js_y2 = cont->axes[MAPLE_CONTROLLER_AXIS_JOY2_X];
 }
 
 // mark all buttons in btns as being pressed
