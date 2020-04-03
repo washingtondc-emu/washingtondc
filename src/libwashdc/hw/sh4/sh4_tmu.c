@@ -345,7 +345,7 @@ void sh4_tmu_tstr_write_handler(Sh4 *sh4,
         tmu_chan_sync(sh4, 2);
         sh4->tmu.chan_accum[2] = 0;
 
-        if (tmp & SH4_TSTR_CHAN1_MASK)
+        if (tmp & SH4_TSTR_CHAN2_MASK)
             sh4->reg[SH4_REG_TSTR] |= SH4_TSTR_CHAN2_MASK;
         else
             sh4->reg[SH4_REG_TSTR] &= ~SH4_TSTR_CHAN2_MASK;
