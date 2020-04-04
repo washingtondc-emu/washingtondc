@@ -269,6 +269,16 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
             sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
 
             return res;
+        case SH4_UTLB_PROT_VIOL:
+            LOG_ERROR("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
+                      "PC=%08X\n", (unsigned)addr,
+                      (unsigned)sh4->reg[SH4_REG_PC]);
+            sh4->reg[SH4_REG_TEA] = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+            sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_PROT_VIOL);
+
+            return res;
         default:
             error_set_address(addr);
             error_set_mmu_excp_tp((int)res);
