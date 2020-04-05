@@ -37,6 +37,34 @@
 
 #include "gdrom.h"
 
+#define GDROM_TRACE(msg, ...)                                           \
+    do {                                                                \
+        LOG_DBG("GD-ROM (PC=%08x): ",                                   \
+               (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);         \
+        LOG_DBG(msg, ##__VA_ARGS__);                                    \
+    } while (0)
+
+#define GDROM_INFO(msg, ...)                                            \
+    do {                                                                \
+        LOG_INFO("GD-ROM (PC=%08x): ",                                  \
+                 (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);       \
+        LOG_INFO(msg, ##__VA_ARGS__);                                   \
+    } while (0)
+
+#define GDROM_WARN(msg, ...)                                            \
+    do {                                                                \
+        LOG_WARN("GD-ROM (PC=%08x): ",                                  \
+               (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);         \
+        LOG_WARN(msg, ##__VA_ARGS__);                                   \
+    } while (0)
+
+#define GDROM_ERROR(msg, ...)                                           \
+    do {                                                                \
+        LOG_ERROR("GD-ROM (PC=%08x): ",                                 \
+               (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);         \
+        LOG_ERROR(msg, ##__VA_ARGS__);                                  \
+    } while (0)
+
 static DEF_ERROR_INT_ATTR(gdrom_command)
 static DEF_ERROR_INT_ATTR(gdrom_seek_param_tp)
 static DEF_ERROR_INT_ATTR(gdrom_seek_seek_pt)
@@ -80,6 +108,32 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event);
 /*     .handler = post_delay_gdrom_delayed_processing */
 /* }; */
 
+static char const *gdrom_state_name(enum gdrom_state state) {
+    switch (state) {
+    case GDROM_STATE_NORM:
+        return "GDROM_STATE_NORM";
+    case GDROM_STATE_INPUT_PKT:
+        return "GDROM_STATE_INPUT_PKT";
+    case GDROM_STATE_SET_MODE:
+        return "GDROM_STATE_SET_MODE";
+    case GDROM_STATE_PIO_READ_DELAY:
+        return "GDROM_STATE_PIO_READ_DELAY";
+    case GDROM_STATE_PIO_READING:
+        return "GDROM_STATE_PIO_READING";
+    case GDROM_STATE_DMA_READING:
+        return"GDROM_STATE_DMA_READING";
+    default:
+        return "ERROR/UKNOWN";
+    }
+}
+
+static void gdrom_state_transition(struct gdrom_ctxt *gdrom,
+                                   enum gdrom_state new_state) {
+    GDROM_TRACE("DRIVE STATE TRANSITION %s -> %s\n",
+                gdrom_state_name(gdrom->state), gdrom_state_name(new_state));
+    gdrom->state = new_state;
+}
+
 static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom, dc_cycle_stamp_t delay) {
     if (!gdrom->gdrom_int_scheduled) {
         gdrom->gdrom_int_scheduled = true;
@@ -98,6 +152,7 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
         RAISE_ERROR(ERROR_INTEGRITY);
         break;
     case GDROM_STATE_PIO_READ_DELAY:
+        GDROM_TRACE("%s - PIO read complete\n", __func__);
         gdrom->meta.read.bytes_read = 0;
 
         if (gdrom->meta.read.byte_count == 0) {
@@ -107,18 +162,18 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
              * will transition to GDROM_STATE_NORM when we run out of data.
              */
             gdrom->stat_reg.drq = false;
-            gdrom->state = GDROM_STATE_NORM;
+            gdrom_state_transition(gdrom, GDROM_STATE_NORM);
             gdrom->data_byte_count = 0;
         } else if (gdrom->meta.read.byte_count > 0x8000) {
             gdrom->data_byte_count = 0x8000;
             gdrom->meta.read.byte_count -= 0x8000;
             gdrom->stat_reg.drq = true;
-            gdrom->state = GDROM_STATE_PIO_READING;
+            gdrom_state_transition(gdrom, GDROM_STATE_PIO_READING);
         } else {
             gdrom->data_byte_count = gdrom->meta.read.byte_count;
             gdrom->meta.read.byte_count = 0;
             gdrom->stat_reg.drq = true;
-            gdrom->state = GDROM_STATE_PIO_READING;
+            gdrom_state_transition(gdrom, GDROM_STATE_PIO_READING);
         }
 
         gdrom->stat_reg.bsy = false;
@@ -131,22 +186,33 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
             gdrom->int_reason_reg.io = true;
         }
 
-        if (!gdrom->dev_ctrl_reg.nien)
+        if (!gdrom->dev_ctrl_reg.nien) {
+            GDROM_TRACE("%s - raising GDROM EXT IRQ (state="
+                        "GDROM_STATE_PIO_READ_DELAY)\n", __func__);
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        }
         break;
     case GDROM_STATE_DMA_READING:
+        GDROM_TRACE("%s - DMA read complete\n", __func__);
+
         gdrom->int_reason_reg.io = true;
         gdrom->int_reason_reg.cod = true;
         gdrom->stat_reg.drdy = true;
         gdrom->stat_reg.drq = false;
         gdrom->stat_reg.bsy = false;
-        gdrom->state = GDROM_STATE_NORM;
+        gdrom_state_transition(gdrom, GDROM_STATE_NORM);
         gdrom->gdlend_reg = gdrom->gdlend_final;
 
-        if (!gdrom->dev_ctrl_reg.nien)
+        if (!gdrom->dev_ctrl_reg.nien) {
+            GDROM_TRACE("%s - raising GDROM EXT IRQ (state="
+                        "GDROM_STATE_DMA_READING)\n", __func__);
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+        }
         break;
     default:
+        GDROM_TRACE("%s - raising GDROM EXT IRQ (state=%s %d)\n",
+                    __func__, gdrom_state_name(gdrom->state),
+                    (int)gdrom->state);
         if (!gdrom->dev_ctrl_reg.nien)
             holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     }
@@ -433,9 +499,20 @@ void gdrom_cleanup(struct gdrom_ctxt *gdrom) {
 }
 
 static void bufq_clear(struct gdrom_ctxt *gdrom) {
+    size_t len = 0;
+
     while (!fifo_empty(&gdrom->bufq)) {
-        free(&FIFO_DEREF(fifo_pop(&gdrom->bufq),
-                         struct gdrom_bufq_node, fifo_node));
+        struct gdrom_bufq_node *bufq_node =
+            &FIFO_DEREF(fifo_pop(&gdrom->bufq), struct gdrom_bufq_node, fifo_node);
+
+        len += bufq_node->len;
+
+        free(bufq_node);
+    }
+
+    if (len) {
+        GDROM_ERROR("%s just threw out %llu bytes\n",
+                    __func__, (long long unsigned)len);
     }
 }
 
@@ -472,7 +549,8 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
 
     while (bytes_transmitted < bytes_to_transmit) {
         if (!fifo_node) {
-            LOG_ERROR("GD-ROM underflow\n");
+            GDROM_ERROR("%s attempting to transfer more data than there is in"
+                        "the bufq available\n", __func__);
             goto done;
         }
 
@@ -564,7 +642,7 @@ done:
      */
     gdrom->dma_delay = GDROM_INT_DELAY;
 
-    gdrom->state = GDROM_STATE_DMA_READING;
+    gdrom_state_transition(gdrom, GDROM_STATE_DMA_READING);
     gdrom->stat_reg.check = false;
     gdrom_clear_error(gdrom);
 
@@ -573,7 +651,7 @@ done:
 
 static void
 gdrom_state_transfer_pio_read(struct gdrom_ctxt *gdrom, unsigned byte_count) {
-    gdrom->state = GDROM_STATE_PIO_READ_DELAY;
+    gdrom_state_transition(gdrom, GDROM_STATE_PIO_READ_DELAY);
     gdrom->meta.read.byte_count = byte_count;
 
     gdrom->stat_reg.bsy = true;
@@ -619,7 +697,7 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
     gdrom->data_byte_count = 0;
 
     if (!gdrom->feat_reg.dma_enable && gdrom->data_byte_count > UINT16_MAX)
-        LOG_WARN("OVERFLOW: Reading %u bytes from gdrom PIO!\n", gdrom->data_byte_count);
+        GDROM_WARN("OVERFLOW: Reading %u bytes from gdrom PIO!\n", gdrom->data_byte_count);
 
     unsigned fad_offs = 0;
     while (trans_len--) {
@@ -630,13 +708,13 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         if (mount_read_sectors(node->dat, start_addr + fad_offs++, 1) < 0) {
-            LOG_ERROR("GD-ROM failed to read fad %u\n", fad_offs);
+            GDROM_ERROR("GD-ROM failed to read fad %u\n", fad_offs);
 
             free(node);
 
             gdrom->error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
             gdrom->stat_reg.check = true;
-            gdrom->state = GDROM_STATE_NORM;
+            gdrom_state_transition(gdrom, GDROM_STATE_NORM);
             return;
         }
 
@@ -674,8 +752,9 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
         gdrom_input_test_unit_packet(gdrom);
         break;
     case GDROM_PKT_REQ_STAT:
-        GDROM_TRACE("REQ_STAT command received!\n");
-        gdrom->state = GDROM_STATE_NORM; // TODO: implement
+        // TODO: implement this
+        GDROM_ERROR("UNIMPLEMENTED REQ_STAT COMMAND RECEIVED!\n");
+        gdrom_state_transition(gdrom, GDROM_STATE_NORM);
         gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         break;
     case GDROM_PKT_REQ_MODE:
@@ -715,7 +794,7 @@ static void gdrom_input_packet(struct gdrom_ctxt *gdrom) {
         error_set_feature("unknown GD-ROM packet command");
         error_set_gdrom_command((unsigned)gdrom->pkt_buf[0]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        /* state = GDROM_STATE_NORM; */
+        /* gdrom_state_transition(gdrom, GDROM_STATE_NORM); */
     }
 }
 
@@ -789,7 +868,7 @@ void gdrom_cmd_set_features(struct gdrom_ctxt *gdrom) {
 void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
     GDROM_TRACE("IDENTIFY command received\n");
 
-    gdrom->state = GDROM_STATE_NORM;
+    gdrom_state_transition(gdrom, GDROM_STATE_NORM);
 
     gdrom->stat_reg.bsy = false;
     gdrom->stat_reg.drq = true;
@@ -828,7 +907,7 @@ void gdrom_cmd_begin_packet(struct gdrom_ctxt *gdrom) {
     gdrom->int_reason_reg.cod = true;
     gdrom->stat_reg.drq = true;
     gdrom->n_bytes_received = 0;
-    gdrom->state = GDROM_STATE_INPUT_PKT;
+    gdrom_state_transition(gdrom, GDROM_STATE_INPUT_PKT);
 }
 
 static void gdrom_input_test_unit_packet(struct gdrom_ctxt *gdrom) {
@@ -844,7 +923,7 @@ static void gdrom_input_test_unit_packet(struct gdrom_ctxt *gdrom) {
     // raise interrupt if it is enabled
     gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 
-    gdrom->state = GDROM_STATE_NORM;
+    gdrom_state_transition(gdrom, GDROM_STATE_NORM);
 
     gdrom_clear_error(gdrom);
     if (mount_check()) {
@@ -968,7 +1047,7 @@ static void gdrom_input_start_disk_packet(struct gdrom_ctxt *gdrom) {
     gdrom->stat_reg.bsy = false;
     gdrom->stat_reg.drq = false;
 
-    gdrom->state = GDROM_STATE_NORM;
+    gdrom_state_transition(gdrom, GDROM_STATE_NORM);
 
     gdrom->stat_reg.check = false;
     gdrom_clear_error(gdrom);
@@ -1035,7 +1114,7 @@ static void gdrom_input_set_mode_packet(struct gdrom_ctxt *gdrom) {
     gdrom->int_reason_reg.cod = false;
     gdrom->stat_reg.drq = true;
 
-    gdrom->state = GDROM_STATE_SET_MODE;
+    gdrom_state_transition(gdrom, GDROM_STATE_SET_MODE);
 
     gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
@@ -1157,9 +1236,9 @@ static void gdrom_input_seek_packet(struct gdrom_ctxt *gdrom) {
     }
 
     // CDDA playback isn't implemented yet, so we can't do anything here.
-    LOG_INFO("%s - CDDA SEEK command received.\n", __func__);
-    LOG_INFO("\tparam_tp = %s (%u)\n", param_tp_str, param_tp);
-    LOG_INFO("\tseek_pt = %06X\n", seek_pt);
+    GDROM_INFO("%s - CDDA SEEK command received.\n", __func__);
+    GDROM_INFO("\tparam_tp = %s (%u)\n", param_tp_str, param_tp);
+    GDROM_INFO("\tseek_pt = %06X\n", seek_pt);
 
     gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
@@ -1176,11 +1255,11 @@ static void gdrom_input_play_packet(struct gdrom_ctxt *gdrom) {
 
     gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 
-    LOG_INFO("%s - CDDA PLAY command received.\n", __func__);
-    LOG_INFO("\tparam_tp = 0x%02x\n", param_tp);
-    LOG_INFO("\tstart = 0x%04x\n", start);
-    LOG_INFO("\tend = 0x%04x\n", end);
-    LOG_INFO("\tn_repeat = %u\n", n_repeat);
+    GDROM_INFO("%s - CDDA PLAY command received.\n", __func__);
+    GDROM_INFO("\tparam_tp = 0x%02x\n", param_tp);
+    GDROM_INFO("\tstart = 0x%04x\n", start);
+    GDROM_INFO("\tend = 0x%04x\n", end);
+    GDROM_INFO("\tn_repeat = %u\n", n_repeat);
 }
 
 unsigned gdrom_dma_prot_top(struct gdrom_ctxt *gdrom) {
@@ -1195,8 +1274,8 @@ void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
     uint8_t *ptr = buf;
 
     if (gdrom->state != GDROM_STATE_PIO_READING) {
-        LOG_WARN("Game tried to read from GD-ROM data register before data "
-                 "was ready\n");
+        GDROM_WARN("Game tried to read from GD-ROM data register before data "
+                   "was ready\n");
         memset(buf, 0, n_bytes);
         return;
     }
@@ -1207,6 +1286,7 @@ void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
             gdrom->meta.read.bytes_read < gdrom->data_byte_count) {
             *ptr++ = dat;
         } else {
+            GDROM_ERROR("%s bufq is out of data!  returning 0\n", __func__);
             *ptr++ = 0;
         }
         gdrom->meta.read.bytes_read++;
@@ -1221,13 +1301,13 @@ void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
             gdrom->stat_reg.drdy = true;
             gdrom->int_reason_reg.cod = true;
             gdrom->int_reason_reg.io = true;
-            gdrom->state = GDROM_STATE_NORM;
+            gdrom_state_transition(gdrom, GDROM_STATE_NORM);
             gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         } else {
             GDROM_TRACE("MORE DATA TO FOLLOW\n");
             gdrom->stat_reg.drq = false;
             gdrom->stat_reg.bsy = true;
-            gdrom->state = GDROM_STATE_PIO_READ_DELAY;
+            gdrom_state_transition(gdrom, GDROM_STATE_PIO_READ_DELAY);
             gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         }
     } else if (gdrom->meta.read.bytes_read > gdrom->data_byte_count) {
@@ -1264,7 +1344,7 @@ gdrom_write_data(struct gdrom_ctxt *gdrom, uint8_t const *buf,
 
         if (gdrom->set_mode_bytes_remaining <= 0) {
             gdrom->stat_reg.drq = false;
-            gdrom->state = GDROM_STATE_NORM;
+            gdrom_state_transition(gdrom, GDROM_STATE_NORM);
 
             gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
         }

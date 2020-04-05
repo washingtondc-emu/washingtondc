@@ -31,13 +31,6 @@
 #include "dc_sched.h"
 #include "mount.h"
 
-#define GDROM_TRACE(msg, ...)                                           \
-    do {                                                                \
-        LOG_DBG("GD-ROM (PC=%08x): ",                                   \
-               (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);         \
-        LOG_DBG(msg, ##__VA_ARGS__);                                    \
-    } while (0)
-
 struct gdrom_status {
     // get off the phone!
     bool bsy;
