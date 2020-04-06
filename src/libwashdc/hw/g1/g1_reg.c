@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -156,8 +156,17 @@ void g1_reg_init(void) {
                                     mmio_region_g1_reg_32_warn_read_handler,
                                     mmio_region_g1_reg_32_warn_write_handler,
                                     NULL);
+
+    /*
+     * on real hardware, programs have to write 0x1fffffff to this as part
+     * of the GD-ROM unlock ritual.  Otherwise, there are a bunch of registers
+     * that will refuse to cooperate and only ever return all 1s.
+     *
+     * After that, it sends the 0x1f71 packet command to start the disk.  If it
+     * doesn't do this, ISTEXT will never show any activity.
+     */
     mmio_region_g1_reg_32_init_cell(&mmio_region_g1_reg_32,
-                                    "UNKNOWN", 0x005f74e4,
+                                    "SB_G1_RESET", 0x005f74e4,
                                     mmio_region_g1_reg_32_warn_read_handler,
                                     mmio_region_g1_reg_32_warn_write_handler,
                                     NULL);
