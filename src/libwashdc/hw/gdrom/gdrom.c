@@ -865,15 +865,19 @@ void gdrom_cmd_set_features(struct gdrom_ctxt *gdrom) {
     gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 }
 
+/*
+ * XXX This command seemingly has an inaccuracy, in that in real hardware the final
+ * status is 0xd0, which corresponds to BSY, DRDY and DSC set after DRQ clears?.
+ * This might mean there's more data left to transfer after it does more
+ * processing, but IDK if that even makes sense because at this point all 80
+ * bytes have been transmitted.
+ *
+ * It could also just be a timing thing because eventually it settles to 0x50,
+ * which is just DSC and DRDY (DRQ never gets raised).  In WashingtonDC's case,
+ * it's just missing DSC...
+ */
 void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
     GDROM_TRACE("IDENTIFY command received\n");
-
-    gdrom_state_transition(gdrom, GDROM_STATE_NORM);
-
-    gdrom->stat_reg.bsy = false;
-    gdrom->stat_reg.drq = true;
-
-    gdrom_delayed_processing(gdrom, GDROM_INT_DELAY);
 
     bufq_clear(gdrom);
 
@@ -887,12 +891,9 @@ void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
     node->len = GDROM_IDENT_RESP_LEN;
     memcpy(node->dat, gdrom_ident_resp, sizeof(gdrom_ident_resp));
 
-    gdrom->data_byte_count = GDROM_IDENT_RESP_LEN;
-
     fifo_push(&gdrom->bufq, &node->fifo_node);
 
-    gdrom->stat_reg.check = false;
-    gdrom_clear_error(gdrom);
+    gdrom_state_transfer_pio_read(gdrom, GDROM_IDENT_RESP_LEN);
 }
 
 void gdrom_cmd_begin_packet(struct gdrom_ctxt *gdrom) {
