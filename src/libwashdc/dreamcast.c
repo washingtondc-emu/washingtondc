@@ -256,6 +256,8 @@ static void dc_inject_irq(char const *id) {
         holly_raise_ext_int(HOLLY_EXT_INT_AICA);
     else if (strcmp(id, "GD-ROM") == 0)
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+    else if (strcmp(id, "GD-DMA") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_GDROM_DMA_COMPLETE);
     else
         LOG_ERROR("FAILURE TO INJECT IRQ \"%s\"\n", id);
 }

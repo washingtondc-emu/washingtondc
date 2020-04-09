@@ -218,6 +218,8 @@ void overlay::draw() {
                     irqstr = "AICA (ARM7 TO SH4)";
                 else if (ImGui::MenuItem("GD-ROM"))
                     irqstr = "GD-ROM";
+                else if (ImGui::MenuItem("GD-DMA"))
+                    irqstr = "GD-DMA";
 
                 if (irqstr)
                     washdc_gameconsole_inject_irq(console, irqstr);
