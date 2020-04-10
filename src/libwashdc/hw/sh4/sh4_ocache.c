@@ -240,6 +240,19 @@ SH4_SQ_READ_TMPL(uint32_t, 32)
 SH4_SQ_READ_TMPL(uint16_t, 16)
 SH4_SQ_READ_TMPL(uint8_t, 8)
 
+static DEF_ERROR_INT_ATTR(sq_mmu_excp_tp)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_0)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_1)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_2)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_3)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_4)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_5)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_6)
+static DEF_ERROR_U32_ATTR(sq_busrt_write_dword_7)
+
+static DEF_ERROR_U32_ATTR(sq_addr_first)
+static DEF_ERROR_U32_ATTR(sq_addr_last)
+
 int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     addr32_t addr_actual;
     unsigned sq_sel = (addr & SH4_SQ_SELECT_MASK) >> SH4_SQ_SELECT_SHIFT;
@@ -253,8 +266,29 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
         }
     if (sh4_mmu_at(sh4)) {
         addr32_t vpn = addr;
-        if (sh4_utlb_translate_address(sh4, &vpn, true) != 0) {
-            error_set_feature("SH4 OCACHE PAGE FAULT");
+        enum sh4_utlb_translate_result res;
+        switch ((res = sh4_utlb_translate_address(sh4, &vpn, true))) {
+        case SH4_UTLB_MISS:
+            // need to set exception registers here based on the vpn we just decoded
+            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION (store queue) DECODING "
+                      "%08X\n", (unsigned)addr);
+            sh4->reg[SH4_REG_TEA] = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+            sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+
+            /*
+             * TODO: This seems like it obviously should be a write-miss, but
+             * ambiguous wording in the SH4 spec makes it seem like a read
+             * miss may be the correct exception...?
+             */
+            /* sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS); */
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+            return MEM_ACCESS_FAILURE;
+        case SH4_UTLB_SUCCESS:
+            break;
+        default:
+            error_set_address(addr);
+            error_set_sq_mmu_excp_tp((int)res);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
@@ -304,9 +338,23 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
     } else {
         uint32_t first_addr = addr_actual;
         uint32_t last_addr = addr_actual + (8 * sizeof(uint32_t) - 1);
+
         LOG_ERROR("MEMORY MAP FAILURE TO FIND REGION CORRESPONDING TO BYTE "
                   "RANGE 0x%08x TO 0x%08x\n", (int)first_addr, (int)last_addr);
+
+        uint32_t *sq = sh4->ocache.sq + sq_idx;
+        error_set_sq_busrt_write_dword_0(sq[0]);
+        error_set_sq_busrt_write_dword_1(sq[1]);
+        error_set_sq_busrt_write_dword_2(sq[2]);
+        error_set_sq_busrt_write_dword_3(sq[3]);
+        error_set_sq_busrt_write_dword_4(sq[4]);
+        error_set_sq_busrt_write_dword_5(sq[5]);
+        error_set_sq_busrt_write_dword_6(sq[6]);
+        error_set_sq_busrt_write_dword_7(sq[7]);
+
         error_set_address(addr_actual);
+        error_set_sq_addr_first(first_addr);
+        error_set_sq_addr_last(last_addr);
         error_set_length(8 * sizeof(uint32_t));
         RAISE_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
     }
