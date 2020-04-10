@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -455,6 +455,10 @@ void pvr2_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 }
 
 uint8_t pvr2_reg_read_8(addr32_t addr, void *ctxt) {
+    unsigned offs = addr - ADDR_PVR2_FIRST;
+    unsigned idx = offs / sizeof(uint32_t);
+    if (idx == PVR2_REV)
+        return 17;
     error_set_address(addr);
     error_set_length(sizeof(uint8_t));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

@@ -31,6 +31,7 @@
 #include "log.h"
 #include "mmio.h"
 #include "hw/pvr2/pvr2_ta.h"
+#include "intmath.h"
 
 #include "sys_block.h"
 
@@ -70,6 +71,8 @@ void sys_block_write_double(addr32_t addr, double val, void *ctxt) {
 }
 
 uint8_t sys_block_read_8(addr32_t addr, void *ctxt) {
+    if ((addr & BIT_RANGE(0, 28)) == 0x5f689c)
+        return 16; // SB_SBREV
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
