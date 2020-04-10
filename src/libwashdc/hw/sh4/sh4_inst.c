@@ -201,6 +201,12 @@ static inline int sh4_readdouble(struct Sh4 *sh4, addr32_t addr, double *valp) {
 
 static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 #ifdef ENABLE_MMU
+    if (sh4_mmu_at(sh4) && !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000 &&
+        (!sh4_addr_in_sq_area(addr) || (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK))) {
+        error_set_feature("TLB DATA ADDRESS ERROR");
+        error_set_address(addr);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
     if (!sh4_addr_in_sq_area(addr)) {
         enum sh4_utlb_translate_result res =
             sh4_utlb_translate_address(sh4, &addr, true);
@@ -249,7 +255,8 @@ static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
 #ifdef ENABLE_MMU
     if ((addr & 1) ||
-        (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000)) {
+        (sh4_mmu_at(sh4) && !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000 &&
+         (!sh4_addr_in_sq_area(addr) || (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK)))) {
         error_set_feature("TLB DATA ADDRESS ERROR");
         error_set_address(addr);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -293,7 +300,8 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
 static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 #ifdef ENABLE_MMU
     if ((addr & 3) ||
-        (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000)) {
+        (sh4_mmu_at(sh4) && !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000 &&
+         (!sh4_addr_in_sq_area(addr) || (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK)))) {
         error_set_feature("TLB DATA ADDRESS ERROR");
         error_set_address(addr);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -348,7 +356,8 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
 #ifdef ENABLE_MMU
     if ((addr & 3) ||
-        (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000)) {
+        (sh4_mmu_at(sh4) && !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000 &&
+         (!sh4_addr_in_sq_area(addr) || (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK)))) {
         error_set_feature("TLB DATA ADDRESS ERROR");
         error_set_address(addr);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -368,14 +377,9 @@ static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
 
 static inline int sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
 #ifdef ENABLE_MMU
-    if (addr & 7) {
-        sh4->reg[SH4_REG_TEA] = addr;
-        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
-        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
-        sh4_set_exception(sh4, SH4_EXCP_DATA_ADDR_WRITE);
-
-        return -1;
-    } else if (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000) {
+    if ((addr & 7) ||
+        (sh4_mmu_at(sh4) && !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000 &&
+         (!sh4_addr_in_sq_area(addr) || (sh4->reg[SH4_REG_MMUCR] & SH4_MMUCR_SQMD_MASK)))) {
         error_set_feature("TLB DATA ADDRESS ERROR");
         error_set_address(addr);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
