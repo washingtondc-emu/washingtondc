@@ -105,6 +105,10 @@ enum gdrom_state {
 
     GDROM_STATE_PIO_READING,
 
+    // waiting for the user to begin a dma transfer
+    GDROM_STATE_DMA_WAITING,
+
+    // currently transmitting via DMA
     GDROM_STATE_DMA_READING
 };
 

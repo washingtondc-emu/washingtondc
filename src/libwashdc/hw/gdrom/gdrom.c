@@ -94,6 +94,8 @@ static DEF_ERROR_INT_ATTR(gdrom_seek_seek_pt)
 #define ATA_REG_R_STATUS       GDROM_REG_IDX(0x5f709c)
 #define ATA_REG_W_CMD          GDROM_REG_IDX(0x5f709c)
 
+static bool bufq_empty(struct gdrom_ctxt *gdrom);
+
 static void gdrom_delayed_processing(struct gdrom_ctxt *gdrom, dc_cycle_stamp_t delay);
 
 static void post_delay_gdrom_delayed_processing(struct SchedEvent *event);
@@ -121,7 +123,9 @@ static char const *gdrom_state_name(enum gdrom_state state) {
     case GDROM_STATE_PIO_READING:
         return "GDROM_STATE_PIO_READING";
     case GDROM_STATE_DMA_READING:
-        return"GDROM_STATE_DMA_READING";
+        return "GDROM_STATE_DMA_READING";
+    case GDROM_STATE_DMA_WAITING:
+        return "GDROM_STATE_DMA_WAITING";
     default:
         return "ERROR/UKNOWN";
     }
@@ -195,19 +199,32 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event) {
     case GDROM_STATE_DMA_READING:
         GDROM_TRACE("%s - DMA read complete\n", __func__);
 
-        gdrom->int_reason_reg.io = true;
-        gdrom->int_reason_reg.cod = true;
-        gdrom->stat_reg.drdy = true;
-        gdrom->stat_reg.drq = false;
-        gdrom->stat_reg.bsy = false;
-        gdrom_state_transition(gdrom, GDROM_STATE_NORM);
-        gdrom->gdlend_reg = gdrom->gdlend_final;
+        if (bufq_empty(gdrom)) {
+            gdrom->int_reason_reg.io = true;
+            gdrom->int_reason_reg.cod = true;
+            gdrom->stat_reg.drdy = true;
+            gdrom->stat_reg.drq = false;
+            gdrom->stat_reg.bsy = false;
+            gdrom_state_transition(gdrom, GDROM_STATE_NORM);
+            gdrom->gdlend_reg = gdrom->gdlend_final;
 
-        if (!gdrom->dev_ctrl_reg.nien) {
-            GDROM_TRACE("%s - raising GDROM EXT IRQ (state="
-                        "GDROM_STATE_DMA_READING)\n", __func__);
-            holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+            if (!gdrom->dev_ctrl_reg.nien) {
+                GDROM_TRACE("%s - raising GDROM EXT IRQ (state="
+                            "GDROM_STATE_DMA_READING)\n", __func__);
+                holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
+            }
+        } else {
+            gdrom->int_reason_reg.io = true;
+            gdrom->int_reason_reg.cod = false;
+            gdrom_state_transition(gdrom, GDROM_STATE_DMA_WAITING);
         }
+        GDROM_TRACE("%s - raising GDROM DMA IRQ "
+                    "(state=GDROM_STATE_DMA_READING)\n", __func__);
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_GDROM_DMA_COMPLETE);
+        gdrom->dma_start_reg = 0;
+        break;
+    case GDROM_STATE_DMA_WAITING:
+        RAISE_ERROR(ERROR_INTEGRITY); // should not happen, i think
         break;
     default:
         GDROM_TRACE("%s - raising GDROM EXT IRQ (state=%s %d)\n",
@@ -543,6 +560,10 @@ static int bufq_consume_byte(struct gdrom_ctxt *gdrom, unsigned *byte) {
     return -1;
 }
 
+static bool bufq_empty(struct gdrom_ctxt *gdrom) {
+    return fifo_empty(&gdrom->bufq);
+}
+
 static void gdrom_clear_error(struct gdrom_ctxt *gdrom) {
     memset(&gdrom->error_reg, 0, sizeof(gdrom->error_reg));
 }
@@ -627,9 +648,7 @@ done:
     }
 
     gdrom->gdlend_final = bytes_transmitted;
-    gdrom->gdlend_reg = 0;
     gdrom->dma_start_stamp = clock_cycle_stamp(gdrom->clk);
-    gdrom->dma_start_reg = 0;
 
     /*
      * According to SegaRetro, the Dreamcast's GD-ROM drive can transmit data
@@ -736,6 +755,7 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
         // wait for them to write 1 to GDST before doing something
         GDROM_TRACE("DMA READ ACCESS\n");
         gdrom->additional_dma_delay = GDROM_INT_DELAY;
+        gdrom_state_transition(gdrom, GDROM_STATE_DMA_WAITING);
     } else {
         /*
          * TODO: limit based on read bandwidth.  Currently this is implemented
@@ -1390,6 +1410,9 @@ enum gdrom_disc_state gdrom_get_drive_state(void) {
 
 void gdrom_start_dma(struct gdrom_ctxt *gdrom) {
     if (gdrom->dma_start_reg) {
+        if (gdrom->state != GDROM_STATE_DMA_WAITING)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
         gdrom->stat_reg.drq = false;
         gdrom->stat_reg.bsy = true;
         gdrom_complete_dma(gdrom);
@@ -2012,6 +2035,8 @@ static void gdrom_dma_progress_update(struct gdrom_ctxt *gdrom) {
         } else {
             gdrom->gdlend_reg = gdrom->gdlend_final;
         }
+        if (gdrom->gdlend_reg >= gdrom->gdlend_final)
+            gdrom->gdlend_reg = gdrom->gdlend_final;
     }
 }
 
