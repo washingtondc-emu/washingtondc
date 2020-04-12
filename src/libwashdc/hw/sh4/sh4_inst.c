@@ -353,7 +353,7 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     return 0;
 }
 
-static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
+static inline int sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
 #ifdef ENABLE_MMU
     if ((addr & 3) ||
         (sh4_mmu_at(sh4) && !(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000 &&
@@ -363,16 +363,30 @@ static inline void sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    enum sh4_utlb_translate_result res;
-    if (!sh4_addr_in_sq_area(addr) &&
-        (res = sh4_utlb_translate_address(sh4, &addr, true)) !=
-        SH4_UTLB_SUCCESS) {
-        error_set_address(addr);
-        error_set_mmu_excp_tp((int)res);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (!sh4_addr_in_sq_area(addr)) {
+        enum sh4_utlb_translate_result res =
+            sh4_utlb_translate_address(sh4, &addr, true);
+        switch (res) {
+        case SH4_UTLB_SUCCESS:
+            break;
+        case SH4_UTLB_MISS:
+            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION VPN %08X PC=%08X\n",
+                      (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+            sh4->reg[SH4_REG_TEA] = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+            sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+
+            return res;
+        default:
+            error_set_address(addr);
+            error_set_mmu_excp_tp((int)res);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
     }
 #endif
     memory_map_write_float(sh4->mem.map, addr, val);
+    return 0;
 }
 
 static inline int sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
@@ -5320,7 +5334,9 @@ void sh4_inst_binary_fmovs_fr_indgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     float *src_p = sh4_fpu_fr(sh4, (inst >> 4) & 0xf);
 
-    sh4_writefloat(sh4, addr, *src_p);
+    if (sh4_writefloat(sh4, addr, *src_p) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111nnnnmmmm1011 0xf00f
@@ -5347,7 +5363,8 @@ void sh4_inst_binary_fmovs_fr_inddecgen(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *addr_p - 4;
     float *src_p = sh4_fpu_fr(sh4, (inst >> 4) & 0xf);
 
-    sh4_writefloat(sh4, addr, *src_p);
+    if (sh4_writefloat(sh4, addr, *src_p) != 0)
+        return;
 
     *addr_p = addr;
 }
@@ -5375,7 +5392,9 @@ void sh4_inst_binary_fmovs_fr_binind_r0_gen(void *cpu, cpu_inst_param inst) {
     addr32_t addr = *sh4_gen_reg(sh4, 0) + *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     float *src_p = sh4_fpu_fr(sh4, (inst >> 4) & 0xf);
 
-    sh4_writefloat(sh4, addr, *src_p);
+    if (sh4_writefloat(sh4, addr, *src_p) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111nnn0mmm01100 0xf11f
