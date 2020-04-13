@@ -103,6 +103,7 @@ static struct aica aica;
 static struct gdrom_ctxt gdrom;
 static struct pvr2 dc_pvr2;
 static struct maple maple;
+static struct sys_block_ctxt sys_block;
 
 static atomic_bool is_running = ATOMIC_VAR_INIT(false);
 static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
@@ -588,7 +589,7 @@ dreamcast_init(char const *gdi_path,
 #endif
     jit_init(&sh4_clock);
 
-    sys_block_init();
+    sys_block_init(&sys_block, &cpu);
     g1_init();
     g2_init();
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
@@ -744,7 +745,7 @@ void dreamcast_cleanup() {
     aica_cleanup(&aica);
     g2_cleanup();
     g1_cleanup();
-    sys_block_cleanup();
+    sys_block_cleanup(&sys_block);
 
     jit_cleanup();
 #ifdef ENABLE_JIT_X86_64
@@ -1426,7 +1427,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &g1_intf, NULL);
     memory_map_add(map, ADDR_SYS_FIRST, ADDR_SYS_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &sys_block_intf, NULL);
+                   &sys_block_intf, &sys_block);
     memory_map_add(map, ADDR_MAPLE_FIRST, ADDR_MAPLE_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &maple_intf, &maple);

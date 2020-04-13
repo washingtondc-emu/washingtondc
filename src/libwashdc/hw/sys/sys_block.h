@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -38,19 +38,32 @@
 
 DECL_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 
-void sys_block_init(void);
-void sys_block_cleanup(void);
+struct Sh4;
 
-float sys_block_read_float(addr32_t addr, void *ctxt);
-void sys_block_write_float(addr32_t addr, float val, void *ctxt);
-double sys_block_read_double(addr32_t addr, void *ctxt);
-void sys_block_write_double(addr32_t addr, double val, void *ctxt);
-uint8_t sys_block_read_8(addr32_t addr, void *ctxt);
-void sys_block_write_8(addr32_t addr, uint8_t val, void *ctxt);
-uint16_t sys_block_read_16(addr32_t addr, void *ctxt);
-void sys_block_write_16(addr32_t addr, uint16_t val, void *ctxt);
-uint32_t sys_block_read_32(addr32_t addr, void *ctxt);
-void sys_block_write_32(addr32_t addr, uint32_t val, void *ctxt);
+struct sys_block_ctxt {
+    struct Sh4 *sh4;
+
+    // mmio metadata
+    struct mmio_region_sys_block mmio_region_sys_block;
+    uint8_t reg_backing[N_SYS_REGS];
+
+    // channel-2 dma state
+    uint32_t reg_sb_c2dstat, reg_sb_c2dlen;
+};
+
+void sys_block_init(struct sys_block_ctxt *ctxt, struct Sh4 *sh4);
+void sys_block_cleanup(struct sys_block_ctxt *ctxt);
+
+float sys_block_read_float(addr32_t addr, void *argp);
+void sys_block_write_float(addr32_t addr, float val, void *argp);
+double sys_block_read_double(addr32_t addr, void *argp);
+void sys_block_write_double(addr32_t addr, double val, void *argp);
+uint8_t sys_block_read_8(addr32_t addr, void *argp);
+void sys_block_write_8(addr32_t addr, uint8_t val, void *argp);
+uint16_t sys_block_read_16(addr32_t addr, void *argp);
+void sys_block_write_16(addr32_t addr, uint16_t val, void *argp);
+uint32_t sys_block_read_32(addr32_t addr, void *argp);
+void sys_block_write_32(addr32_t addr, uint32_t val, void *argp);
 
 extern struct memory_interface sys_block_intf;
 
