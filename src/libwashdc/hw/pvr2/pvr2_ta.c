@@ -153,8 +153,6 @@ char const *pvr2_poly_type_names[PVR2_POLY_TYPE_COUNT] = {
     "Unknown Polygon Type 7"
 };
 
-inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte);
-
 static void handle_packet(struct pvr2 *pvr2);
 static void dump_fifo(struct pvr2 *pvr2);
 
@@ -316,7 +314,7 @@ uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
 void pvr2_ta_fifo_poly_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
     PVR2_TRACE("writing 4 bytes to TA polygon FIFO: 0x%08x\n", (unsigned)val);
-    input_poly_fifo(pvr2, val);
+    pvr2_tafifo_input(pvr2, val);
 }
 
 uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt) {
@@ -932,9 +930,9 @@ static void handle_packet(struct pvr2 *pvr2) {
     }
 }
 
-inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte) {
+void pvr2_tafifo_input(struct pvr2 *pvr2, uint32_t dword) {
     struct pvr2_ta *ta = &pvr2->ta;
-    ta->ta_fifo32[ta->ta_fifo_word_count++] = byte;
+    ta->ta_fifo32[ta->ta_fifo_word_count++] = dword;
 
     if (!(ta->ta_fifo_word_count % 8))
         handle_packet(pvr2);
@@ -1132,6 +1130,74 @@ static int decode_user_clip(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     return 0;
 }
 
+struct pvr2_ta_param_dims pvr2_ta_get_param_dims(unsigned ctrl) {
+    struct pvr2_ta_param_dims ret = {
+        .hdr_len = -1,
+        .vtx_len = -1
+    };
+
+    unsigned param_tp = (ctrl & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
+
+    switch (param_tp) {
+    case TA_CMD_TYPE_POLY_HDR:
+        {
+            ret.is_vert = false;
+
+            enum pvr2_poly_type poly_type =
+                (enum pvr2_poly_type)((ctrl & TA_CMD_POLY_TYPE_MASK) >>
+                                      TA_CMD_POLY_TYPE_SHIFT);
+
+            if (poly_type == PVR2_POLY_TYPE_OPAQUE_MOD ||
+                poly_type == PVR2_POLY_TYPE_TRANS_MOD) {
+                ret.hdr_len = 8;
+                ret.vtx_len = 16;
+            } else {
+                ret.hdr_len = 8;
+                ret.vtx_len = 8;
+
+                bool tex_enable = (bool)(ctrl & TA_CMD_TEX_ENABLE_MASK);
+                bool two_volumes_mode = (bool)(ctrl & TA_CMD_TWO_VOLUMES_MASK);
+                enum ta_color_type col_tp =
+                    (enum ta_color_type)((ctrl & TA_CMD_COLOR_TYPE_MASK) >>
+                                         TA_CMD_COLOR_TYPE_SHIFT);
+                bool offset_color_enable =
+                    (bool)(ctrl & TA_CMD_OFFSET_COLOR_MASK);
+
+                if (col_tp == TA_COLOR_TYPE_INTENSITY_MODE_1 &&
+                    (two_volumes_mode || (tex_enable && offset_color_enable))) {
+                    ret.hdr_len = 16;
+                }
+
+                if (tex_enable) {
+                    if ((!two_volumes_mode && col_tp == TA_COLOR_TYPE_FLOAT) ||
+                        (two_volumes_mode && col_tp != TA_COLOR_TYPE_FLOAT))
+                        ret.vtx_len = 16;
+                }
+            }
+        }
+        break;
+    case TA_CMD_TYPE_SPRITE_HDR:
+        ret.is_vert = false;
+        ret.hdr_len = 8;
+        ret.vtx_len = 16;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+#ifdef INVARIANTS
+    // sanity checking
+    if (ret.is_vert) {
+        if (ret.vtx_len == -1 || ret.hdr_len != -1)
+            RAISE_ERROR(ERROR_INTEGRITY);
+    } else {
+        if (ret.vtx_len == -1 || ret.hdr_len == -1)
+            RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
+
+    return ret;
+}
 
 static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
@@ -1141,8 +1207,11 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     unsigned param_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
     enum pvr2_hdr_tp tp;
 
-    unsigned hdr_len = 8;
-    unsigned vtx_len = 8;
+    struct pvr2_ta_param_dims dims = pvr2_ta_get_param_dims(ta_fifo32[0]);
+    if (dims.is_vert)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    unsigned hdr_len = dims.hdr_len;
+    unsigned vtx_len = dims.vtx_len;
 
     // we need these to figure out whether the header is 32 bytes or 64 bytes.
     bool two_volumes_mode = (bool)(ta_fifo32[0] & TA_CMD_TWO_VOLUMES_MASK);
@@ -1155,34 +1224,12 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         (enum pvr2_poly_type)((ta_fifo32[0] & TA_CMD_POLY_TYPE_MASK) >>
                               TA_CMD_POLY_TYPE_SHIFT);
 
-    switch (param_tp) {
-    case TA_CMD_TYPE_POLY_HDR:
+    if (param_tp == TA_CMD_TYPE_POLY_HDR)
         tp = PVR2_HDR_TRIANGLE_STRIP;
-        if (poly_type == PVR2_POLY_TYPE_OPAQUE_MOD ||
-            poly_type == PVR2_POLY_TYPE_TRANS_MOD) {
-            hdr_len = 8;
-            vtx_len = 16;
-        } else {
-            if (col_tp == TA_COLOR_TYPE_INTENSITY_MODE_1 &&
-                (two_volumes_mode || (tex_enable && offset_color_enable))) {
-                hdr_len = 16;
-            }
-
-            if (tex_enable) {
-                if ((!two_volumes_mode && col_tp == TA_COLOR_TYPE_FLOAT) ||
-                    (two_volumes_mode && col_tp != TA_COLOR_TYPE_FLOAT))
-                    vtx_len = 16;
-            }
-        }
-
-        break;
-    case TA_CMD_TYPE_SPRITE_HDR:
+    else if (param_tp == TA_CMD_TYPE_SPRITE_HDR)
         tp = PVR2_HDR_QUAD;
-        vtx_len = 16;
-        break;
-    default:
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
+    else
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     if (ta->ta_fifo_word_count < hdr_len)
         return -1;

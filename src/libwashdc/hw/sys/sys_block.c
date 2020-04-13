@@ -39,6 +39,27 @@
 
 DEF_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 
+#define SB_REG_IDX(paddr) ((paddr - ADDR_SYS_FIRST) / 4)
+
+#define SB_IDX_C2DSTAT SB_REG_IDX(0x5f6800)
+#define SB_IDX_C2DLEN  SB_REG_IDX(0x5f6804)
+
+// sdstaw - Sort-DMA link address
+#define SB_IDX_SDSTAW SB_REG_IDX(0x5f6810)
+#define SB_IDX_SDBAAW SB_REG_IDX(0x5f6814)
+
+// 0 for 16-bit Sort-DMA link address, 1 for 32-bit Sort-DMA link address
+#define SB_IDX_SDWLT  SB_REG_IDX(0x5f6818)
+
+// if 0, then Sort-DMA link addresses are scaled by 32.  Else, not.
+#define SB_IDX_SDLAS  SB_REG_IDX(0x5f681c)
+
+/*
+ * write 1 to initiate Sort-DMA.  write 0 to cancel it.
+ * read 1 to confirm Sort-DMA in progress, 0 to confirm it's not in progress
+ */
+#define SB_IDX_SDST   SB_REG_IDX(0x5f6820)
+
 float sys_block_read_float(addr32_t addr, void *argp) {
     struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
     uint32_t tmp =
@@ -106,38 +127,6 @@ void sys_block_write_32(addr32_t addr, uint32_t val, void *argp) {
 }
 
 static uint32_t
-sb_c2dstat_mmio_read(struct mmio_region_sys_block *region,
-                     unsigned idx, void *argp) {
-    struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
-    LOG_DBG("reading %08x from SB_C2DSTAT\n", (unsigned)ctxt->reg_sb_c2dstat);
-    return ctxt->reg_sb_c2dstat;
-}
-
-static void
-sb_c2dstat_mmio_write(struct mmio_region_sys_block *region,
-                      unsigned idx, uint32_t val, void *argp) {
-    struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
-    ctxt->reg_sb_c2dstat = val;
-    LOG_DBG("writing %08x to SB_C2DSTAT\n", (unsigned)ctxt->reg_sb_c2dstat);
-}
-
-static uint32_t
-sb_c2dlen_mmio_read(struct mmio_region_sys_block *region,
-                    unsigned idx, void *argp) {
-    struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
-    LOG_DBG("reading %08x from SB_C2DLEN\n", (unsigned)ctxt->reg_sb_c2dlen);
-    return ctxt->reg_sb_c2dlen;
-}
-
-static void
-sb_c2dlen_mmio_write(struct mmio_region_sys_block *region,
-                     unsigned idx, uint32_t val, void *argp) {
-    struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
-    ctxt->reg_sb_c2dlen = val;
-    LOG_DBG("writing %08x to SB_C2DLEN\n", (unsigned)ctxt->reg_sb_c2dlen);
-}
-
-static uint32_t
 sb_c2dst_mmio_read(struct mmio_region_sys_block *region,
                    unsigned idx, void *argp) {
     LOG_DBG("WARNING: reading 0 from SB_C2DST\n");
@@ -149,7 +138,8 @@ sb_c2dst_mmio_write(struct mmio_region_sys_block *region,
                     unsigned idx, uint32_t val, void *argp) {
     if (val) {
         struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
-        sh4_dmac_channel2(ctxt->sh4, ctxt->reg_sb_c2dstat, ctxt->reg_sb_c2dlen);
+        sh4_dmac_channel2(ctxt->sh4, ctxt->reg_backing[SB_IDX_C2DSTAT],
+                          ctxt->reg_backing[SB_IDX_C2DLEN]);
     }
 }
 
@@ -187,35 +177,229 @@ static void lmmode1_reg_write_handler(struct mmio_region_sys_block *region,
 
 static uint32_t sdst_reg_read_handler(struct mmio_region_sys_block *region,
                                       unsigned idx, void *argp) {
-    LOG_DBG("reading 0 from SDST\n");
-    return 0;
+    struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
+    if (ctxt->sort_dma_in_progress) {
+        LOG_DBG("reading 1 from SDST\n");
+        return 1;
+    } else {
+        LOG_DBG("reading 0 from SDST\n");
+        return 0;
+    }
+}
+
+// TODO: compe up with a realistic timing value for this
+#define SORT_DMA_COMPLETE_INT_DELAY 0
+
+static DEF_ERROR_U32_ATTR(sdstaw_reg)
+static DEF_ERROR_U32_ATTR(sdbaaw_reg)
+static DEF_ERROR_U32_ATTR(sdwlt_reg)
+static DEF_ERROR_U32_ATTR(sdlas_reg)
+static DEF_ERROR_U32_ATTR(sdst_reg)
+
+static uint32_t sort_dma_process_link(struct sys_block_ctxt *ctxt, uint32_t link_addr, uint32_t link_base);
+
+static void
+sys_block_sort_dma_complete_int_event_handler(struct SchedEvent *event) {
+    struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)event->arg_ptr;
+    if (!ctxt->sort_dma_in_progress)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    holly_raise_nrm_int(HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE);
+    ctxt->sort_dma_in_progress = false;
 }
 
 static void sdst_reg_write_handler(struct mmio_region_sys_block *region,
                                    unsigned idx, uint32_t val, void *argp) {
-    if (val) {
-        error_set_feature("Sort-DMA");
+    struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
+    if (ctxt->sort_dma_in_progress) {
+        error_set_feature("writing to SDST when Sort-DMA is already in-progress");
+        error_set_value(val);
+        error_set_sdstaw_reg(ctxt->reg_backing[SB_IDX_SDSTAW]);
+        error_set_sdbaaw_reg(ctxt->reg_backing[SB_IDX_SDBAAW]);
+        error_set_sdwlt_reg(ctxt->reg_backing[SB_IDX_SDWLT]);
+        error_set_sdlas_reg(ctxt->reg_backing[SB_IDX_SDLAS]);
+        error_set_sdst_reg(ctxt->reg_backing[SB_IDX_SDST]);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    if (val) {
+        ctxt->sort_dma_in_progress = true;
+        struct Memory *main_memory = ctxt->main_memory;
+
+        // Oh boy!  It's Sort-DMA!
+        LOG_DBG("Sort-DMA transaction begins!\n");
+
+        if (!(ctxt->reg_backing[SB_IDX_SDWLT] & 1)) {
+            error_set_feature("16-bit Sort_DMA link addresses");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        if (ctxt->reg_backing[SB_IDX_SDLAS] & 1) {
+            /*
+             * this is actually super-easy, all we really have to
+             * do is divide the link address by 32 or something like that.
+             */
+            error_set_feature("sort-dma scaling by 32");
+            error_set_value(val);
+            error_set_sdstaw_reg(ctxt->reg_backing[SB_IDX_SDSTAW]);
+            error_set_sdbaaw_reg(ctxt->reg_backing[SB_IDX_SDBAAW]);
+            error_set_sdwlt_reg(ctxt->reg_backing[SB_IDX_SDWLT]);
+            error_set_sdlas_reg(ctxt->reg_backing[SB_IDX_SDLAS]);
+            error_set_sdst_reg(ctxt->reg_backing[SB_IDX_SDST]);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        uint32_t link_base =
+            (ctxt->reg_backing[SB_IDX_SDBAAW] & BIT_RANGE(5, 26)) | (1 << 27);
+        uint32_t link_table_start =
+            (ctxt->reg_backing[SB_IDX_SDSTAW] & BIT_RANGE(5, 26)) | (1 << 27);
+
+        if (link_table_start < 0x0c000000 || link_table_start >= 0x0d000000) {
+            error_set_feature("Sort-DMA memory mirrors");
+            error_set_address(link_table_start);
+            error_set_value(val);
+            error_set_sdstaw_reg(ctxt->reg_backing[SB_IDX_SDSTAW]);
+            error_set_sdbaaw_reg(ctxt->reg_backing[SB_IDX_SDBAAW]);
+            error_set_sdwlt_reg(ctxt->reg_backing[SB_IDX_SDWLT]);
+            error_set_sdlas_reg(ctxt->reg_backing[SB_IDX_SDLAS]);
+            error_set_sdst_reg(ctxt->reg_backing[SB_IDX_SDST]);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        uint32_t link_addr = memory_read_32(link_table_start & MEMORY_MASK,
+                                            main_memory);
+
+        while (link_addr != 2) {
+            LOG_DBG("the next link addr is %08X\n", (unsigned)link_addr);
+            if (link_addr == 1) {
+                // end of link
+                link_table_start += 4;
+                LOG_DBG("link_table_start incremented to %08X\n",
+                        (unsigned)link_table_start);
+                link_addr = memory_read_32(link_table_start & MEMORY_MASK,
+                                           main_memory);
+                continue;
+            }
+
+            link_addr = sort_dma_process_link(ctxt, link_addr, link_base);
+        }
+
+        // end of DMA
+        LOG_ERROR("END OF SORT-DMA; FINAL LINK TABLE START IS %08X\n",
+                  (unsigned)link_table_start);
+        /*
+         * TODO: I'm not 100% sure if it's actually correct to write this back.
+         * I *think* it is but I could be wrong.
+         */
+        ctxt->reg_backing[SB_IDX_SDSTAW] = link_table_start;
+
+        struct dc_clock *clk = ctxt->clk;
+        ctxt->sort_dma_in_progress = true;
+        ctxt->sort_dma_complete_int_event.when = clock_cycle_stamp(clk) +
+            SORT_DMA_COMPLETE_INT_DELAY;
+        sched_event(clk, &ctxt->sort_dma_complete_int_event);
     }
 }
 
-void sys_block_init(struct sys_block_ctxt *ctxt, struct Sh4 *sh4) {
+static uint32_t sort_dma_process_link(struct sys_block_ctxt *ctxt, uint32_t link_addr, uint32_t link_base) {
+    uint32_t link_ptr = link_addr + link_base;
+    struct Memory *main_memory = ctxt->main_memory;
+
+    LOG_DBG("link_address is %08X\n", (unsigned)link_addr);
+    LOG_DBG("link_ptr is %08X\n", (unsigned)link_ptr);
+
+    uint32_t param_tp = memory_read_32(link_ptr & MEMORY_MASK, main_memory);
+
+    LOG_DBG("parameter control word is %08X\n", param_tp);
+
+    struct pvr2_ta_param_dims dims = pvr2_ta_get_param_dims(param_tp);
+
+    if (dims.is_vert) {
+        error_set_feature("they sent a vertex parameter at the beginning "
+                          "of a sort-DMA...\n");
+        error_set_sdstaw_reg(ctxt->reg_backing[SB_IDX_SDSTAW]);
+        error_set_sdbaaw_reg(ctxt->reg_backing[SB_IDX_SDBAAW]);
+        error_set_sdwlt_reg(ctxt->reg_backing[SB_IDX_SDWLT]);
+        error_set_sdlas_reg(ctxt->reg_backing[SB_IDX_SDLAS]);
+        error_set_sdst_reg(ctxt->reg_backing[SB_IDX_SDST]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    uint32_t n_bytes =
+        memory_read_32((link_ptr + 0x18) & MEMORY_MASK, main_memory);
+    if (n_bytes > 255) {
+        error_set_feature("when there's a Sort-DMA link that's too long");
+        error_set_sdstaw_reg(ctxt->reg_backing[SB_IDX_SDSTAW]);
+        error_set_sdbaaw_reg(ctxt->reg_backing[SB_IDX_SDBAAW]);
+        error_set_sdwlt_reg(ctxt->reg_backing[SB_IDX_SDWLT]);
+        error_set_sdlas_reg(ctxt->reg_backing[SB_IDX_SDLAS]);
+        error_set_sdst_reg(ctxt->reg_backing[SB_IDX_SDST]);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    } else if (n_bytes == 0) {
+        n_bytes = 8192;
+    } else {
+        n_bytes *= 32;
+    }
+
+    uint32_t next_link_addr =
+        memory_read_32((link_ptr + 0x1c) & MEMORY_MASK, main_memory);
+    int vtx_len = dims.vtx_len;
+
+    uint32_t cur_ptr = link_ptr;
+    LOG_DBG("this link in the chain is %u bytes long\n", (unsigned)n_bytes);
+    while (n_bytes) {
+        param_tp = memory_read_32(link_ptr & MEMORY_MASK, main_memory);
+        dims = pvr2_ta_get_param_dims(param_tp);
+
+        int this_pkt_dwords;
+        if (dims.is_vert) {
+            this_pkt_dwords = vtx_len;
+            LOG_DBG("Sort-DMA vertex parameter len %u bytes pointer %08X\n",
+                    vtx_len * 4, cur_ptr);
+        } else {
+            vtx_len = dims.vtx_len;
+            this_pkt_dwords = dims.hdr_len;
+            LOG_DBG("Sort-DMA packet header len %u bytes pointer %08X\n",
+                    dims.hdr_len * 4, cur_ptr);
+        }
+
+        while (this_pkt_dwords) {
+            uint32_t dword = memory_read_32(cur_ptr & MEMORY_MASK,
+                                            main_memory);
+            pvr2_tafifo_input(ctxt->pvr2, dword);
+            this_pkt_dwords--;
+            cur_ptr += 4;
+            n_bytes -= 4;
+        }
+    }
+
+    return next_link_addr;
+}
+
+void
+sys_block_init(struct sys_block_ctxt *ctxt, struct dc_clock *clk,
+               struct Sh4 *sh4, struct Memory *main_memory, struct pvr2 *pvr2) {
     memset(ctxt, 0, sizeof(*ctxt));
 
     ctxt->sh4 = sh4;
+    ctxt->main_memory = main_memory;
+    ctxt->pvr2 = pvr2;
+    ctxt->clk = clk;
 
-    init_mmio_region_sys_block(&ctxt->mmio_region_sys_block,
-                               (void*)ctxt->reg_backing);
+    ctxt->sort_dma_complete_int_event.handler =
+        sys_block_sort_dma_complete_int_event_handler;
+    ctxt->sort_dma_complete_int_event.arg_ptr = ctxt;
+
+    init_mmio_region_sys_block(&ctxt->mmio_region_sys_block, ctxt->reg_backing);
 
     mmio_region_sys_block_init_cell(&ctxt->mmio_region_sys_block,
                                     "SB_C2DSTAT", 0x005f6800,
-                                    sb_c2dstat_mmio_read,
-                                    sb_c2dstat_mmio_write,
+                                    mmio_region_sys_block_warn_read_handler,
+                                    mmio_region_sys_block_warn_write_handler,
                                     ctxt);
     mmio_region_sys_block_init_cell(&ctxt->mmio_region_sys_block,
                                     "SB_C2DLEN", 0x005f6804,
-                                    sb_c2dlen_mmio_read,
-                                    sb_c2dlen_mmio_write,
+                                    mmio_region_sys_block_warn_read_handler,
+                                    mmio_region_sys_block_warn_write_handler,
                                     ctxt);
     mmio_region_sys_block_init_cell(&ctxt->mmio_region_sys_block,
                                     "SB_C2DST", 0x005f6808,

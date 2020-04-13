@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 
 #define MEMORY_SIZE_SHIFT 24
 #define MEMORY_SIZE (1 << MEMORY_SIZE_SHIFT)
+#define MEMORY_MASK (MEMORY_SIZE - 1)
 
 struct Memory {
     uint8_t mem[MEMORY_SIZE];
@@ -48,7 +49,7 @@ void memory_clear(struct Memory *mem);
 static inline int
 memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
-    if (end_addr & ~(MEMORY_SIZE - 1)) {
+    if (end_addr & ~MEMORY_MASK) {
         error_set_address(addr);
         error_set_length(len);
         PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);
@@ -63,7 +64,7 @@ memory_read(struct Memory const *mem, void *buf, size_t addr, size_t len) {
 static inline int
 memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len) {
     size_t end_addr = addr + (len - 1);
-    if (end_addr & ~(MEMORY_SIZE - 1)) {
+    if (end_addr & ~MEMORY_MASK) {
         error_set_address(addr);
         error_set_length(len);
         PENDING_ERROR(ERROR_MEM_OUT_OF_BOUNDS);

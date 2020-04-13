@@ -106,6 +106,10 @@ static struct holly_intp_info nrm_intp_tbl[HOLLY_NRM_INT_COUNT] = {
     [HOLLY_REG_ISTNRM_GDROM_DMA_COMPLETE] = {
         "GD-ROM DMA COMPLETE",
         HOLLY_REG_ISTNRM_GDROM_DMA_COMPLETE_MASK
+    },
+    [HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE] = {
+        "SORT DMA COMPLETE",
+        HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE_MASK
     }
 };
 

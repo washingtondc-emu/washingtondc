@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -57,6 +57,8 @@ enum HollyNrmInt {
 
     HOLLY_REG_ISTNRM_GDROM_DMA_COMPLETE,
 
+    HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE,
+
     HOLLY_NRM_INT_COUNT
 };
 typedef enum HollyNrmInt HollyNrmInt;
@@ -68,6 +70,10 @@ int holly_intc_irl_line_fn(void *ctx);
 #define HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_SHIFT 21
 #define HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_MASK \
     (1 << HOLLY_REG_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE_SHIFT)
+
+#define HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE_SHIFT 20
+#define HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE_MASK     \
+    (1 << HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE_SHIFT)
 
 #define HOLLY_REG_ISTNRM_CHANNEL2_DMA_COMPLETE_SHIFT 19
 #define HOLLY_REG_ISTNRM_CHANNEL2_DMA_COMPLETE_MASK \

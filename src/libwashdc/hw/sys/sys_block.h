@@ -30,28 +30,40 @@
 #ifndef SYS_BLOCK_H_
 #define SYS_BLOCK_H_
 
+#include <stdint.h>
+
 #include "mmio.h"
 #include "mem_areas.h"
 #include "washdc/MemoryMap.h"
+#include "dc_sched.h"
 
 #define N_SYS_REGS (ADDR_SYS_LAST - ADDR_SYS_FIRST + 1)
 
 DECL_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 
 struct Sh4;
+struct pvr2;
 
 struct sys_block_ctxt {
     struct Sh4 *sh4;
+    struct Memory *main_memory;
+    struct pvr2 *pvr2;
+    struct dc_clock *clk;
 
     // mmio metadata
     struct mmio_region_sys_block mmio_region_sys_block;
-    uint8_t reg_backing[N_SYS_REGS];
+    uint32_t reg_backing[N_SYS_REGS / sizeof(uint32_t)];
 
     // channel-2 dma state
     uint32_t reg_sb_c2dstat, reg_sb_c2dlen;
+
+    bool sort_dma_in_progress;
+    struct SchedEvent sort_dma_complete_int_event;
 };
 
-void sys_block_init(struct sys_block_ctxt *ctxt, struct Sh4 *sh4);
+void
+sys_block_init(struct sys_block_ctxt *ctxt, struct dc_clock *clk,
+               struct Sh4 *sh4, struct Memory *main_memory, struct pvr2 *pvr2);
 void sys_block_cleanup(struct sys_block_ctxt *ctxt);
 
 float sys_block_read_float(addr32_t addr, void *argp);

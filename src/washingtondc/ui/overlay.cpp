@@ -220,6 +220,8 @@ void overlay::draw() {
                     irqstr = "GD-ROM";
                 else if (ImGui::MenuItem("GD-DMA"))
                     irqstr = "GD-DMA";
+                else if (ImGui::MenuItem("SORT DMA"))
+                    irqstr = "SORT DMA";
 
                 if (irqstr)
                     washdc_gameconsole_inject_irq(console, irqstr);

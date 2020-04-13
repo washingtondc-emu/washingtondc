@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include "dc_sched.h"
 #include "washdc/types.h"
@@ -346,5 +347,29 @@ struct pvr2_ta {
 };
 
 unsigned pvr2_ta_fifo_rem_bytes(void);
+
+struct pvr2_ta_param_dims {
+    /*
+     * vtx_len and hdr_len will be either 8 or 16.
+     * is_vert will tell you whether the current packet's length
+     * is determined by vtx_len (if true) or hdr_len (if false).
+     *
+     * not that if is_vert is false, vtx_len will still be valid since packet
+     * headers determine the length of vertex parameters.  if is_vert is true,
+     * hdr_len will not be valid since it is irrelevant.
+     */
+    int vtx_len : 8;
+    int hdr_len : 8;
+    bool is_vert : 1;
+};
+
+struct pvr2_ta_param_dims pvr2_ta_get_param_dims(unsigned control_word);
+
+/*
+ * input polygon data to the TAFIFO, one 32-bit int at a time.  This is only
+ * the polygon part of the TAFIFO, this doesn't apply to texture memory or YUV
+ * conversion.
+ */
+void pvr2_tafifo_input(struct pvr2 *pvr2, uint32_t dword);
 
 #endif

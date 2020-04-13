@@ -259,6 +259,8 @@ static void dc_inject_irq(char const *id) {
         holly_raise_ext_int(HOLLY_EXT_INT_GDROM);
     else if (strcmp(id, "GD-DMA") == 0)
         holly_raise_nrm_int(HOLLY_REG_ISTNRM_GDROM_DMA_COMPLETE);
+    else if (strcmp(id, "SORT DMA") == 0)
+        holly_raise_nrm_int(HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE);
     else
         LOG_ERROR("FAILURE TO INJECT IRQ \"%s\"\n", id);
 }
@@ -589,11 +591,11 @@ dreamcast_init(char const *gdi_path,
 #endif
     jit_init(&sh4_clock);
 
-    sys_block_init(&sys_block, &cpu);
     g1_init();
     g2_init();
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
     pvr2_init(&dc_pvr2, &sh4_clock, &maple);
+    sys_block_init(&sys_block, &sh4_clock, &cpu, &dc_mem, &dc_pvr2);
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&maple, &sh4_clock);
 
@@ -741,11 +743,11 @@ void dreamcast_cleanup() {
 
     maple_cleanup(&maple);
     gdrom_cleanup(&gdrom);
+    sys_block_cleanup(&sys_block);
     pvr2_cleanup(&dc_pvr2);
     aica_cleanup(&aica);
     g2_cleanup();
     g1_cleanup();
-    sys_block_cleanup(&sys_block);
 
     jit_cleanup();
 #ifdef ENABLE_JIT_X86_64
