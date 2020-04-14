@@ -46,13 +46,20 @@ void pvr2_yuv_init(struct pvr2 *pvr2) {
 void pvr2_yuv_cleanup(struct pvr2 *pvr2) {
 }
 
-#define PVR2_YUV_COMPLETE_INT_DELAY (SCHED_FREQUENCY / 1024)
+/*
+ * I'm not sure what kind of a latency this should have, but it seems that it's
+ * extremely fast.  Resident Evil 2 will input more FIFO data almost
+ * immediately after finishing a frame which can cause problems if
+ * cur_macroblock_x and cur_macroblock_y haven't been reset yet.
+ */
+#define PVR2_YUV_COMPLETE_INT_DELAY 0
 
 static void
 pvr2_yuv_complete_int_event_handler(struct SchedEvent *event) {
     struct pvr2 *pvr2 = (struct pvr2*)event->arg_ptr;
     pvr2->yuv.yuv_complete_event_scheduled = false;
     holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_YUV_COMPLETE);
+    pvr2_yuv_set_base(pvr2, pvr2->reg_backing[PVR2_TA_YUV_TEX_BASE]);
 }
 
 static void pvr2_yuv_schedule_int(struct pvr2 *pvr2) {
@@ -79,6 +86,7 @@ void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base) {
      * TODO: what happens if any of these settings change without updating the
      * base address?
      */
+    LOG_DBG("PVR2 YUV RESETTING BASE\n");
     yuv->dst_addr = new_base;
     yuv->macroblock_offset = 0;
     yuv->cur_macroblock_x = 0;
@@ -197,6 +205,7 @@ static void pvr2_yuv_macroblock(struct pvr2 *pvr2) {
     }
 
     if (yuv->cur_macroblock_y == yuv->macroblock_count_y) {
+        LOG_DBG("scheduling yuv interrupt\n");
         pvr2_yuv_schedule_int(pvr2);
     }
 }
