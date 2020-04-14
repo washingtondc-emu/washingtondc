@@ -239,6 +239,10 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned addr, uint32_t val) {
         }
         PVR2_TRACE("Format is %s\n", val & (1 << 24) ? "YUV422" : "YUV420");
         break;
+    case PVR2_TA_LIST_CONT:
+        if (val)
+            pvr2_ta_list_continue(pvr2);
+        break;
     default:
         if (idx >= PVR2_FOG_TABLE_FIRST && idx <= PVR2_FOG_TABLE_LAST) {
             PVR2_TRACE("Writing 0x%08x to fog table index %u\n",

@@ -142,16 +142,28 @@ static DEF_ERROR_U32_ATTR(ta_fifo_word_d)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_e)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_f)
 
-char const *pvr2_poly_type_names[PVR2_POLY_TYPE_COUNT] = {
-    "Opaque",
-    "Opaque Modifier Volume",
-    "Transparent",
-    "Transparent Modifier Volume",
-    "Punch-through Polygon",
-    "Unknown Polygon Type 5",
-    "Unknown Polygon Type 6",
-    "Unknown Polygon Type 7"
-};
+static char const *pvr2_poly_type_name(enum pvr2_poly_type tp) {
+    switch (tp) {
+    case PVR2_POLY_TYPE_OPAQUE:
+        return "Opaque";
+    case PVR2_POLY_TYPE_OPAQUE_MOD:
+        return "Opaque Modifier Volume";
+    case PVR2_POLY_TYPE_TRANS:
+        return "Transparent";
+    case PVR2_POLY_TYPE_TRANS_MOD:
+        return "Transparent Modifier Volume";
+    case PVR2_POLY_TYPE_PUNCH_THROUGH:
+        return "Punch-through Polygon";
+    case PVR2_POLY_TYPE_5:
+        return "Unknown Polygon Type 5";
+    case PVR2_POLY_TYPE_6:
+        return "Unknown Polygon Type 6";
+    case PVR2_POLY_TYPE_7:
+        return "Unknown Polygon Type 7";
+    default:
+        return "ERROR - INVALID POLYGON TYPE INDEX";
+    }
+}
 
 static void handle_packet(struct pvr2 *pvr2);
 static void dump_fifo(struct pvr2 *pvr2);
@@ -211,6 +223,29 @@ static void pvr2_pt_complete_int_event_handler(struct SchedEvent *event);
 #define PVR2_TA_VERT_BUF_LEN (1024 * 1024)
 
 #define PVR2_GFX_IL_INST_BUF_LEN (1024 * 256)
+
+static enum pvr2_poly_type_state get_poly_type_state(struct pvr2_ta *ta,
+                                                     enum pvr2_poly_type tp) {
+    if (tp >= PVR2_POLY_TYPE_FIRST &&
+        tp < PVR2_POLY_TYPE_COUNT) {
+        return ta->poly_type_state[tp];
+    } else {
+        error_set_poly_type_index((int)tp);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+}
+
+static void set_poly_type_state(struct pvr2_ta *ta,
+                                enum pvr2_poly_type tp,
+                                enum pvr2_poly_type_state state) {
+    if (tp >= PVR2_POLY_TYPE_FIRST &&
+        tp < PVR2_POLY_TYPE_COUNT) {
+        ta->poly_type_state[tp] = state;
+    } else {
+        error_set_poly_type_index((int)tp);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+}
 
 void pvr2_ta_init(struct pvr2 *pvr2) {
     struct pvr2_ta *ta = &pvr2->ta;
@@ -376,7 +411,7 @@ static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
     PVR2_TRACE("\ttype: %s\n", hdr->tp == PVR2_HDR_TRIANGLE_STRIP ?
                "triangle strip" : "quadrilateral");
     HDR_INT(hdr, vtx_len);
-    PVR2_TRACE("\tpolygon type: %s\n", pvr2_poly_type_names[hdr->poly_type]);
+    PVR2_TRACE("\tpolygon type: %s\n", pvr2_poly_type_name(hdr->poly_type));
     HDR_BOOL(hdr, tex_enable);
     HDR_HEX(hdr, tex_addr);
     PVR2_TRACE("\ttexture dimensions: %ux%u\n",
@@ -416,28 +451,37 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         LOG_DBG("Unimplemented two-volumes mode polygon!\n");
 
     if (ta->cur_poly_type != hdr->poly_type) {
+        if (get_poly_type_state(ta, hdr->poly_type) ==
+            PVR2_POLY_TYPE_STATE_SUBMITTED) {
+            /*
+             * TODO: I want to make this an ERROR_UNIMPLEMENTED, but enough
+             * games do it that I have to accept that somehow it works out on
+             * real hardware.
+             */
+            LOG_ERROR("PVR2: re-opening polython type %s after it was already "
+                      "submitted?\n", pvr2_poly_type_name(hdr->poly_type));
+        }
+
         if (ta->cur_poly_type == PVR2_POLY_TYPE_NONE) {
-            PVR2_TRACE("Opening polygon group \"%s\"\n", pvr2_poly_type_names[hdr->poly_type]);
+            PVR2_TRACE("Opening polygon group \"%s\"\n",
+                       pvr2_poly_type_name(hdr->poly_type));
+            set_poly_type_state(ta, hdr->poly_type,
+                                PVR2_POLY_TYPE_STATE_IN_PROGRESS);
             ta->cur_poly_type = hdr->poly_type;
             ta->open_group = true;
         } else {
             PVR2_TRACE("software did not close polygon group %d\n",
                       (int)ta->cur_poly_type);
             PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
-                       pvr2_poly_type_names[ta->cur_poly_type]);
+                       pvr2_poly_type_name(ta->cur_poly_type));
 
             next_poly_group(pvr2, ta->cur_poly_type);
-        }
-
-        if (ta->poly_type_submitted[ta->cur_poly_type]) {
-            LOG_ERROR("Already submitted group %d\n", (int)hdr->poly_type);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
         /* pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count; */
     } else {
         PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
-                   pvr2_poly_type_names[hdr->poly_type]);
+                   pvr2_poly_type_name(hdr->poly_type));
 
         next_poly_group(pvr2, ta->cur_poly_type);
     }
@@ -587,9 +631,15 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    if (get_poly_type_state(ta, ta->cur_poly_type) !=
+        PVR2_POLY_TYPE_STATE_IN_PROGRESS) {
+        error_set_feature("closing a polygon group that isn't open");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     finish_poly_group(pvr2, ta->cur_poly_type);
 
-    ta->poly_type_submitted[ta->cur_poly_type] = true;
+    set_poly_type_state(ta, ta->cur_poly_type, PVR2_POLY_TYPE_STATE_SUBMITTED);
     ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
 }
 
@@ -1628,12 +1678,14 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
 }
 
 void pvr2_ta_reinit(struct pvr2 *pvr2) {
-    memset(pvr2->ta.poly_type_submitted, 0, sizeof(pvr2->ta.poly_type_submitted));
+    int idx;
+    for (idx = 0; idx < PVR2_POLY_TYPE_COUNT; idx++)
+        set_poly_type_state(&pvr2->ta, idx, PVR2_POLY_TYPE_STATE_NOT_OPENED);
 }
 
 static void next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
     struct pvr2_ta *ta = &pvr2->ta;
-    PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_names[poly_type]);
+    PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_name(poly_type));
 
     if (poly_type < 0) {
         LOG_WARN("%s - no polygon groups are open\n", __func__);
@@ -1649,7 +1701,7 @@ static void next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
 
 static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
     struct pvr2_ta *ta = &pvr2->ta;
-    PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_names[poly_type]);
+    PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_name(poly_type));
     struct gfx_il_inst cmd;
 
     if (poly_type < 0) {
@@ -1759,11 +1811,41 @@ static void render_frame_init(struct pvr2 *pvr2) {
     ta->clip_min = -1.0f;
     ta->clip_max = 1.0f;
 
-    memset(ta->poly_type_submitted, 0, sizeof(ta->poly_type_submitted));
+    int idx;
+    for (idx = 0; idx < PVR2_POLY_TYPE_COUNT; idx++)
+        set_poly_type_state(ta, idx, PVR2_POLY_TYPE_STATE_NOT_OPENED);
     ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
 
     memset(&pvr2->stat.per_frame_counters, 0,
            sizeof(pvr2->stat.per_frame_counters));
+}
+
+void pvr2_ta_list_continue(struct pvr2 *pvr2) {
+    struct pvr2_ta *ta = &pvr2->ta;
+
+    if (ta->cur_poly_type == PVR2_POLY_TYPE_NONE) {
+        /*
+         * TODO: quite a lot of games will submit a list continuation
+         * immediately after closing a list.  Is the continuation only
+         * supposed to be used immediately after closing a list?
+         */
+        LOG_ERROR("continuing when nothing is open?\n");
+        return;
+    }
+    PVR2_TRACE("TAFIFO list continuation requested for %s\n",
+               pvr2_poly_type_name(ta->cur_poly_type));
+
+    if (get_poly_type_state(ta, ta->cur_poly_type) !=
+        PVR2_POLY_TYPE_STATE_IN_PROGRESS) {
+        error_set_feature("requesting continuation of a polygon "
+                          "type which is not open");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    set_poly_type_state(ta, ta->cur_poly_type,
+                        PVR2_POLY_TYPE_STATE_CONTINUATION);
+    ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
+    ta->open_group = false;
 }
 
 unsigned get_cur_frame_stamp(struct pvr2 *pvr2) {

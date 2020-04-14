@@ -274,13 +274,33 @@ struct gfx_il_inst_chain {
     struct gfx_il_inst_chain *next;
 };
 
+enum pvr2_poly_type_state {
+
+    // the given polygon type has not been opened
+    PVR2_POLY_TYPE_STATE_NOT_OPENED,
+
+    // the given polygon type is currently open for submission
+    PVR2_POLY_TYPE_STATE_IN_PROGRESS,
+
+    // the given polygon type was opened, but a continuation was requested.
+    // it is temporarily closed but the data from before the continuation is
+    // still valid and will be submitted.
+    PVR2_POLY_TYPE_STATE_CONTINUATION,
+
+    /*
+     * the given polygon type has been opened and closed.  It cannot be
+     * re-opened until the next soft reset.
+     */
+    PVR2_POLY_TYPE_STATE_SUBMITTED
+};
+
 struct pvr2_ta {
     enum pvr2_poly_type cur_poly_type;
 
     uint32_t ta_fifo32[PVR2_CMD_MAX_LEN];
     unsigned ta_fifo_word_count;
 
-    bool poly_type_submitted[PVR2_POLY_TYPE_COUNT];
+    enum pvr2_poly_type_state poly_type_state[PVR2_POLY_TYPE_COUNT];
 
     struct pvr2_pkt_hdr hdr;
 
@@ -371,5 +391,7 @@ struct pvr2_ta_param_dims pvr2_ta_get_param_dims(unsigned control_word);
  * conversion.
  */
 void pvr2_tafifo_input(struct pvr2 *pvr2, uint32_t dword);
+
+void pvr2_ta_list_continue(struct pvr2 *pvr2);
 
 #endif
