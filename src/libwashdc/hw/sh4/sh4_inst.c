@@ -167,7 +167,7 @@ static inline int sh4_readfloat(struct Sh4 *sh4, addr32_t addr, float *valp) {
     case SH4_UTLB_SUCCESS:
         break;
     case SH4_UTLB_MISS:
-        SH4_MEM_TRACE("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
+        SH4_MEM_TRACE("FLOAT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
                       (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
@@ -180,13 +180,6 @@ static inline int sh4_readfloat(struct Sh4 *sh4, addr32_t addr, float *valp) {
         error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
-    /* enum sh4_utlb_translate_result res; */
-    /* if ((res = sh4_utlb_translate_address(sh4, &addr, false)) != */
-    /*     SH4_UTLB_SUCCESS) { */
-    /*     error_set_address(addr); */
-    /*     error_set_mmu_excp_tp((int)res); */
-    /*     RAISE_ERROR(ERROR_UNIMPLEMENTED); */
-    /* } */
 #endif
     *valp = memory_map_read_float(sh4->mem.map, addr);
     return 0;
@@ -207,9 +200,21 @@ static inline int sh4_readdouble(struct Sh4 *sh4, addr32_t addr, double *valp) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    enum sh4_utlb_translate_result res;
-    if ((res = sh4_utlb_translate_address(sh4, &addr, false)) !=
-        SH4_UTLB_SUCCESS) {
+    enum sh4_utlb_translate_result res =
+        sh4_utlb_translate_address(sh4, &addr, false);
+    switch (res) {
+    case SH4_UTLB_SUCCESS:
+        break;
+    case SH4_UTLB_MISS:
+        SH4_MEM_TRACE("DOUBLE DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
+                      (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
+
+        return res;
+    default:
         error_set_address(addr);
         error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -419,13 +424,26 @@ static inline int sh4_writedouble(struct Sh4 *sh4, addr32_t addr, double val) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    enum sh4_utlb_translate_result res;
-    if (!sh4_addr_in_sq_area(addr) &&
-        (res = sh4_utlb_translate_address(sh4, &addr, true)) !=
-        SH4_UTLB_SUCCESS) {
-        error_set_address(addr);
-        error_set_mmu_excp_tp((int)res);
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (!sh4_addr_in_sq_area(addr)) {
+        enum sh4_utlb_translate_result res =
+            sh4_utlb_translate_address(sh4, &addr, true);
+        switch (res) {
+        case SH4_UTLB_SUCCESS:
+            break;
+        case SH4_UTLB_MISS:
+            SH4_MEM_TRACE("DATA TLB WRITE MISS EXCEPTION VPN %08X PC=%08X\n",
+                          (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+            sh4->reg[SH4_REG_TEA] = addr;
+            sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+            sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+
+            return res;
+        default:
+            error_set_address(addr);
+            error_set_mmu_excp_tp((int)res);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
     }
 #endif
     memory_map_write_double(sh4->mem.map, addr, val);
