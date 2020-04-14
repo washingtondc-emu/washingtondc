@@ -6185,9 +6185,7 @@ void sh4_inst_unary_fabs_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnn001011101, INST_CONS_1111nnn001011101);
 
-#if defined(INVARIANTS) || defined(ENABLE_MMU)
     struct Sh4 *sh4 = (struct Sh4*)cpu;
-#endif
 
 #ifdef ENABLE_MMU
     if (!sh4_fpu_enabled(sh4)) {
@@ -6198,10 +6196,13 @@ void sh4_inst_unary_fabs_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnn001011101");
-    error_set_opcode_name("FABS DRn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    sh4_fpu_clear_cause(sh4);
+
+    int dr_reg = (inst >> 9) & 0x7;
+
+    double in = sh4_read_double(sh4, dr_reg * 2);
+    double out = fabs(in);
+    sh4_write_double(sh4, dr_reg * 2, out);
 }
 
 #define INST_MASK_1111nnn0mmm00000 0xf11f
