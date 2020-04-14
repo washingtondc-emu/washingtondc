@@ -68,13 +68,7 @@ static void pvr2_yuv_schedule_int(struct pvr2 *pvr2) {
 }
 
 void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base) {
-    uint32_t tex_ctrl = get_ta_yuv_tex_ctrl(pvr2);
     struct pvr2_yuv *yuv = &pvr2->yuv;
-
-    if (tex_ctrl & (1 << 16))
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    if (tex_ctrl & (1 << 24))
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
 #ifdef INVARIANTS
     if (new_base % 8)
@@ -86,12 +80,22 @@ void pvr2_yuv_set_base(struct pvr2 *pvr2, uint32_t new_base) {
      * base address?
      */
     yuv->dst_addr = new_base;
-    yuv->fmt = PVR2_YUV_FMT_420;
     yuv->macroblock_offset = 0;
     yuv->cur_macroblock_x = 0;
     yuv->cur_macroblock_y = 0;
-    yuv->macroblock_count_x = (tex_ctrl & 0x3f) + 1;
-    yuv->macroblock_count_y = ((tex_ctrl >> 8) & 0x3f) + 1;
+}
+
+void pvr2_yuv_set_tex_ctrl(struct pvr2 *pvr2, uint32_t new_tex_ctrl) {
+    struct pvr2_yuv *yuv = &pvr2->yuv;
+
+    if ((new_tex_ctrl & (1 << 16)) || (new_tex_ctrl & (1 << 24))) {
+        error_set_value(new_tex_ctrl);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    yuv->fmt = PVR2_YUV_FMT_420;
+    yuv->macroblock_count_x = (new_tex_ctrl & 0x3f) + 1;
+    yuv->macroblock_count_y = ((new_tex_ctrl >> 8) & 0x3f) + 1;
 }
 
 void pvr2_yuv_input_data(struct pvr2 *pvr2, void const *dat, unsigned n_bytes) {

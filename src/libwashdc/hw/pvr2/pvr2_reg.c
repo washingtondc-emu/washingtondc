@@ -226,7 +226,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned addr, uint32_t val) {
         break;
     case PVR2_TA_YUV_TEX_CTRL:
         reg_backing[PVR2_TA_YUV_TEX_CTRL] = val;
-        PVR2_TRACE("Writing 0x%08x to TA_YUV_CTRL\n", (unsigned)val);
+        PVR2_TRACE("Writing 0x%08x to TA_YUV_TEX_CTRL\n", (unsigned)val);
 #ifdef ENABLE_LOG_DEBUG
         unsigned u_res = ((val & 0x3f) + 1) * 16;
         unsigned v_res = (((val >> 8) & 0x3f) + 1) * 16;
@@ -238,6 +238,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned addr, uint32_t val) {
             PVR2_TRACE("a single texture\n");
         }
         PVR2_TRACE("Format is %s\n", val & (1 << 24) ? "YUV422" : "YUV420");
+        pvr2_yuv_set_tex_ctrl(pvr2, val);
         break;
     case PVR2_TA_LIST_CONT:
         if (val)
