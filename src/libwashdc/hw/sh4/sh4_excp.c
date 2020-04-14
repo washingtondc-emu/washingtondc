@@ -224,14 +224,14 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
     sh4->dont_increment_pc = true;
     struct Sh4ExcpMeta const *meta = sh4_excp_meta_find(excp_code);
     if (meta) {
-        LOG_ERROR("SH4 CPU EXCEPTION %s AT PC=%08X\n",
-                  meta->name, (unsigned)sh4->reg[SH4_REG_PC]);
+        /* LOG_ERROR("SH4 CPU EXCEPTION %s AT PC=%08X\n", */
+        /*           meta->name, (unsigned)sh4->reg[SH4_REG_PC]); */
     } else {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     sh4_enter_exception(sh4, (Sh4ExceptionCode)excp_code);
-    LOG_ERROR("\tNEW PC IS %08X\n", (unsigned)sh4->reg[SH4_REG_PC]);
+    /* LOG_ERROR("\tNEW PC IS %08X\n", (unsigned)sh4->reg[SH4_REG_PC]); */
 }
 
 static bool sh4_refresh_intc_event_scheduled;

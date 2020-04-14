@@ -219,18 +219,6 @@ void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
     if (!(new_sr & SH4_SR_MD_MASK))
         new_sr_rb = false;
 
-    // switching from user-mode to privilege mode
-    if (!(old_sr & SH4_SR_MD_MASK) && (new_sr & SH4_SR_MD_MASK)) {
-        LOG_ERROR("Context switch user-mode=>privilege at PC=%08X\n", (unsigned)sh4->reg[SH4_REG_PC]);
-        LOG_ERROR("\tSR change from %08X to %08X\n", (unsigned)old_sr, (unsigned)new_sr);
-    }
-
-    // switching from privilege-mode to user-mode
-    if ((old_sr & SH4_SR_MD_MASK) && !(new_sr & SH4_SR_MD_MASK)) {
-        LOG_ERROR("Context switch privilege=>user-mode at PC=%08X\n", (unsigned)sh4->reg[SH4_REG_PC]);
-        LOG_ERROR("\tSR change from %08X to %08X\n", (unsigned)old_sr, (unsigned)new_sr);
-    }
-
     if (new_sr_rb != old_sr_rb)
         sh4_bank_switch(sh4);
 }

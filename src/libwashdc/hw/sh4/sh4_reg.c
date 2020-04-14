@@ -32,6 +32,7 @@
 #include "log.h"
 #include "jit/code_cache.h"
 #include "config.h"
+#include "sh4_mem.h"
 
 static struct avl_tree sh4_reg_tree;
 
@@ -706,7 +707,7 @@ static void sh4_mmucr_write_handler(Sh4 *sh4,
     if (val & SH4_MMUCR_AT_MASK) {
 #ifdef ENABLE_MMU
         if (!(old_val & SH4_MMUCR_AT_MASK))
-            LOG_ERROR("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
+            SH4_MEM_TRACE("**** ENABLING SH4 MMU ADDRESS TRANSLATION ****\n");
 
         if (config_get_jit()) {
             error_set_feature("SH4 MMU support in JIT mode");
@@ -719,7 +720,7 @@ static void sh4_mmucr_write_handler(Sh4 *sh4,
     } else {
 #ifdef ENABLE_MMU
         if (old_val & SH4_MMUCR_AT_MASK)
-            LOG_ERROR("**** DISABLING SH4 MMU ADDRESS TRANSLATION ****\n");
+            SH4_MEM_TRACE("**** DISABLING SH4 MMU ADDRESS TRANSLATION ****\n");
 #endif
     }
 }

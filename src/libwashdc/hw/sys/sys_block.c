@@ -284,7 +284,7 @@ static void sdst_reg_write_handler(struct mmio_region_sys_block *region,
         }
 
         // end of DMA
-        LOG_ERROR("END OF SORT-DMA; FINAL LINK TABLE START IS %08X\n",
+        LOG_DBG("END OF SORT-DMA; FINAL LINK TABLE START IS %08X\n",
                   (unsigned)link_table_start);
         /*
          * TODO: I'm not 100% sure if it's actually correct to write this back.

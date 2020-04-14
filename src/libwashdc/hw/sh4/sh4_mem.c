@@ -453,8 +453,8 @@ sh4_itlb_find_ent_associative(struct Sh4 *sh4, uint32_t vpn) {
         }
     }
     if (!ent)
-        LOG_ERROR("FAILED TO LOCATE ITLB ENTRY FOR VPN %08X ASID %08X\n",
-                  (unsigned)vpn, asid);
+        SH4_MEM_TRACE("FAILED TO LOCATE ITLB ENTRY FOR VPN %08X ASID %08X\n",
+                      (unsigned)vpn, asid);
     return ent;
 }
 
@@ -472,11 +472,11 @@ static void sh4_utlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t v
     uint32_t asid = val & BIT_RANGE(0, 7);
 
     if (associative)
-        LOG_WARN("UTLB ADDRESS ARRAY ASSOCIATIVE WRITE %08X TO %08X\n",
-                 (unsigned)val, (unsigned)addr);
+        SH4_MEM_TRACE("UTLB ADDRESS ARRAY ASSOCIATIVE WRITE %08X TO %08X\n",
+                      (unsigned)val, (unsigned)addr);
     else
-        LOG_WARN("UTLB ADDRESS ARRAY NON-ASSOCIATIVE WRITE %08X TO %08X\n",
-                 (unsigned)val, (unsigned)addr);
+        SH4_MEM_TRACE("UTLB ADDRESS ARRAY NON-ASSOCIATIVE WRITE %08X TO %08X\n",
+                      (unsigned)val, (unsigned)addr);
 
     if (associative) {
         /*
@@ -493,8 +493,8 @@ static void sh4_utlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t v
          * SH4 documentation.  NetBSD uses this to invalidate pages.  Windows
          * does not appear to use it at all.
          */
-        LOG_ERROR("%s CALLED - RADICALLY UNTESTED UTLB ASSOCIATIVE ADDRESS "
-                  "ARRAY WRITE\n", __func__);
+        SH4_MEM_TRACE("%s CALLED - RADICALLY UNTESTED UTLB ASSOCIATIVE ADDRESS "
+                      "ARRAY WRITE\n", __func__);
 
         struct sh4_itlb_ent *itlb_ent = sh4_itlb_find_ent_associative(sh4, vpn);
         if (itlb_ent)
@@ -506,17 +506,17 @@ static void sh4_utlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t v
         ent->valid = valid;
         ent->dirty = dirty;
 
-        LOG_WARN("UTLB INDEX %u:\n"
-                 "\tVPN %08X\n"
-                 "\tDIRTY %s\n"
-                 "\tVALID %s\n",
-                 ent - sh4->mem.utlb,
-                 (unsigned)vpn,
-                 dirty ? "TRUE" : "FALSE",
-                 valid ? "TRUE" : "FALSE");
+        SH4_MEM_TRACE("UTLB INDEX %u:\n"
+                      "\tVPN %08X\n"
+                      "\tDIRTY %s\n"
+                      "\tVALID %s\n",
+                      ent - sh4->mem.utlb,
+                      (unsigned)vpn,
+                      dirty ? "TRUE" : "FALSE",
+                      valid ? "TRUE" : "FALSE");
 
         if (itlb_ent) {
-            LOG_ERROR("UNTESTED UTLB->ITLB TRANSFER\n");
+            SH4_MEM_TRACE("UNTESTED UTLB->ITLB TRANSFER\n");
             itlb_ent->asid = ent->asid;
             itlb_ent->vpn = ent->vpn;
             itlb_ent->ppn = ent->ppn;
@@ -536,13 +536,13 @@ static void sh4_utlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t v
         ent->dirty = dirty;
         ent->valid = valid;
 
-        LOG_WARN("UTLB INDEX %u:\n"
-                 "\tVPN %08X\n"
-                 "\tDIRTY %s\n"
-                 "\tVALID %s\n",
-                 idx, (unsigned)vpn,
-                 dirty ? "TRUE" : "FALSE",
-                 valid ? "TRUE" : "FALSE");
+        SH4_MEM_TRACE("UTLB INDEX %u:\n"
+                      "\tVPN %08X\n"
+                      "\tDIRTY %s\n"
+                      "\tVALID %s\n",
+                      idx, (unsigned)vpn,
+                      dirty ? "TRUE" : "FALSE",
+                      valid ? "TRUE" : "FALSE");
     }
 }
 
@@ -556,8 +556,8 @@ static uint32_t sh4_utlb_addr_array_read(struct Sh4 *sh4, addr32_t addr) {
 
 static void
 sh4_utlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
-    LOG_WARN("UTLB DATA ARRAY 1 WRITE %08X TO %08X\n",
-             (unsigned)val, (unsigned)addr);
+    SH4_MEM_TRACE("UTLB DATA ARRAY 1 WRITE %08X TO %08X\n",
+                  (unsigned)val, (unsigned)addr);
 
     unsigned idx = (addr >> 8) & 0x3f;
     struct sh4_utlb_ent *ent = sh4->mem.utlb + idx;
@@ -593,20 +593,20 @@ sh4_utlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
         break;
     }
 
-    LOG_WARN("UTLB INDEX %u:\n"
-             "\tPPN %08X\n"
-             "\tPAGE SIZE %s\n"
-             "\tVALID %s\n"
-             "\tPROTECTION %02X\n"
-             "\tCACHEABLE %s\n"
-             "\tDIRTY %s\n"
-             "\tSHARED %s\n"
-             "\tWT %s\n",
-             idx, ppn, page_sz, valid ? "TRUE" : "FALSE",
-             protection, cacheable ? "TRUE" : "FALSE",
-             dirty ? "TRUE" : "FALSE",
-             shared ? "TRUE" : "FALSE",
-             wt ? "TRUE" : "FALSE");
+    SH4_MEM_TRACE("UTLB INDEX %u:\n"
+                  "\tPPN %08X\n"
+                  "\tPAGE SIZE %s\n"
+                  "\tVALID %s\n"
+                  "\tPROTECTION %02X\n"
+                  "\tCACHEABLE %s\n"
+                  "\tDIRTY %s\n"
+                  "\tSHARED %s\n"
+                  "\tWT %s\n",
+                  idx, ppn, page_sz, valid ? "TRUE" : "FALSE",
+                  protection, cacheable ? "TRUE" : "FALSE",
+                  dirty ? "TRUE" : "FALSE",
+                  shared ? "TRUE" : "FALSE",
+                  wt ? "TRUE" : "FALSE");
 
     ent->ppn = ppn;
     ent->sz = sz;
@@ -636,21 +636,21 @@ sh4_itlb_addr_array_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     unsigned idx = (addr >> 8) & 3;
     struct sh4_itlb_ent *ent = sh4->mem.itlb + idx;
 
-    LOG_ERROR("ITLB ADDRESS ARRAY WRITE %08X TO %08X\n",
-              (unsigned)val, (unsigned)addr);
+    SH4_MEM_TRACE("ITLB ADDRESS ARRAY WRITE %08X TO %08X\n",
+                  (unsigned)val, (unsigned)addr);
 
     ent->vpn = val & BIT_RANGE(10, 31);
     ent->valid = (val >> 8) & 1;
     ent->asid = val & BIT_RANGE(0, 7);
 
-    LOG_ERROR("ITLB INDEX %u:\n"
-              "\tVPN %08X\n"
-              "\tVALID %s\n"
-              "\tASID %u\n",
-              idx,
-              (unsigned)ent->vpn,
-              ent->valid ? "TRUE" : "FALSE",
-              (unsigned)ent->asid);
+    SH4_MEM_TRACE("ITLB INDEX %u:\n"
+                  "\tVPN %08X\n"
+                  "\tVALID %s\n"
+                  "\tASID %u\n",
+                  idx,
+                  (unsigned)ent->vpn,
+                  ent->valid ? "TRUE" : "FALSE",
+                  (unsigned)ent->asid);
 }
 
 static uint32_t sh4_itlb_addr_array_read(struct Sh4 *sh4, addr32_t addr) {
@@ -662,7 +662,8 @@ sh4_itlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     unsigned idx = (addr >> 8) & 3;
     struct sh4_itlb_ent *ent = sh4->mem.itlb + idx;
 
-    LOG_ERROR("ITLB DATA 1 ARRAY WRITE %08X TO %08X\n", (unsigned)val, (unsigned)addr);
+    SH4_MEM_TRACE("ITLB DATA 1 ARRAY WRITE %08X TO %08X\n",
+                  (unsigned)val, (unsigned)addr);
 
     ent->ppn = val & BIT_RANGE(10, 28);
     ent->valid = (val >> 8) & 1;
@@ -687,20 +688,20 @@ sh4_itlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
         break;
     }
 
-    LOG_ERROR("ITLB INDEX %u:\n"
-              "\tPPN %08X\n"
-              "\tVALID %s\n"
-              "\tPROTECTION %X\n"
-              "\tSIZE %s\n"
-              "\tCACHEABLE %s\n"
-              "\tSHARED %s\n",
-              idx,
-              (unsigned)ent->ppn,
-              ent->valid ? "TRUE" : "FALSE",
-              ent->protection,
-              page_sz,
-              ent->cacheable ? "TRUE" : "FALSE",
-              ent->shared ? "TRUE" : "FALSE");
+    SH4_MEM_TRACE("ITLB INDEX %u:\n"
+                  "\tPPN %08X\n"
+                  "\tVALID %s\n"
+                  "\tPROTECTION %X\n"
+                  "\tSIZE %s\n"
+                  "\tCACHEABLE %s\n"
+                  "\tSHARED %s\n",
+                  idx,
+                  (unsigned)ent->ppn,
+                  ent->valid ? "TRUE" : "FALSE",
+                  ent->protection,
+                  page_sz,
+                  ent->cacheable ? "TRUE" : "FALSE",
+                  ent->shared ? "TRUE" : "FALSE");
 }
 
 static uint32_t sh4_itlb_data_array_1_read(struct Sh4 *sh4, addr32_t addr) {
@@ -712,7 +713,7 @@ sh4_itlb_data_array_2_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     unsigned idx = (addr >> 8) & 3;
     struct sh4_itlb_ent *ent = sh4->mem.itlb + idx;
 
-    LOG_ERROR("ITLB DATA 2 ARRAY WRITE %08X\n", (unsigned)addr);
+    SH4_MEM_TRACE("ITLB DATA 2 ARRAY WRITE %08X\n", (unsigned)addr);
     ent->tc = (val >> 3) & 1;
     ent->sa = val & 3;
 }
@@ -825,7 +826,7 @@ sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
         if (!itlb_ent) {
             // ITLB miss ("page fault") exception
 
-            LOG_ERROR("SEARCHING UTLB TO REPLACE ITLB\n");
+            SH4_MEM_TRACE("SEARCHING UTLB TO REPLACE ITLB\n");
 
             if (already_searched_utlb)
                 RAISE_ERROR(ERROR_INTEGRITY);
@@ -850,12 +851,13 @@ sh4_itlb_translate_address(struct Sh4 *sh4, uint32_t *addr_p) {
 
             struct sh4_utlb_ent *utlb_ent = sh4_utlb_find_ent_associative(sh4, addr);
             if (!utlb_ent) {
-                LOG_ERROR("ITLB PAGE FAULT SEARCHING FOR %08X\n", (unsigned)addr);
+                SH4_MEM_TRACE("ITLB PAGE FAULT SEARCHING FOR %08X\n", (unsigned)addr);
                 return SH4_ITLB_MISS; // ITLB miss exception gets raised
             }
 
-            LOG_ERROR("Copying over UTLB entry %u into ITLB entry %u\n",
-                   (unsigned)(utlb_ent - sh4->mem.utlb), (unsigned)(itlb_ent - sh4->mem.itlb));
+            SH4_MEM_TRACE("Copying over UTLB entry %u into ITLB entry %u\n",
+                          (unsigned)(utlb_ent - sh4->mem.utlb),
+                          (unsigned)(itlb_ent - sh4->mem.itlb));
 
             itlb_ent->asid = utlb_ent->asid;
             itlb_ent->vpn = utlb_ent->vpn;
@@ -965,23 +967,23 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
         break;
     }
 
-    LOG_WARN("LDTLB INTO UTLB INDEX %u:\n"
-             "\tVPN %08X\n"
-             "\tPPN %08X\n"
-             "\tASID %08X\n"
-             "\tPAGE SIZE %s\n"
-             "\tVALID %s\n"
-             "\tPROTECTION %02X\n"
-             "\tCACHEABLE %s\n"
-             "\tDIRTY %s\n"
-             "\tSHARED %s\n"
-             "\tWT %s\n"
-             "\tSA %08X\n"
-             "\tTC %s\n",
-             idx, ent->vpn, ent->ppn, ent->asid, page_sz, ent->valid ? "TRUE" : "FALSE",
-             ent->protection, ent->cacheable ? "TRUE" : "FALSE",
-             ent->dirty ? "TRUE" : "FALSE",
-             ent->shared ? "TRUE" : "FALSE",
-             ent->wt ? "TRUE" : "FALSE",
-             ent->sa, ent->tc ? "TRUE" : "FALSE");
+    SH4_MEM_TRACE("LDTLB INTO UTLB INDEX %u:\n"
+                  "\tVPN %08X\n"
+                  "\tPPN %08X\n"
+                  "\tASID %08X\n"
+                  "\tPAGE SIZE %s\n"
+                  "\tVALID %s\n"
+                  "\tPROTECTION %02X\n"
+                  "\tCACHEABLE %s\n"
+                  "\tDIRTY %s\n"
+                  "\tSHARED %s\n"
+                  "\tWT %s\n"
+                  "\tSA %08X\n"
+                  "\tTC %s\n",
+                  idx, ent->vpn, ent->ppn, ent->asid, page_sz, ent->valid ? "TRUE" : "FALSE",
+                  ent->protection, ent->cacheable ? "TRUE" : "FALSE",
+                  ent->dirty ? "TRUE" : "FALSE",
+                  ent->shared ? "TRUE" : "FALSE",
+                  ent->wt ? "TRUE" : "FALSE",
+                  ent->sa, ent->tc ? "TRUE" : "FALSE");
 }

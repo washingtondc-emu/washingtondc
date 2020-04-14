@@ -32,6 +32,7 @@
 #include "washdc/error.h"
 #include "log.h"
 #include "washdc/MemoryMap.h"
+#include "sh4_mem.h"
 
 #include "sh4_ocache.h"
 
@@ -270,8 +271,8 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
         switch ((res = sh4_utlb_translate_address(sh4, &vpn, true))) {
         case SH4_UTLB_MISS:
             // need to set exception registers here based on the vpn we just decoded
-            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION (store queue) DECODING "
-                      "%08X\n", (unsigned)addr);
+            SH4_MEM_TRACE("DATA TLB WRITE MISS EXCEPTION (store queue) DECODING "
+                          "%08X\n", (unsigned)addr);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -293,11 +294,6 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
         }
 
         addr_actual = (vpn & BIT_RANGE(10, 28)) | (addr & BIT_RANGE(5, 9));
-
-        printf("SQ PREF at PC=%08X\n", (unsigned)sh4->reg[SH4_REG_PC]);
-        LOG_ERROR("SQ MMU PREF translated %08X to %08X at PC=%08X\n",
-                  (unsigned)addr, (unsigned)addr_actual,
-                  (unsigned)sh4->reg[SH4_REG_PC]);
     } else {
 #endif
         reg32_t qacr = sh4->reg[SH4_REG_QACR0 + sq_sel];

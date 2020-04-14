@@ -69,8 +69,8 @@ static inline int sh4_read8(struct Sh4 *sh4, addr32_t addr, uint8_t *valp) {
     case SH4_UTLB_SUCCESS:
         break;
     case SH4_UTLB_MISS:
-        LOG_ERROR("8-BIT DATA TLB READ MISS EXCEPTION VPN %08X\n",
-                  (unsigned)addr);
+        SH4_MEM_TRACE("8-BIT DATA TLB READ MISS EXCEPTION VPN %08X\n",
+                      (unsigned)addr);
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -102,7 +102,7 @@ static inline int sh4_read16(struct Sh4 *sh4, addr32_t addr, uint16_t *valp) {
     case SH4_UTLB_SUCCESS:
         break;
     case SH4_UTLB_MISS:
-        LOG_ERROR("DATA TLB READ MISS EXCEPTION\n");
+        SH4_MEM_TRACE("DATA TLB READ MISS EXCEPTION\n");
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -134,8 +134,8 @@ static inline int sh4_read32(struct Sh4 *sh4, addr32_t addr, uint32_t *valp) {
     case SH4_UTLB_SUCCESS:
         break;
     case SH4_UTLB_MISS:
-        LOG_ERROR("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
-                  (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+        SH4_MEM_TRACE("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
+                      (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -167,8 +167,8 @@ static inline int sh4_readfloat(struct Sh4 *sh4, addr32_t addr, float *valp) {
     case SH4_UTLB_SUCCESS:
         break;
     case SH4_UTLB_MISS:
-        LOG_ERROR("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
-                  (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+        SH4_MEM_TRACE("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
+                      (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
         sh4->reg[SH4_REG_TEA] = addr;
         sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
         sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -234,7 +234,7 @@ static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
         case SH4_UTLB_SUCCESS:
             break;
         case SH4_UTLB_MISS:
-            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION %s\n", __func__);
+            SH4_MEM_TRACE("DATA TLB WRITE MISS EXCEPTION %s\n", __func__);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -242,9 +242,9 @@ static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 
             return res;
         case SH4_UTLB_PROT_VIOL:
-            LOG_ERROR("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
-                      "PC=%08X\n", (unsigned)addr,
-                      (unsigned)sh4->reg[SH4_REG_PC]);
+            SH4_MEM_TRACE("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
+                          "PC=%08X\n", (unsigned)addr,
+                          (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -252,9 +252,9 @@ static inline int sh4_write8(struct Sh4 *sh4, addr32_t addr, uint8_t val) {
 
             return res;
         case SH4_UTLB_INITIAL_WRITE:
-            LOG_ERROR("DATA TLB PROTECTION INITIAL WRITE EXCEPTION VPN %08X "
-                      "PC=%08X\n", (unsigned)addr,
-                      (unsigned)sh4->reg[SH4_REG_PC]);
+            SH4_MEM_TRACE("DATA TLB PROTECTION INITIAL WRITE EXCEPTION VPN %08X "
+                          "PC=%08X\n", (unsigned)addr,
+                          (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -289,7 +289,7 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
         case SH4_UTLB_SUCCESS:
             break;
         case SH4_UTLB_MISS:
-            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION\n");
+            SH4_MEM_TRACE("DATA TLB WRITE MISS EXCEPTION\n");
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -297,9 +297,9 @@ static inline int sh4_write16(struct Sh4 *sh4, addr32_t addr, uint16_t val) {
 
             return res;
         case SH4_UTLB_PROT_VIOL:
-            LOG_ERROR("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
-                      "PC=%08X\n", (unsigned)addr,
-                      (unsigned)sh4->reg[SH4_REG_PC]);
+            SH4_MEM_TRACE("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
+                          "PC=%08X\n", (unsigned)addr,
+                          (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -334,8 +334,8 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
         case SH4_UTLB_SUCCESS:
             break;
         case SH4_UTLB_MISS:
-            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION VPN %08X PC=%08X\n",
-                      (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+            SH4_MEM_TRACE("DATA TLB WRITE MISS EXCEPTION VPN %08X PC=%08X\n",
+                          (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -343,9 +343,9 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 
             return res;
         case SH4_UTLB_PROT_VIOL:
-            LOG_ERROR("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
-                      "PC=%08X\n", (unsigned)addr,
-                      (unsigned)sh4->reg[SH4_REG_PC]);
+            SH4_MEM_TRACE("DATA TLB PROTECTION VIOLATION EXCEPTION VPN %08X "
+                          "PC=%08X\n", (unsigned)addr,
+                          (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -353,9 +353,9 @@ static inline int sh4_write32(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
 
             return res;
         case SH4_UTLB_INITIAL_WRITE:
-            LOG_ERROR("DATA TLB PROTECTION INITIAL WRITE EXCEPTION VPN %08X "
-                      "PC=%08X\n", (unsigned)addr,
-                      (unsigned)sh4->reg[SH4_REG_PC]);
+            SH4_MEM_TRACE("DATA TLB PROTECTION INITIAL WRITE EXCEPTION VPN %08X "
+                          "PC=%08X\n", (unsigned)addr,
+                          (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
@@ -390,8 +390,8 @@ static inline int sh4_writefloat(struct Sh4 *sh4, addr32_t addr, float val) {
         case SH4_UTLB_SUCCESS:
             break;
         case SH4_UTLB_MISS:
-            LOG_ERROR("DATA TLB WRITE MISS EXCEPTION VPN %08X PC=%08X\n",
-                      (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+            SH4_MEM_TRACE("DATA TLB WRITE MISS EXCEPTION VPN %08X PC=%08X\n",
+                          (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
             sh4->reg[SH4_REG_TEA] = addr;
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));

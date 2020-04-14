@@ -227,4 +227,21 @@ void sh4_mmu_invalidate_tlb(struct Sh4 *sh4);
 
 void sh4_mmu_do_ldtlb(struct Sh4 *sh4);
 
+// excessive, but handy for debugging MMU stuff
+// #define SUPER_VERBOSE_MEM_TRACE
+
+#ifdef SUPER_VERBOSE_MEM_TRACE
+
+#define SH4_MEM_TRACE(msg, ...)                                         \
+    do {                                                                \
+        LOG_DBG("SH4-MEM : ");                                          \
+        LOG_DBG(msg, ##__VA_ARGS__);                                    \
+    } while (0)
+
+#else
+
+#define SH4_MEM_TRACE(msg, ...) do { } while (0)
+
+#endif
+
 #endif
