@@ -152,7 +152,7 @@ static inline int sh4_read32(struct Sh4 *sh4, addr32_t addr, uint32_t *valp) {
     return 0;
 }
 
-static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
+static inline int sh4_readfloat(struct Sh4 *sh4, addr32_t addr, float *valp) {
 #ifdef ENABLE_MMU
     if ((addr & 3) ||
         (!(sh4->reg[SH4_REG_SR] & SH4_SR_MD_MASK) && addr >= 0x80000000)) {
@@ -161,15 +161,35 @@ static inline float sh4_readfloat(struct Sh4 *sh4, addr32_t addr) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    enum sh4_utlb_translate_result res;
-    if ((res = sh4_utlb_translate_address(sh4, &addr, false)) !=
-        SH4_UTLB_SUCCESS) {
+    enum sh4_utlb_translate_result res =
+        sh4_utlb_translate_address(sh4, &addr, false);
+    switch (res) {
+    case SH4_UTLB_SUCCESS:
+        break;
+    case SH4_UTLB_MISS:
+        LOG_ERROR("32-BIT DATA TLB READ MISS EXCEPTION VPN %08X PC=%08X\n",
+                  (unsigned)addr, (unsigned)sh4->reg[SH4_REG_PC]);
+        sh4->reg[SH4_REG_TEA] = addr;
+        sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
+        sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
+        sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
+
+        return res;
+    default:
         error_set_address(addr);
         error_set_mmu_excp_tp((int)res);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+    /* enum sh4_utlb_translate_result res; */
+    /* if ((res = sh4_utlb_translate_address(sh4, &addr, false)) != */
+    /*     SH4_UTLB_SUCCESS) { */
+    /*     error_set_address(addr); */
+    /*     error_set_mmu_excp_tp((int)res); */
+    /*     RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+    /* } */
 #endif
-    return memory_map_read_float(sh4->mem.map, addr);
+    *valp = memory_map_read_float(sh4->mem.map, addr);
+    return 0;
 }
 
 static inline int sh4_readdouble(struct Sh4 *sh4, addr32_t addr, double *valp) {
@@ -5254,7 +5274,10 @@ void sh4_inst_binary_fmovs_indgen_fr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     float *dst_ptr = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
-    *dst_ptr = sh4_readfloat(sh4, addr);
+    float tmp;
+    if (sh4_readfloat(sh4, addr, &tmp) != 0)
+        return;
+    *dst_ptr = tmp;
 }
 
 #define INST_MASK_1111nnnnmmmm0110 0xf00f
@@ -5280,7 +5303,10 @@ void sh4_inst_binary_fmovs_binind_r0_gen_fr(void *cpu, cpu_inst_param inst) {
     reg32_t addr = *sh4_gen_reg(sh4, 0) + * sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     float *dst_ptr = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
-    *dst_ptr = sh4_readfloat(sh4, addr);
+    float tmp;
+    if (sh4_readfloat(sh4, addr, &tmp) != 0)
+        return;
+    *dst_ptr = tmp;
 }
 
 #define INST_MASK_1111nnnnmmmm1001 0xf00f
@@ -5306,8 +5332,10 @@ void sh4_inst_binary_fmovs_indgeninc_fr(void *cpu, cpu_inst_param inst) {
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
     float *dst_ptr = sh4_fpu_fr(sh4, (inst >> 8) & 0xf);
 
-    *dst_ptr = sh4_readfloat(sh4, *addr_p);
-
+    float tmp;
+    if (sh4_readfloat(sh4, *addr_p, &tmp) != 0)
+        return;
+    *dst_ptr = tmp;
     *addr_p += 4;
 }
 
