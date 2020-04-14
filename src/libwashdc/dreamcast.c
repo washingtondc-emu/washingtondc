@@ -1404,6 +1404,9 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
     memory_map_add(map, 0x10000000, 0x107fffff,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                    &pvr2_ta_fifo_intf, &dc_pvr2);
+    memory_map_add(map, 0x10800000, 0x10ffffff,
+                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
     memory_map_add(map, 0x11000000, 0x117fffff,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                    &pvr2_ta_fifo_intf, &dc_pvr2);

@@ -56,4 +56,6 @@ struct pvr2_yuv {
     struct SchedEvent pvr2_yuv_complete_int_event;
 };
 
+extern struct memory_interface pvr2_ta_yuv_fifo_intf;
+
 #endif

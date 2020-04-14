@@ -232,3 +232,79 @@ static void pvr2_yuv_input_byte(struct pvr2 *pvr2, unsigned dat) {
         pvr2_yuv_macroblock(pvr2);
     }
 }
+
+static uint32_t pvr2_ta_fifo_yuv_read_32(addr32_t addr, void *ctxt) {
+    error_set_length(4);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static uint16_t pvr2_ta_fifo_yuv_read_16(addr32_t addr, void *ctxt) {
+    error_set_length(2);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static uint8_t pvr2_ta_fifo_yuv_read_8(addr32_t addr, void *ctxt) {
+    error_set_length(1);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static float pvr2_ta_fifo_yuv_read_float(addr32_t addr, void *ctxt) {
+    error_set_length(4);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static double pvr2_ta_fifo_yuv_read_double(addr32_t addr, void *ctxt) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static void pvr2_ta_fifo_yuv_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
+    pvr2_yuv_input_byte(pvr2, val & 0xff);
+    pvr2_yuv_input_byte(pvr2, (val >> 8) & 0xff);
+    pvr2_yuv_input_byte(pvr2, (val >> 16) & 0xff);
+    pvr2_yuv_input_byte(pvr2, (val >> 24) & 0xff);
+}
+
+static void pvr2_ta_fifo_yuv_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
+    pvr2_yuv_input_byte(pvr2, val & 0xff);
+    pvr2_yuv_input_byte(pvr2, (val >> 8) & 0xff);
+}
+
+static void pvr2_ta_fifo_yuv_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
+    pvr2_yuv_input_byte(pvr2, val);
+}
+
+static void pvr2_ta_fifo_yuv_write_float(addr32_t addr, float val, void *ctxt) {
+    uint32_t val32;
+    memcpy(&val32, &val, sizeof(val32));
+    pvr2_ta_fifo_yuv_write_32(addr, val32, ctxt);
+}
+
+static void
+pvr2_ta_fifo_yuv_write_double(addr32_t addr, double val, void *ctxt) {
+    error_set_length(8);
+    error_set_address(addr);
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+struct memory_interface pvr2_ta_yuv_fifo_intf = {
+    .readdouble = pvr2_ta_fifo_yuv_read_double,
+    .readfloat = pvr2_ta_fifo_yuv_read_float,
+    .read32 = pvr2_ta_fifo_yuv_read_32,
+    .read16 = pvr2_ta_fifo_yuv_read_16,
+    .read8 = pvr2_ta_fifo_yuv_read_8,
+
+    .writedouble = pvr2_ta_fifo_yuv_write_double,
+    .writefloat = pvr2_ta_fifo_yuv_write_float,
+    .write32 = pvr2_ta_fifo_yuv_write_32,
+    .write16 = pvr2_ta_fifo_yuv_write_16,
+    .write8 = pvr2_ta_fifo_yuv_write_8
+};
