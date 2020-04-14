@@ -5296,8 +5296,8 @@ void sh4_inst_binary_fmovs_indgeninc_fr(void *cpu, cpu_inst_param inst) {
 
 #ifdef ENABLE_MMU
     if (!sh4_fpu_enabled(sh4)) {
-        error_set_feature("FPU-disabled exceptions");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        sh4_set_exception(sh4, SH4_EXCP_GEN_FPU_DISABLE);
+        return;
     }
 #endif
 
