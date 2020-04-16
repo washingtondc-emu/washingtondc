@@ -214,16 +214,13 @@ sh4_do_exec_inst(Sh4 *sh4) {
     if (sh4->dont_increment_pc) {
         // an exception was just raised
         sh4->dont_increment_pc = false;
-        sh4->delayed_branch = false;
-        return n_cycles;
+        goto the_end;
     }
 
     if (sh4->delayed_branch) {
-        sh4->delayed_branch = false;
-
         if (sh4_read_inst(sh4, &inst, sh4->reg[SH4_REG_PC] + 2) != 0) {
             sh4->dont_increment_pc = false;
-            return n_cycles;
+            goto the_end;
         }
         op = sh4_decode_inst(inst);
         n_cycles += sh4_count_inst_cycles(op, &sh4->last_inst_type);
@@ -232,13 +229,13 @@ sh4_do_exec_inst(Sh4 *sh4) {
             // raise exception for illegal slot instruction
             LOG_ERROR("**** RAISING SLOT-ILLEGAL INSTRUCTION EXCEPTION ****\n");
             sh4_set_exception(sh4, SH4_EXCP_SLOT_ILLEGAL_INST);
-            return n_cycles;
+            goto the_end;
         }
         op->func(sh4, inst);
 
         if (sh4->dont_increment_pc) {
             sh4->dont_increment_pc = false;
-            return n_cycles;
+            goto the_end;
         }
         sh4->reg[SH4_REG_PC] = sh4->delayed_branch_addr;
 
@@ -254,10 +251,13 @@ sh4_do_exec_inst(Sh4 *sh4) {
          * instructions which precede them as atomic units so I don't
          * have to do this.
          */
+        sh4->delayed_branch = false;
         sh4_check_interrupts_no_delay_branch_check(sh4);
     } else {
         sh4->reg[SH4_REG_PC] += 2;
     }
+ the_end:
+    sh4->delayed_branch = false;
     return n_cycles;
 }
 
