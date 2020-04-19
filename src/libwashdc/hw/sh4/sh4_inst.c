@@ -535,6 +535,11 @@ static void do_check_fpscr(reg32_t fpscr, reg32_t mask, reg32_t expect,
 
 #endif
 
+static inline void sh4_branch_delayed(Sh4 *sh4, uint32_t pc) {
+    sh4->delayed_branch = true;
+    sh4->delayed_branch_addr = pc;
+}
+
 static struct InstOpcode opcode_list[] = {
     // RTS
     { &sh4_inst_rts, sh4_jit_rts, true, SH4_GROUP_CO, 2, 0xffff, 0x000b },
@@ -1513,8 +1518,7 @@ void sh4_inst_rts(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-    sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PR];
+    sh4_branch_delayed(sh4, sh4->reg[SH4_REG_PR]);
 }
 
 #define INST_MASK_0000000000101000 0xffff
@@ -1613,8 +1617,6 @@ void sh4_inst_rte(void *cpu, cpu_inst_param inst) {
     }
 #endif
 
-    sh4->delayed_branch = true;
-
     /*
      * TODO: this, along with all other delayed branch instructions, may have
      * an inaccuracy involving the way the the PC is set to its new value after
@@ -1645,7 +1647,7 @@ void sh4_inst_rte(void *cpu, cpu_inst_param inst) {
      * booting since any one of 600+ dreamcast games could have something weird
      * that needs this to work right.
      */
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_SPC];
+    sh4_branch_delayed(sh4, sh4->reg[SH4_REG_SPC]);
 
     reg32_t old_sr_val = sh4->reg[SH4_REG_SR];
     sh4->reg[SH4_REG_SR] = sh4->reg[SH4_REG_SSR];
@@ -2162,8 +2164,8 @@ void sh4_inst_unary_braf_gen(void *cpu, cpu_inst_param inst) {
 
     int reg_no = (inst >> 8) & 0xf;
 
-    sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, reg_no) + 4;
+    sh4_branch_delayed(sh4,
+                       sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, reg_no) + 4);
 }
 
 #define INST_MASK_0000nnnn00000011 0xf0ff
@@ -2179,9 +2181,9 @@ void sh4_inst_unary_bsrf_gen(void *cpu, cpu_inst_param inst) {
 
     int reg_no = (inst >> 8) & 0xf;
 
-    sh4->delayed_branch = true;
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, reg_no) + 4;
+    sh4_branch_delayed(sh4,
+                       sh4->reg[SH4_REG_PC] + *sh4_gen_reg(sh4, reg_no) + 4);
 }
 
 #define INST_MASK_10001000iiiiiiii 0xff00
@@ -2381,8 +2383,9 @@ void sh4_inst_unary_bfs_disp(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     if (!(sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK)) {
-        sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm8(inst)) << 1) + 4;
-        sh4->delayed_branch = true;
+        sh4_branch_delayed(sh4,
+                           sh4->reg[SH4_REG_PC] +
+                           (((int32_t)inst_simm8(inst)) << 1) + 4);
     }
 }
 
@@ -2417,8 +2420,9 @@ void sh4_inst_unary_bts_disp(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     if (sh4->reg[SH4_REG_SR] & SH4_SR_FLAG_T_MASK) {
-        sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm8(inst)) << 1) + 4;
-        sh4->delayed_branch = true;
+        sh4_branch_delayed(sh4,
+                           sh4->reg[SH4_REG_PC] +
+                           (((int32_t)inst_simm8(inst)) << 1) + 4);
     }
 }
 
@@ -2433,8 +2437,9 @@ void sh4_inst_unary_bra_disp(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-    sh4->delayed_branch = true;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm12(inst)) << 1) + 4;
+    sh4_branch_delayed(sh4,
+                       sh4->reg[SH4_REG_PC] +
+                       (((int32_t)inst_simm12(inst)) << 1) + 4);
 }
 
 #define INST_MASK_1011dddddddddddd 0xf000
@@ -2449,8 +2454,9 @@ void sh4_inst_unary_bsr_disp(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
-    sh4->delayed_branch_addr = sh4->reg[SH4_REG_PC] + (((int32_t)inst_simm12(inst)) << 1) + 4;
-    sh4->delayed_branch = true;
+    sh4_branch_delayed(sh4,
+                       sh4->reg[SH4_REG_PC] +
+                       (((int32_t)inst_simm12(inst)) << 1) + 4);
 }
 
 #define INST_MASK_11000011iiiiiiii 0xff00
@@ -2578,8 +2584,7 @@ void sh4_inst_unary_jmp_indgen(void *cpu, cpu_inst_param inst) {
 
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
-    sh4->delayed_branch_addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    sh4->delayed_branch = true;
+    sh4_branch_delayed(sh4, *sh4_gen_reg(sh4, (inst >> 8) & 0xf));
 }
 
 #define INST_MASK_0100nnnn00001011 0xf0ff
@@ -2594,8 +2599,7 @@ void sh4_inst_unary_jsr_indgen(void *cpu, cpu_inst_param inst) {
     struct Sh4 *sh4 = (struct Sh4*)cpu;
 
     sh4->reg[SH4_REG_PR] = sh4->reg[SH4_REG_PC] + 4;
-    sh4->delayed_branch_addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    sh4->delayed_branch = true;
+    sh4_branch_delayed(sh4, *sh4_gen_reg(sh4, (inst >> 8) & 0xf));
 }
 
 #define INST_MASK_0100mmmm00001110 0xf0ff
