@@ -43,6 +43,9 @@ static DEF_ERROR_INT_ATTR(raster_x_actual)
 static DEF_ERROR_INT_ATTR(raster_y_actual)
 static DEF_ERROR_INT_ATTR(hblank_int_comp_val)
 static DEF_ERROR_INT_ATTR(hblank_int_mode)
+static DEF_ERROR_INT_ATTR(vcount)
+static DEF_ERROR_INT_ATTR(hcount)
+static DEF_ERROR_INT_ATTR(vblank_in_int_line)
 
 /*
  * algorithm:
@@ -345,8 +348,19 @@ static void sched_next_vblank_in_event(struct pvr2 *pvr2) {
 
 #ifdef INVARIANTS
     if (spg->vblank_in_event.when - clock_cycle_stamp(pvr2->clk) >=
-        SCHED_FREQUENCY)
+        SCHED_FREQUENCY) {
+        /*
+         * In this sanity check, SCHED_FREQUENCY is not a magic number, it's
+         * just the value we use to represent "too long".  If there's more than
+         * a second until  the next vblank then something is obviously wrong.
+         */
+        error_set_hcount(hcount);
+        error_set_vcount(vcount);
+        error_set_raster_x_actual(spg->raster_x);
+        error_set_raster_y_actual(spg->raster_y);
+        error_set_vblank_in_int_line(line);
         RAISE_ERROR(ERROR_INTEGRITY);
+    }
 #endif
 
     sched_event(pvr2->clk, &spg->vblank_in_event);
@@ -540,7 +554,36 @@ void pvr2_spg_set_load(struct pvr2 *pvr2, uint32_t val) {
     spg_sync(pvr2);
     spg_unsched_all(pvr2);
 
+    LOG_DBG("writing %08X to SPG_LOAD\n", (unsigned)val);
     pvr2->spg.reg[SPG_LOAD] = val;
+
+    unsigned hcount = get_hcount(pvr2);
+    unsigned vcount = get_vcount(pvr2);
+    if (pvr2->spg.raster_y >= vcount ||
+        pvr2->spg.raster_x >= hcount) {
+        LOG_WARN("*** WARNING *** PVR2 SPG Raster position is out of "
+                 "bounds!\n");
+        LOG_WARN("*** WARNING *** PVR2 SPG Raster position is (%u, %u)\n",
+                 pvr2->spg.raster_x, pvr2->spg.raster_y);
+        LOG_WARN("*** WARNING *** PVR2 SPG screen dimensions are %ux%u\n",
+                 hcount, vcount);
+
+        /*
+         * XXX HACK
+         *
+         * I really don't know what the correct behavior is here.  The new
+         * SPG_LOAD value has caused the existing raster position which was
+         * previously within boundaries to be outside of the display.  Reset it
+         * to maximum I guess?
+         */
+        if (pvr2->spg.raster_y >= vcount)
+            pvr2->spg.raster_y = vcount - 1;
+        if (pvr2->spg.raster_x >= hcount)
+            pvr2->spg.raster_x = hcount - 1;
+
+        LOG_WARN("*** WARNING *** PVR2 SPG raster position reset to (%u, %u)\n",
+                 pvr2->spg.raster_x, pvr2->spg.raster_y);
+    }
 
     spg_sync(pvr2);
 
