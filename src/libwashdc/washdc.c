@@ -261,15 +261,15 @@ void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat) {
     dc_get_pvr2_stats(&src);
 
     stat->poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE] =
-        src.per_frame_counters.poly_count[DISPLAY_LIST_OPAQUE];
+        src.per_frame_counters.poly_count[PVR2_POLY_TYPE_OPAQUE];
     stat->poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD] =
-        src.per_frame_counters.poly_count[DISPLAY_LIST_OPAQUE_MOD];
+        src.per_frame_counters.poly_count[PVR2_POLY_TYPE_OPAQUE_MOD];
     stat->poly_count[WASHDC_PVR2_POLY_GROUP_TRANS] =
-        src.per_frame_counters.poly_count[DISPLAY_LIST_TRANS];
+        src.per_frame_counters.poly_count[PVR2_POLY_TYPE_TRANS];
     stat->poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD] =
-        src.per_frame_counters.poly_count[DISPLAY_LIST_TRANS_MOD];
+        src.per_frame_counters.poly_count[PVR2_POLY_TYPE_TRANS_MOD];
     stat->poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH] =
-        src.per_frame_counters.poly_count[DISPLAY_LIST_PUNCH_THROUGH];
+        src.per_frame_counters.poly_count[PVR2_POLY_TYPE_PUNCH_THROUGH];
 
     stat->tex_xmit_count = src.persistent_counters.tex_xmit_count;
     stat->tex_invalidate_count = src.persistent_counters.tex_invalidate_count;

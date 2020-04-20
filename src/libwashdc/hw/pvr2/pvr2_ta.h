@@ -127,7 +127,7 @@ void pvr2_ta_cleanup(struct pvr2 *pvr2);
 unsigned get_cur_frame_stamp(struct pvr2 *pvr2);
 
 /*
- * There are five display lists:
+ * There are five polygon types:
  *
  * Opaque
  * Punch-through polygon
@@ -137,23 +137,23 @@ unsigned get_cur_frame_stamp(struct pvr2 *pvr2);
  *
  * They are rendered by the opengl backend in that order.
  */
-enum display_list_type {
-    DISPLAY_LIST_FIRST,
-    DISPLAY_LIST_OPAQUE = DISPLAY_LIST_FIRST,
-    DISPLAY_LIST_OPAQUE_MOD,
-    DISPLAY_LIST_TRANS,
-    DISPLAY_LIST_TRANS_MOD,
-    DISPLAY_LIST_PUNCH_THROUGH,
-    DISPLAY_LIST_LAST = DISPLAY_LIST_PUNCH_THROUGH,
+enum pvr2_poly_type {
+    PVR2_POLY_TYPE_FIRST,
+    PVR2_POLY_TYPE_OPAQUE = PVR2_POLY_TYPE_FIRST,
+    PVR2_POLY_TYPE_OPAQUE_MOD,
+    PVR2_POLY_TYPE_TRANS,
+    PVR2_POLY_TYPE_TRANS_MOD,
+    PVR2_POLY_TYPE_PUNCH_THROUGH,
+    PVR2_POLY_TYPE_LAST = PVR2_POLY_TYPE_PUNCH_THROUGH,
 
-    // These three list types are invalid, but I do see DISPLAY_LIST_7 sometimes
-    DISPLAY_LIST_5,
-    DISPLAY_LIST_6,
-    DISPLAY_LIST_7,
+    // These three list types are invalid, but I do see PVR2_POLY_TYPE_7 sometimes
+    PVR2_POLY_TYPE_5,
+    PVR2_POLY_TYPE_6,
+    PVR2_POLY_TYPE_7,
 
-    DISPLAY_LIST_COUNT,
+    PVR2_POLY_TYPE_COUNT,
 
-    DISPLAY_LIST_NONE = -1
+    PVR2_POLY_TYPE_NONE = -1
 };
 
 enum ta_color_type {
@@ -190,7 +190,7 @@ struct pvr2_pkt_hdr {
 
     unsigned vtx_len;
 
-    enum display_list_type list;
+    enum pvr2_poly_type poly_type;
 
     bool tex_enable;
     uint32_t tex_addr;
@@ -274,12 +274,12 @@ struct gfx_il_inst_chain {
 };
 
 struct pvr2_ta {
-    enum display_list_type cur_list;
+    enum pvr2_poly_type cur_poly_type;
 
     uint32_t ta_fifo32[PVR2_CMD_MAX_LEN];
     unsigned ta_fifo_word_count;
 
-    bool list_submitted[DISPLAY_LIST_COUNT];
+    bool poly_type_submitted[PVR2_POLY_TYPE_COUNT];
 
     struct pvr2_pkt_hdr hdr;
 
@@ -302,8 +302,13 @@ struct pvr2_ta {
     unsigned pvr2_ta_vert_buf_count;
     unsigned pvr2_ta_vert_cur_group;
 
-    struct gfx_il_inst_chain *disp_list_begin[DISPLAY_LIST_COUNT];
-    struct gfx_il_inst_chain *disp_list_end[DISPLAY_LIST_COUNT];
+    /*
+     * list of gfx_il instructions for each polygon type.  These are built when
+     * data comes into the TAFIFO, and submitted to the gfx system when the
+     * STARTRENDER register is written to.
+     */
+    struct gfx_il_inst_chain *poly_type_gfx_il_begin[PVR2_POLY_TYPE_COUNT];
+    struct gfx_il_inst_chain *poly_type_gfx_il_end[PVR2_POLY_TYPE_COUNT];
 
     struct gfx_il_inst_chain *gfx_il_inst_buf;
     unsigned gfx_il_inst_buf_count;

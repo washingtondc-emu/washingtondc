@@ -60,8 +60,8 @@
 #define TA_CMD_END_OF_STRIP_SHIFT 28
 #define TA_CMD_END_OF_STRIP_MASK (1 << TA_CMD_END_OF_STRIP_SHIFT)
 
-#define TA_CMD_DISP_LIST_SHIFT 24
-#define TA_CMD_DISP_LIST_MASK (0x7 << TA_CMD_DISP_LIST_SHIFT)
+#define TA_CMD_POLY_TYPE_SHIFT 24
+#define TA_CMD_POLY_TYPE_MASK (0x7 << TA_CMD_POLY_TYPE_SHIFT)
 
 /*
  * this has something to do with swapping out the ISP parameters
@@ -120,7 +120,7 @@
 
 static DEF_ERROR_INT_ATTR(src_blend_factor);
 static DEF_ERROR_INT_ATTR(dst_blend_factor);
-static DEF_ERROR_INT_ATTR(display_list_index);
+static DEF_ERROR_INT_ATTR(poly_type_index);
 static DEF_ERROR_INT_ATTR(geo_buf_group_index);
 static DEF_ERROR_INT_ATTR(ta_fifo_cmd)
 static DEF_ERROR_INT_ATTR(pvr2_global_param)
@@ -142,15 +142,15 @@ static DEF_ERROR_U32_ATTR(ta_fifo_word_d)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_e)
 static DEF_ERROR_U32_ATTR(ta_fifo_word_f)
 
-char const *display_list_names[DISPLAY_LIST_COUNT] = {
+char const *pvr2_poly_type_names[PVR2_POLY_TYPE_COUNT] = {
     "Opaque",
     "Opaque Modifier Volume",
     "Transparent",
     "Transparent Modifier Volume",
     "Punch-through Polygon",
-    "Unknown Display list 5",
-    "Unknown Display list 6",
-    "Unknown Display list 7"
+    "Unknown Polygon Type 5",
+    "Unknown Polygon Type 6",
+    "Unknown Polygon Type 7"
 };
 
 inline static void input_poly_fifo(struct pvr2 *pvr2, uint32_t byte);
@@ -161,9 +161,9 @@ static void dump_fifo(struct pvr2 *pvr2);
 static void render_frame_init(struct pvr2 *pvr2);
 
 static void
-finish_poly_group(struct pvr2 *pvr2, enum display_list_type disp_list);
+finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type);
 static void
-next_poly_group(struct pvr2 *pvr2, enum display_list_type disp_list);
+next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type);
 
 static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 static int decode_end_of_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
@@ -298,11 +298,11 @@ pvr2_ta_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst) {
         ta->gfx_il_inst_buf + ta->gfx_il_inst_buf_count++;
     ent->next = NULL;
     ent->cmd = inst;
-    if (!ta->disp_list_begin[ta->cur_list])
-        ta->disp_list_begin[ta->cur_list] = ent;
-    if (ta->disp_list_end[ta->cur_list])
-        ta->disp_list_end[ta->cur_list]->next = ent;
-    ta->disp_list_end[ta->cur_list] = ent;
+    if (!ta->poly_type_gfx_il_begin[ta->cur_poly_type])
+        ta->poly_type_gfx_il_begin[ta->cur_poly_type] = ent;
+    if (ta->poly_type_gfx_il_end[ta->cur_poly_type])
+        ta->poly_type_gfx_il_end[ta->cur_poly_type]->next = ent;
+    ta->poly_type_gfx_il_end[ta->cur_poly_type] = ent;
 }
 
 uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
@@ -378,10 +378,11 @@ static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
     PVR2_TRACE("\ttype: %s\n", hdr->tp == PVR2_HDR_TRIANGLE_STRIP ?
                "triangle strip" : "quadrilateral");
     HDR_INT(hdr, vtx_len);
-    PVR2_TRACE("\tpolygon list: %s\n", display_list_names[hdr->list]);
+    PVR2_TRACE("\tpolygon type: %s\n", pvr2_poly_type_names[hdr->poly_type]);
     HDR_BOOL(hdr, tex_enable);
     HDR_HEX(hdr, tex_addr);
-    PVR2_TRACE("\ttexture dimensions: %ux%u\n", 1 << hdr->tex_width_shift, 1 << hdr->tex_height_shift);
+    PVR2_TRACE("\ttexture dimensions: %ux%u\n",
+               1 << hdr->tex_width_shift, 1 << hdr->tex_height_shift);
     HDR_BOOL(hdr, tex_twiddle);
     HDR_BOOL(hdr, stride_sel);
     HDR_BOOL(hdr, tex_vq_compression);
@@ -416,31 +417,31 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     if (hdr->two_volumes_mode)
         LOG_DBG("Unimplemented two-volumes mode polygon!\n");
 
-    if (ta->cur_list != hdr->list) {
-        if (ta->cur_list == DISPLAY_LIST_NONE) {
-            PVR2_TRACE("Opening display list \"%s\"\n", display_list_names[hdr->list]);
-            ta->cur_list = hdr->list;
+    if (ta->cur_poly_type != hdr->poly_type) {
+        if (ta->cur_poly_type == PVR2_POLY_TYPE_NONE) {
+            PVR2_TRACE("Opening polygon group \"%s\"\n", pvr2_poly_type_names[hdr->poly_type]);
+            ta->cur_poly_type = hdr->poly_type;
             ta->open_group = true;
         } else {
-            PVR2_TRACE("software did not close list %d\n",
-                      (int)ta->cur_list);
-            PVR2_TRACE("Beginning polygon group within list \"%s\"\n",
-                       display_list_names[ta->cur_list]);
+            PVR2_TRACE("software did not close polygon group %d\n",
+                      (int)ta->cur_poly_type);
+            PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
+                       pvr2_poly_type_names[ta->cur_poly_type]);
 
-            next_poly_group(pvr2, ta->cur_list);
+            next_poly_group(pvr2, ta->cur_poly_type);
         }
 
-        if (ta->list_submitted[ta->cur_list]) {
-            LOG_ERROR("Already submitted list %d\n", (int)hdr->list);
+        if (ta->poly_type_submitted[ta->cur_poly_type]) {
+            LOG_ERROR("Already submitted group %d\n", (int)hdr->poly_type);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
         /* pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count; */
     } else {
-        PVR2_TRACE("Beginning polygon group within list \"%s\"\n",
-                   display_list_names[hdr->list]);
+        PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
+                   pvr2_poly_type_names[hdr->poly_type]);
 
-        next_poly_group(pvr2, ta->cur_list);
+        next_poly_group(pvr2, ta->cur_poly_type);
     }
 
     ta->strip_len = 0;
@@ -521,8 +522,8 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
     PVR2_TRACE("END-OF-LIST PACKET!\n");
 
-    if (ta->cur_list == DISPLAY_LIST_NONE) {
-        LOG_WARN("attempt to close list when no list is open!\n");
+    if (ta->cur_poly_type == PVR2_POLY_TYPE_NONE) {
+        LOG_WARN("attempt to close poly group when no group is open!\n");
         /*
          * SEGA Bass Fishing does this.  At bootup, before the loading icon, it
          * appears to think it's submitting 64-bit vertices, but they're
@@ -544,36 +545,36 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     dc_cycle_stamp_t int_when =
         clock_cycle_stamp(clk) + PVR2_LIST_COMPLETE_INT_DELAY;
 
-    switch (ta->cur_list) {
-    case DISPLAY_LIST_OPAQUE:
+    switch (ta->cur_poly_type) {
+    case PVR2_POLY_TYPE_OPAQUE:
         if (!ta->pvr2_op_complete_int_event_scheduled) {
             ta->pvr2_op_complete_int_event_scheduled = true;
             ta->pvr2_op_complete_int_event.when = int_when;
             sched_event(clk, &ta->pvr2_op_complete_int_event);
         }
         break;
-    case DISPLAY_LIST_OPAQUE_MOD:
+    case PVR2_POLY_TYPE_OPAQUE_MOD:
         if (!ta->pvr2_op_mod_complete_int_event_scheduled) {
             ta->pvr2_op_mod_complete_int_event_scheduled = true;
             ta->pvr2_op_mod_complete_int_event.when = int_when;
             sched_event(clk, &ta->pvr2_op_mod_complete_int_event);
         }
         break;
-    case DISPLAY_LIST_TRANS:
+    case PVR2_POLY_TYPE_TRANS:
         if (!ta->pvr2_trans_complete_int_event_scheduled) {
             ta->pvr2_trans_complete_int_event_scheduled = true;
             ta->pvr2_trans_complete_int_event.when = int_when;
             sched_event(clk, &ta->pvr2_trans_complete_int_event);
         }
         break;
-    case DISPLAY_LIST_TRANS_MOD:
+    case PVR2_POLY_TYPE_TRANS_MOD:
         if (!ta->pvr2_trans_mod_complete_int_event_scheduled) {
             ta->pvr2_trans_mod_complete_int_event_scheduled = true;
             ta->pvr2_trans_mod_complete_int_event.when = int_when;
             sched_event(clk, &ta->pvr2_trans_mod_complete_int_event);
         }
         break;
-    case DISPLAY_LIST_PUNCH_THROUGH:
+    case PVR2_POLY_TYPE_PUNCH_THROUGH:
         if (!ta->pvr2_pt_complete_int_event_scheduled) {
             ta->pvr2_pt_complete_int_event_scheduled = true;
             ta->pvr2_pt_complete_int_event.when = int_when;
@@ -588,10 +589,10 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    finish_poly_group(pvr2, ta->cur_list);
+    finish_poly_group(pvr2, ta->cur_poly_type);
 
-    ta->list_submitted[ta->cur_list] = true;
-    ta->cur_list = DISPLAY_LIST_NONE;
+    ta->poly_type_submitted[ta->cur_poly_type] = true;
+    ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
 }
 
 static void
@@ -910,7 +911,6 @@ static void handle_packet(struct pvr2 *pvr2) {
         dump_fifo(pvr2);
         error_set_feature("PVR2 command type");
         error_set_ta_fifo_cmd(cmd_tp);
-        /* error_set_display_list_index(poly_state.current_list); */
         error_set_ta_fifo_word_count(pvr2->ta.ta_fifo_word_count);
         error_set_ta_fifo_word_0(ta_fifo32[0]);
         error_set_ta_fifo_word_1(ta_fifo32[1]);
@@ -1132,6 +1132,7 @@ static int decode_user_clip(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     return 0;
 }
 
+
 static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
     uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo32;
@@ -1150,15 +1151,15 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
                              TA_CMD_COLOR_TYPE_SHIFT);
     bool tex_enable = (bool)(ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK);
     bool offset_color_enable = (bool)(ta_fifo32[0] & TA_CMD_OFFSET_COLOR_MASK);
-    enum display_list_type disp_list =
-        (enum display_list_type)((ta_fifo32[0] & TA_CMD_DISP_LIST_MASK) >>
-                                 TA_CMD_DISP_LIST_SHIFT);
+    enum pvr2_poly_type poly_type =
+        (enum pvr2_poly_type)((ta_fifo32[0] & TA_CMD_POLY_TYPE_MASK) >>
+                              TA_CMD_POLY_TYPE_SHIFT);
 
     switch (param_tp) {
     case TA_CMD_TYPE_POLY_HDR:
         tp = PVR2_HDR_TRIANGLE_STRIP;
-        if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
-            disp_list == DISPLAY_LIST_TRANS_MOD) {
+        if (poly_type == PVR2_POLY_TYPE_OPAQUE_MOD ||
+            poly_type == PVR2_POLY_TYPE_TRANS_MOD) {
             hdr_len = 8;
             vtx_len = 16;
         } else {
@@ -1192,7 +1193,7 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     hdr->tp = tp;
     hdr->vtx_len = vtx_len;
 
-    hdr->list = disp_list;
+    hdr->poly_type = poly_type;
 
     hdr->two_volumes_mode = two_volumes_mode;
     hdr->tex_enable = tex_enable;
@@ -1473,7 +1474,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
 
     pvr2_tex_cache_xmit(pvr2);
 
-    if (ta->cur_list != DISPLAY_LIST_NONE)
+    if (ta->cur_poly_type != PVR2_POLY_TYPE_NONE)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     /* finish_poly_group(poly_state.current_list); */
 
@@ -1537,10 +1538,10 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     rend_exec_il(&cmd, 1);
 
     // execute queued gfx_il commands
-    enum display_list_type list;
-    for (list = DISPLAY_LIST_FIRST; list <= DISPLAY_LIST_LAST; list++) {
+    enum pvr2_poly_type poly_type;
+    for (poly_type = PVR2_POLY_TYPE_FIRST; poly_type <= PVR2_POLY_TYPE_LAST; poly_type++) {
         bool sort_mode = false;
-        if (list == DISPLAY_LIST_TRANS) {
+        if (poly_type == PVR2_POLY_TYPE_TRANS) {
             /*
              * order-independent transparency is enabled when bit 0 of
              * ISP_FEED_CFG is 0.
@@ -1551,7 +1552,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
                 rend_exec_il(&cmd, 1);
             }
         }
-        struct gfx_il_inst_chain *chain = ta->disp_list_begin[list];
+        struct gfx_il_inst_chain *chain = ta->poly_type_gfx_il_begin[poly_type];
         while (chain) {
             rend_exec_il(&chain->cmd, 1);
             chain = chain->next;
@@ -1580,38 +1581,38 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
 }
 
 void pvr2_ta_reinit(struct pvr2 *pvr2) {
-    memset(pvr2->ta.list_submitted, 0, sizeof(pvr2->ta.list_submitted));
+    memset(pvr2->ta.poly_type_submitted, 0, sizeof(pvr2->ta.poly_type_submitted));
 }
 
-static void next_poly_group(struct pvr2 *pvr2, enum display_list_type disp_list) {
+static void next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
     struct pvr2_ta *ta = &pvr2->ta;
-    PVR2_TRACE("%s(%s)\n", __func__, display_list_names[disp_list]);
+    PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_names[poly_type]);
 
-    if (disp_list < 0) {
-        LOG_WARN("%s - no lists are open\n", __func__);
+    if (poly_type < 0) {
+        LOG_WARN("%s - no polygon groups are open\n", __func__);
         return;
     }
 
     if (ta->open_group)
-        finish_poly_group(pvr2, disp_list);
+        finish_poly_group(pvr2, poly_type);
     ta->open_group = true;
 
     ta->pvr2_ta_vert_cur_group = ta->pvr2_ta_vert_buf_count;
 }
 
-static void finish_poly_group(struct pvr2 *pvr2, enum display_list_type disp_list) {
+static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
     struct pvr2_ta *ta = &pvr2->ta;
-    PVR2_TRACE("%s(%s)\n", __func__, display_list_names[disp_list]);
+    PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_names[poly_type]);
     struct gfx_il_inst cmd;
 
-    if (disp_list < 0) {
-        PVR2_TRACE("%s - no lists are open\n", __func__);
+    if (poly_type < 0) {
+        PVR2_TRACE("%s - no polygon groups are open\n", __func__);
         return;
     }
 
     // filter out modifier volumes from being rendered
-    if (disp_list == DISPLAY_LIST_OPAQUE_MOD ||
-        disp_list == DISPLAY_LIST_TRANS_MOD)
+    if (poly_type == PVR2_POLY_TYPE_OPAQUE_MOD ||
+        poly_type == PVR2_POLY_TYPE_TRANS_MOD)
         return;
 
     if (!ta->open_group) {
@@ -1643,7 +1644,7 @@ static void finish_poly_group(struct pvr2 *pvr2, enum display_list_type disp_lis
     cmd.arg.set_rend_param.param.tex_filter = ta->hdr.tex_filter;
 
     cmd.arg.set_rend_param.param.pt_mode =
-        (disp_list == DISPLAY_LIST_PUNCH_THROUGH);
+        (poly_type == PVR2_POLY_TYPE_PUNCH_THROUGH);
     cmd.arg.set_rend_param.param.pt_ref = ta->pt_alpha_ref & 0xff;
 
     // enqueue the configuration command
@@ -1663,18 +1664,17 @@ static void finish_poly_group(struct pvr2 *pvr2, enum display_list_type disp_lis
         ((unsigned)cmd.arg.set_rend_param.param.dst_blend_factor >= PVR2_BLEND_FACTOR_COUNT)) {
         error_set_src_blend_factor(cmd.arg.set_rend_param.param.src_blend_factor);
         error_set_dst_blend_factor(cmd.arg.set_rend_param.param.dst_blend_factor);
-        error_set_display_list_index((unsigned)disp_list);
-        /* error_set_geo_buf_group_index(group - list->groups); */
+        error_set_poly_type_index((unsigned)poly_type);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     // TODO: this only needs to be done once per list, not once per polygon group
     cmd.op = GFX_IL_SET_BLEND_ENABLE;
-    cmd.arg.set_blend_enable.do_enable = (disp_list == DISPLAY_LIST_TRANS);
+    cmd.arg.set_blend_enable.do_enable = (poly_type == PVR2_POLY_TYPE_TRANS);
     pvr2_ta_push_gfx_il(pvr2, cmd);
 
     unsigned n_verts = ta->pvr2_ta_vert_buf_count - ta->pvr2_ta_vert_cur_group;
-    pvr2->stat.per_frame_counters.poly_count[disp_list] += n_verts / 3;
+    pvr2->stat.per_frame_counters.poly_count[poly_type] += n_verts / 3;
 
     cmd.op = GFX_IL_DRAW_ARRAY;
     cmd.arg.draw_array.n_verts = n_verts;
@@ -1702,17 +1702,18 @@ static void render_frame_init(struct pvr2 *pvr2) {
 
     // free up gfx_il commands
     ta->gfx_il_inst_buf_count = 0;
-    enum display_list_type list;
-    for (list = DISPLAY_LIST_FIRST; list < DISPLAY_LIST_COUNT; list++) {
-        ta->disp_list_begin[list] = NULL;
-        ta->disp_list_end[list] = NULL;
+    enum pvr2_poly_type poly_type;
+    for (poly_type = PVR2_POLY_TYPE_FIRST; poly_type < PVR2_POLY_TYPE_COUNT;
+         poly_type++) {
+        ta->poly_type_gfx_il_begin[poly_type] = NULL;
+        ta->poly_type_gfx_il_end[poly_type] = NULL;
     }
 
     ta->clip_min = -1.0f;
     ta->clip_max = 1.0f;
 
-    memset(ta->list_submitted, 0, sizeof(ta->list_submitted));
-    ta->cur_list = DISPLAY_LIST_NONE;
+    memset(ta->poly_type_submitted, 0, sizeof(ta->poly_type_submitted));
+    ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
 
     memset(&pvr2->stat.per_frame_counters, 0,
            sizeof(pvr2->stat.per_frame_counters));

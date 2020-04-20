@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 struct pvr2_stat {
     // performance counters that get reset on a per-frame basis
     struct {
-        unsigned poly_count[DISPLAY_LIST_COUNT];
+        unsigned poly_count[PVR2_POLY_TYPE_COUNT];
     } per_frame_counters;
 
     // performance counters that don't get reset ever
