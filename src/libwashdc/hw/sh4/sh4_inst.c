@@ -6023,9 +6023,15 @@ void sh4_inst_unary_fsqrt_fr(void *cpu, cpu_inst_param inst) {
 
     int fr_reg = (inst >> 8) & 0xf;
 
-    // TODO: check for negative input and raise an FPU exception when it happens
     float in;
     memcpy(&in, sh4->reg + SH4_REG_FR0 + fr_reg, sizeof(in));
+
+    if (in < 0.0f) {
+        LOG_ERROR("value is %f\n", (double)in);
+        error_set_feature("whatever happens when the game tries to do an "
+                          "FSQRT of a negative number");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     float out = sqrt(in);
 
@@ -6461,8 +6467,15 @@ void sh4_inst_unary_fsqrt_dr(void *cpu, cpu_inst_param inst) {
 
     int dr_reg = (inst >> 9) & 0x7;
 
-    // TODO: check for negative input and raise an FPU exception when it happens
     double in = sh4_read_double(sh4, dr_reg * 2);
+
+    if (in < 0.0) {
+        LOG_ERROR("value is %f\n", in);
+        error_set_feature("whatever happens when the game tries to do an "
+                          "FSQRT of a negative number");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
     double out = sqrt(in);
     sh4_write_double(sh4, dr_reg * 2, out);
 }
