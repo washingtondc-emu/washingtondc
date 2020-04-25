@@ -349,8 +349,11 @@ void maple_init(struct maple *maple_ctxt, struct dc_clock *clk) {
 }
 
 void maple_cleanup(struct maple *maple_ctxt) {
-    // TODO: don't hardcode this
-    maple_device_cleanup(maple_ctxt, maple_addr_pack(0, 0));
+    unsigned port, unit;
+    for (port = 0; port < MAPLE_PORT_COUNT; port++)
+        for (unit = 0; unit < MAPLE_UNIT_COUNT; unit++)
+            if (maple_ctxt->devs[port][unit].enable)
+                maple_device_cleanup(maple_ctxt, maple_addr_pack(port, unit));
 
     maple_reg_cleanup(maple_ctxt);
 }
