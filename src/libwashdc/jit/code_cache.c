@@ -191,7 +191,10 @@ void code_cache_gc(void) {
     }
 
 #ifdef INVARIANTS
-    exec_mem_check_integrity();
+#ifdef ENABLE_JIT_X86_64
+    if (config_get_native_jit())
+        exec_mem_check_integrity();
+#endif
 #endif
 }
 
