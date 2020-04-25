@@ -277,13 +277,7 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
             sh4->reg[SH4_REG_PTEH] &= ~BIT_RANGE(10, 31);
             sh4->reg[SH4_REG_PTEH] |= (addr & BIT_RANGE(10, 31));
 
-            /*
-             * TODO: This seems like it obviously should be a write-miss, but
-             * ambiguous wording in the SH4 spec makes it seem like a read
-             * miss may be the correct exception...?
-             */
-            /* sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS); */
-            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_WRITE_MISS);
+            sh4_set_exception(sh4, SH4_EXCP_DATA_TLB_READ_MISS);
             return MEM_ACCESS_FAILURE;
         case SH4_UTLB_SUCCESS:
             break;
