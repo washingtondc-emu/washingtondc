@@ -7,9 +7,14 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        mmu_enabled: [ Off, On ]
+
     steps:
     - uses: actions/checkout@v1
     - uses: textbook/git-checkout-submodule-action@2.0.0
-    - uses: lpenz/ghaction-cmake@v0.1
+    - uses: snickerbockers/ghaction-cmake@d323bd7509174e636ee1c208867797a1c84fdf0e
       with:
          dependencies: libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libgl-dev libglu-dev libxi-dev
+         cmakeflags: -DENABLE_MMU=${{ matrix.mmu_enabled }}
