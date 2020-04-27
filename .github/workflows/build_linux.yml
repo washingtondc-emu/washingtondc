@@ -10,11 +10,12 @@ jobs:
     strategy:
       matrix:
         mmu_enabled: [ Off, On ]
+        invariants : [ Off, On ]
 
     steps:
     - uses: actions/checkout@v1
     - uses: textbook/git-checkout-submodule-action@2.0.0
-    - uses: snickerbockers/ghaction-cmake@d323bd7509174e636ee1c208867797a1c84fdf0e
+    - uses: snickerbockers/ghaction-cmake@598ccc2074d3dda3e832b123e04e434965131ea9
       with:
          dependencies: libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libgl-dev libglu-dev libxi-dev
-         cmakeflags: -DENABLE_MMU=${{ matrix.mmu_enabled }}
+         cmakeflags: -DENABLE_MMU=${{ matrix.mmu_enabled }} -DINVARIANTS=${{ matrix.invariants }}
