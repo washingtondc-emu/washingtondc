@@ -42,7 +42,10 @@
 #include "../window.hpp"
 #include "../sound.hpp"
 #include "../washingtondc.hpp"
+
+#ifndef DISABLE_MEM_DUMP_UI
 #include "imfilebrowser.h"
+#endif
 
 #include "overlay.hpp"
 
@@ -80,7 +83,9 @@ static void show_tex_cache_win(void);
 static void show_tex_win(unsigned idx);
 static std::string var_as_str(struct washdc_var const *var);
 
+#ifndef DISABLE_MEM_DUMP_UI
 static std::unique_ptr<ImGui::FileBrowser> mem_dump_browser;
+#endif
 
 /*
  * This structure represents a texture in the texture-cache which the UI has a
@@ -229,8 +234,10 @@ void overlay::draw() {
                 ImGui::EndMenu();
             }
 
+#ifndef DISABLE_MEM_DUMP_UI
             if (ImGui::MenuItem("Dump Main Memory"))
                 mem_dump_browser->Open();
+#endif
             ImGui::EndMenu();
         }
 
@@ -275,12 +282,14 @@ void overlay::draw() {
         }
     }
 
+#ifndef DISABLE_MEM_DUMP_UI
     mem_dump_browser->Display();
     if (mem_dump_browser->HasSelected()) {
         std::filesystem::path sel = mem_dump_browser->GetSelected();
         mem_dump_browser->Close();
         washdc_dump_main_memory(sel.c_str());
     }
+#endif
 
     if (mute_old != do_mute_audio)
         sound::mute(do_mute_audio);
@@ -641,16 +650,20 @@ void overlay::init(bool enable_debugger) {
     for (tex_stat& stat : textures)
         glGenTextures(1, &stat.tex_obj);
 
+#ifndef DISABLE_MEM_DUMP_UI
     ImGuiFileBrowserFlags browser_flags =
         ImGuiFileBrowserFlags_EnterNewFilename |
         ImGuiFileBrowserFlags_CreateNewDir;
     mem_dump_browser = std::make_unique<ImGui::FileBrowser>(browser_flags);
     mem_dump_browser->SetTitle("Save Main System Memory Dump");
     mem_dump_browser->SetTypeFilters({ ".bin" });
+#endif
 }
 
 void overlay::cleanup() {
+#ifndef DISABLE_MEM_DUMP_UI
     mem_dump_browser.reset(nullptr);
+#endif
 
     for (tex_stat& stat : textures)
         glDeleteTextures(1, &stat.tex_obj);

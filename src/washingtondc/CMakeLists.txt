@@ -36,6 +36,18 @@ if (WIN32)
     find_library(WS2_32_LIBRARY ws2_32)
 endif()
 
+# XXX COMPATIBILITY HACK
+# memory dumps rely upon the imgui filebrowser module
+# the imgui filebrowser module relies on C++17 filesystem support
+# This isn't implemented on mingw-w64 for some dumb reason, so we have to
+# disable it.
+if (MINGW)
+    set(no_imgui_browser "TRUE")
+    add_definitions(-DDISABLE_MEM_DUMP_UI)
+else()
+    set(no_imgui_browser "FALSE")
+endif()
+
 set(UI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ui")
 set(ui_sources "${UI_SOURCE_DIR}/overlay.hpp"
                "${UI_SOURCE_DIR}/overlay.cpp"
@@ -177,8 +189,10 @@ set(washingtondc_libs "m"
                       "png"
                       "${vid_libs}"
                       "zlib"
-                      "portaudio_static"
-                      "stdc++fs")
+                      "portaudio_static")
+if (no_imgui_browser STREQUAL "FALSE")
+    set(washingtondc_libs "${washingtondc_libs}" "stdc++fs")
+endif()
 
 if (USE_LIBEVENT)
     set(washingtondc_libs "${washingtondc_libs}" "event_core")
