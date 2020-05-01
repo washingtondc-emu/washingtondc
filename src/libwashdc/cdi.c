@@ -4,7 +4,7 @@
  * CDI CD-image file support
  *
  * Copyright (c) 2005 Nathan Keynes.
- * Copyright (c) 2019 snickerbockers.
+ * Copyright (c) 2019, 2020 snickerbockers.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,7 +129,10 @@ void mount_cdi(char const *path)
     if (!mount)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    parse_cdi(&mount->meta, path);
+    if (parse_cdi(&mount->meta, path) < 0) {
+        error_set_file_path(path);
+        RAISE_ERROR(ERROR_FILE_IO);
+    }
 
     mount_insert(&cdi_mount_ops, mount);
 }
@@ -210,6 +213,9 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
     washdc_hostfile f =
         washdc_hostfile_open(path,
                              WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_BINARY);
+
+    if (f == WASHDC_HOSTFILE_INVALID)
+        goto on_error;
 
     if (!cdi_image_is_valid(f))
         goto on_error;
@@ -366,7 +372,7 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
     return 0;
 
  on_error:
-    LOG_ERROR( "Invalid CDI image" );
+    LOG_ERROR( "Invalid CDI image\n" );
 
     unsigned sess_idx;
     for (sess_idx = 0; sess_idx < outp->n_sessions; sess_idx++)
