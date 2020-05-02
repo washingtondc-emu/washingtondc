@@ -206,7 +206,7 @@ static inline void sq_invariants_check(size_t len, unsigned sq_idx) {
 #endif
 
 /* TODO: implement MMU functionality and also privileged mode */
-#define SH4_SQ_WRITE_TMPL(type, postfix)        \
+#define SH4_SQ_WRITE_TMPL(type, postfix)                                \
     void sh4_sq_write_##postfix(Sh4 *sh4, addr32_t addr, type val) {    \
                                                                         \
         unsigned sq_idx = (addr >> 2) & 0x7;                            \
@@ -214,7 +214,7 @@ static inline void sq_invariants_check(size_t len, unsigned sq_idx) {
             << 3;                                                       \
         sq_invariants_check(sizeof(type), sq_idx);                      \
                                                                         \
-        *(type*)(sh4->ocache.sq + sq_idx + sq_sel) = val;               \
+        memcpy(sh4->ocache.sq + sq_idx + sq_sel, &val, sizeof(val));    \
     }
 
 SH4_SQ_WRITE_TMPL(double, double)
@@ -223,7 +223,6 @@ SH4_SQ_WRITE_TMPL(uint32_t, 32)
 SH4_SQ_WRITE_TMPL(uint16_t, 16)
 SH4_SQ_WRITE_TMPL(uint8_t, 8)
 
-/* TODO: implement MMU functionality and also privileged mode */
 #define SH4_SQ_READ_TMPL(type, postfix)                                 \
     type sh4_sq_read_##postfix(Sh4 *sh4, addr32_t addr) {               \
                                                                         \
@@ -232,7 +231,9 @@ SH4_SQ_WRITE_TMPL(uint8_t, 8)
         << 3;                                                           \
     sq_invariants_check(sizeof(type), sq_idx);                          \
                                                                         \
-    return *(type*)(sh4->ocache.sq + sq_idx + sq_sel);                  \
+    type ret;                                                           \
+    memcpy(&ret, sh4->ocache.sq + sq_idx + sq_sel, sizeof(ret));        \
+    return ret;                                                         \
 }
 
 SH4_SQ_READ_TMPL(double, double)
