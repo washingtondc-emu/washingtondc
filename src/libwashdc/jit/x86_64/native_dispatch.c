@@ -74,6 +74,16 @@ native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta);
 static void
 native_dispatch_trampoline_create(struct native_dispatch_meta *meta);
 
+#ifdef ABI_MICROSOFT
+static void native_dispatch_ms_shadow_open(void) {
+    x86asm_addq_imm8_reg(-32, RSP);
+}
+
+static void native_dispatch_ms_shadow_close(void) {
+    x86asm_addq_imm8_reg(32, RSP);
+}
+#endif
+
 void native_dispatch_init(struct native_dispatch_meta *meta, void *ctx_ptr) {
     meta->ctx_ptr = ctx_ptr;
 
@@ -388,7 +398,15 @@ native_dispatch_create_slow_path_entry(struct native_dispatch_meta *meta) {
 
     // fix stack alignment in case the C code uses SSE instructions
     x86asm_addq_imm8_reg(-8, RSP);
+
+#ifdef ABI_MICROSOFT
+    native_dispatch_ms_shadow_open();
+#endif
     x86asm_call_reg(REG_RET);
+#ifdef ABI_MICROSOFT
+    native_dispatch_ms_shadow_close();
+#endif
+
     x86asm_addq_imm8_reg(8, RSP);
 
     x86asm_mov_reg64_reg64(REG_RET, cachep_reg);
