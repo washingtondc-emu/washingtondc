@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -918,6 +918,11 @@ void x86asm_add_imm32_eax(unsigned imm32) {
     put32(imm32);
 }
 
+void x86asm_addq_imm32_reg64(unsigned imm32, unsigned reg_dst) {
+    emit_mod_reg_rm(REX_W, 0x81, 3, 0, reg_dst);
+    put32(imm32);
+}
+
 // addl %<reg_src>, %<reg_dst>
 void x86asm_addl_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm(0, 3, 3, reg_dst, reg_src);
@@ -1482,6 +1487,20 @@ void
 x86asm_movss_xmm_disp32_reg(unsigned xmm_reg_src, int disp32, unsigned reg_dst) {
     put8(0xf3);
     emit_mod_reg_rm_2(0, 0x0f, 0x11, 2, xmm_reg_src, reg_dst);
+    put32(disp32);
+}
+
+// movups %<xmm_reg_src>, <disp32>(%reg_dst)
+void x86asm_movups_xmm_disp32_reg(unsigned xmm_reg_src,
+                                  int disp32, unsigned reg_base) {
+    emit_mod_reg_rm_2(0, 0x0f, 0x11, 2, xmm_reg_src, reg_base);
+    put32(disp32);
+}
+
+// movups <disp32>(%reg_src), %<xmm_reg_dst>
+void x86asm_movups_disp32_reg_xmm(int disp32, unsigned reg_base,
+				  unsigned xmm_reg_dst) {
+    emit_mod_reg_rm_2(0, 0x0f, 0x10, 2, xmm_reg_dst, reg_base);
     put32(disp32);
 }
 

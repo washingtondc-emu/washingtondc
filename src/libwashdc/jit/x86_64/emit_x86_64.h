@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -264,6 +264,10 @@ void x86asm_movq_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst);
 
 // add $imm32, %eax
 void x86asm_add_imm32_eax(unsigned imm32);
+
+// add $imm32, <reg_dst>
+// imm32 will be sign-extended
+void x86asm_addq_imm32_reg64(unsigned imm32, unsigned reg_dst);
 
 // addq $imm8, %<reg>
 void x86asm_addq_imm8_reg(uint8_t imm8, unsigned reg);
@@ -549,6 +553,14 @@ void x86asm_movss_sib_xmm(unsigned reg_base, unsigned scale,
 // movss %<xmm_reg_src>, (%<reg_base>, <scale>, %<reg_index>)
 void x86asm_movss_xmm_sib(unsigned xmm_reg_src, unsigned reg_base,
                           unsigned scale, unsigned reg_index);
+
+// movups %<xmm_reg_src>, <disp32>(%reg_dst)
+void x86asm_movups_xmm_disp32_reg(unsigned xmm_reg_src,
+				 int disp32, unsigned reg_base);
+
+// movups <disp32>(%reg_src), %<xmm_reg_dst>
+void x86asm_movups_disp32_reg_xmm(int disp32, unsigned reg_base,
+				  unsigned xmm_reg_dst);
 
 // mulss %<xmm_reg_src>, %<xmm_reg_src>
 void x86asm_mulss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -138,6 +138,21 @@ static void create_return_fn(struct native_dispatch_meta *meta) {
     x86asm_popq_reg64(RBX);
     x86asm_popq_reg64(RBP);
 #elif defined(ABI_MICROSOFT)
+
+    // restore non-volatile xmm registers
+    // TODO: align stack pointer and use movaps instead of movups
+    x86asm_movups_disp32_reg_xmm(16 * 9, RSP, XMM15);
+    x86asm_movups_disp32_reg_xmm(16 * 8, RSP, XMM14);
+    x86asm_movups_disp32_reg_xmm(16 * 7, RSP, XMM13);
+    x86asm_movups_disp32_reg_xmm(16 * 6, RSP, XMM12);
+    x86asm_movups_disp32_reg_xmm(16 * 5, RSP, XMM11);
+    x86asm_movups_disp32_reg_xmm(16 * 4, RSP, XMM10);
+    x86asm_movups_disp32_reg_xmm(16 * 3, RSP, XMM9);
+    x86asm_movups_disp32_reg_xmm(16 * 2, RSP, XMM8);
+    x86asm_movups_disp32_reg_xmm(16 * 1, RSP, XMM7);
+    x86asm_movups_disp32_reg_xmm(16 * 0, RSP, XMM6);
+    x86asm_addq_imm32_reg64(16 * (15 - 6 + 1), RSP);
+
     x86asm_popq_reg64(R15);
     x86asm_popq_reg64(R14);
     x86asm_popq_reg64(R13);
@@ -208,6 +223,20 @@ void native_dispatch_entry_create(struct native_dispatch_meta *meta) {
     x86asm_pushq_reg64(R13);
     x86asm_pushq_reg64(R14);
     x86asm_pushq_reg64(R15);
+
+    // save non-volatile xmm registers
+    // TODO: align stack pointer and use movaps instead of movups
+    x86asm_addq_imm32_reg64(-16 * (15 - 6 + 1), RSP);
+    x86asm_movups_xmm_disp32_reg(XMM6,  16 * 0, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM7,  16 * 1, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM8,  16 * 2, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM9,  16 * 3, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM10, 16 * 4, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM11, 16 * 5, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM12, 16 * 6, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM13, 16 * 7, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM14, 16 * 8, RSP);
+    x86asm_movups_xmm_disp32_reg(XMM15, 16 * 9, RSP);
 
     /*
      * The native-dispatch code uses its own calling convention which is mostly
