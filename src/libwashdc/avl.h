@@ -26,7 +26,6 @@
 // AVL tree implementation
 
 #include <stddef.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,7 +35,7 @@
 typedef uint32_t avl_key_type;
 
 #define AVL_DEREF(nodep, tp, memb)                      \
-    (*((tp*)(((uint8_t*)nodep) - offsetof(tp, memb))))
+    (*((tp*)(((char*)nodep) - offsetof(tp, memb))))
 
 struct avl_node {
     avl_key_type key;
