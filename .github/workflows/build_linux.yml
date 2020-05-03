@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - uses: textbook/git-checkout-submodule-action@2.0.0
-    - uses: snickerbockers/ghaction-cmake@598ccc2074d3dda3e832b123e04e434965131ea9
+    - uses: lpenz/ghaction-cmake@0121873f072dde7b17c6ed5e21bec976bfce025a
       with:
          dependencies: libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libgl-dev libglu-dev libxi-dev
          cmakeflags: -DENABLE_MMU=${{ matrix.mmu_enabled }} -DINVARIANTS=${{ matrix.invariants }}
