@@ -867,12 +867,65 @@ void code_block_x86_64_cleanup(struct code_block_x86_64 *blk) {
     memset(blk, 0, sizeof(*blk));
 }
 
+#ifdef INVARIANTS
+__attribute__((__noreturn__)) static void x86_64_misaligned_stack_error(void) {
+    RAISE_ERROR(ERROR_INTEGRITY);
+}
+#endif
+
 /*
  * after emitting this:
  * original %rsp is in %rbp
  * (%rbp) is original %rbp
  */
 static void emit_stack_frame_open(void) {
+
+#ifdef INVARIANTS
+    // validate stack pointer alignment.
+    // it should be aligned to a 16-byte boundary
+
+    struct x86asm_lbl8 properly_aligned_stack;
+    x86asm_lbl8_init(&properly_aligned_stack);
+
+    x86asm_testl_imm32_reg32(15, RSP);
+    x86asm_jz_lbl8(&properly_aligned_stack);
+
+    /*
+     * stack is not properly algined - need to raise an exception
+     * but first we need to fix stack alignment
+     *
+     * unfortunately the way this is implemented, it overwrites REG_VOL0
+     * which may make debugging a bit more difficult.  This could be fixed by
+     * pushing REG_VOL0 onto the stack, fixing the alignment (while being
+     * mindful of the fact that pushing REG_VOL0 stack would have changed it)
+     * and then restoring it from the stack.
+     */
+    x86asm_mov_imm32_reg32(15, REG_VOL0);
+    x86asm_andl_reg32_reg32(RSP, REG_VOL0);
+    x86asm_subq_reg64_reg64(REG_VOL0, RSP);
+
+    /*
+     * pushing the return address onto the stack will put us at a 16-modulo-8
+     * alignment, which is what ABI_UNIX requires.  If ABI_MICROSOFT is defined
+     * then I *think* we need to change the alignment to be at a 16-byte
+     * boundary.  Since x86_64_misaligned_stack error isn't going to return
+     * anyways, we could replace the call instruction with an unconditional jmp.
+     */
+    uint64_t error_fn =
+        (uint64_t)(uintptr_t)(void*)x86_64_misaligned_stack_error;
+    x86asm_mov_imm64_reg64(error_fn, REG_VOL0);
+    x86asm_call_reg(REG_VOL0);
+
+    /*
+     * execution does not continue past this point because
+     * x86_64_misaligned_stack_error never returns
+     */
+
+    x86asm_lbl8_define(&properly_aligned_stack);
+
+    x86asm_lbl8_cleanup(&properly_aligned_stack);
+#endif
+
     x86asm_pushq_reg64(RBP);
     x86asm_mov_reg64_reg64(RSP, RBP);
 
