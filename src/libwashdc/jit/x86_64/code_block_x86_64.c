@@ -906,10 +906,7 @@ static void emit_stack_frame_open(void) {
 
     /*
      * pushing the return address onto the stack will put us at a 16-modulo-8
-     * alignment, which is what ABI_UNIX requires.  If ABI_MICROSOFT is defined
-     * then I *think* we need to change the alignment to be at a 16-byte
-     * boundary.  Since x86_64_misaligned_stack error isn't going to return
-     * anyways, we could replace the call instruction with an unconditional jmp.
+     * alignment, which is what the ABI requires.
      */
     uint64_t error_fn =
         (uint64_t)(uintptr_t)(void*)x86_64_misaligned_stack_error;
