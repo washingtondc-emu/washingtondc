@@ -544,10 +544,27 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
 }
 
 static void* emit_native_mem_write_float(struct memory_map const *map) {
+    /*
+     * XXX: if ADDR_REG is ever not REG_ARG0, this function will need to be
+     * changed...
+     */
+    static unsigned const ADDR_REG = REG_ARG0;
+
+#if defined(ABI_MICROSOFT)
+    static unsigned const VAL_REG = REG_ARG1_XMM;
+    static unsigned const CTXT_REG = REG_ARG2;
+#elif defined(ABI_UNIX)
+    static unsigned const VAL_REG = REG_ARG0_XMM;
+    static unsigned const CTXT_REG = REG_ARG1;
+#else
+#error unknown abi
+#endif
+
     void *native_mem_write_float_impl = exec_mem_alloc(BASIC_ALLOC);
     x86asm_set_dst(native_mem_write_float_impl, NULL, BASIC_ALLOC);
 
-    static unsigned const addr_reg = REG_RET;
+    // this corresponds to the addr AND'd with the comparison mask
+    static unsigned const CMP_ADDR_REG = REG_RET;
 
     // not actually used as an arg, I just need something volatile here
     static unsigned const func_call_reg = REG_ARG3;
@@ -559,16 +576,17 @@ static void* emit_native_mem_write_float(struct memory_map const *map) {
         struct x86asm_lbl8 check_next;
         x86asm_lbl8_init(&check_next);
 
-        x86asm_mov_reg32_reg32(REG_ARG0, addr_reg);
-        x86asm_andl_imm32_reg32(region->range_mask, addr_reg);
+        // this is safe to do since the address is never moved from ADDR_REG/REG_ARG0
+        x86asm_mov_reg32_reg32(ADDR_REG, CMP_ADDR_REG);
+        x86asm_andl_imm32_reg32(region->range_mask, CMP_ADDR_REG);
 
         uint32_t region_start = region->first_addr,
             region_end = region->last_addr - (sizeof(float) - 1);
 
-        x86asm_cmpl_imm32_reg32(region_start, addr_reg);
+        x86asm_cmpl_imm32_reg32(region_start, CMP_ADDR_REG);
         x86asm_jb_lbl8(&check_next);
 
-        x86asm_cmpl_imm32_reg32(region_end, addr_reg);
+        x86asm_cmpl_imm32_reg32(region_end, CMP_ADDR_REG);
         x86asm_ja_lbl8(&check_next);
 
         switch (region->id) {
@@ -577,25 +595,9 @@ static void* emit_native_mem_write_float(struct memory_map const *map) {
             x86asm_ret();
             break;
         default:
-            // tail-call (the value to write is still in XMM0)
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
-#if defined(ABI_MICROSOFT)
-            /*
-             * The stupid Micro$oft ABI passes arguments based on their
-             * absolute position rather than their position amongst integer
-             * arguments, so the second int parameter goes into REG_ARG2
-             * instead of REG_ARG1 because it's the third argument overall.
-             *
-             * Same goes for the SSE registers.  We have to move XMM0 into XMM1
-             * since it's the second overall register.
-             */
-            x86asm_movss_xmm_xmm(XMM0, XMM1);
-            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG2);
-#elif defined(ABI_UNIX)
-            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
-#else
-#error unknown abi
-#endif
+            // tail-call (the value to write is still in VAL_REG)
+            x86asm_andl_imm32_reg32(region->mask, ADDR_REG);
+            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, CTXT_REG);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->writefloat, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
         }
@@ -607,7 +609,9 @@ static void* emit_native_mem_write_float(struct memory_map const *map) {
 
     struct memory_interface const *unmap = map->unmap;
     if (unmap && unmap->writefloat) {
-        x86asm_mov_reg32_reg32(addr_reg, REG_ARG0);
+        // TODO this seems wrong since we AND'd it with region mask above
+        x86asm_mov_reg32_reg32(CMP_ADDR_REG, REG_ARG0);
+
         x86asm_mov_imm64_reg64((uintptr_t)map->unmap_ctxt, REG_ARG1);
         x86asm_mov_imm64_reg64((uintptr_t)unmap->writefloat, func_call_reg);
         x86asm_jmpq_reg64(func_call_reg);
@@ -683,13 +687,19 @@ emit_ram_write_32(struct memory_map_region const *region, void *ctxt) {
 
 static void
 emit_ram_write_float(struct memory_map_region const *region, void *ctxt) {
-    // value to write should be in ESI
     // address should be in EDI
     struct Memory *mem = (struct Memory*)ctxt;
 
     x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_RET);
+
+#if defined(ABI_MICROSOFT)
+    x86asm_movss_xmm_sib(REG_ARG1_XMM, REG_RET, 1, REG_ARG0);
+#elif defined(ABI_UNIX)
     x86asm_movss_xmm_sib(REG_ARG0_XMM, REG_RET, 1, REG_ARG0);
+#else
+#error unknown abi
+#endif
 }
 
 static struct native_mem_map *mem_map_impl(struct memory_map const *map) {
