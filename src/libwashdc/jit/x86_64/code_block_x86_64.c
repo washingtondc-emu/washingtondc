@@ -1327,7 +1327,7 @@ static void emit_write_float_slot(struct code_block_x86_64 *blk,
         move_slot_to_reg(blk, src_slot, REG_ARG0_XMM);
 
         evict_register(blk, &gen_reg_state, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG0_XMM);
+        evict_register(blk, &xmm_reg_state, REG_ARG0_XMM);
 
         native_mem_write_float(blk, map);
     } else {
