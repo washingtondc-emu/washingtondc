@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -1331,11 +1331,23 @@ static void emit_write_float_slot(struct code_block_x86_64 *blk,
 
         native_mem_write_float(blk, map);
     } else {
+#if defined(ABI_MICROSOFT)
+        /*
+         * microsoft's ABI treats the XMM registers and the general-purpose
+         * registers as if they're mutually-exclusive even though they're
+         * obviously not.
+         */
+        static unsigned const xmm_reg_arg = REG_ARG2_XMM;
+#elif defined(ABI_UNIX)
+        static unsigned const xmm_reg_arg = REG_ARG0_XMM;
+#else
+#error unknown abi
+#endif
         move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        move_slot_to_reg(blk, src_slot, REG_ARG0_XMM);
+        move_slot_to_reg(blk, src_slot, xmm_reg_arg);
 
         evict_register(blk, &gen_reg_state, REG_ARG1);
-        evict_register(blk, &xmm_reg_state, REG_ARG0_XMM);
+        evict_register(blk, &xmm_reg_state, xmm_reg_arg);
 
         x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
         ms_shadow_open(blk);

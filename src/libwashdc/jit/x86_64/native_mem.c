@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -579,7 +579,23 @@ static void* emit_native_mem_write_float(struct memory_map const *map) {
         default:
             // tail-call (the value to write is still in XMM0)
             x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+#if defined(ABI_MICROSOFT)
+            /*
+             * The stupid Micro$oft ABI passes arguments based on their
+             * absolute position rather than their position amongst integer
+             * arguments, so the second int parameter goes into REG_ARG2
+             * instead of REG_ARG1 because it's the third argument overall.
+             *
+             * Same goes for the SSE registers.  We have to move XMM0 into XMM1
+             * since it's the second overall register.
+             */
+            x86asm_movss_xmm_xmm(XMM0, XMM1);
+            x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG2);
+#elif defined(ABI_UNIX)
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
+#else
+#error unknown abi
+#endif
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->writefloat, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
         }
