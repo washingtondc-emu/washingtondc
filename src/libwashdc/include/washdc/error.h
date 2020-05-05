@@ -161,20 +161,20 @@ struct error_callback {
 void error_add_callback(struct error_callback *cb);
 void error_rm_callback(struct error_callback *cb);
 
-#define ERROR_STRING_ATTR(the_attr_name)                                \
-    __attribute__((unused)) void                                        \
+#define ERROR_STRING_ATTR(the_attr_name)                \
+    WASHDC_UNUSED void                                  \
     error_set_##the_attr_name(char const *attr_val)
 
-#define ERROR_INT_ATTR(the_attr_name)                   \
-    __attribute__((unused)) void                        \
+#define ERROR_INT_ATTR(the_attr_name)           \
+    WASHDC_UNUSED void                          \
     error_set_##the_attr_name(int attr_val)
 
 #define ERROR_U32_ATTR(the_attr_name)                   \
-    __attribute__((unused)) void                        \
+    WASHDC_UNUSED void                                  \
     error_set_##the_attr_name(uint32_t attr_val)
 
 #define ERROR_U64_ATTR(the_attr_name)                   \
-    __attribute__((unused)) void                        \
+    WASHDC_UNUSED void                                  \
     error_set_##the_attr_name(uint64_t attr_val)
 
 #define DEF_ERROR_STRING_ATTR(the_attr_name)            \

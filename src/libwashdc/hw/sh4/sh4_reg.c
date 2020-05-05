@@ -33,6 +33,7 @@
 #include "jit/code_cache.h"
 #include "config.h"
 #include "sh4_mem.h"
+#include "compiler_bullshit.h"
 
 static struct avl_tree sh4_reg_tree;
 
@@ -836,7 +837,7 @@ sh4_pdtra_read_handler(Sh4 *sh4,
 static void sh4_pdtra_write_handler(Sh4 *sh4,
                                     struct Sh4MemMappedReg const *reg_info,
                                     sh4_reg_val val) {
-    sh4_reg_val val_orig __attribute__((unused)) = val;
+    WASHDC_UNUSED sh4_reg_val val_orig = val;
 
     /*
      * n_pup = "not pullup"

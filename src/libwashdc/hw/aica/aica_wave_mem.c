@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include "hw/sh4/sh4.h"
 #include "config.h"
 #include "log.h"
+#include "compiler_bullshit.h"
 
 #include "aica_wave_mem.h"
 
@@ -85,7 +86,7 @@ uint8_t aica_wave_mem_read_8(addr32_t addr, void *ctxt) {
 
 #ifdef ENABLE_LOG_DEBUG
     if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
+        WASHDC_UNUSED unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: reading 0x%02x from 0x%08x (PC is 0x%08x)\n",
                 (unsigned)*valp, (unsigned)addr, pc);
@@ -102,7 +103,7 @@ void aica_wave_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 
 #ifdef ENABLE_LOG_DEBUG
     if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
+        WASHDC_UNUSED unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: writing 0x%02x to 0x%08x (PC is 0x%08x)\n",
                 (unsigned)val, (unsigned)addr, pc);
@@ -134,7 +135,7 @@ uint16_t aica_wave_mem_read_16(addr32_t addr, void *ctxt) {
 
 #ifdef ENABLE_LOG_DEBUG
     if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
+        WASHDC_UNUSED unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: reading 0x%04x from 0x%08x (PC is 0x%08x)\n",
                 (unsigned)ret, (unsigned)addr, pc);
@@ -149,7 +150,7 @@ void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 
 #ifdef ENABLE_LOG_DEBUG
     if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
+        WASHDC_UNUSED unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: writing 0x%04x to 0x%08x (PC is 0x%08x)\n",
                 (unsigned)val, (unsigned)addr, pc);
@@ -171,7 +172,7 @@ void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
 #ifdef ENABLE_LOG_DEBUG
     if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
+        WASHDC_UNUSED unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: writing 0x%08x to 0x%08x (PC is 0x%08x)\n",
                 (unsigned)val, (unsigned)addr, pc);

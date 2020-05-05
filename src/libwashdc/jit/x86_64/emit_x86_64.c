@@ -33,6 +33,7 @@
 #include "log.h"
 #include "washdc/error.h"
 #include "exec_mem.h"
+#include "compiler_bullshit.h"
 
 #include "emit_x86_64.h"
 
@@ -61,7 +62,7 @@ static void try_grow(void) {
     outp_len += X86_64_GROW_SIZE;
 }
 
-__attribute__((unused))
+WASHDC_UNUSED
 static void put8(uint8_t val) {
     if (outp_len >= 1) {
         *outp++ = val;
@@ -74,7 +75,7 @@ static void put8(uint8_t val) {
     }
 }
 
-__attribute__((unused))
+WASHDC_UNUSED
 static void put16(uint16_t val) {
     if (outp_len >= 2) {
         memcpy(outp, &val, sizeof(val));
@@ -88,7 +89,7 @@ static void put16(uint16_t val) {
     }
 }
 
-__attribute__((unused))
+WASHDC_UNUSED
 static void put32(uint32_t val) {
     if (outp_len >= 4) {
         memcpy(outp, &val, sizeof(val));
@@ -102,7 +103,7 @@ static void put32(uint32_t val) {
     }
 }
 
-__attribute__((unused))
+WASHDC_UNUSED
 static void put64(uint64_t val) {
     if (outp_len >= 8) {
         memcpy(outp, &val, sizeof(val));

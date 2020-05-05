@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include "washdc/types.h"
 #include "washdc/MemoryMap.h"
 #include "dreamcast.h"
+#include "compiler_bullshit.h"
 
 #define AICA_WAVE_MEM_LEN (0x009fffff - 0x00800000 + 1)
 
@@ -75,7 +76,7 @@ static inline uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
 
 #ifdef ENABLE_LOG_DEBUG
     if (aica_log_verbose_val) {
-        __attribute__((unused)) unsigned pc =
+        WASHDC_UNUSED unsigned pc =
             dreamcast_get_cpu()->reg[SH4_REG_PC];
         LOG_DBG("AICA: reading 0x%08x from 0x%08x (PC is 0x%08x)\n",
                 (unsigned)ret, (unsigned)addr, pc);

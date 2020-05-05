@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 #include "hw/sys/holly_intc.h"
 #include "adpcm.h"
 #include "intmath.h"
+#include "compiler_bullshit.h"
 
 #include "aica.h"
 
@@ -217,10 +218,10 @@ static void aica_dsp_mixer_write(struct aica *aica, void const *src,
 static void aica_dsp_reg_write(struct aica *aica, void const *src,
                                uint32_t addr, unsigned len);
 
-__attribute__((unused))
+WASHDC_UNUSED
 static void aica_unsched_all_timers(struct aica *aica);
 
-__attribute__((unused))
+WASHDC_UNUSED
 static void aica_sched_all_timers(struct aica *aica);
 
 static void aica_unsched_timer(struct aica *aica, unsigned tim_idx);

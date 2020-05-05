@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@
 #include "dc_sched.h"
 #include "log.h"
 #include "washdc/hostfile.h"
+#include "compiler_bullshit.h"
 
 #include "aica_rtc.h"
 
@@ -180,7 +181,7 @@ void aica_rtc_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     AICA_RTC_TRACE("Writing 4 bytes to address 0x%08x\n",
                    (unsigned)addr);
 
-    __attribute__((unused)) uint32_t old_rtc_val = rtc->cur_rtc_val;
+    WASHDC_UNUSED uint32_t old_rtc_val = rtc->cur_rtc_val;
 
     switch (addr) {
     case AICA_RTC_ADDR_HIGH:

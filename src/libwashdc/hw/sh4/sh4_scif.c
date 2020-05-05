@@ -37,6 +37,7 @@
 #include "dc_sched.h"
 #include "dreamcast.h"
 #include "sh4_read_inst.h"
+#include "compiler_bullshit.h"
 
 #include "sh4_scif.h"
 
@@ -70,17 +71,17 @@ static inline bool rx_interrupt_enabled(Sh4 *sh4) {
     return (bool)(sh4->reg[SH4_REG_SCSCR2] & SH4_SCSCR2_RIE_MASK);
 }
 
-__attribute__((unused))
+WASHDC_UNUSED
 static inline bool tx_enabled(Sh4 *sh4) {
     return (bool)(sh4->reg[SH4_REG_SCSCR2] & SH4_SCSCR2_TE_MASK);
 }
 
-__attribute__((unused))
+WASHDC_UNUSED
 static inline bool rx_enabled(Sh4 *sh4) {
     return (bool)(sh4->reg[SH4_REG_SCSCR2] & SH4_SCSCR2_RE_MASK);
 }
 
-__attribute__((unused))
+WASHDC_UNUSED
 static inline bool rx_err_interrupt_enabled(Sh4 *sh4) {
     return (bool)(sh4->reg[SH4_REG_SCSCR2] & SH4_SCSCR2_REIE_MASK);
 }

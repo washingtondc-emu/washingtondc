@@ -32,6 +32,7 @@
 #include "washdc/fifo.h"
 #include "washdc/MemoryMap.h"
 #include "hw/arm7/arm7.h"
+#include "compiler_bullshit.h"
 
 #include "washdc/debugger.h"
 
@@ -158,7 +159,7 @@ static void dbg_do_trace(char const *msg, ...);
 
 static void dbg_state_transition(enum debug_state new_state);
 
-__attribute__((unused)) static char const *cur_ctx_str(void);
+WASHDC_UNUSED static char const *cur_ctx_str(void);
 
 static addr32_t dbg_get_pc(enum dbg_context_id id);
 

@@ -34,6 +34,7 @@
 #include "dc_sched.h"
 #include "hw/g1/g1_reg.h"
 #include "intmath.h"
+#include "compiler_bullshit.h"
 
 #include "gdrom.h"
 
@@ -1125,8 +1126,8 @@ static void gdrom_input_packet_71(struct gdrom_ctxt *gdrom) {
 static void gdrom_input_set_mode_packet(struct gdrom_ctxt *gdrom) {
     // TODO: actually implement this for real instead of ignoring the data
 
-    __attribute__((unused)) unsigned starting_addr = gdrom->pkt_buf[2];
-    __attribute__((unused)) unsigned len = gdrom->pkt_buf[4];
+    WASHDC_UNUSED unsigned starting_addr = gdrom->pkt_buf[2];
+    WASHDC_UNUSED unsigned len = gdrom->pkt_buf[4];
 
     GDROM_TRACE("SET_MODE command received\n");
     GDROM_TRACE("read %u bytes starting at %u\n", len, starting_addr);

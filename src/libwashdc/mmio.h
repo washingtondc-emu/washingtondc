@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 
 #include "washdc/types.h"
 #include "washdc/error.h"
+#include "compiler_bullshit.h"
 
 #define DECL_MMIO_REGION(name, len_bytes, beg_bytes, type)              \
     struct mmio_region_##name;                                          \
@@ -87,7 +88,7 @@
         struct mmio_region_##name *region);                             \
 
 #define DEF_MMIO_REGION(name, len_bytes, beg_bytes, type)               \
-    __attribute__((unused)) static inline type                          \
+    WASHDC_UNUSED static inline type                                    \
     mmio_region_##name##_read(struct mmio_region_##name *region,        \
                               addr32_t addr) {                          \
         unsigned idx = (addr - (beg_bytes)) / sizeof(type);             \
@@ -95,7 +96,7 @@
         return region->on_read[idx](region, idx, ctxt);                 \
     }                                                                   \
                                                                         \
-    __attribute__((unused)) static inline void                          \
+    WASHDC_UNUSED static inline void                                    \
     mmio_region_##name##_write(struct mmio_region_##name *region,       \
                                addr32_t addr, type val) {               \
         unsigned idx = (addr - beg_bytes) / sizeof(type);               \

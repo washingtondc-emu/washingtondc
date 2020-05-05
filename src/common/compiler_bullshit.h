@@ -26,10 +26,12 @@
 #if defined(__GNUC__) || defined(__GNUG__)
 
 #define WASHDC_NORETURN __attribute__((__noreturn__))
+#define WASHDC_UNUSED __attribute__((unused))
 
 #elif defined(_MSC_VER)
 
 #define WASHDC_NORETURN __declspec(noreturn)
+#define WASHDC_UNUSED
 
 #else
 #error unknown compiler

@@ -32,6 +32,7 @@
 #include "log.h"
 #include "pvr2.h"
 #include "hw/maple/maple.h"
+#include "compiler_bullshit.h"
 
 #include "spg.h"
 
@@ -97,7 +98,7 @@ static void spg_sync(struct pvr2 *pvr2);
 
 static inline unsigned get_hcount(struct pvr2 *pvr2);
 static inline unsigned get_vcount(struct pvr2 *pvr2);
-__attribute__((unused))
+WASHDC_UNUSED
 static inline unsigned get_hblank_int_pix(struct pvr2 *pvr2);
 static inline unsigned get_hblank_int_mode(struct pvr2 *pvr2);
 static inline unsigned get_hblank_int_comp_val(struct pvr2 *pvr2);

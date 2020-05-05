@@ -35,6 +35,7 @@
 #include "washdc/error.h"
 #include "washdc/washdc.h"
 #include "washdbg_tcp.hpp"
+#include "compiler_bullshit.h"
 
 #include "washdbg_core.hpp"
 
@@ -1516,7 +1517,7 @@ static struct name_map {
     { NULL }
 };
 
-__attribute__((unused))
+WASHDC_UNUSED
 static struct name_map const arm7_reg_map[] = {
     { "r0", ARM7_REG_R0 },
     { "r1", ARM7_REG_R1 },

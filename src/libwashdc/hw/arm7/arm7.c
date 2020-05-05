@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "log.h"
 #include "washdc/error.h"
 #include "intmath.h"
+#include "compiler_bullshit.h"
 
 #include "arm7.h"
 
@@ -585,7 +586,7 @@ DEF_DATA_OP(bic) {
 /* } */
 
 #define DEF_INST_FN(op_name, is_logic, require_s, write_result)         \
-    __attribute__((unused)) static void                                 \
+    WASHDC_UNUSED static void                                           \
     arm7_inst_##op_name(struct arm7 *arm7, arm7_inst inst) {            \
         bool s_flag = inst & (1 << 20);                                 \
         bool i_flag = inst & (1 << 25);                                 \
