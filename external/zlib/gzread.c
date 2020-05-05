@@ -6,7 +6,9 @@
 #include "gzguts.h"
 
 // WashingtonDC local modification to enable building on cygwin
+#ifdef __CYGWIN__
 #include <unistd.h>
+#endif
 
 /* Local functions */
 local int gz_load OF((gz_statep, unsigned char *, unsigned, unsigned *));
