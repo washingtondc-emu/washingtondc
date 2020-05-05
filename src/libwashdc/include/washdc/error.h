@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "compiler_bullshit.h"
 #include "washdc/fifo.h"
 
 #ifdef __cplusplus
@@ -107,14 +108,7 @@ struct error_attr {
     struct error_attr **pprev;
 };
 
-/*
- * somehow using the C11 noreturn specifier here is breaking the C++ testing
- * code over in unit_tests/ even though that's SUPPOSED to work since it's
- * built using the C++11 standard which SHOULD be compatible with C11.  So I
- * have to go with the non-standard gcc __attribute__ extension instead.
- * Whatever.
- */
-__attribute__((__noreturn__)) void error_raise(enum error_type tp);
+WASHDC_NORETURN void error_raise(enum error_type tp);
 enum error_type error_check();
 void error_clear();
 

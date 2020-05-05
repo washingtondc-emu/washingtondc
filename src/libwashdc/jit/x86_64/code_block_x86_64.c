@@ -42,6 +42,7 @@
 #include "config.h"
 #include "washdc/cpu.h"
 #include "register_set.h"
+#include "compiler_bullshit.h"
 
 #include "code_block_x86_64.h"
 
@@ -868,7 +869,7 @@ void code_block_x86_64_cleanup(struct code_block_x86_64 *blk) {
 }
 
 #ifdef INVARIANTS
-__attribute__((__noreturn__)) static void x86_64_misaligned_stack_error(void) {
+WASHDC_NORETURN static void x86_64_misaligned_stack_error(void) {
     RAISE_ERROR(ERROR_INTEGRITY);
 }
 #endif

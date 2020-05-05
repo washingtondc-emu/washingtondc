@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "compiler_bullshit.h"
 #include "washdc/fifo.h"
 #include "dreamcast.h"
 #include "log.h"
@@ -41,8 +42,7 @@ static struct error_attr *first_attr;
 
 static struct fifo_head err_callbacks = FIFO_HEAD_INITIALIZER(err_callbacks);
 
-__attribute__((__noreturn__))
-void error_raise(enum error_type tp) {
+WASHDC_NORETURN void error_raise(enum error_type tp) {
     error_type = tp;
 
     struct fifo_node *cursor;
