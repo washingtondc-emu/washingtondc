@@ -115,7 +115,74 @@ struct cdi_track_data {
     char unknown4[0x10];
     uint32_t sector_size;
     char unknown5[0x1D];
-} __attribute__((packed));
+};
+
+/*
+ * read in a track from the file.  return 0 on success, -1 on error.  If
+ * there's an error then the stream position of the file is undefined.
+ */
+static int read_track(washdc_hostfile fp, struct cdi_track_data *trk) {
+    if (washdc_hostfile_read(fp, &trk->pregap_length,
+                             sizeof(trk->pregap_length)) !=
+        sizeof(trk->pregap_length)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, &trk->length,
+                             sizeof(trk->length)) !=
+        sizeof(trk->length)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, trk->unknown2,
+                             sizeof(trk->unknown2)) != sizeof(trk->unknown2)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, &trk->mode,
+                             sizeof(trk->mode)) !=
+        sizeof(trk->mode)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, trk->unknown3,
+                             sizeof(trk->unknown3)) != sizeof(trk->unknown3)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, &trk->start_lba,
+                             sizeof(trk->start_lba)) !=
+        sizeof(trk->start_lba)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, &trk->total_length,
+                             sizeof(trk->total_length)) !=
+        sizeof(trk->total_length)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, trk->unknown4,
+                             sizeof(trk->unknown4)) != sizeof(trk->unknown4)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, &trk->sector_size,
+                             sizeof(trk->sector_size)) !=
+        sizeof(trk->sector_size)) {
+        goto on_error;
+    }
+
+    if (washdc_hostfile_read(fp, trk->unknown5,
+                             sizeof(trk->unknown5)) != sizeof(trk->unknown5)) {
+        goto on_error;
+    }
+
+    return 0;
+
+ on_error:
+    return -1;
+}
 
 struct cdi_mount {
     struct cdi_info meta;
@@ -296,7 +363,7 @@ static int parse_cdi(struct cdi_info *outp, char const *path)
             } else {
                 washdc_hostfile_seek(f, 2, WASHDC_HOSTFILE_SEEK_CUR);
             }
-            if (washdc_hostfile_read(f, &trk, sizeof(trk)) != sizeof(trk))
+            if (read_track(f, &trk) != 0)
                 goto on_error;
             outp->sessions[i].tracks[j].lba= trk.start_lba;
             unsigned sector_count = trk.length;
