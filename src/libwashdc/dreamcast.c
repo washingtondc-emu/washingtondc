@@ -105,8 +105,8 @@ static struct pvr2 dc_pvr2;
 static struct maple maple;
 static struct sys_block_ctxt sys_block;
 
-static atomic_bool is_running = ATOMIC_VAR_INIT(false);
-static atomic_bool signal_exit_threads = ATOMIC_VAR_INIT(false);
+static washdc_atomic_int is_running;
+static washdc_atomic_int signal_exit_threads;
 
 static bool frame_stop;
 static bool init_complete;
@@ -516,7 +516,8 @@ dreamcast_init(char const *gdi_path,
 
     cfg_init();
 
-    atomic_store_explicit(&is_running, true, memory_order_relaxed);
+    washdc_atomic_int_init(&signal_exit_threads, 0);
+    washdc_atomic_int_init(&is_running, 1);
 
     memory_init(&dc_mem);
     flash_mem_init(&flash_mem, config_get_dc_flash_path(), flash_mem_writeable);
@@ -797,7 +798,7 @@ unsigned dc_get_frame_count(void) {
 }
 
 static void main_loop_sched(void) {
-    while (atomic_load_explicit(&is_running, memory_order_relaxed)) {
+    while (washdc_atomic_int_load(&is_running)) {
         run_one_frame();
         frame_count++;
         if (frame_stop) {
@@ -888,7 +889,8 @@ void dreamcast_run() {
     dc_print_perf_stats();
 
     // tell the other threads it's time to clean up and exit
-    atomic_store_explicit(&signal_exit_threads, true, memory_order_relaxed);
+    int oldval = 0;
+    washdc_atomic_int_compare_exchange(&signal_exit_threads, &oldval, 1);
 
     switch (term_reason) {
     case TERM_REASON_NORM:
@@ -1166,7 +1168,8 @@ void dc_print_perf_stats(void) {
 
 void dreamcast_kill(void) {
     LOG_INFO("%s called - WashingtonDC will exit soon\n", __func__);
-    atomic_store_explicit(&is_running, false, memory_order_relaxed);
+    int oldval = 1;
+    washdc_atomic_int_compare_exchange(&is_running, &oldval, 0);
 }
 
 Sh4 *dreamcast_get_cpu() {
@@ -1195,8 +1198,8 @@ static void dreamcast_enable_serial_server(void) {
 }
 
 static void dc_sigint_handler(int param) {
-    atomic_store_explicit(&is_running, false, memory_order_relaxed);
     term_reason = TERM_REASON_SIGINT;
+    dreamcast_kill();
 }
 
 static void *load_file(char const *path, long *len) {
@@ -1233,11 +1236,11 @@ close_fp:
 }
 
 bool dc_is_running(void) {
-    return !atomic_load_explicit(&signal_exit_threads, memory_order_relaxed);
+    return !washdc_atomic_int_load(&signal_exit_threads);
 }
 
 bool dc_emu_thread_is_running(void) {
-    return atomic_load_explicit(&is_running, memory_order_relaxed);
+    return washdc_atomic_int_load(&is_running);
 }
 
 enum dc_state dc_get_state(void) {
@@ -1265,7 +1268,7 @@ static void suspend_loop(void) {
              * polling.
              */
             usleep(1000 * 1000 / 60);
-        } while (atomic_load_explicit(&is_running, memory_order_relaxed) &&
+        } while (dc_emu_thread_is_running() &&
                  ((cur_state = dc_get_state()) == DC_STATE_SUSPEND));
     }
 }

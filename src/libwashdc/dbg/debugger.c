@@ -94,7 +94,7 @@ struct debug_context {
      * other context and return to single-stepping through this context once the
      * context switches back to the original context.
      */
-    atomic_flag not_single_step;
+    washdc_atomic_flag not_single_step;
 };
 
 struct debugger {
@@ -109,7 +109,7 @@ struct debugger {
      * debug_request_break is called from outside of the emu thread in response
      * to the user pressing Ctrl+C on his gdb client.
      */
-    atomic_flag not_request_break;
+    washdc_atomic_flag not_request_break;
 
     /*
      * this gets cleared by debug_request_continue to request the debugger
@@ -117,14 +117,14 @@ struct debugger {
      *
      * debug_request_continue is called from outside of the emu thread
      */
-    atomic_flag not_continue;
+    washdc_atomic_flag not_continue;
 
     /*
      * this gets cleared by debug_request_detach to request the debugger detach
      *
      * debug_request_detach is called from outside of the emu thread
      */
-    atomic_flag not_detach;
+    washdc_atomic_flag not_detach;
 };
 
 static struct debugger dbg;
@@ -169,13 +169,13 @@ void debug_init(void) {
     dbg.contexts[DEBUG_CONTEXT_SH4].cur_state = DEBUG_STATE_NORM;
     dbg.contexts[DEBUG_CONTEXT_ARM7].cur_state = DEBUG_STATE_NORM;
 
-    atomic_flag_test_and_set(&dbg.not_request_break);
-    atomic_flag_test_and_set(&dbg.not_continue);
-    atomic_flag_test_and_set(&dbg.not_detach);
+    washdc_atomic_flag_test_and_set(&dbg.not_request_break);
+    washdc_atomic_flag_test_and_set(&dbg.not_continue);
+    washdc_atomic_flag_test_and_set(&dbg.not_detach);
 
     unsigned ctx_no;
     for (ctx_no = 0; ctx_no < NUM_DEBUG_CONTEXTS; ctx_no++)
-        atomic_flag_test_and_set(&dbg.contexts[ctx_no].not_single_step);
+        washdc_atomic_flag_test_and_set(&dbg.contexts[ctx_no].not_single_step);
 }
 
 void debug_cleanup(void) {
@@ -207,7 +207,7 @@ static void debug_check_break(enum dbg_context_id id) {
      * reason to stop
      */
     struct debug_context *ctx = dbg.contexts + id;
-    bool user_break = !atomic_flag_test_and_set(&dbg.not_request_break);
+    bool user_break = !washdc_atomic_flag_test_and_set(&dbg.not_request_break);
 
     // hold at a breakpoint for user interaction
     if ((ctx->cur_state == DEBUG_STATE_BREAK) ||
@@ -266,7 +266,7 @@ void debug_notify_inst(void) {
 }
 
 void debug_request_detach(void) {
-    atomic_flag_clear(&dbg.not_detach);
+    washdc_atomic_flag_clear(&dbg.not_detach);
 }
 
 int debug_add_break(enum dbg_context_id id, addr32_t addr) {
@@ -467,13 +467,13 @@ void debug_attach(struct debug_frontend const *frontend) {
     dbg_state_transition(DEBUG_STATE_BREAK);
     dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
 
-    atomic_flag_test_and_set(&dbg.not_request_break);
-    atomic_flag_test_and_set(&dbg.not_continue);
-    atomic_flag_test_and_set(&dbg.not_detach);
+    washdc_atomic_flag_test_and_set(&dbg.not_request_break);
+    washdc_atomic_flag_test_and_set(&dbg.not_continue);
+    washdc_atomic_flag_test_and_set(&dbg.not_detach);
 
     unsigned ctx_no;
     for (ctx_no = 0; ctx_no < NUM_DEBUG_CONTEXTS; ctx_no++)
-        atomic_flag_test_and_set(&dbg.contexts[ctx_no].not_single_step);
+        washdc_atomic_flag_test_and_set(&dbg.contexts[ctx_no].not_single_step);
 
     LOG_INFO("done attaching debugger\n");
 }
@@ -559,15 +559,15 @@ unsigned debug_bank1_reg_idx(enum dbg_context_id id, unsigned reg_sr, unsigned i
 }
 
 void debug_request_continue(void) {
-    atomic_flag_clear(&dbg.not_continue);
+    washdc_atomic_flag_clear(&dbg.not_continue);
 }
 
 void debug_request_single_step(void) {
-    atomic_flag_clear(&get_ctx()->not_single_step);
+    washdc_atomic_flag_clear(&get_ctx()->not_single_step);
 }
 
 void debug_request_break() {
-    atomic_flag_clear(&dbg.not_request_break);
+    washdc_atomic_flag_clear(&dbg.not_request_break);
 }
 
 #ifdef DEBUGGER_LOG_VERBOSE
@@ -630,13 +630,13 @@ void debug_run_once(void) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    if (!atomic_flag_test_and_set(&ctx->not_single_step)) {
+    if (!washdc_atomic_flag_test_and_set(&ctx->not_single_step)) {
         // gdb frontend requested a single-step via debug_request_single_step
         dbg_state_transition(DEBUG_STATE_STEP);
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_DEBUG);
     }
 
-    if (!atomic_flag_test_and_set(&dbg.not_continue)) {
+    if (!washdc_atomic_flag_test_and_set(&dbg.not_continue)) {
         if (ctx->cur_state == DEBUG_STATE_WATCH)
             dbg_state_transition(DEBUG_STATE_POST_WATCH);
         else
@@ -645,7 +645,7 @@ void debug_run_once(void) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_DEBUG);
     }
 
-    if (!atomic_flag_test_and_set(&dbg.not_detach)) {
+    if (!washdc_atomic_flag_test_and_set(&dbg.not_detach)) {
         DBG_TRACE("detach request\n");
 
         unsigned ctx_no;

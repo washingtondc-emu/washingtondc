@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017. 2018 snickerbockers
+ *    Copyright (C) 2017. 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,9 +24,10 @@
 #define TEXT_RING_H_
 
 #include <stdbool.h>
-#include <stdatomic.h>
 
+#include "atomics.h"
 #include "log.h"
+#include "error.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,29 +43,28 @@ extern "C" {
 
 
 #define RING_INITIALIZER                                                \
-    { .prod_idx = ATOMIC_VAR_INIT(0), .cons_idx = ATOMIC_VAR_INIT(0) }
+    { .prod_idx = WASHDC_ATOMIC_INT_INIT(0), .cons_idx = WASHDC_ATOMIC_INT_INIT(0) }
 
 
 #define DEF_RING(name, tp, log)                                         \
     struct name {                                                       \
-        atomic_int prod_idx, cons_idx;                                  \
+        washdc_atomic_int prod_idx, cons_idx;                           \
                                                                         \
         tp buf[1 << (log)];                                             \
     };                                                                  \
                                                                         \
     static inline void name##_init(struct name *ring) {                 \
-        atomic_init(&ring->prod_idx, 0);                                \
-        atomic_init(&ring->cons_idx, 0);                                \
+        ring->prod_idx = WASHDC_ATOMIC_INT_INIT(0);                     \
+        ring->cons_idx = WASHDC_ATOMIC_INT_INIT(0);                     \
     }                                                                   \
                                                                         \
     /* return true if the operation succeeded, false if it failed. */   \
     static inline bool                                                  \
     name##_produce(struct name *ring, tp val) {                         \
-        /* TODO: can I use memory_order_relaxed to load prod_idx ?*/    \
-        int prod_idx = atomic_load_explicit(&ring->prod_idx,            \
-                                            memory_order_acquire);      \
-        int cons_idx = atomic_load_explicit(&ring->cons_idx,            \
-                                            memory_order_acquire);      \
+        int prod_idx = washdc_atomic_int_load(&ring->prod_idx);         \
+        /*memory_order_acquire); */                                     \
+        int cons_idx = washdc_atomic_int_load(&ring->cons_idx);         \
+        /* memory_order_acquire); */                                    \
         int next_prod_idx = (prod_idx + 1) & ((1 << (log)) - 1);        \
                                                                         \
         if (next_prod_idx == cons_idx) {                                \
@@ -73,8 +73,14 @@ extern "C" {
         }                                                               \
                                                                         \
         ring->buf[prod_idx] = val;                                      \
-        atomic_store_explicit(&ring->prod_idx, next_prod_idx,           \
-                              memory_order_release);                    \
+        if (!washdc_atomic_int_compare_exchange(&ring->prod_idx,        \
+                                                &prod_idx,              \
+                                                next_prod_idx)) {       \
+            washdc_log_error("%s failed to update ring - THIS IS FOR "  \
+                             "SINGLE-PRODUCER ONLY YOU DOOFUS\n",       \
+                             __func__);                                 \
+            return false;                                               \
+        }                                                               \
                                                                         \
         return true;                                                    \
     }                                                                   \
@@ -85,18 +91,24 @@ extern "C" {
         int prod_idx, cons_idx, next_cons_idx;                          \
                                                                         \
         /* TODO: can I use memory_order_relaxed to load cons_idx ?*/    \
-        cons_idx = atomic_load_explicit(&ring->cons_idx,                \
-                                        memory_order_acquire);          \
-        prod_idx = atomic_load_explicit(&ring->prod_idx,                \
-                                        memory_order_acquire);          \
+        cons_idx = washdc_atomic_int_load(&ring->cons_idx);             \
+        /* memory_order_acquire); */                                    \
+        prod_idx = washdc_atomic_int_load(&ring->prod_idx);             \
+        /* memory_order_acquire); */                                    \
         next_cons_idx = (cons_idx + 1) & ((1 << (log)) - 1);            \
                                                                         \
         if (prod_idx == cons_idx)                                       \
             return false;                                               \
                                                                         \
         *outp = ring->buf[ring->cons_idx];                              \
-        atomic_store_explicit(&ring->cons_idx, next_cons_idx,           \
-                              memory_order_release);                    \
+        if (!washdc_atomic_int_compare_exchange(&ring->cons_idx,        \
+                                                &cons_idx,              \
+                                                next_cons_idx)) {       \
+            washdc_log_error("%s failed to update ring - THIS IS FOR "  \
+                             "SINGLE-CONSUMER ONLY YOU DOOFUS\n",       \
+                             __func__);                                 \
+            return false;                                               \
+        }                                                               \
                                                                         \
         return true;                                                    \
     }                                                                   \

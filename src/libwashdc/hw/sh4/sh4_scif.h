@@ -24,8 +24,8 @@
 #define SH4_SCIF_H_
 
 #include <stdint.h>
-#include <stdatomic.h>
 
+#include "atomics.h"
 #include "washdc/ring.h"
 
 /*
@@ -90,7 +90,7 @@ struct sh4_scif {
 
     bool ser_srv_connected;
 
-    atomic_flag nothing_pending;
+    washdc_atomic_flag nothing_pending;
 
     enum sh4_scif_irq_state irq_state;
 };

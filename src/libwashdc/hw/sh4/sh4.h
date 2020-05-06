@@ -25,7 +25,6 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdatomic.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -40,6 +39,7 @@
 #include "sh4_scif.h"
 #include "sh4_dmac.h"
 #include "dc_sched.h"
+#include "atomics.h"
 
 #ifdef JIT_PROFILE
 #include "jit/jit_profile.h"
@@ -296,7 +296,7 @@ void sh4_on_sr_change(Sh4 *sh4, reg32_t old_sr);
  * added in here as well if I need them.
  */
 static inline void sh4_periodic(Sh4 *sh4) {
-    if (!atomic_flag_test_and_set(&sh4->scif.nothing_pending))
+    if (!washdc_atomic_flag_test_and_set(&sh4->scif.nothing_pending))
         sh4_scif_periodic(sh4);
 }
 

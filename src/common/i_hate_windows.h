@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -34,8 +34,13 @@
 
 #ifdef _WIN32
 
+#ifndef WINVER
 #define WINVER 0x0600
+#endif
+
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
+#endif
 
 #include <winsock2.h>
 #include <windows.h>

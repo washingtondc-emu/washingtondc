@@ -211,7 +211,7 @@ void sh4_scif_init(Sh4 *sh4) {
     text_ring_init(&scif->txq);
 
     sh4_register_irq_line(sh4, SH4_IRQ_SCIF, sh4_scif_irq_line, sh4);
-    atomic_flag_test_and_set(&scif->nothing_pending);
+    washdc_atomic_flag_test_and_set(&scif->nothing_pending);
 }
 
 void sh4_scif_cleanup(Sh4 *sh4) {
@@ -282,11 +282,11 @@ sh4_scftdr2_reg_write_handler(Sh4 *sh4,
 }
 
 void sh4_scif_cts(Sh4 *sh4) {
-    atomic_flag_clear(&sh4->scif.nothing_pending);
+    washdc_atomic_flag_clear(&sh4->scif.nothing_pending);
 }
 
 void sh4_scif_rx(Sh4 *sh4) {
-    atomic_flag_clear(&sh4->scif.nothing_pending);
+    washdc_atomic_flag_clear(&sh4->scif.nothing_pending);
 }
 
 static void check_rx_trig(Sh4 *sh4) {
