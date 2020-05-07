@@ -22,13 +22,19 @@
 
 #include "real_ticks.h"
 
+// need this for usleep on posix, Sleep on windows
+#ifdef _MSC_VER
+#include "i_hate_windows.h"
+#else
+#include <unistd.h>
+#endif
+
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <math.h>
 
 #include "config.h"
@@ -220,6 +226,14 @@ static void dc_get_sndchan_var(struct washdc_snddev const *dev,
 static void dc_mute_sndchan(struct washdc_snddev const *dev,
                             unsigned chan_no, bool is_muted) {
     aica_mute_chan(&aica, chan_no, is_muted);
+}
+
+static inline void washdc_sleep_ms(unsigned n_ms) {
+#ifdef _MSC_VER
+    Sleep(n_ms);
+#else
+    usleep(n_ms * 1000);
+#endif
 }
 
 static void dc_inject_irq(char const *id) {
@@ -1020,7 +1034,7 @@ static bool dreamcast_check_debugger(void) {
             // call debug_run_once 100 times per second
             win_check_events();
             debug_run_once();
-            usleep(1000 * 1000 / 100);
+            washdc_sleep_ms(1000 / 100);
         } while ((cur_state = dc_get_state()) == DC_STATE_DEBUG &&
                  (is_running = dc_emu_thread_is_running()));
     }
@@ -1267,7 +1281,7 @@ static void suspend_loop(void) {
              * TODO: sleep on a pthread condition or something instead of
              * polling.
              */
-            usleep(1000 * 1000 / 60);
+            washdc_sleep_ms(1000 * 1000 / 60);
         } while (dc_emu_thread_is_running() &&
                  ((cur_state = dc_get_state()) == DC_STATE_SUSPEND));
     }
