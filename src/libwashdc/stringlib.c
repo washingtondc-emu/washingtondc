@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <errno.h>
-#include <libgen.h>
 
 #include "washdc/error.h"
 
@@ -414,27 +413,18 @@ int string_get_col(struct string *dst, struct string const *src,
 }
 
 void string_dirname(struct string *dst, char const *input) {
-    /*
-     * this function is kinda wordy because the posix standard for dirname is
-     * so wonky.  dirname *might* edit the string you send it is a parameter,
-     * so we have to make a copy before we call dirname, and it *might* return
-     * that modified string or it *might* return a pointer to some static
-     * memory, so we have to immediately make another copy.
-     *
-     * And don't get me started on basename, on GNU platforms that one actually
-     * changes behavior depending on whether or not libgen.h was included.
-     *
-     * (/rant)
-     */
-    char *input_tmp = strdup(input);
+    free(dst->c_str);
 
-    if (!input_tmp)
+    if (!(dst->c_str = strdup(input)))
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    if (dst->c_str)
-        free(dst->c_str);
+#ifdef _WIN32
+#define WASHDC_PATH_SEP '\\'
+#else
+#define WASHDC_PATH_SEP '/'
+#endif
 
-    dst->c_str = strdup(dirname(input_tmp));
-
-    free(input_tmp);
+    char *last_slash = strrchr(dst->c_str, WASHDC_PATH_SEP);
+    if (last_slash)
+        *last_slash = '\0';
 }
