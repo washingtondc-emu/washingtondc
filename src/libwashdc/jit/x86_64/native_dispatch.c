@@ -27,11 +27,11 @@
 #include "washdc/error.h"
 #include "dc_sched.h"
 #include "exec_mem.h"
-#include "emit_x86_64.h"
 #include "jit/code_cache.h"
 #include "jit/jit.h"
 #include "abi.h"
 
+#include "emit_x86_64.h"
 #include "native_dispatch.h"
 
 #define BASIC_ALLOC 32

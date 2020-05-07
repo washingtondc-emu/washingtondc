@@ -34,7 +34,6 @@
 #include "jit/code_block.h"
 #include "jit/jit_il.h"
 #include "exec_mem.h"
-#include "emit_x86_64.h"
 #include "dreamcast.h"
 #include "native_dispatch.h"
 #include "native_mem.h"
@@ -44,6 +43,7 @@
 #include "register_set.h"
 #include "compiler_bullshit.h"
 
+#include "emit_x86_64.h"
 #include "code_block_x86_64.h"
 
 #define N_REGS 16

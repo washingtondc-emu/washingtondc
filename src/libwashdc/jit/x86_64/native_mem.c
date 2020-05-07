@@ -29,7 +29,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "emit_x86_64.h"
 #include "code_block_x86_64.h"
 #include "washdc/MemoryMap.h"
 #include "exec_mem.h"
@@ -37,6 +36,7 @@
 #include "abi.h"
 
 #include "native_mem.h"
+#include "emit_x86_64.h"
 
 #define BASIC_ALLOC 32
 

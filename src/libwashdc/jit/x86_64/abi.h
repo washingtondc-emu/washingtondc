@@ -23,8 +23,6 @@
 #ifndef ABI_H_
 #define ABI_H_
 
-#include "emit_x86_64.h"
-
 #if defined(__CYGWIN__) || defined(_WIN32)
 #define ABI_MICROSOFT
 #endif
