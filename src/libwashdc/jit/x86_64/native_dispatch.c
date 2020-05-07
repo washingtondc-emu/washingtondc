@@ -480,7 +480,7 @@ static void store_quad_from_reg(void *qptr, unsigned reg_no,
 }
 
 static void jmp_to_addr(void *addr, unsigned clobber_reg) {
-    char *base = x86asm_get_outp() + 5;
+    char *base = ((char*)x86asm_get_outp()) + 5;
     intptr_t diff = ((char*)addr) - base;
     if (diff <= INT32_MAX && diff >= INT32_MIN) {
         x86asm_jmpq_offs32(diff);
@@ -491,7 +491,7 @@ static void jmp_to_addr(void *addr, unsigned clobber_reg) {
 }
 
 static void jmp_to_addr_jbe(void *addr, unsigned clobber_reg) {
-    char *base = x86asm_get_outp() + 6;
+    char *base = ((char*)x86asm_get_outp()) + 6;
     intptr_t diff = ((char*)addr) - base;
     if (diff <= INT32_MAX && diff >= INT32_MIN)
         x86asm_jbe_disp32(diff);
