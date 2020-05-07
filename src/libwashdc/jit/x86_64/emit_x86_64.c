@@ -42,9 +42,9 @@
 static void *alloc_start;
 static unsigned alloc_len;
 
-static uint8_t *outp;
+static uint8_t *washdc_emitp;
 static unsigned *n_bytes_out;
-static unsigned outp_len;
+static unsigned washdc_emitp_len;
 
 static void try_grow(void) {
     if (!alloc_start)
@@ -59,14 +59,14 @@ static void try_grow(void) {
     }
 
     alloc_len += X86_64_GROW_SIZE;
-    outp_len += X86_64_GROW_SIZE;
+    washdc_emitp_len += X86_64_GROW_SIZE;
 }
 
 WASHDC_UNUSED
 static void put8(uint8_t val) {
-    if (outp_len >= 1) {
-        *outp++ = val;
-        outp_len--;
+    if (washdc_emitp_len >= 1) {
+        *washdc_emitp++ = val;
+        washdc_emitp_len--;
         if (n_bytes_out)
             *n_bytes_out += sizeof(uint8_t);
     } else {
@@ -77,10 +77,10 @@ static void put8(uint8_t val) {
 
 WASHDC_UNUSED
 static void put16(uint16_t val) {
-    if (outp_len >= 2) {
-        memcpy(outp, &val, sizeof(val));
-        outp += 2;
-        outp_len -= 2;
+    if (washdc_emitp_len >= 2) {
+        memcpy(washdc_emitp, &val, sizeof(val));
+        washdc_emitp += 2;
+        washdc_emitp_len -= 2;
         if (n_bytes_out)
             *n_bytes_out += sizeof(uint16_t);
     } else {
@@ -91,10 +91,10 @@ static void put16(uint16_t val) {
 
 WASHDC_UNUSED
 static void put32(uint32_t val) {
-    if (outp_len >= 4) {
-        memcpy(outp, &val, sizeof(val));
-        outp += 4;
-        outp_len -= 4;
+    if (washdc_emitp_len >= 4) {
+        memcpy(washdc_emitp, &val, sizeof(val));
+        washdc_emitp += 4;
+        washdc_emitp_len -= 4;
         if (n_bytes_out)
             *n_bytes_out += sizeof(uint32_t);
     } else {
@@ -105,10 +105,10 @@ static void put32(uint32_t val) {
 
 WASHDC_UNUSED
 static void put64(uint64_t val) {
-    if (outp_len >= 8) {
-        memcpy(outp, &val, sizeof(val));
-        outp += 8;
-        outp_len -= 8;
+    if (washdc_emitp_len >= 8) {
+        memcpy(washdc_emitp, &val, sizeof(val));
+        washdc_emitp += 8;
+        washdc_emitp_len -= 8;
         if (n_bytes_out)
             *n_bytes_out += sizeof(uint64_t);
     } else {
@@ -118,7 +118,7 @@ static void put64(uint64_t val) {
 }
 
 void* x86asm_get_outp(void) {
-    return outp;
+    return washdc_emitp;
 }
 
 #define REX_W (1 << 3) // 64-bit operand size
@@ -392,13 +392,13 @@ static void emit_mod_reg_rm_2_8bit(unsigned rex, unsigned opcode1,
 void x86asm_set_dst(void *out_ptr, unsigned *out_n_bytes, unsigned n_bytes) {
     alloc_start = out_ptr;
     alloc_len = n_bytes;
-    outp = (uint8_t*)out_ptr;
-    outp_len = n_bytes;
+    washdc_emitp = (uint8_t*)out_ptr;
+    washdc_emitp_len = n_bytes;
     n_bytes_out = out_n_bytes;
 }
 
 void *x86asm_get_out_ptr(void) {
-    return outp;
+    return washdc_emitp;
 }
 
 void x86asm_call_reg(unsigned reg_no) {
@@ -510,7 +510,7 @@ void x86asm_mov_imm64_reg64(uint64_t imm64, unsigned reg_no) {
 }
 
 void x86asm_call(void *dst) {
-    size_t offs = (uint8_t*)dst - outp;
+    size_t offs = (uint8_t*)dst - washdc_emitp;
 
     if (offs > INT_MAX)
         abort();
@@ -1073,8 +1073,8 @@ void x86asm_jmp_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0xeb);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1097,8 +1097,8 @@ void x86asm_jz_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x74);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1113,8 +1113,8 @@ void x86asm_jnz_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x75);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1135,8 +1135,8 @@ void x86asm_ja_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x77);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1162,8 +1162,8 @@ void x86asm_jae_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x73);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1184,8 +1184,8 @@ void x86asm_jbe_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x76);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1200,8 +1200,8 @@ void x86asm_jb_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x72);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1216,8 +1216,8 @@ void x86asm_jl_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x7c);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1232,8 +1232,8 @@ void x86asm_jle_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x7e);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1248,8 +1248,8 @@ void x86asm_jnge_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x7c);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1264,8 +1264,8 @@ void x86asm_jns_lbl8(struct x86asm_lbl8 *lbl) {
     struct lbl_jmp_pt pt;
     put8(0x79);
 
-    pt.offs = (int8_t*)outp;
-    pt.rel_pos = outp + 1;
+    pt.offs = (int8_t*)washdc_emitp;
+    pt.rel_pos = washdc_emitp + 1;
 
     put8(0); // temporary placeholder for the offset value
     x86asm_lbl8_push_jmp_pt(lbl, &pt);
@@ -1350,9 +1350,9 @@ void x86asm_lbl8_cleanup(struct x86asm_lbl8 *lbl) {
     memset(lbl, 0, sizeof(*lbl));
 }
 
-// This will define the label to point to outp.
+// This will define the label to point to washdc_emitp.
 void x86asm_lbl8_define(struct x86asm_lbl8 *lbl) {
-    lbl->ptr = outp;
+    lbl->ptr = washdc_emitp;
 
     unsigned jmp_pt_idx;
     for (jmp_pt_idx = 0; jmp_pt_idx < lbl->n_jump_points; jmp_pt_idx++) {
