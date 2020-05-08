@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -48,6 +48,6 @@ void serial_server_cleanup(void);
  */
 void serial_server_run(void);
 
-extern struct serial_server_intf const sersrv_intf;
+extern struct serial_server_intf sersrv_intf;
 
 #endif

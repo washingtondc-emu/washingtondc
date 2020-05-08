@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -59,30 +59,10 @@ static void
 wizard(path_string console_name, path_string dc_bios_path,
        path_string dc_flash_path);
 
-static struct washdc_hostfile_api const hostfile_api = {
-    .open = file_stdio_open,
-    .close = file_stdio_close,
-    .seek = file_stdio_seek,
-    .tell = file_stdio_tell,
-    .read = file_stdio_read,
-    .write = file_stdio_write,
-    .flush = file_stdio_flush,
-    .open_cfg_file = open_cfg_file,
-    .open_screenshot = open_screenshot,
-#ifdef _WIN32
-    .pathsep = '\\'
-#else
-    .pathsep = '/'
-#endif
-};
-
-static struct washdc_sound_intf snd_intf = {
-    .init = null_sound_init,
-    .cleanup = null_sound_cleanup,
-    .submit_samples = null_sound_submit_samples
-};
-
+static struct washdc_hostfile_api hostfile_api;
 struct washdc_overlay_intf overlay_intf;
+static struct washdc_sound_intf snd_intf;
+static struct win_intf null_win_intf;
 
 struct washdc_gameconsole const *console;
 
@@ -94,17 +74,6 @@ static void null_win_make_context_current(void);
 static int null_win_get_width(void);
 static int null_win_get_height(void);
 static void null_win_update_title(void);
-
-static struct win_intf const null_win_intf = {
-    .init = null_win_init,
-    .cleanup = null_win_cleanup,
-    .check_events = null_win_check_events,
-    .update = null_win_update,
-    .make_context_current = null_win_make_context_current,
-    .update_title = null_win_update_title,
-    .get_width = null_win_get_width,
-    .get_height = null_win_get_height
-};
 
 int main(int argc, char **argv) {
     int opt;
@@ -224,6 +193,21 @@ int main(int argc, char **argv) {
     settings.log_verbose = log_verbose;
     settings.write_to_flash = write_to_flash_mem;
 
+    hostfile_api.open = file_stdio_open;
+    hostfile_api.close = file_stdio_close;
+    hostfile_api.seek = file_stdio_seek;
+    hostfile_api.tell = file_stdio_tell;
+    hostfile_api.read = file_stdio_read;
+    hostfile_api.write = file_stdio_write;
+    hostfile_api.flush = file_stdio_flush;
+    hostfile_api.open_cfg_file = open_cfg_file;
+    hostfile_api.open_screenshot = open_screenshot;
+#ifdef _WIN32
+    hostfile_api.pathsep = '\\';
+#else
+    hostfile_api.pathsep = '/';
+#endif
+
     settings.hostfile_api = &hostfile_api;
 
     if (enable_debugger && enable_washdbg) {
@@ -337,11 +321,24 @@ int main(int argc, char **argv) {
     settings.enable_serial = enable_serial;
     settings.path_gdi = path_gdi;
 
+    null_win_intf.init = null_win_init;
+    null_win_intf.cleanup = null_win_cleanup;
+    null_win_intf.check_events = null_win_check_events;
+    null_win_intf.update = null_win_update;
+    null_win_intf.make_context_current = null_win_make_context_current;
+    null_win_intf.update_title = null_win_update_title;
+    null_win_intf.get_width = null_win_get_width;
+    null_win_intf.get_height = null_win_get_height;
+
     settings.win_intf = &null_win_intf;
 
 #ifdef ENABLE_TCP_SERIAL
     settings.sersrv = &sersrv_intf;
 #endif
+
+    snd_intf.init = null_sound_init;
+    snd_intf.cleanup = null_sound_cleanup;
+    snd_intf.submit_samples = null_sound_submit_samples;
 
     settings.sndsrv = &snd_intf;
 

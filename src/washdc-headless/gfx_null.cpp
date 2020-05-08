@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -61,34 +61,34 @@ static void null_render_toggle_filter(void);
 static void null_render_obj_read(struct gfx_obj *obj, void *out,
                                  size_t n_bytes);
 
-struct rend_if const null_rend_if = {
-    .init = null_render_init,
-    .cleanup = null_render_cleanup,
-    .update_tex = null_render_update_tex,
-    .release_tex = null_render_release_tex,
-    .set_blend_enable = null_render_set_blend_enable,
-    .set_rend_param = null_render_set_rend_param,
-    .set_screen_dim = null_render_set_screen_dim,
-    .set_clip_range = null_render_set_clip_range,
-    .draw_array = null_render_draw_array,
-    .clear = null_render_clear,
-    .begin_sort_mode = null_render_begin_sort_mode,
-    .end_sort_mode = null_render_end_sort_mode,
-    .target_bind_obj = null_render_bind_obj,
-    .target_unbind_obj = null_render_unbind_obj,
-    .target_begin = null_render_target_begin,
-    .target_end = null_render_target_end,
-    .video_get_fb = null_render_get_fb,
-    .video_present = null_render_present,
-    .video_new_framebuffer = null_render_new_framebuffer,
-    .video_toggle_filter = null_render_toggle_filter
-};
+struct rend_if null_rend_if;
 
 static void null_render_init(void) {
     flip_screen = false;
     bound_obj_handle = 0;
     bound_obj_w = 0.0;
     bound_obj_h = 0.0;
+
+    null_rend_if.init = null_render_init;
+    null_rend_if.cleanup = null_render_cleanup;
+    null_rend_if.update_tex = null_render_update_tex;
+    null_rend_if.release_tex = null_render_release_tex;
+    null_rend_if.set_blend_enable = null_render_set_blend_enable;
+    null_rend_if.set_rend_param = null_render_set_rend_param;
+    null_rend_if.set_screen_dim = null_render_set_screen_dim;
+    null_rend_if.set_clip_range = null_render_set_clip_range;
+    null_rend_if.draw_array = null_render_draw_array;
+    null_rend_if.clear = null_render_clear;
+    null_rend_if.begin_sort_mode = null_render_begin_sort_mode;
+    null_rend_if.end_sort_mode = null_render_end_sort_mode;
+    null_rend_if.target_bind_obj = null_render_bind_obj;
+    null_rend_if.target_unbind_obj = null_render_unbind_obj;
+    null_rend_if.target_begin = null_render_target_begin;
+    null_rend_if.target_end = null_render_target_end;
+    null_rend_if.video_get_fb = null_render_get_fb;
+    null_rend_if.video_present = null_render_present;
+    null_rend_if.video_new_framebuffer = null_render_new_framebuffer;
+    null_rend_if.video_toggle_filter = null_render_toggle_filter;
 }
 
 static void null_render_cleanup(void) {
