@@ -20,10 +20,15 @@
  *
  ******************************************************************************/
 
+#ifdef _WIN32
+#include "i_hate_windows.h"
+#else
+#include <unistd.h>
+#endif
+
 #include "threading.h"
 
 #include <cerrno>
-#include <unistd.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
@@ -302,7 +307,11 @@ void gdb_cleanup(void) {
          */
         washdc_log_info("Artificial 10-second delay to work around a bug present in "
                         "some gdb installations, please be patient...\n");
+#ifdef _WIN32
+        Sleep(10 * 1000);
+#else
         sleep(10);
+#endif
         bufferevent_free(stub.bev);
     }
 
