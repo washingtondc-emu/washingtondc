@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ extern "C" {
 #define FIFO_DEREF(nodep, tp, memb)                     \
     (*((tp*)(((uint8_t*)nodep) - offsetof(tp, memb))))
 
-#define FIFO_HEAD_INITIALIZER(name) { .first = NULL, .plast = &name.first }
+#define FIFO_HEAD_INITIALIZER(name) { NULL /* first */, &name.first /* plast */ }
 
 #define FIFO_FOREACH(head, curs) \
     for ((curs) = (head).first; (curs); (curs) = (curs)->next)
