@@ -31,7 +31,6 @@
 #include "threading.h"
 
 #include <cstdio>
-#include <unistd.h>
 #include <cstdlib>
 #include <atomic>
 #include <cstring>
