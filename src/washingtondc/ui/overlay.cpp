@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifdef _WIN32
+#include "i_hate_windows.h"
+#endif
+
 #include <cstring>
 #include <cstdio>
 #include <memory>

@@ -20,6 +20,10 @@
  *
  ******************************************************************************/
 
+#ifdef _WIN32
+#include "i_hate_windows.h"
+#endif
+
 #ifndef RENDERER_HPP_
 #define RENDERER_HPP_
 
