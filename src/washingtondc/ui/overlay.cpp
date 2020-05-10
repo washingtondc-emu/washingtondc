@@ -287,7 +287,7 @@ void overlay::draw() {
     if (mem_dump_browser->HasSelected()) {
         std::filesystem::path sel = mem_dump_browser->GetSelected();
         mem_dump_browser->Close();
-        washdc_dump_main_memory(sel.c_str());
+        washdc_dump_main_memory(sel.string().c_str());
     }
 #endif
 
