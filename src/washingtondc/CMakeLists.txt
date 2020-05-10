@@ -184,12 +184,16 @@ if (NOT WIN32)
     set(vid_libs "rt" "${vid_libs}")
 endif()
 
-set(washingtondc_libs "m"
-                      "washdc"
+set(washingtondc_libs "washdc"
                       "png"
                       "${vid_libs}"
                       "zlib"
                       "portaudio_static")
+
+if (NOT WIN32)
+   set (washingtondc_libs "${washingtondc_libs}" "m")
+endif()
+
 if (no_imgui_browser STREQUAL "FALSE")
     set(washingtondc_libs "${washingtondc_libs}" "stdc++fs")
 endif()
