@@ -192,10 +192,10 @@ set(washingtondc_libs "washdc"
 
 if (NOT WIN32)
    set (washingtondc_libs "${washingtondc_libs}" "m")
-endif()
 
-if (no_imgui_browser STREQUAL "FALSE")
-    set(washingtondc_libs "${washingtondc_libs}" "stdc++fs")
+   if (no_imgui_browser STREQUAL "FALSE")
+       set(washingtondc_libs "${washingtondc_libs}" "stdc++fs")
+   endif()
 endif()
 
 if (USE_LIBEVENT)
