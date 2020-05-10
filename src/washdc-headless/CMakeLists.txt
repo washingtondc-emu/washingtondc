@@ -2,7 +2,7 @@
 #
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2019 snickerbockers
+#    Copyright (C) 2019, 2020 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -126,7 +126,7 @@ if (USE_LIBEVENT)
     set(washdc_headless_sources "${washdc_headless_sources}" "${io_sources}")
     set(washdc_headless_libs "${washdc_headless_libs}" "event_core")
     if (WIN32)
-        target_link_libraries(event_core INTERFACE -lws2_32)
+        target_link_libraries(event_core INTERFACE ws2_32)
     else()
         set(washdc_headless_libs "${washdc_headless_libs}" "pthread" "event_pthreads")
     endif()
