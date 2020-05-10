@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -62,28 +62,8 @@
 #include "stdio_hostfile.hpp"
 #include "paths.hpp"
 
-static struct washdc_sound_intf snd_intf = {
-    .init = sound::init,
-    .cleanup = sound::cleanup,
-    .submit_samples = sound::submit_samples
-};
-
-static struct washdc_hostfile_api const hostfile_api = {
-    .open = file_stdio_open,
-    .close = file_stdio_close,
-    .seek = file_stdio_seek,
-    .tell = file_stdio_tell,
-    .read = file_stdio_read,
-    .write = file_stdio_write,
-    .flush = file_stdio_flush,
-    .open_cfg_file = open_cfg_file,
-    .open_screenshot = open_screenshot,
-#ifdef _WIN32
-    .pathsep = '\\'
-#else
-    .pathsep = '/'
-#endif
-};
+static struct washdc_sound_intf snd_intf;
+static struct washdc_hostfile_api hostfile_api;
 
 static void wizard(path_string console_name, path_string dc_bios_path,
                    path_string dc_flash_path);
@@ -310,6 +290,22 @@ int main(int argc, char **argv) {
 
     settings.hostfile_api = &hostfile_api;
 
+    hostfile_api.open = file_stdio_open;
+    hostfile_api.close = file_stdio_close;
+    hostfile_api.seek = file_stdio_seek;
+    hostfile_api.tell = file_stdio_tell;
+    hostfile_api.read = file_stdio_read;
+    hostfile_api.write = file_stdio_write;
+    hostfile_api.flush = file_stdio_flush;
+    hostfile_api.open_cfg_file = open_cfg_file;
+    hostfile_api.open_screenshot = open_screenshot;
+#ifdef _WIN32
+    hostfile_api.pathsep = '\\';
+#else
+    hostfile_api.pathsep = '/';
+#endif
+
+
     if (enable_debugger && enable_washdbg) {
         fprintf(stderr, "You can't enable WashDbg and GDB at the same time\n");
         exit(1);
@@ -426,15 +422,19 @@ int main(int argc, char **argv) {
     settings.sersrv = &sersrv_intf;
 #endif
 
-    settings.sndsrv = &snd_intf;
+    snd_intf.init = sound::init;
+    snd_intf.cleanup = sound::cleanup;
+    snd_intf.submit_samples = sound::submit_samples;
 
-    settings.gfx_rend_if = &opengl_rend_if;
+    settings.sndsrv = &snd_intf;
 
     overlay_intf.overlay_draw = overlay::draw;
     overlay_intf.overlay_set_fps = overlay::set_fps;
     overlay_intf.overlay_set_virt_fps = overlay::set_virt_fps;
 
     settings.overlay_intf = &overlay_intf;
+
+    settings.gfx_rend_if = &opengl_rend_if;
 
 #ifdef USE_LIBEVENT
     io::init();
