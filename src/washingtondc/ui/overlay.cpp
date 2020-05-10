@@ -54,7 +54,7 @@
 #include "overlay.hpp"
 
 // see main.cpp
-extern struct washdc_gameconsole *console;
+extern struct washdc_gameconsole const *console;
 
 static double framerate, virt_framerate;
 static bool not_hidden;
