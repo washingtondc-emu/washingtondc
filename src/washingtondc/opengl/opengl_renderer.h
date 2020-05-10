@@ -31,6 +31,10 @@
 
 #include "washdc/gfx/gfx_all.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern struct rend_if const opengl_rend_if;
 
 GLuint opengl_renderer_tex(unsigned obj_no);
@@ -46,5 +50,9 @@ void opengl_renderer_tex_set_dirty(unsigned obj_no, bool dirty);
 GLenum opengl_renderer_tex_get_format(unsigned obj_no);
 GLenum opengl_renderer_tex_get_dat_type(unsigned obj_no);
 bool opengl_renderer_tex_get_dirty(unsigned obj_no);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
