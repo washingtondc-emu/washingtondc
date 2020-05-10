@@ -41,6 +41,21 @@ option(BUILD_WASHDC_HEADLESS "Build the washdc-headless frontend program" ON)
 option(ENABLE_TESTS "enable automatic testing" OFF)
 option(ENABLE_MMU "enable the SH4's Memory Management Unit (interpreter only)" OFF)
 
+# OKAY.
+# this one is sort-of a compatibility hack to get around outdated packages on
+# certain Linux distros but it only applies to the frontend so I'm okay with it.
+# Basically, the memory dump UI uses an imgui filebrowser which relies upon
+# std::filesystem.  This isn't available in gcc until gcc-8.  As of this
+# writing, several mainstream linux distros still use older versions of gcc as
+# the default CC.  mingw-w64 also suffers from this problem.
+#
+# This is a debugging feature that's probably not interesting to most users, so
+# I don't think it's fair to require people to use a specific compiler just for
+# this one feature, so I'm making it an optional feature which is disabled by
+# default for now.  This also benefits me because I don't have to put up with
+# this bollocks in the github-actions CI.
+option(ENABLE_MEM_DUMP_UI "let users dump memory from the washingtondc frontend" OFF)
+
 if (ENABLE_MMU)
     add_definitions(-DENABLE_MMU)
 endif()

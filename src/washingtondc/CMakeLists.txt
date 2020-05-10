@@ -39,13 +39,13 @@ endif()
 # XXX COMPATIBILITY HACK
 # memory dumps rely upon the imgui filebrowser module
 # the imgui filebrowser module relies on C++17 filesystem support
-# This isn't implemented on mingw-w64 for some dumb reason, so we have to
-# disable it.
-if (MINGW)
+# This is literally the only thing in all of WashingtonDC that relies on
+# C++17, so we make it optional.  It is disabled by default.
+if (ENABLE_MEM_DUMP_UI)
+    set(no_imgui_browser "FALSE")
+else()
     set(no_imgui_browser "TRUE")
     add_definitions(-DDISABLE_MEM_DUMP_UI)
-else()
-    set(no_imgui_browser "FALSE")
 endif()
 
 set(UI_SOURCE_DIR "${PROJECT_SOURCE_DIR}/ui")
