@@ -22,7 +22,6 @@
 
 #include "i_hate_windows.h"
 
-#include <unistd.h>
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
@@ -43,6 +42,7 @@
 #include "console_config.hpp"
 #include "opengl/opengl_renderer.h"
 #include "stdio_hostfile.hpp"
+#include "washdc_getopt.h"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -171,6 +171,10 @@ static void wizard(path_string console_name, path_string dc_bios_path,
         ;
 }
 
+// for washdc_getopt
+char* washdc_optarg;
+int washdc_optind = 1, washdc_opterr, washdc_optopt;
+
 int main(int argc, char **argv) {
     int opt;
     char const *cmd = argv[0];
@@ -194,31 +198,31 @@ int main(int argc, char **argv) {
     create_data_dir();
     create_screenshot_dir();
 
-    while ((opt = getopt(argc, argv, "w:b:f:c:s:m:d:u:g:htjxpnlv")) != -1) {
+    while ((opt = washdc_getopt(argc, argv, "w:b:f:c:s:m:d:u:g:htjxpnlv")) != -1) {
         switch (opt) {
         case 'g':
             enable_debugger = true;
-            if (strcmp(optarg, "washdbg") == 0) {
+            if (strcmp(washdc_optarg, "washdbg") == 0) {
                 enable_washdbg = true;
                 enable_debugger = false;
             }
             break;
         case 'd':
             boot_direct = true;
-            path_ip_bin = optarg;
+            path_ip_bin = washdc_optarg;
             break;
         case 'u':
             skip_ip_bin = true;
-            path_1st_read_bin = optarg;
+            path_1st_read_bin = washdc_optarg;
             break;
         case 's':
-            path_syscalls_bin = optarg;
+            path_syscalls_bin = washdc_optarg;
             break;
         case 't':
             enable_serial = true;
             break;
         case 'm':
-            path_gdi = optarg;
+            path_gdi = washdc_optarg;
             break;
         case 'h':
             print_usage(cmd);
@@ -242,13 +246,13 @@ int main(int argc, char **argv) {
             log_verbose = true;
             break;
         case 'c':
-            console_name = optarg;
+            console_name = washdc_optarg;
             break;
         case 'b':
-            dc_bios_path = optarg;
+            dc_bios_path = washdc_optarg;
             break;
         case 'f':
-            dc_flash_path = optarg;
+            dc_flash_path = washdc_optarg;
             break;
         case 'w':
             launch_wizard = true;
@@ -280,9 +284,6 @@ int main(int argc, char **argv) {
             flash_str = dc_flash_path;
         wizard(console_name, bios_str, flash_str);
     }
-
-    argv += optind;
-    argc -= optind;
 
     settings.log_to_stdout = log_stdout;
     settings.log_verbose = log_verbose;
