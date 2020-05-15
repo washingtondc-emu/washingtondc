@@ -178,6 +178,7 @@ next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type);
 static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 static int decode_end_of_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
+static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 static int decode_input_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 static int decode_user_clip(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 
@@ -644,112 +645,12 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 }
 
 static void
-on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt_vtx const *vtx) {
+on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
-    float ta_fifo_float[PVR2_CMD_MAX_LEN];
-    memcpy(ta_fifo_float, ta->ta_fifo32, sizeof(ta_fifo_float));
+    struct pvr2_pkt_quad const *quad = &pkt->dat.quad;
 
-    /*
-     * four quadrilateral vertices.  the z-coordinate of p4 is determined
-     * automatically by the PVR2 so it is not possible to specify a non-coplanar
-     * set of vertices.
-     */
-    float p1[3] = { ta_fifo_float[1], ta_fifo_float[2], 1.0 / ta_fifo_float[3] };
-    float p2[3] = { ta_fifo_float[4], ta_fifo_float[5], 1.0 / ta_fifo_float[6] };
-    float p3[3] = { ta_fifo_float[7], ta_fifo_float[8], 1.0 / ta_fifo_float[9] };
-    float p4[3] = { ta_fifo_float[10], ta_fifo_float[11] };
-
-    /*
-     * unpack the texture coordinates.  The third vertex's coordinate is the
-     * scond vertex's coordinate plus the two side-vectors.  We do this
-     * unconditionally even if textures are disabled.  If textures are disabled
-     * then the output of this texture-coordinate algorithm is undefined but it
-     * does not matter because the rendering code won't be using it anyways.
-     */
-    float uv[4][2];
-
-    unpack_uv16(uv[0], uv[0] + 1, ta_fifo_float + 13);
-    unpack_uv16(uv[1], uv[1] + 1, ta_fifo_float + 14);
-    unpack_uv16(uv[2], uv[2] + 1, ta_fifo_float + 15);
-
-    float uv_vec[2][2] = {
-        { uv[0][0] - uv[1][0], uv[0][1] - uv[1][1] },
-        { uv[2][0] - uv[1][0], uv[2][1] - uv[1][1] }
-    };
-
-    uv[3][0] = uv[1][0] + uv_vec[0][0] + uv_vec[1][0];
-    uv[3][1] = uv[1][1] + uv_vec[0][1] + uv_vec[1][1];
-
-    if (ta->hdr.stride_sel) {
-        unsigned linestride = 32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
-        int idx;
-        for (idx = 0; idx < 3; idx++) {
-            uv[idx][0] *= ((float)linestride) / ((float)(1 << ta->hdr.tex_width_shift));
-        }
-    }
-
-    /*
-     * any three non-colinear points will define a 2-dimensional hyperplane in
-     * 3-dimensionl space.  The hyperplane consists of all points where the
-     * following relationship is true:
-     *
-     * dot(n, p) + d == 0
-     *
-     * where n is a vector orthogonal to the hyperplane, d is the translation
-     * from the origin to the hyperplane along n, and p is any point on the
-     * plane.
-     *
-     * n is usually a normalized vector, but for our purposes that is not
-     * necessary because d will scale accordingly.
-     *
-     * If the magnitude of n is zero, then all three points are colinear (or
-     * coincidental) and they do not define a single hyperplane because there
-     * are inifinite hyperplanes which contain all three points.  In this case
-     * the quadrilateral is considered degenerate and should not be rendered.
-     *
-     * Because the three existing vertices are coplanar, the fourth vertex's
-     * z-coordinate can be determined based on the hyperplane defined by the
-     * other three points.
-     *
-     * dot(n, p) + d == 0
-     * n.x * p.x + n.y * p.y + n.z * p.z + d == 0
-     * n.z * p.z = -(d + n.x * p.x + n.y * p.y)
-     * p.z = -(d + n.x * p.x + n.y * p.y) / n.z
-     *
-     * In the case where n.z is 0, the hyperplane is oriented orthogonally with
-     * respect to the observer.  The only dimension on which the quadrilateral
-     * is visible is the one which is infinitely thin, so it should not be
-     * rendered.
-     */
-
-    // side-vectors
-    float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
-    float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2] };
-
-    // hyperplane normal
-    float norm[3] = {
-        v1[1] * v2[2] - v1[2] * v2[1],
-        v1[2] * v2[0] - v1[0] * v2[2],
-            v1[0] * v2[1] - v1[1] * v2[0]
-    };
-
-    /*
-     * return early if the quad is degenerate or it is oriented orthoganally to
-     * the viewer.
-     *
-     * TODO: consider using a floating-point tolerance instead of comparing to
-     * zero directly.
-     */
-    if ((norm[2] == 0.0f) ||
-        (norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2] == 0.0f)) {
-        ta_fifo_finish_packet(ta);
+    if (quad->degenerate)
         return;
-    }
-
-    // hyperplane translation
-    float dist = -norm[0] * p1[0] - norm[1] * p1[1] - norm[2] * p1[2];
-
-    p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
 
     float const base_col[] = {
         ta->sprite_base_color_rgba[0],
@@ -765,32 +666,41 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt_vtx const *vtx) {
         ta->sprite_offs_color_rgba[3]
     };
 
+    float const *p1 = quad->vert_pos[0];
+    float const *p2 = quad->vert_pos[1];
+    float const *p3 = quad->vert_pos[2];
+    float const *p4 = quad->vert_pos[3];
+
     struct pvr2_ta_vert vert1 = {
         .pos = { p1[0], p1[1], p1[2] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { uv[0][0], uv[0][1] }
+        .tex_coord = { quad->vert_tex_coords[0][0],
+                       quad->vert_tex_coords[0][1] }
     };
 
     struct pvr2_ta_vert vert2 = {
         .pos = { p2[0], p2[1], p2[2] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { uv[1][0], uv[1][1] }
+        .tex_coord = { quad->vert_tex_coords[1][0],
+                       quad->vert_tex_coords[1][1] }
     };
 
     struct pvr2_ta_vert vert3 = {
         .pos = { p3[0], p3[1], p3[2] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { uv[2][0], uv[2][1] }
+        .tex_coord = { quad->vert_tex_coords[2][0],
+                       quad->vert_tex_coords[2][1] }
     };
 
     struct pvr2_ta_vert vert4 = {
         .pos = { p4[0], p4[1], p4[2] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { uv[3][0], uv[3][1] }
+        .tex_coord = { quad->vert_tex_coords[3][0],
+                       quad->vert_tex_coords[3][1] }
     };
 
     pvr2_ta_push_vert(pvr2, vert1);
@@ -827,10 +737,10 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
     struct pvr2_pkt_vtx const *vtx = &pkt->dat.vtx;
 
-    if (ta->hdr.tp == PVR2_HDR_QUAD) {
-        on_quad_received(pvr2, vtx);
-        return;
-    }
+#ifdef INVARIANTS
+    if (ta->hdr.tp != PVR2_HDR_TRIANGLE_STRIP)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     ta->open_group = true;
 
@@ -934,10 +844,18 @@ static void handle_packet(struct pvr2 *pvr2) {
         }
         break;
     case TA_CMD_TYPE_VERTEX:
-        if (decode_vtx(pvr2, &pkt) == 0) {
-            PVR2_TRACE("vertex packet received\n");
-            on_pkt_vtx_received(pvr2, &pkt);
-            ta_fifo_finish_packet(ta);
+        if (ta->hdr.tp == PVR2_HDR_TRIANGLE_STRIP) {
+            if (decode_vtx(pvr2, &pkt) == 0) {
+                PVR2_TRACE("vertex packet received\n");
+                on_pkt_vtx_received(pvr2, &pkt);
+                ta_fifo_finish_packet(ta);
+            }
+        } else {
+            if (decode_quad(pvr2, &pkt) == 0) {
+                PVR2_TRACE("quadrilateral vertex packet received\n");
+                on_quad_received(pvr2, &pkt);
+                ta_fifo_finish_packet(ta);
+            }
         }
         break;
     case TA_CMD_TYPE_INPUT_LIST:
@@ -1000,6 +918,151 @@ static void dump_fifo(struct pvr2 *pvr2) {
 
 static int decode_end_of_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     pkt->tp = PVR2_PKT_END_OF_LIST;
+    return 0;
+}
+
+static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
+    struct pvr2_ta *ta = &pvr2->ta;
+
+    if (ta->ta_fifo_word_count < ta->hdr.vtx_len) {
+        return -1;
+    } else if (ta->ta_fifo_word_count > ta->hdr.vtx_len) {
+        LOG_ERROR("byte count is %u, vtx_len is %u\n",
+                  ta->ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    struct pvr2_pkt_quad *quad = &pkt->dat.quad;
+    float ta_fifo_float[PVR2_CMD_MAX_LEN];
+    memcpy(ta_fifo_float, ta->ta_fifo32, sizeof(ta_fifo_float));
+
+    /*
+     * four quadrilateral vertices.  the z-coordinate of p4 is determined
+     * automatically by the PVR2 so it is not possible to specify a non-coplanar
+     * set of vertices.
+     */
+    float *p1 = quad->vert_pos[0];
+    p1[0] = ta_fifo_float[1];
+    p1[1] = ta_fifo_float[2];
+    p1[2] = 1.0 / ta_fifo_float[3];
+
+    float *p2 = quad->vert_pos[1];
+    p2[0] = ta_fifo_float[4];
+    p2[1] = ta_fifo_float[5];
+    p2[2] = 1.0 / ta_fifo_float[6];
+
+    float *p3 = quad->vert_pos[2];
+    p3[0] = ta_fifo_float[7];
+    p3[1] = ta_fifo_float[8];
+    p3[2] = 1.0 / ta_fifo_float[9];
+
+    float *p4 = quad->vert_pos[3];
+    p4[0] = ta_fifo_float[10];
+    p4[1] = ta_fifo_float[11];
+    // p4[2] will be determined later
+
+    /*
+     * unpack the texture coordinates.  The third vertex's coordinate is the
+     * scond vertex's coordinate plus the two side-vectors.  We do this
+     * unconditionally even if textures are disabled.  If textures are disabled
+     * then the output of this texture-coordinate algorithm is undefined but it
+     * does not matter because the rendering code won't be using it anyways.
+     */
+    unpack_uv16(quad->vert_tex_coords[0], quad->vert_tex_coords[0] + 1,
+                ta_fifo_float + 13);
+    unpack_uv16(quad->vert_tex_coords[1], quad->vert_tex_coords[1] + 1,
+                ta_fifo_float + 14);
+    unpack_uv16(quad->vert_tex_coords[2], quad->vert_tex_coords[2] + 1,
+                ta_fifo_float + 15);
+
+    float uv_vec[2][2] = {
+        { quad->vert_tex_coords[0][0] - quad->vert_tex_coords[1][0],
+          quad->vert_tex_coords[0][1] - quad->vert_tex_coords[1][1] },
+        { quad->vert_tex_coords[2][0] - quad->vert_tex_coords[1][0],
+          quad->vert_tex_coords[2][1] - quad->vert_tex_coords[1][1] }
+    };
+
+    quad->vert_tex_coords[3][0] =
+        quad->vert_tex_coords[1][0] + uv_vec[0][0] + uv_vec[1][0];
+    quad->vert_tex_coords[3][1] =
+        quad->vert_tex_coords[1][1] + uv_vec[0][1] + uv_vec[1][1];
+
+    if (ta->hdr.stride_sel) {
+        unsigned linestride =
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
+        int idx;
+        for (idx = 0; idx < 3; idx++) {
+            quad->vert_tex_coords[idx][0] *=
+                ((float)linestride) / ((float)(1 << ta->hdr.tex_width_shift));
+        }
+    }
+
+    /*
+     * any three non-colinear points will define a 2-dimensional hyperplane in
+     * 3-dimensionl space.  The hyperplane consists of all points where the
+     * following relationship is true:
+     *
+     * dot(n, p) + d == 0
+     *
+     * where n is a vector orthogonal to the hyperplane, d is the translation
+     * from the origin to the hyperplane along n, and p is any point on the
+     * plane.
+     *
+     * n is usually a normalized vector, but for our purposes that is not
+     * necessary because d will scale accordingly.
+     *
+     * If the magnitude of n is zero, then all three points are colinear (or
+     * coincidental) and they do not define a single hyperplane because there
+     * are inifinite hyperplanes which contain all three points.  In this case
+     * the quadrilateral is considered degenerate and should not be rendered.
+     *
+     * Because the three existing vertices are coplanar, the fourth vertex's
+     * z-coordinate can be determined based on the hyperplane defined by the
+     * other three points.
+     *
+     * dot(n, p) + d == 0
+     * n.x * p.x + n.y * p.y + n.z * p.z + d == 0
+     * n.z * p.z = -(d + n.x * p.x + n.y * p.y)
+     * p.z = -(d + n.x * p.x + n.y * p.y) / n.z
+     *
+     * In the case where n.z is 0, the hyperplane is oriented orthogonally with
+     * respect to the observer.  The only dimension on which the quadrilateral
+     * is visible is the one which is infinitely thin, so it should not be
+     * rendered.
+     */
+
+    // side-vectors
+    float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
+    float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2] };
+
+    // hyperplane normal
+    float norm[3] = {
+        v1[1] * v2[2] - v1[2] * v2[1],
+        v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0]
+    };
+
+    /*
+     * return early if the quad is degenerate or it is oriented orthoganally to
+     * the viewer.
+     *
+     * TODO: consider using a floating-point tolerance instead of comparing to
+     * zero directly.
+     */
+    if ((norm[2] == 0.0f) ||
+        (norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2] == 0.0f)) {
+        // make it obvious it's degenerate
+        quad->degenerate = true;
+        return 0;
+    } else {
+        quad->degenerate = false;
+    }
+
+    // hyperplane translation
+    float dist = -norm[0] * p1[0] - norm[1] * p1[1] - norm[2] * p1[2];
+
+    p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
+
     return 0;
 }
 

@@ -181,6 +181,16 @@ struct pvr2_pkt_vtx {
     bool end_of_strip;
 };
 
+struct pvr2_pkt_quad {
+    /*
+     * four vertices consisting of 3-component poistions
+     *and 2-component texture coordinates
+     */
+    float vert_pos[4][3];
+    float vert_tex_coords[4][2];
+    bool degenerate;
+};
+
 enum pvr2_hdr_tp {
     PVR2_HDR_TRIANGLE_STRIP,
     PVR2_HDR_QUAD
@@ -246,6 +256,7 @@ struct pvr2_pkt_user_clip {
 
 union pvr2_pkt_inner {
     struct pvr2_pkt_vtx vtx;
+    struct pvr2_pkt_quad quad;
     struct pvr2_pkt_hdr hdr;
     struct pvr2_pkt_user_clip user_clip;
 };
