@@ -229,7 +229,7 @@ static enum pvr2_poly_type_state get_poly_type_state(struct pvr2_ta *ta,
                                                      enum pvr2_poly_type tp) {
     if (tp >= PVR2_POLY_TYPE_FIRST &&
         tp < PVR2_POLY_TYPE_COUNT) {
-        return ta->poly_type_state[tp];
+        return ta->fifo_state.poly_type_state[tp];
     } else {
         error_set_poly_type_index((int)tp);
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -241,7 +241,7 @@ static void set_poly_type_state(struct pvr2_ta *ta,
                                 enum pvr2_poly_type_state state) {
     if (tp >= PVR2_POLY_TYPE_FIRST &&
         tp < PVR2_POLY_TYPE_COUNT) {
-        ta->poly_type_state[tp] = state;
+        ta->fifo_state.poly_type_state[tp] = state;
     } else {
         error_set_poly_type_index((int)tp);
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -332,11 +332,11 @@ pvr2_ta_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst) {
         ta->gfx_il_inst_buf + ta->gfx_il_inst_buf_count++;
     ent->next = NULL;
     ent->cmd = inst;
-    if (!ta->poly_type_gfx_il_begin[ta->cur_poly_type])
-        ta->poly_type_gfx_il_begin[ta->cur_poly_type] = ent;
-    if (ta->poly_type_gfx_il_end[ta->cur_poly_type])
-        ta->poly_type_gfx_il_end[ta->cur_poly_type]->next = ent;
-    ta->poly_type_gfx_il_end[ta->cur_poly_type] = ent;
+    if (!ta->poly_type_gfx_il_begin[ta->fifo_state.cur_poly_type])
+        ta->poly_type_gfx_il_begin[ta->fifo_state.cur_poly_type] = ent;
+    if (ta->poly_type_gfx_il_end[ta->fifo_state.cur_poly_type])
+        ta->poly_type_gfx_il_end[ta->fifo_state.cur_poly_type]->next = ent;
+    ta->poly_type_gfx_il_end[ta->fifo_state.cur_poly_type] = ent;
 }
 
 uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
@@ -451,7 +451,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     if (hdr->two_volumes_mode)
         LOG_DBG("Unimplemented two-volumes mode polygon!\n");
 
-    if (ta->cur_poly_type != hdr->poly_type) {
+    if (ta->fifo_state.cur_poly_type != hdr->poly_type) {
         if (get_poly_type_state(ta, hdr->poly_type) ==
             PVR2_POLY_TYPE_STATE_SUBMITTED) {
             /*
@@ -463,20 +463,20 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
                       "submitted?\n", pvr2_poly_type_name(hdr->poly_type));
         }
 
-        if (ta->cur_poly_type == PVR2_POLY_TYPE_NONE) {
+        if (ta->fifo_state.cur_poly_type == PVR2_POLY_TYPE_NONE) {
             PVR2_TRACE("Opening polygon group \"%s\"\n",
                        pvr2_poly_type_name(hdr->poly_type));
             set_poly_type_state(ta, hdr->poly_type,
                                 PVR2_POLY_TYPE_STATE_IN_PROGRESS);
-            ta->cur_poly_type = hdr->poly_type;
-            ta->open_group = true;
+            ta->fifo_state.cur_poly_type = hdr->poly_type;
+            ta->fifo_state.open_group = true;
         } else {
             PVR2_TRACE("software did not close polygon group %d\n",
-                      (int)ta->cur_poly_type);
+                      (int)ta->fifo_state.cur_poly_type);
             PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
-                       pvr2_poly_type_name(ta->cur_poly_type));
+                       pvr2_poly_type_name(ta->fifo_state.cur_poly_type));
 
-            next_poly_group(pvr2, ta->cur_poly_type);
+            next_poly_group(pvr2, ta->fifo_state.cur_poly_type);
         }
 
         /* pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count; */
@@ -484,7 +484,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
                    pvr2_poly_type_name(hdr->poly_type));
 
-        next_poly_group(pvr2, ta->cur_poly_type);
+        next_poly_group(pvr2, ta->fifo_state.cur_poly_type);
     }
 
     ta->strip_len = 0;
@@ -565,7 +565,7 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
     PVR2_TRACE("END-OF-LIST PACKET!\n");
 
-    if (ta->cur_poly_type == PVR2_POLY_TYPE_NONE) {
+    if (ta->fifo_state.cur_poly_type == PVR2_POLY_TYPE_NONE) {
         LOG_WARN("attempt to close poly group when no group is open!\n");
         /*
          * SEGA Bass Fishing does this.  At bootup, before the loading icon, it
@@ -588,7 +588,7 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     dc_cycle_stamp_t int_when =
         clock_cycle_stamp(clk) + PVR2_LIST_COMPLETE_INT_DELAY;
 
-    switch (ta->cur_poly_type) {
+    switch (ta->fifo_state.cur_poly_type) {
     case PVR2_POLY_TYPE_OPAQUE:
         if (!ta->pvr2_op_complete_int_event_scheduled) {
             ta->pvr2_op_complete_int_event_scheduled = true;
@@ -632,16 +632,17 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    if (get_poly_type_state(ta, ta->cur_poly_type) !=
+    if (get_poly_type_state(ta, ta->fifo_state.cur_poly_type) !=
         PVR2_POLY_TYPE_STATE_IN_PROGRESS) {
         error_set_feature("closing a polygon group that isn't open");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    finish_poly_group(pvr2, ta->cur_poly_type);
+    finish_poly_group(pvr2, ta->fifo_state.cur_poly_type);
 
-    set_poly_type_state(ta, ta->cur_poly_type, PVR2_POLY_TYPE_STATE_SUBMITTED);
-    ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
+    set_poly_type_state(ta, ta->fifo_state.cur_poly_type,
+                        PVR2_POLY_TYPE_STATE_SUBMITTED);
+    ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
 }
 
 static void
@@ -653,17 +654,17 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         return;
 
     float const base_col[] = {
-        ta->sprite_base_color_rgba[0],
-        ta->sprite_base_color_rgba[1],
-        ta->sprite_base_color_rgba[2],
-        ta->sprite_base_color_rgba[3]
+        ta->fifo_state.sprite_base_color_rgba[0],
+        ta->fifo_state.sprite_base_color_rgba[1],
+        ta->fifo_state.sprite_base_color_rgba[2],
+        ta->fifo_state.sprite_base_color_rgba[3]
     };
 
     float const offs_col[] = {
-        ta->sprite_offs_color_rgba[0],
-        ta->sprite_offs_color_rgba[1],
-        ta->sprite_offs_color_rgba[2],
-        ta->sprite_offs_color_rgba[3]
+        ta->fifo_state.sprite_offs_color_rgba[0],
+        ta->fifo_state.sprite_offs_color_rgba[1],
+        ta->fifo_state.sprite_offs_color_rgba[2],
+        ta->fifo_state.sprite_offs_color_rgba[3]
     };
 
     float const *p1 = quad->vert_pos[0];
@@ -742,7 +743,7 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
-    ta->open_group = true;
+    ta->fifo_state.open_group = true;
 
     /*
      * un-strip triangle strips by duplicating the previous two vertices.
@@ -823,7 +824,7 @@ static void on_pkt_user_clip_received(struct pvr2 *pvr2, struct pvr2_pkt const *
 
 static void handle_packet(struct pvr2 *pvr2) {
     struct pvr2_pkt pkt;
-    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo32;
+    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.fifo_state.ta_fifo32;
     unsigned cmd_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
     struct pvr2_ta *ta = &pvr2->ta;
 
@@ -877,7 +878,7 @@ static void handle_packet(struct pvr2 *pvr2) {
         dump_fifo(pvr2);
         error_set_feature("PVR2 command type");
         error_set_ta_fifo_cmd(cmd_tp);
-        error_set_ta_fifo_word_count(pvr2->ta.ta_fifo_word_count);
+        error_set_ta_fifo_word_count(pvr2->ta.fifo_state.ta_fifo_word_count);
         error_set_ta_fifo_word_0(ta_fifo32[0]);
         error_set_ta_fifo_word_1(ta_fifo32[1]);
         error_set_ta_fifo_word_2(ta_fifo32[2]);
@@ -900,18 +901,18 @@ static void handle_packet(struct pvr2 *pvr2) {
 
 void pvr2_tafifo_input(struct pvr2 *pvr2, uint32_t dword) {
     struct pvr2_ta *ta = &pvr2->ta;
-    ta->ta_fifo32[ta->ta_fifo_word_count++] = dword;
+    ta->fifo_state.ta_fifo32[ta->fifo_state.ta_fifo_word_count++] = dword;
 
-    if (!(ta->ta_fifo_word_count % 8))
+    if (!(ta->fifo_state.ta_fifo_word_count % 8))
         handle_packet(pvr2);
 }
 
 static void dump_fifo(struct pvr2 *pvr2) {
 #ifdef ENABLE_LOG_DEBUG
     unsigned idx;
-    uint32_t const *ta_fifo32 = pvr2->ta.ta_fifo32;
-    LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.ta_fifo_word_count*4);
-    for (idx = 0; idx < pvr2->ta.ta_fifo_word_count; idx++)
+    uint32_t const *ta_fifo32 = pvr2->ta.fifo_state.ta_fifo32;
+    LOG_DBG("Dumping FIFO: %u bytes\n", pvr2->ta.fifo_state.ta_fifo_word_count*4);
+    for (idx = 0; idx < pvr2->ta.fifo_state.ta_fifo_word_count; idx++)
         LOG_DBG("\t0x%08x\n", (unsigned)ta_fifo32[idx]);
 #endif
 }
@@ -924,17 +925,17 @@ static int decode_end_of_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
 
-    if (ta->ta_fifo_word_count < ta->hdr.vtx_len) {
+    if (ta->fifo_state.ta_fifo_word_count < ta->hdr.vtx_len) {
         return -1;
-    } else if (ta->ta_fifo_word_count > ta->hdr.vtx_len) {
+    } else if (ta->fifo_state.ta_fifo_word_count > ta->hdr.vtx_len) {
         LOG_ERROR("byte count is %u, vtx_len is %u\n",
-                  ta->ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
+                  ta->fifo_state.ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     struct pvr2_pkt_quad *quad = &pkt->dat.quad;
     float ta_fifo_float[PVR2_CMD_MAX_LEN];
-    memcpy(ta_fifo_float, ta->ta_fifo32, sizeof(ta_fifo_float));
+    memcpy(ta_fifo_float, ta->fifo_state.ta_fifo32, sizeof(ta_fifo_float));
 
     /*
      * four quadrilateral vertices.  the z-coordinate of p4 is determined
@@ -1068,13 +1069,13 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 
 static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo32;
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta->fifo_state.ta_fifo32;
 
-    if (ta->ta_fifo_word_count < ta->hdr.vtx_len)
+    if (ta->fifo_state.ta_fifo_word_count < ta->hdr.vtx_len)
         return -1;
-    else if (ta->ta_fifo_word_count > ta->hdr.vtx_len) {
+    else if (ta->fifo_state.ta_fifo_word_count > ta->hdr.vtx_len) {
         LOG_ERROR("byte count is %u, vtx_len is %u\n",
-                  ta->ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
+                  ta->fifo_state.ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
@@ -1120,20 +1121,20 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
                     memcpy(&offs_intensity, ta_fifo32 + 5, sizeof(float));
                 }
                 vtx->base_color[0] =
-                    base_intensity * ta->poly_base_color_rgba[0];
+                    base_intensity * ta->fifo_state.poly_base_color_rgba[0];
                 vtx->base_color[1] =
-                    base_intensity * ta->poly_base_color_rgba[1];
+                    base_intensity * ta->fifo_state.poly_base_color_rgba[1];
                 vtx->base_color[2] =
-                    base_intensity * ta->poly_base_color_rgba[2];
-                vtx->base_color[3] = ta->poly_base_color_rgba[3];
+                    base_intensity * ta->fifo_state.poly_base_color_rgba[2];
+                vtx->base_color[3] = ta->fifo_state.poly_base_color_rgba[3];
                 if (ta->hdr.offset_color_enable) {
                     vtx->offs_color[0] =
-                        offs_intensity * ta->poly_offs_color_rgba[0];
+                        offs_intensity * ta->fifo_state.poly_offs_color_rgba[0];
                     vtx->offs_color[1] =
-                        offs_intensity * ta->poly_offs_color_rgba[1];
+                        offs_intensity * ta->fifo_state.poly_offs_color_rgba[1];
                     vtx->offs_color[2] =
-                        offs_intensity * ta->poly_offs_color_rgba[2];
-                    vtx->offs_color[3] = ta->poly_offs_color_rgba[3];
+                        offs_intensity * ta->fifo_state.poly_offs_color_rgba[2];
+                    vtx->offs_color[3] = ta->fifo_state.poly_offs_color_rgba[3];
                 } else {
                     vtx->offs_color[0] = 0.0f;
                     vtx->offs_color[1] = 0.0f;
@@ -1200,20 +1201,20 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
                 memcpy(&base_intensity, ta_fifo32 + 6, sizeof(float));
                 memcpy(&offs_intensity, ta_fifo32 + 7, sizeof(float));
                 vtx->base_color[0] =
-                    base_intensity * ta->poly_base_color_rgba[0];
+                    base_intensity * ta->fifo_state.poly_base_color_rgba[0];
                 vtx->base_color[1] =
-                    base_intensity * ta->poly_base_color_rgba[1];
+                    base_intensity * ta->fifo_state.poly_base_color_rgba[1];
                 vtx->base_color[2] =
-                    base_intensity * ta->poly_base_color_rgba[2];
-                vtx->base_color[3] = ta->poly_base_color_rgba[3];
+                    base_intensity * ta->fifo_state.poly_base_color_rgba[2];
+                vtx->base_color[3] = ta->fifo_state.poly_base_color_rgba[3];
                 if (ta->hdr.offset_color_enable) {
                     vtx->offs_color[0] =
-                        offs_intensity * ta->poly_offs_color_rgba[0];
+                        offs_intensity * ta->fifo_state.poly_offs_color_rgba[0];
                     vtx->offs_color[1] =
-                        offs_intensity * ta->poly_offs_color_rgba[1];
+                        offs_intensity * ta->fifo_state.poly_offs_color_rgba[1];
                     vtx->offs_color[2] =
-                        offs_intensity * ta->poly_offs_color_rgba[2];
-                    vtx->offs_color[3] = ta->poly_offs_color_rgba[3];
+                        offs_intensity * ta->fifo_state.poly_offs_color_rgba[2];
+                    vtx->offs_color[3] = ta->fifo_state.poly_offs_color_rgba[3];
                 } else {
                     vtx->offs_color[0] = 0.0f;
                     vtx->offs_color[1] = 0.0f;
@@ -1231,7 +1232,7 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 }
 
 static int decode_user_clip(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
-    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.ta_fifo32;
+    uint32_t const *ta_fifo32 = (uint32_t const*)pvr2->ta.fifo_state.ta_fifo32;
     struct pvr2_pkt_user_clip *user_clip = &pkt->dat.user_clip;
 
     pkt->tp = PVR2_PKT_USER_CLIP;
@@ -1314,7 +1315,7 @@ struct pvr2_ta_param_dims pvr2_ta_get_param_dims(unsigned ctrl) {
 
 static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
-    uint32_t const *ta_fifo32 = (uint32_t const*)ta->ta_fifo32;
+    uint32_t const *ta_fifo32 = (uint32_t const*)ta->fifo_state.ta_fifo32;
     struct pvr2_pkt_hdr *hdr = &pkt->dat.hdr;
 
     unsigned param_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
@@ -1344,9 +1345,9 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     else
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
-    if (ta->ta_fifo_word_count < hdr_len)
+    if (ta->fifo_state.ta_fifo_word_count < hdr_len)
         return -1;
-    else if (ta->ta_fifo_word_count > hdr_len)
+    else if (ta->fifo_state.ta_fifo_word_count > hdr_len)
         RAISE_ERROR(ERROR_INTEGRITY);
 
     pkt->tp = PVR2_PKT_HDR;
@@ -1476,10 +1477,10 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
                    sizeof(hdr->sprite_offs_color_rgba));
         }
 
-        memcpy(ta->sprite_base_color_rgba, hdr->sprite_base_color_rgba,
-               sizeof(ta->sprite_base_color_rgba));
-        memcpy(ta->sprite_offs_color_rgba, hdr->sprite_offs_color_rgba,
-               sizeof(ta->sprite_offs_color_rgba));
+        memcpy(ta->fifo_state.sprite_base_color_rgba, hdr->sprite_base_color_rgba,
+               sizeof(ta->fifo_state.sprite_base_color_rgba));
+        memcpy(ta->fifo_state.sprite_offs_color_rgba, hdr->sprite_offs_color_rgba,
+               sizeof(ta->fifo_state.sprite_offs_color_rgba));
     }
 
     if (hdr->ta_color_fmt == TA_COLOR_TYPE_INTENSITY_MODE_1) {
@@ -1494,10 +1495,10 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
             memset(hdr->poly_offs_color_rgba, 0, sizeof(float) * 4);
         }
 
-        memcpy(ta->poly_base_color_rgba, hdr->poly_base_color_rgba,
-               sizeof(ta->poly_base_color_rgba));
-        memcpy(ta->poly_offs_color_rgba, hdr->poly_offs_color_rgba,
-               sizeof(ta->poly_base_color_rgba));
+        memcpy(ta->fifo_state.poly_base_color_rgba, hdr->poly_base_color_rgba,
+               sizeof(ta->fifo_state.poly_base_color_rgba));
+        memcpy(ta->fifo_state.poly_offs_color_rgba, hdr->poly_offs_color_rgba,
+               sizeof(ta->fifo_state.poly_base_color_rgba));
     }
 
     return 0;
@@ -1634,7 +1635,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
 
     pvr2_tex_cache_xmit(pvr2);
 
-    if (ta->cur_poly_type != PVR2_POLY_TYPE_NONE)
+    if (ta->fifo_state.cur_poly_type != PVR2_POLY_TYPE_NONE)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     /* finish_poly_group(poly_state.current_list); */
 
@@ -1755,9 +1756,9 @@ static void next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
         return;
     }
 
-    if (ta->open_group)
+    if (ta->fifo_state.open_group)
         finish_poly_group(pvr2, poly_type);
-    ta->open_group = true;
+    ta->fifo_state.open_group = true;
 
     ta->pvr2_ta_vert_cur_group = ta->pvr2_ta_vert_buf_count;
 }
@@ -1777,7 +1778,7 @@ static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) 
         poly_type == PVR2_POLY_TYPE_TRANS_MOD)
         return;
 
-    if (!ta->open_group) {
+    if (!ta->fifo_state.open_group) {
         LOG_WARN("%s - still waiting for a polygon header to be opened!\n",
                __func__);
         return;
@@ -1846,11 +1847,11 @@ static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) 
 
     ta->pvr2_ta_vert_cur_group = ta->pvr2_ta_vert_buf_count;
 
-    ta->open_group = false;
+    ta->fifo_state.open_group = false;
 }
 
 static void ta_fifo_finish_packet(struct pvr2_ta *ta) {
-    ta->ta_fifo_word_count = 0;
+    ta->fifo_state.ta_fifo_word_count = 0;
 }
 
 static void render_frame_init(struct pvr2 *pvr2) {
@@ -1860,7 +1861,7 @@ static void render_frame_init(struct pvr2 *pvr2) {
     ta->pvr2_ta_vert_buf_count = 0;
     ta->pvr2_ta_vert_cur_group = 0;
 
-    ta->open_group = false;
+    ta->fifo_state.open_group = false;
 
     // free up gfx_il commands
     ta->gfx_il_inst_buf_count = 0;
@@ -1877,7 +1878,7 @@ static void render_frame_init(struct pvr2 *pvr2) {
     int idx;
     for (idx = 0; idx < PVR2_POLY_TYPE_COUNT; idx++)
         set_poly_type_state(ta, idx, PVR2_POLY_TYPE_STATE_NOT_OPENED);
-    ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
+    ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
 
     memset(&pvr2->stat.per_frame_counters, 0,
            sizeof(pvr2->stat.per_frame_counters));
@@ -1886,7 +1887,7 @@ static void render_frame_init(struct pvr2 *pvr2) {
 void pvr2_ta_list_continue(struct pvr2 *pvr2) {
     struct pvr2_ta *ta = &pvr2->ta;
 
-    if (ta->cur_poly_type == PVR2_POLY_TYPE_NONE) {
+    if (ta->fifo_state.cur_poly_type == PVR2_POLY_TYPE_NONE) {
         /*
          * TODO: quite a lot of games will submit a list continuation
          * immediately after closing a list.  Is the continuation only
@@ -1896,19 +1897,19 @@ void pvr2_ta_list_continue(struct pvr2 *pvr2) {
         return;
     }
     PVR2_TRACE("TAFIFO list continuation requested for %s\n",
-               pvr2_poly_type_name(ta->cur_poly_type));
+               pvr2_poly_type_name(ta->fifo_state.cur_poly_type));
 
-    if (get_poly_type_state(ta, ta->cur_poly_type) !=
+    if (get_poly_type_state(ta, ta->fifo_state.cur_poly_type) !=
         PVR2_POLY_TYPE_STATE_IN_PROGRESS) {
         error_set_feature("requesting continuation of a polygon "
                           "type which is not open");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    set_poly_type_state(ta, ta->cur_poly_type,
+    set_poly_type_state(ta, ta->fifo_state.cur_poly_type,
                         PVR2_POLY_TYPE_STATE_CONTINUATION);
-    ta->cur_poly_type = PVR2_POLY_TYPE_NONE;
-    ta->open_group = false;
+    ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
+    ta->fifo_state.open_group = false;
 }
 
 unsigned get_cur_frame_stamp(struct pvr2 *pvr2) {
