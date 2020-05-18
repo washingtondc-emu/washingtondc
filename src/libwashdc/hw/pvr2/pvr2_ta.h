@@ -312,12 +312,25 @@ enum pvr2_poly_type_state {
  * packets in a STARTRENDER command does not belong here.
  */
 struct pvr2_fifo_state {
-    /*
+    /**************************************************************************
+     *
+     * FIFO Buffer
+     *
      * contains data which has been input to the TAFIFO but has not been
      * processed because we don't have a complete packet yet.
-     */
+     *
+     *************************************************************************/
     uint32_t ta_fifo32[PVR2_CMD_MAX_LEN];
     unsigned ta_fifo_word_count;
+
+    /**************************************************************************
+     *
+     * coloring/blending parameters
+     *
+     *************************************************************************/
+    enum ta_color_type ta_color_fmt;
+    bool offset_color_enable;
+    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
 
     /*
      * the intensity mode base and offset colors.  These should be referenced
@@ -330,20 +343,62 @@ struct pvr2_fifo_state {
     float sprite_base_color_rgba[4];
     float sprite_offs_color_rgba[4];
 
+    bool two_volumes_mode;
+
+    /**************************************************************************
+     *
+     * texturing parameters
+     *
+     *************************************************************************/
+    bool tex_enable;
+
+    /*
+     * if true, texture widths will be over-ridden at render-time by
+     * some register (which can be non-power-of-two)
+     */
+    bool stride_sel;
+
+    unsigned tex_width_shift; // only valid if stride_sel is false
+    unsigned tex_height_shift; // valid even if stride_sel is false
+
+    bool tex_coord_16_bit_enable;
+
+    enum tex_wrap_mode tex_wrap_mode[2];
+    enum tex_inst tex_inst;
+    enum tex_filter tex_filter;
+
+    /**************************************************************************
+     *
+     * primitive parameters
+     *
+     *************************************************************************/
     // whether each polygon group is open/closed/etc
     enum pvr2_poly_type_state poly_type_state[PVR2_POLY_TYPE_COUNT];
+
+    // whether or not there even is currently an open polygon group
+    bool open_group;
 
     // the currently opened polygon group.  Only valid if open_group is true
     enum pvr2_poly_type cur_poly_type;
 
-    // whether or not there even is currently an open polygon group
-    bool open_group;
+    // if there's an open group, this is the length of the vertex packets
+    unsigned vtx_len;
+
+    // current geometry type (either triangle strips or quads)
+    enum pvr2_hdr_tp geo_tp;
+
+
+    /**************************************************************************
+     *
+     * depth-buffering parameters
+     *
+     *************************************************************************/
+    bool enable_depth_writes;
+    enum Pvr2DepthFunc depth_func;
 };
 
 struct pvr2_ta {
     struct pvr2_fifo_state fifo_state;
-
-    struct pvr2_pkt_hdr hdr;
 
     /*
      * used to store the previous two verts when we're

@@ -493,7 +493,24 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
      * XXX this happens before the texture caching code because we need to be
      * able to disable textures if the cache is full, but hdr is const.
      */
-    memcpy(&ta->hdr, hdr, sizeof(ta->hdr));
+    ta->fifo_state.vtx_len = hdr->vtx_len;
+    ta->fifo_state.tex_enable = hdr->tex_enable;
+    ta->fifo_state.geo_tp = hdr->tp;
+    ta->fifo_state.stride_sel = hdr->stride_sel;
+    ta->fifo_state.tex_width_shift = hdr->tex_width_shift;
+    ta->fifo_state.tex_height_shift = hdr->tex_height_shift;
+    ta->fifo_state.tex_coord_16_bit_enable = hdr->tex_coord_16_bit_enable;
+    ta->fifo_state.two_volumes_mode = hdr->two_volumes_mode;
+    ta->fifo_state.ta_color_fmt = hdr->ta_color_fmt;
+    ta->fifo_state.offset_color_enable = hdr->offset_color_enable;
+    ta->fifo_state.src_blend_factor = hdr->src_blend_factor;
+    ta->fifo_state.dst_blend_factor = hdr->dst_blend_factor;
+    ta->fifo_state.tex_wrap_mode[0] = hdr->tex_wrap_mode[0];
+    ta->fifo_state.tex_wrap_mode[1] = hdr->tex_wrap_mode[1];
+    ta->fifo_state.enable_depth_writes = hdr->enable_depth_writes;
+    ta->fifo_state.depth_func = hdr->depth_func;
+    ta->fifo_state.tex_inst = hdr->tex_inst;
+    ta->fifo_state.tex_filter = hdr->tex_filter;
 
     if (hdr->tex_enable) {
         PVR2_TRACE("texture enabled\n");
@@ -550,7 +567,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         if (!ent) {
             LOG_WARN("WARNING: failed to add texture 0x%08x to "
                     "the texture cache\n", hdr->tex_addr);
-            ta->hdr.tex_enable = false;
+            ta->fifo_state.tex_enable = false;
         } else {
             ta->tex_idx = pvr2_tex_cache_get_idx(pvr2, ent);
         }
@@ -739,7 +756,7 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_pkt_vtx const *vtx = &pkt->dat.vtx;
 
 #ifdef INVARIANTS
-    if (ta->hdr.tp != PVR2_HDR_TRIANGLE_STRIP)
+    if (ta->fifo_state.geo_tp != PVR2_HDR_TRIANGLE_STRIP)
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
@@ -778,9 +795,12 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 
     PVR2_TRACE("(%f, %f, %f)\n", vert.pos[0], vert.pos[1], vert.pos[2]);
 
-    if (ta->hdr.stride_sel) {
-        unsigned linestride = 32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
-        vert.tex_coord[0] = vtx->uv[0] * ((float)(1 << ta->hdr.tex_width_shift) / (float)linestride);
+    if (ta->fifo_state.stride_sel) {
+        unsigned linestride =
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
+        vert.tex_coord[0] =
+            vtx->uv[0] * ((float)(1 << ta->fifo_state.tex_width_shift) /
+                          (float)linestride);
         vert.tex_coord[1] = vtx->uv[1];
     } else {
         memcpy(vert.tex_coord, vtx->uv, sizeof(vert.tex_coord));
@@ -845,7 +865,7 @@ static void handle_packet(struct pvr2 *pvr2) {
         }
         break;
     case TA_CMD_TYPE_VERTEX:
-        if (ta->hdr.tp == PVR2_HDR_TRIANGLE_STRIP) {
+        if (ta->fifo_state.geo_tp == PVR2_HDR_TRIANGLE_STRIP) {
             if (decode_vtx(pvr2, &pkt) == 0) {
                 PVR2_TRACE("vertex packet received\n");
                 on_pkt_vtx_received(pvr2, &pkt);
@@ -925,11 +945,11 @@ static int decode_end_of_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
 
-    if (ta->fifo_state.ta_fifo_word_count < ta->hdr.vtx_len) {
+    if (ta->fifo_state.ta_fifo_word_count < ta->fifo_state.vtx_len) {
         return -1;
-    } else if (ta->fifo_state.ta_fifo_word_count > ta->hdr.vtx_len) {
+    } else if (ta->fifo_state.ta_fifo_word_count > ta->fifo_state.vtx_len) {
         LOG_ERROR("byte count is %u, vtx_len is %u\n",
-                  ta->fifo_state.ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
+                  ta->fifo_state.ta_fifo_word_count * 4, ta->fifo_state.vtx_len * 4);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
@@ -988,13 +1008,13 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     quad->vert_tex_coords[3][1] =
         quad->vert_tex_coords[1][1] + uv_vec[0][1] + uv_vec[1][1];
 
-    if (ta->hdr.stride_sel) {
+    if (ta->fifo_state.stride_sel) {
         unsigned linestride =
             32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
         int idx;
         for (idx = 0; idx < 3; idx++) {
             quad->vert_tex_coords[idx][0] *=
-                ((float)linestride) / ((float)(1 << ta->hdr.tex_width_shift));
+                ((float)linestride) / ((float)(1 << ta->fifo_state.tex_width_shift));
         }
     }
 
@@ -1071,11 +1091,11 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     struct pvr2_ta *ta = &pvr2->ta;
     uint32_t const *ta_fifo32 = (uint32_t const*)ta->fifo_state.ta_fifo32;
 
-    if (ta->fifo_state.ta_fifo_word_count < ta->hdr.vtx_len)
+    if (ta->fifo_state.ta_fifo_word_count < ta->fifo_state.vtx_len)
         return -1;
-    else if (ta->fifo_state.ta_fifo_word_count > ta->hdr.vtx_len) {
+    else if (ta->fifo_state.ta_fifo_word_count > ta->fifo_state.vtx_len) {
         LOG_ERROR("byte count is %u, vtx_len is %u\n",
-                  ta->fifo_state.ta_fifo_word_count * 4, ta->hdr.vtx_len * 4);
+                  ta->fifo_state.ta_fifo_word_count * 4, ta->fifo_state.vtx_len * 4);
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
@@ -1086,21 +1106,21 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
 
     memcpy(vtx->pos, ta_fifo32 + 1, 3 * sizeof(float));
 
-    if (ta->hdr.tex_enable) {
-        if (ta->hdr.tex_coord_16_bit_enable)
+    if (ta->fifo_state.tex_enable) {
+        if (ta->fifo_state.tex_coord_16_bit_enable)
             unpack_uv16(vtx->uv, vtx->uv + 1, ta_fifo32 + 4);
         else
             memcpy(vtx->uv, ta_fifo32 + 4, 2 * sizeof(float));
     }
 
-    if (ta->hdr.two_volumes_mode) {
-        switch (ta->hdr.ta_color_fmt) {
+    if (ta->fifo_state.two_volumes_mode) {
+        switch (ta->fifo_state.ta_color_fmt) {
         case TA_COLOR_TYPE_PACKED:
-            if (ta->hdr.tex_enable)
+            if (ta->fifo_state.tex_enable)
                 unpack_rgba_8888(ta_fifo32, vtx->base_color, ta_fifo32[6]);
             else
                 unpack_rgba_8888(ta_fifo32, vtx->base_color, ta_fifo32[4]);
-            if (ta->hdr.offset_color_enable && ta->hdr.tex_enable) {
+            if (ta->fifo_state.offset_color_enable && ta->fifo_state.tex_enable) {
                 unpack_rgba_8888(ta_fifo32, vtx->offs_color, ta_fifo32[7]);
             } else {
                 vtx->offs_color[0] = 0.0f;
@@ -1113,7 +1133,7 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         case TA_COLOR_TYPE_INTENSITY_MODE_2:
             {
                 float base_intensity, offs_intensity;
-                if (ta->hdr.tex_enable) {
+                if (ta->fifo_state.tex_enable) {
                     memcpy(&base_intensity, ta_fifo32 + 6, sizeof(float));
                     memcpy(&offs_intensity, ta_fifo32 + 7, sizeof(float));
                 } else {
@@ -1127,7 +1147,7 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
                 vtx->base_color[2] =
                     base_intensity * ta->fifo_state.poly_base_color_rgba[2];
                 vtx->base_color[3] = ta->fifo_state.poly_base_color_rgba[3];
-                if (ta->hdr.offset_color_enable) {
+                if (ta->fifo_state.offset_color_enable) {
                     vtx->offs_color[0] =
                         offs_intensity * ta->fifo_state.poly_offs_color_rgba[0];
                     vtx->offs_color[1] =
@@ -1149,10 +1169,10 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
     } else {
-        switch (ta->hdr.ta_color_fmt) {
+        switch (ta->fifo_state.ta_color_fmt) {
         case TA_COLOR_TYPE_PACKED:
             unpack_rgba_8888(ta_fifo32, vtx->base_color, ta_fifo32[6]);
-            if (ta->hdr.offset_color_enable) {
+            if (ta->fifo_state.offset_color_enable) {
                 unpack_rgba_8888(ta_fifo32, vtx->offs_color, ta_fifo32[7]);
             } else {
                 vtx->offs_color[0] = 0.0f;
@@ -1162,12 +1182,12 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
             }
             break;
         case TA_COLOR_TYPE_FLOAT:
-            if (ta->hdr.tex_enable) {
+            if (ta->fifo_state.tex_enable) {
                 memcpy(vtx->base_color + 3, ta_fifo32 + 8, sizeof(float));
                 memcpy(vtx->base_color + 0, ta_fifo32 + 9, sizeof(float));
                 memcpy(vtx->base_color + 1, ta_fifo32 + 10, sizeof(float));
                 memcpy(vtx->base_color + 2, ta_fifo32 + 11, sizeof(float));
-                if (ta->hdr.offset_color_enable) {
+                if (ta->fifo_state.offset_color_enable) {
                     memcpy(vtx->offs_color + 3, ta_fifo32 + 12,
                            sizeof(float));
                     memcpy(vtx->offs_color + 0, ta_fifo32 + 13,
@@ -1207,7 +1227,7 @@ static int decode_vtx(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
                 vtx->base_color[2] =
                     base_intensity * ta->fifo_state.poly_base_color_rgba[2];
                 vtx->base_color[3] = ta->fifo_state.poly_base_color_rgba[3];
-                if (ta->hdr.offset_color_enable) {
+                if (ta->fifo_state.offset_color_enable) {
                     vtx->offs_color[0] =
                         offs_intensity * ta->fifo_state.poly_offs_color_rgba[0];
                     vtx->offs_color[1] =
@@ -1785,7 +1805,7 @@ static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) 
     }
 
     cmd.op = GFX_IL_SET_REND_PARAM;
-    if (ta->hdr.tex_enable) {
+    if (ta->fifo_state.tex_enable) {
         PVR2_TRACE("tex_enable should be true\n");
         cmd.arg.set_rend_param.param.tex_enable = true;
         cmd.arg.set_rend_param.param.tex_idx = ta->tex_idx;
@@ -1794,17 +1814,17 @@ static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) 
         cmd.arg.set_rend_param.param.tex_enable = false;
     }
 
-    cmd.arg.set_rend_param.param.src_blend_factor = ta->hdr.src_blend_factor;
-    cmd.arg.set_rend_param.param.dst_blend_factor = ta->hdr.dst_blend_factor;
-    cmd.arg.set_rend_param.param.tex_wrap_mode[0] = ta->hdr.tex_wrap_mode[0];
-    cmd.arg.set_rend_param.param.tex_wrap_mode[1] = ta->hdr.tex_wrap_mode[1];
+    cmd.arg.set_rend_param.param.src_blend_factor = ta->fifo_state.src_blend_factor;
+    cmd.arg.set_rend_param.param.dst_blend_factor = ta->fifo_state.dst_blend_factor;
+    cmd.arg.set_rend_param.param.tex_wrap_mode[0] = ta->fifo_state.tex_wrap_mode[0];
+    cmd.arg.set_rend_param.param.tex_wrap_mode[1] = ta->fifo_state.tex_wrap_mode[1];
 
     cmd.arg.set_rend_param.param.enable_depth_writes =
-        ta->hdr.enable_depth_writes;
-    cmd.arg.set_rend_param.param.depth_func = ta->hdr.depth_func;
+        ta->fifo_state.enable_depth_writes;
+    cmd.arg.set_rend_param.param.depth_func = ta->fifo_state.depth_func;
 
-    cmd.arg.set_rend_param.param.tex_inst = ta->hdr.tex_inst;
-    cmd.arg.set_rend_param.param.tex_filter = ta->hdr.tex_filter;
+    cmd.arg.set_rend_param.param.tex_inst = ta->fifo_state.tex_inst;
+    cmd.arg.set_rend_param.param.tex_filter = ta->fifo_state.tex_filter;
 
     cmd.arg.set_rend_param.param.pt_mode =
         (poly_type == PVR2_POLY_TYPE_PUNCH_THROUGH);
