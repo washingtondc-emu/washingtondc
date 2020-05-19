@@ -22,5 +22,5 @@ jobs:
       if: "contains(matrix.os, 'ubuntu')"
     - uses: lukka/run-cmake@v2
       with:
-        cmakeAppendArgs: '-DENABLE_MMU=${{ matrix.mmu_enabled }} -DINVARIANTS=${{ matrix.invariants }}'
+        cmakeAppendedArgs: '-DENABLE_MMU=${{ matrix.mmu_enabled }} -DINVARIANTS=${{ matrix.invariants }}'
         cmakeBuildType: RelWithDebInfo
