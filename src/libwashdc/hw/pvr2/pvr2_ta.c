@@ -225,6 +225,110 @@ static void pvr2_pt_complete_int_event_handler(struct SchedEvent *event);
 
 #define PVR2_GFX_IL_INST_BUF_LEN (1024 * 256)
 
+static struct pvr2_display_list_command *
+pvr2_list_alloc_new_cmd(struct pvr2_display_list *listp,
+                        enum pvr2_poly_type poly_tp) {
+    if (poly_tp >= PVR2_POLY_TYPE_COUNT || poly_tp < 0)
+        RAISE_ERROR(ERROR_INTEGRITY); // protect against buffer overflow
+
+    struct pvr2_display_list_group *group = listp->poly_groups + poly_tp;
+    group->valid = true;
+
+    if (group->n_cmds >= PVR2_DISPLAY_LIST_MAX_LEN) {
+        // TODO: come up with a better solution than hardcoding a buffer length
+        // ie some sort of pool/zone allocator might be a good idea
+        LOG_ERROR("command capacity exceeded for display list!\n");
+        return NULL;
+    }
+
+    return group->cmds + group->n_cmds++;
+}
+
+static inline unsigned pvr2_list_age(struct pvr2 const *pvr2,
+                                     struct pvr2_display_list const *listp) {
+    return pvr2->ta.disp_list_counter - listp->age_counter;
+}
+
+/*
+ * increment pvr2->ta.disp_list_counter.  If there's an integer overflow, then
+ * the counter will be rolled back as far as possible and all display lists
+ * will be adjusted accordingly.
+ */
+static inline void pvr2_inc_age_counter(struct pvr2 *pvr2) {
+    struct pvr2_ta *ta = &pvr2->ta;
+
+#define PVR2_LIST_ROLLBACK_AGE_LIMIT (32 * 1024)
+    if (++ta->disp_list_counter >= UINT_MAX) {
+        /*
+         * roll back the odometer as far as we can to prevent integer overflow
+         *
+         * lists older than PVR2_LIST_ROLLBACK_AGE_LIMIT are marked as invalid
+         * because otherwise what can happen is we end up with a really old list
+         * that never gets overwritten and prevents us from rolling back the
+         * odometer as far as we'd like.
+         */
+        unsigned oldest_age = UINT_MAX;
+        unsigned disp_list_idx;
+        for (disp_list_idx = 0; disp_list_idx < PVR2_MAX_FRAMES_IN_FLIGHT;
+             disp_list_idx++) {
+            struct pvr2_display_list *listp = ta->disp_lists + disp_list_idx;
+            if (listp->valid && listp->age_counter <= oldest_age &&
+                pvr2_list_age(pvr2, listp) < PVR2_LIST_ROLLBACK_AGE_LIMIT) {
+                oldest_age = listp->age_counter;
+            }
+        }
+
+        if (oldest_age >= UINT_MAX) {
+            // in case there was no list younger than PVR2_LIST_ROLLBACK_AGE_LIMIT
+            for (disp_list_idx = 0; disp_list_idx < PVR2_MAX_FRAMES_IN_FLIGHT;
+                 disp_list_idx++) {
+                struct pvr2_display_list *listp = ta->disp_lists + disp_list_idx;
+                if (listp->valid) {
+                    PVR2_TRACE("Display list %08X being marked as invalid due "
+                               "to advanced age\n", (unsigned)listp->key);
+                    listp->valid = false;
+                }
+            }
+            ta->disp_list_counter = 0;
+        } else {
+            /*
+             * this is the normal case, where there was at least one list
+             * younger than PVR2_LIST_ROLLBACK_AGE_LIMIT.
+             */
+            for (disp_list_idx = 0; disp_list_idx < PVR2_MAX_FRAMES_IN_FLIGHT;
+                 disp_list_idx++) {
+                struct pvr2_display_list *listp = ta->disp_lists + disp_list_idx;
+                if (listp->valid) {
+                    if (pvr2_list_age(pvr2, listp) < PVR2_LIST_ROLLBACK_AGE_LIMIT) {
+                        listp->age_counter -= oldest_age;
+                    } else {
+                        PVR2_TRACE("Display list %08X being marked as invalid due "
+                                   "to advanced age\n", (unsigned)listp->key);
+                        listp->valid = false;
+                    }
+                }
+            }
+            ta->disp_list_counter -= oldest_age;
+        }
+    }
+}
+
+static void
+display_list_exec(struct pvr2 *pvr2, struct pvr2_display_list const *listp);
+static void
+display_list_exec_header(struct pvr2 *pvr2,
+                         struct pvr2_display_list_command const *cmd,
+                         bool punch_through, bool blend_enable);
+static void
+display_list_exec_vertex(struct pvr2 *pvr2,
+                         struct pvr2_display_list_command const *cmd);
+static void
+display_list_exec_quad(struct pvr2 *pvr2,
+                       struct pvr2_display_list_command const *cmd);
+static void
+display_list_exec_end_of_group(struct pvr2 *pvr2,
+                               struct pvr2_display_list_command const *cmd);
+
 static enum pvr2_poly_type_state get_poly_type_state(struct pvr2_ta *ta,
                                                      enum pvr2_poly_type tp) {
     if (tp >= PVR2_POLY_TYPE_FIRST &&
@@ -245,6 +349,16 @@ static void set_poly_type_state(struct pvr2_ta *ta,
     } else {
         error_set_poly_type_index((int)tp);
         RAISE_ERROR(ERROR_INTEGRITY);
+    }
+}
+
+static void pvr2_display_list_init(struct pvr2_display_list *list) {
+    list->valid = false;
+    unsigned idx;
+    for (idx = 0; idx < PVR2_POLY_TYPE_COUNT; idx++) {
+        struct pvr2_display_list_group *group = list->poly_groups + idx;
+        group->valid = false;
+        group->n_cmds = 0;
     }
 }
 
@@ -277,13 +391,17 @@ void pvr2_ta_init(struct pvr2 *pvr2) {
                                                sizeof(float) * GFX_VERT_LEN);
     if (!pvr2->ta.pvr2_ta_vert_buf)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
-    ta->gfx_il_inst_buf = (struct gfx_il_inst_chain*)malloc(PVR2_GFX_IL_INST_BUF_LEN *
-                                                        sizeof(struct gfx_il_inst_chain));
+    ta->pvr2_ta_vert_buf_count = 0;
+    ta->pvr2_ta_vert_buf_start = 0;
+
+    ta->gfx_il_inst_buf = (struct gfx_il_inst*)malloc(PVR2_GFX_IL_INST_BUF_LEN *
+                                                      sizeof(struct gfx_il_inst));
     if (!ta->gfx_il_inst_buf)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    pvr2->ta.pvr2_ta_vert_buf_count = 0;
-    pvr2->ta.pvr2_ta_vert_cur_group = 0;
+    int list_idx;
+    for (list_idx = 0; list_idx < 4; list_idx++)
+        pvr2_display_list_init(ta->disp_lists + list_idx);
 
     render_frame_init(pvr2);
 }
@@ -292,8 +410,7 @@ void pvr2_ta_cleanup(struct pvr2 *pvr2) {
     free(pvr2->ta.gfx_il_inst_buf);
     free(pvr2->ta.pvr2_ta_vert_buf);
     pvr2->ta.pvr2_ta_vert_buf = NULL;
-    pvr2->ta.pvr2_ta_vert_buf_count = 0;
-    pvr2->ta.pvr2_ta_vert_cur_group = 0;
+    pvr2->ta.gfx_il_inst_buf = NULL;
 }
 
 static inline void pvr2_ta_push_vert(struct pvr2 *pvr2, struct pvr2_ta_vert vert) {
@@ -328,15 +445,7 @@ pvr2_ta_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst) {
     if (ta->gfx_il_inst_buf_count >= PVR2_GFX_IL_INST_BUF_LEN)
         RAISE_ERROR(ERROR_OVERFLOW);
 
-    struct gfx_il_inst_chain *ent =
-        ta->gfx_il_inst_buf + ta->gfx_il_inst_buf_count++;
-    ent->next = NULL;
-    ent->cmd = inst;
-    if (!ta->poly_type_gfx_il_begin[ta->fifo_state.cur_poly_type])
-        ta->poly_type_gfx_il_begin[ta->fifo_state.cur_poly_type] = ent;
-    if (ta->poly_type_gfx_il_end[ta->fifo_state.cur_poly_type])
-        ta->poly_type_gfx_il_end[ta->fifo_state.cur_poly_type]->next = ent;
-    ta->poly_type_gfx_il_end[ta->fifo_state.cur_poly_type] = ent;
+    ta->gfx_il_inst_buf[ta->gfx_il_inst_buf_count++] = inst;
 }
 
 uint32_t pvr2_ta_fifo_poly_read_32(addr32_t addr, void *ctxt) {
@@ -438,11 +547,365 @@ static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
 }
 #endif
 
+static void
+display_list_exec_header(struct pvr2 *pvr2,
+                         struct pvr2_display_list_command const *cmd,
+                         bool punch_through, bool blend_enable) {
+    struct pvr2_ta *ta = &pvr2->ta;
+    struct pvr2_display_list_command_header const *cmd_hdr = &cmd->hdr;
+    struct gfx_il_inst gfx_cmd;
+
+#ifdef INVARIANTS
+    if (ta->pvr2_ta_vert_buf_start > ta->pvr2_ta_vert_buf_count)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    if (ta->pvr2_ta_vert_buf_count != ta->pvr2_ta_vert_buf_start) {
+        unsigned n_verts =
+            ta->pvr2_ta_vert_buf_count - ta->pvr2_ta_vert_buf_start;
+        gfx_cmd.op = GFX_IL_DRAW_ARRAY;
+        gfx_cmd.arg.draw_array.n_verts = n_verts;
+        gfx_cmd.arg.draw_array.verts = ta->pvr2_ta_vert_buf + ta->pvr2_ta_vert_buf_start * GFX_VERT_LEN;
+        pvr2_ta_push_gfx_il(pvr2, gfx_cmd);
+
+        ta->pvr2_ta_vert_buf_start = ta->pvr2_ta_vert_buf_count;
+    }
+
+    if (cmd_hdr->tex_enable) {
+        PVR2_TRACE("texture enabled\n");
+        PVR2_TRACE("the texture format is %d\n", (int)cmd_hdr->pix_fmt);
+        PVR2_TRACE("The texture address ix 0x%08x\n", cmd_hdr->tex_addr);
+
+        if (cmd_hdr->tex_twiddle)
+            PVR2_TRACE("not twiddled\n");
+        else
+            PVR2_TRACE("twiddled\n");
+
+        unsigned linestride = cmd_hdr->stride_sel ?
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4)) :
+            (1 << cmd_hdr->tex_width_shift);
+        if (!linestride || linestride > (1 << cmd_hdr->tex_width_shift))
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
+        struct pvr2_tex *ent =
+            pvr2_tex_cache_find(pvr2, cmd_hdr->tex_addr, cmd_hdr->tex_palette_start,
+                                cmd_hdr->tex_width_shift,
+                                cmd_hdr->tex_height_shift,
+                                linestride,
+                                cmd_hdr->pix_fmt, cmd_hdr->tex_twiddle,
+                                cmd_hdr->tex_vq_compression,
+                                cmd_hdr->tex_mipmap,
+                                cmd_hdr->stride_sel);
+
+        PVR2_TRACE("texture dimensions are (%u, %u)\n",
+                   1 << cmd_hdr->tex_width_shift,
+                   1 << cmd_hdr->tex_height_shift);
+        if (ent) {
+            PVR2_TRACE("Texture 0x%08x found in cache\n",
+                       cmd_hdr->tex_addr);
+        } else {
+            PVR2_TRACE("Adding 0x%08x to texture cache...\n",
+                       cmd_hdr->tex_addr);
+            ent = pvr2_tex_cache_add(pvr2,
+                                     cmd_hdr->tex_addr, cmd_hdr->tex_palette_start,
+                                     cmd_hdr->tex_width_shift,
+                                     cmd_hdr->tex_height_shift,
+                                     linestride,
+                                     cmd_hdr->pix_fmt,
+                                     cmd_hdr->tex_twiddle,
+                                     cmd_hdr->tex_vq_compression,
+                                     cmd_hdr->tex_mipmap,
+                                     cmd_hdr->stride_sel);
+        }
+
+        if (!ent) {
+            LOG_WARN("WARNING: failed to add texture 0x%08x to "
+                     "the texture cache\n", cmd_hdr->tex_addr);
+            gfx_cmd.arg.set_rend_param.param.tex_enable = false;
+        } else {
+            unsigned tex_idx = pvr2_tex_cache_get_idx(pvr2, ent);
+            gfx_cmd.arg.set_rend_param.param.tex_enable = true;
+            gfx_cmd.arg.set_rend_param.param.tex_idx = tex_idx;
+        }
+    } else {
+        gfx_cmd.arg.set_rend_param.param.tex_enable = false;
+    }
+
+    gfx_cmd.op = GFX_IL_SET_REND_PARAM;
+
+    /*
+     * this check is a little silly, but I get segfaults sometimes when
+     * indexing into src_blend_factors and dst_blend_factors and I don't know
+     * why.
+     *
+     * TODO: this was (hopefully) fixed in commit
+     * 92059fe4f1714b914cec75fd2f91e676127d3097 but I am keeping the INVARIANTS
+     * test here just in case.  It should be safe to delete after a couple of
+     * months have gone by without this INVARIANTS test ever failing.
+     */
+    if (((unsigned)cmd_hdr->src_blend_factor >= PVR2_BLEND_FACTOR_COUNT) ||
+        ((unsigned)cmd_hdr->dst_blend_factor >= PVR2_BLEND_FACTOR_COUNT)) {
+        error_set_src_blend_factor(cmd_hdr->src_blend_factor);
+        error_set_dst_blend_factor(cmd_hdr->dst_blend_factor);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    gfx_cmd.arg.set_rend_param.param.src_blend_factor =
+        cmd_hdr->src_blend_factor;
+    gfx_cmd.arg.set_rend_param.param.dst_blend_factor =
+        cmd_hdr->dst_blend_factor;
+    gfx_cmd.arg.set_rend_param.param.tex_wrap_mode[0] =
+        cmd_hdr->tex_wrap_mode[0];
+    gfx_cmd.arg.set_rend_param.param.tex_wrap_mode[1] =
+        cmd_hdr->tex_wrap_mode[1];
+
+    gfx_cmd.arg.set_rend_param.param.enable_depth_writes =
+        cmd_hdr->enable_depth_writes;
+    gfx_cmd.arg.set_rend_param.param.depth_func = cmd_hdr->depth_func;
+
+    gfx_cmd.arg.set_rend_param.param.tex_inst = cmd_hdr->tex_inst;
+    gfx_cmd.arg.set_rend_param.param.tex_filter = cmd_hdr->tex_filter;
+
+    gfx_cmd.arg.set_rend_param.param.pt_mode = punch_through;
+    gfx_cmd.arg.set_rend_param.param.pt_ref = ta->pt_alpha_ref & 0xff;
+
+    // enqueue the configuration command
+    pvr2_ta_push_gfx_il(pvr2, gfx_cmd);
+
+    // TODO: this only needs to be done once per group, not once per polygon group
+    gfx_cmd.op = GFX_IL_SET_BLEND_ENABLE;
+    gfx_cmd.arg.set_blend_enable.do_enable = blend_enable;
+    pvr2_ta_push_gfx_il(pvr2, gfx_cmd);
+
+    ta->strip_len = 0;
+    ta->core_state.stride_sel = cmd_hdr->stride_sel;
+    ta->core_state.tex_width_shift = cmd_hdr->tex_width_shift;
+    ta->core_state.tex_height_shift = cmd_hdr->tex_height_shift;
+}
+
+static void
+display_list_exec_vertex(struct pvr2 *pvr2,
+                         struct pvr2_display_list_command const *cmd) {
+    struct pvr2_ta *ta = &pvr2->ta;
+    struct pvr2_display_list_vertex const *cmd_vtx = &cmd->vtx;
+
+    /*
+     * un-strip triangle strips by duplicating the previous two vertices.
+     *
+     * TODO: obviously it would be best to preserve the triangle strips and
+     * send them to OpenGL via GL_TRIANGLE_STRIP in the rendering backend, but
+     * then I need to come up with some way to signal the renderer to stop and
+     * re-start strips.  It might also be possible to stitch separate strips
+     * together with degenerate triangles...
+     */
+    if (ta->strip_len >= 3) {
+        pvr2_ta_push_vert(pvr2, ta->strip_vert_1);
+        pvr2_ta_push_vert(pvr2, ta->strip_vert_2);
+    }
+
+    // first update the clipping planes
+    /*
+     * TODO: there are FPU instructions on x86 that can do this without
+     * branching
+     */
+    float z_recip = 1.0 / cmd_vtx->pos[2];
+    if (z_recip < ta->clip_min)
+        ta->clip_min = z_recip;
+    if (z_recip > ta->clip_max)
+        ta->clip_max = z_recip;
+
+    struct pvr2_ta_vert vert;
+
+    vert.pos[0] = cmd_vtx->pos[0];
+    vert.pos[1] = cmd_vtx->pos[1];
+    vert.pos[2] = z_recip;
+
+    PVR2_TRACE("(%f, %f, %f)\n", vert.pos[0], vert.pos[1], vert.pos[2]);
+
+    memcpy(vert.base_color, cmd_vtx->base_color, sizeof(cmd_vtx->base_color));
+    memcpy(vert.offs_color, cmd_vtx->offs_color, sizeof(cmd_vtx->offs_color));
+
+    if (ta->core_state.stride_sel) {
+        unsigned linestride =
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));vert.tex_coord[0] =
+            cmd_vtx->tex_coord[0] * ((float)(1 << ta->core_state.tex_width_shift) /
+                          (float)linestride);
+        vert.tex_coord[1] = cmd_vtx->tex_coord[1];
+    } else {
+        vert.tex_coord[0] = cmd_vtx->tex_coord[0];
+        vert.tex_coord[1] = cmd_vtx->tex_coord[1];
+    }
+
+    pvr2_ta_push_vert(pvr2, vert);
+
+    if (cmd_vtx->end_of_strip) {
+        /*
+         * TODO: handle degenerate cases where the user sends an
+         * end-of-strip on the first or second vertex
+         */
+        ta->strip_len = 0;
+    } else {
+        /*
+         * shift the new vert into strip_vert2 and
+         * shift strip_vert2 into strip_vert1
+         */
+        ta->strip_vert_1 = ta->strip_vert_2;
+        ta->strip_vert_2 = vert;
+        ta->strip_len++;
+    }
+
+    pvr2->stat.per_frame_counters.vert_count[pvr2->ta.core_state.cur_poly_group]++;
+}
+
+static void
+display_list_exec_quad(struct pvr2 *pvr2,
+                       struct pvr2_display_list_command const *cmd) {
+    struct pvr2_ta *ta = &pvr2->ta;
+    struct pvr2_display_list_quad const *cmd_quad = &cmd->quad;
+
+    if (cmd_quad->degenerate)
+        return;
+
+    /*
+     * unpack the texture coordinates.  The third vertex's coordinate is the
+     * scond vertex's coordinate plus the two side-vectors.  We do this
+     * unconditionally even if textures are disabled.  If textures are disabled
+     * then the output of this texture-coordinate algorithm is undefined but it
+     * does not matter because the rendering code won't be using it anyways.
+     */
+    float vert_tex_coords[4][2];
+    unpack_uv16(vert_tex_coords[0], vert_tex_coords[0] + 1,
+                cmd_quad->tex_coords_packed);
+    unpack_uv16(vert_tex_coords[1], vert_tex_coords[1] + 1,
+                cmd_quad->tex_coords_packed + 1);
+    unpack_uv16(vert_tex_coords[2], vert_tex_coords[2] + 1,
+                cmd_quad->tex_coords_packed + 2);
+
+    float uv_vec[2][2] = {
+        { vert_tex_coords[0][0] - vert_tex_coords[1][0],
+          vert_tex_coords[0][1] - vert_tex_coords[1][1] },
+        { vert_tex_coords[2][0] - vert_tex_coords[1][0],
+          vert_tex_coords[2][1] - vert_tex_coords[1][1] }
+    };
+
+    vert_tex_coords[3][0] =
+        vert_tex_coords[1][0] + uv_vec[0][0] + uv_vec[1][0];
+    vert_tex_coords[3][1] =
+        vert_tex_coords[1][1] + uv_vec[0][1] + uv_vec[1][1];
+
+    if (ta->core_state.stride_sel) {
+        // non-power-of-two texture
+        unsigned linestride =
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
+        int idx;
+        for (idx = 0; idx < 3; idx++) {
+            vert_tex_coords[idx][0] *=
+                ((float)linestride) / ((float)(1 << ta->core_state.tex_width_shift));
+        }
+    }
+
+    float const base_col[] = {
+        cmd_quad->base_color[0],
+        cmd_quad->base_color[1],
+        cmd_quad->base_color[2],
+        cmd_quad->base_color[3]
+    };
+
+    float const offs_col[] = {
+        cmd_quad->offs_color[0],
+        cmd_quad->offs_color[1],
+        cmd_quad->offs_color[2],
+        cmd_quad->offs_color[3]
+    };
+
+    float const *p1 = cmd_quad->vert_pos[0];
+    float const *p2 = cmd_quad->vert_pos[1];
+    float const *p3 = cmd_quad->vert_pos[2];
+    float const *p4 = cmd_quad->vert_pos[3];
+
+    struct pvr2_ta_vert vert1 = {
+        .pos = { p1[0], p1[1], p1[2] },
+        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
+        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
+        .tex_coord = { vert_tex_coords[0][0], vert_tex_coords[0][1] }
+    };
+
+    struct pvr2_ta_vert vert2 = {
+        .pos = { p2[0], p2[1], p2[2] },
+        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
+        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
+        .tex_coord = { vert_tex_coords[1][0], vert_tex_coords[1][1] }
+    };
+
+    struct pvr2_ta_vert vert3 = {
+        .pos = { p3[0], p3[1], p3[2] },
+        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
+        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
+        .tex_coord = { vert_tex_coords[2][0], vert_tex_coords[2][1] }
+    };
+
+    struct pvr2_ta_vert vert4 = {
+        .pos = { p4[0], p4[1], p4[2] },
+        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
+        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
+        .tex_coord = { vert_tex_coords[3][0], vert_tex_coords[3][1] }
+    };
+
+    pvr2_ta_push_vert(pvr2, vert1);
+    pvr2_ta_push_vert(pvr2, vert2);
+    pvr2_ta_push_vert(pvr2, vert3);
+
+    pvr2_ta_push_vert(pvr2, vert1);
+    pvr2_ta_push_vert(pvr2, vert3);
+    pvr2_ta_push_vert(pvr2, vert4);
+
+    if (p1[2] < ta->clip_min)
+        ta->clip_min = p1[2];
+    if (p1[2] > ta->clip_max)
+        ta->clip_max = p1[2];
+
+    if (p2[2] < ta->clip_min)
+        ta->clip_min = p2[2];
+    if (p2[2] > ta->clip_max)
+        ta->clip_max = p2[2];
+
+    if (p3[2] < ta->clip_min)
+        ta->clip_min = p3[2];
+    if (p3[2] > ta->clip_max)
+        ta->clip_max = p3[2];
+
+    if (p4[2] < ta->clip_min)
+        ta->clip_min = p4[2];
+    if (p4[2] > ta->clip_max)
+        ta->clip_max = p4[2];
+
+    pvr2->stat.per_frame_counters.vert_count[pvr2->ta.core_state.cur_poly_group]++;
+}
+
+static void
+display_list_exec_end_of_group(struct pvr2 *pvr2,
+                               struct pvr2_display_list_command const *cmd) {
+    struct gfx_il_inst gfx_cmd;
+    struct pvr2_ta *ta = &pvr2->ta;
+    unsigned n_verts = ta->pvr2_ta_vert_buf_count - ta->pvr2_ta_vert_buf_start;
+
+#ifdef INVARIANTS
+    if (ta->pvr2_ta_vert_buf_start > ta->pvr2_ta_vert_buf_count)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
+
+    if (n_verts) {
+        gfx_cmd.op = GFX_IL_DRAW_ARRAY;
+        gfx_cmd.arg.draw_array.n_verts = n_verts;
+        gfx_cmd.arg.draw_array.verts = ta->pvr2_ta_vert_buf + ta->pvr2_ta_vert_buf_start * GFX_VERT_LEN;
+        pvr2_ta_push_gfx_il(pvr2, gfx_cmd);
+        ta->pvr2_ta_vert_buf_start = ta->pvr2_ta_vert_buf_count;
+    }
+}
+
 static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_pkt_hdr const *hdr = &pkt->dat.hdr;
     struct pvr2_ta *ta = &pvr2->ta;
-
-    ta->strip_len = 0;
 
 #ifdef PVR2_LOG_VERBOSE
     dump_pkt_hdr(hdr);
@@ -478,16 +941,12 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 
             next_poly_group(pvr2, ta->fifo_state.cur_poly_type);
         }
-
-        /* pvr2_ta_vert_cur_group = pvr2_ta_vert_buf_count; */
     } else {
         PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
                    pvr2_poly_type_name(hdr->poly_type));
 
         next_poly_group(pvr2, ta->fifo_state.cur_poly_type);
     }
-
-    ta->strip_len = 0;
 
     /*
      * XXX this happens before the texture caching code because we need to be
@@ -496,9 +955,6 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     ta->fifo_state.vtx_len = hdr->vtx_len;
     ta->fifo_state.tex_enable = hdr->tex_enable;
     ta->fifo_state.geo_tp = hdr->tp;
-    ta->fifo_state.stride_sel = hdr->stride_sel;
-    ta->fifo_state.tex_width_shift = hdr->tex_width_shift;
-    ta->fifo_state.tex_height_shift = hdr->tex_height_shift;
     ta->fifo_state.tex_coord_16_bit_enable = hdr->tex_coord_16_bit_enable;
     ta->fifo_state.two_volumes_mode = hdr->two_volumes_mode;
     ta->fifo_state.ta_color_fmt = hdr->ta_color_fmt;
@@ -512,69 +968,39 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     ta->fifo_state.tex_inst = hdr->tex_inst;
     ta->fifo_state.tex_filter = hdr->tex_filter;
 
-    if (hdr->tex_enable) {
-        PVR2_TRACE("texture enabled\n");
-
-        PVR2_TRACE("the texture format is %d\n", hdr->pix_fmt);
-        PVR2_TRACE("The texture address ix 0x%08x\n", hdr->tex_addr);
-
-        if (hdr->tex_twiddle)
-            PVR2_TRACE("not twiddled\n");
-        else
-            PVR2_TRACE("twiddled\n");
-
-        /*
-         * XXX: not sure if PVR2_TEXT_CONTROL should be read here, or when we
-         * submit the vertices.
-         */
-        unsigned linestride = hdr->stride_sel ?
-            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4)) :
-            (1 << hdr->tex_width_shift);
-        if (!linestride || linestride > (1 << hdr->tex_width_shift))
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-        struct pvr2_tex *ent =
-            pvr2_tex_cache_find(pvr2, hdr->tex_addr, hdr->tex_palette_start,
-                                hdr->tex_width_shift,
-                                hdr->tex_height_shift,
-                                linestride,
-                                hdr->pix_fmt, hdr->tex_twiddle,
-                                hdr->tex_vq_compression,
-                                hdr->tex_mipmap,
-                                hdr->stride_sel);
-
-        PVR2_TRACE("texture dimensions are (%u, %u)\n",
-               1 << hdr->tex_width_shift,
-               1 << hdr->tex_height_shift);
-        if (ent) {
-            PVR2_TRACE("Texture 0x%08x found in cache\n",
-                    hdr->tex_addr);
-        } else {
-            PVR2_TRACE("Adding 0x%08x to texture cache...\n",
-                    hdr->tex_addr);
-            ent = pvr2_tex_cache_add(pvr2,
-                                     hdr->tex_addr, hdr->tex_palette_start,
-                                     hdr->tex_width_shift,
-                                     hdr->tex_height_shift,
-                                     linestride,
-                                     hdr->pix_fmt,
-                                     hdr->tex_twiddle,
-                                     hdr->tex_vq_compression,
-                                     hdr->tex_mipmap,
-                                     hdr->stride_sel);
-        }
-
-        if (!ent) {
-            LOG_WARN("WARNING: failed to add texture 0x%08x to "
-                    "the texture cache\n", hdr->tex_addr);
-            ta->fifo_state.tex_enable = false;
-        } else {
-            ta->tex_idx = pvr2_tex_cache_get_idx(pvr2, ent);
-        }
-    } else {
-        PVR2_TRACE("textures are NOT enabled\n");
-        /* poly_state.tex_enable = false; */
+    // queue up in a display list
+    struct pvr2_display_list *cur_list = ta->disp_lists + ta->cur_list_idx;
+    if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    struct pvr2_display_list_command *cmd =
+        pvr2_list_alloc_new_cmd(cur_list, ta->fifo_state.cur_poly_type);
+    if (!cmd) {
+        LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
+        return;
     }
+
+    cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_HEADER;
+    struct pvr2_display_list_command_header *cmd_hdr = &cmd->hdr;
+    cmd_hdr->geo_tp = ta->fifo_state.geo_tp;
+    cmd_hdr->tex_enable = ta->fifo_state.tex_enable;
+    cmd_hdr->tex_wrap_mode[0] = ta->fifo_state.tex_wrap_mode[0];
+    cmd_hdr->tex_wrap_mode[1] = ta->fifo_state.tex_wrap_mode[1];
+    cmd_hdr->tex_inst = ta->fifo_state.tex_inst;
+    cmd_hdr->tex_filter = ta->fifo_state.tex_filter;
+    cmd_hdr->src_blend_factor = ta->fifo_state.src_blend_factor;
+    cmd_hdr->dst_blend_factor = ta->fifo_state.dst_blend_factor;
+    cmd_hdr->enable_depth_writes = ta->fifo_state.enable_depth_writes;
+    cmd_hdr->depth_func = ta->fifo_state.depth_func;
+
+    cmd_hdr->tex_width_shift = hdr->tex_width_shift;
+    cmd_hdr->tex_height_shift = hdr->tex_height_shift;
+    cmd_hdr->stride_sel = hdr->stride_sel;
+    cmd_hdr->tex_twiddle = hdr->tex_twiddle;
+    cmd_hdr->pix_fmt = hdr->pix_fmt;
+    cmd_hdr->tex_addr = hdr->tex_addr;
+    cmd_hdr->tex_palette_start = hdr->tex_palette_start;
+    cmd_hdr->tex_vq_compression = hdr->tex_vq_compression;
+    cmd_hdr->tex_mipmap = hdr->tex_mipmap;
 }
 
 static void
@@ -655,10 +1081,25 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
+    enum pvr2_poly_type poly_type = ta->fifo_state.cur_poly_type;
     finish_poly_group(pvr2, ta->fifo_state.cur_poly_type);
-
     set_poly_type_state(ta, ta->fifo_state.cur_poly_type,
                         PVR2_POLY_TYPE_STATE_SUBMITTED);
+    ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
+
+    // queue up in a display list
+    struct pvr2_display_list *cur_list = ta->disp_lists + ta->cur_list_idx;
+    if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    struct pvr2_display_list_command *cmd =
+        pvr2_list_alloc_new_cmd(cur_list, poly_type);
+    if (cmd) {
+        cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP;
+        cmd->end_of_group.poly_type = poly_type;
+    } else {
+        LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
+    }
+
     ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
 }
 
@@ -670,84 +1111,28 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     if (quad->degenerate)
         return;
 
-    float const base_col[] = {
-        ta->fifo_state.sprite_base_color_rgba[0],
-        ta->fifo_state.sprite_base_color_rgba[1],
-        ta->fifo_state.sprite_base_color_rgba[2],
-        ta->fifo_state.sprite_base_color_rgba[3]
-    };
+    // queue up in a display list
+    struct pvr2_display_list *cur_list = ta->disp_lists + ta->cur_list_idx;
+    if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    struct pvr2_display_list_command *cmd =
+        pvr2_list_alloc_new_cmd(cur_list, ta->fifo_state.cur_poly_type);
+    if (!cmd) {
+        LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
+        return;
+    }
 
-    float const offs_col[] = {
-        ta->fifo_state.sprite_offs_color_rgba[0],
-        ta->fifo_state.sprite_offs_color_rgba[1],
-        ta->fifo_state.sprite_offs_color_rgba[2],
-        ta->fifo_state.sprite_offs_color_rgba[3]
-    };
+    cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_QUAD;
 
-    float const *p1 = quad->vert_pos[0];
-    float const *p2 = quad->vert_pos[1];
-    float const *p3 = quad->vert_pos[2];
-    float const *p4 = quad->vert_pos[3];
-
-    struct pvr2_ta_vert vert1 = {
-        .pos = { p1[0], p1[1], p1[2] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { quad->vert_tex_coords[0][0],
-                       quad->vert_tex_coords[0][1] }
-    };
-
-    struct pvr2_ta_vert vert2 = {
-        .pos = { p2[0], p2[1], p2[2] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { quad->vert_tex_coords[1][0],
-                       quad->vert_tex_coords[1][1] }
-    };
-
-    struct pvr2_ta_vert vert3 = {
-        .pos = { p3[0], p3[1], p3[2] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { quad->vert_tex_coords[2][0],
-                       quad->vert_tex_coords[2][1] }
-    };
-
-    struct pvr2_ta_vert vert4 = {
-        .pos = { p4[0], p4[1], p4[2] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { quad->vert_tex_coords[3][0],
-                       quad->vert_tex_coords[3][1] }
-    };
-
-    pvr2_ta_push_vert(pvr2, vert1);
-    pvr2_ta_push_vert(pvr2, vert2);
-    pvr2_ta_push_vert(pvr2, vert3);
-
-    pvr2_ta_push_vert(pvr2, vert1);
-    pvr2_ta_push_vert(pvr2, vert3);
-    pvr2_ta_push_vert(pvr2, vert4);
-
-    if (p1[2] < ta->clip_min)
-        ta->clip_min = p1[2];
-    if (p1[2] > ta->clip_max)
-        ta->clip_max = p1[2];
-
-    if (p2[2] < ta->clip_min)
-        ta->clip_min = p2[2];
-    if (p2[2] > ta->clip_max)
-        ta->clip_max = p2[2];
-
-    if (p3[2] < ta->clip_min)
-        ta->clip_min = p3[2];
-    if (p3[2] > ta->clip_max)
-        ta->clip_max = p3[2];
-
-    if (p4[2] < ta->clip_min)
-        ta->clip_min = p4[2];
-    if (p4[2] > ta->clip_max)
-        ta->clip_max = p4[2];
+    struct pvr2_display_list_quad *dl_quad = &cmd->quad;
+    memcpy(dl_quad->vert_pos, quad->vert_pos, sizeof(dl_quad->vert_pos));
+    memcpy(dl_quad->tex_coords_packed,
+           quad->tex_coords_packed, sizeof(dl_quad->tex_coords_packed));
+    memcpy(dl_quad->base_color,
+           ta->fifo_state.sprite_base_color_rgba, sizeof(dl_quad->base_color));
+    memcpy(dl_quad->offs_color,
+           ta->fifo_state.sprite_offs_color_rgba, sizeof(dl_quad->offs_color));
+    dl_quad->degenerate = quad->degenerate;
 }
 
 static void
@@ -762,69 +1147,26 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 
     ta->fifo_state.open_group = true;
 
-    /*
-     * un-strip triangle strips by duplicating the previous two vertices.
-     *
-     * TODO: obviously it would be best to preserve the triangle strips and
-     * send them to OpenGL via GL_TRIANGLE_STRIP in the rendering backend, but
-     * then I need to come up with some way to signal the renderer to stop and
-     * re-start strips.  It might also be possible to stitch separate strips
-     * together with degenerate triangles...
-     */
-    if (ta->strip_len >= 3) {
-        pvr2_ta_push_vert(pvr2, ta->strip_vert_1);
-        pvr2_ta_push_vert(pvr2, ta->strip_vert_2);
-    }
+    if (ta->fifo_state.cur_poly_type >= PVR2_POLY_TYPE_FIRST &&
+        ta->fifo_state.cur_poly_type <= PVR2_POLY_TYPE_LAST) {
+        // queue up in a display list
+        struct pvr2_display_list *cur_list = ta->disp_lists + ta->cur_list_idx;
+        if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
+            RAISE_ERROR(ERROR_INTEGRITY);
+        struct pvr2_display_list_command *cmd =
+            pvr2_list_alloc_new_cmd(cur_list, ta->fifo_state.cur_poly_type);
+        if (!cmd) {
+            LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
+            return;
+        }
 
-    // first update the clipping planes
-    /*
-     * TODO: there are FPU instructions on x86 that can do this without
-     * branching
-     */
-    float z_recip = 1.0 / vtx->pos[2];
-    if (z_recip < ta->clip_min)
-        ta->clip_min = z_recip;
-    if (z_recip > ta->clip_max)
-        ta->clip_max = z_recip;
-
-    struct pvr2_ta_vert vert;
-
-    vert.pos[0] = vtx->pos[0];
-    vert.pos[1] = vtx->pos[1];
-    vert.pos[2] = z_recip;
-
-    PVR2_TRACE("(%f, %f, %f)\n", vert.pos[0], vert.pos[1], vert.pos[2]);
-
-    if (ta->fifo_state.stride_sel) {
-        unsigned linestride =
-            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
-        vert.tex_coord[0] =
-            vtx->uv[0] * ((float)(1 << ta->fifo_state.tex_width_shift) /
-                          (float)linestride);
-        vert.tex_coord[1] = vtx->uv[1];
-    } else {
-        memcpy(vert.tex_coord, vtx->uv, sizeof(vert.tex_coord));
-    }
-
-    memcpy(vert.base_color, vtx->base_color, sizeof(vtx->base_color));
-    memcpy(vert.offs_color, vtx->offs_color, sizeof(vtx->offs_color));
-
-    pvr2_ta_push_vert(pvr2, vert);
-
-    if (vtx->end_of_strip) {
-        /*
-         * TODO: handle degenerate cases where the user sends an
-         * end-of-strip on the first or second vertex
-         */
-        ta->strip_len = 0;
-    } else {
-        /*
-         * shift the new vert into strip_vert2 and
-         * shift strip_vert2 into strip_vert1
-         */
-        ta->strip_vert_1 = ta->strip_vert_2;
-        ta->strip_vert_2 = vert;
-        ta->strip_len++;
+        cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX;
+        struct pvr2_display_list_vertex *dl_vtx = &cmd->vtx;
+        memcpy(dl_vtx->pos, vtx->pos, sizeof(dl_vtx->pos));
+        memcpy(dl_vtx->tex_coord, vtx->uv, sizeof(dl_vtx->tex_coord));
+        memcpy(dl_vtx->base_color, vtx->base_color, sizeof(dl_vtx->base_color));
+        memcpy(dl_vtx->offs_color, vtx->offs_color, sizeof(dl_vtx->offs_color));
+        dl_vtx->end_of_strip = vtx->end_of_strip;
     }
 }
 
@@ -835,7 +1177,7 @@ on_pkt_input_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 
 static void on_pkt_user_clip_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     LOG_WARN("PVR2: unimplemented type 1 (user tile clip) packet received\n");
-    PVR2_TRACE("\tmin: (%u, %u)\n\tax: (%u, %u)\n",
+    PVR2_TRACE("\tmin: (%u, %u)\n\tmax: (%u, %u)\n",
                pkt->dat.user_clip.xmin * 32,
                pkt->dat.user_clip.ymin * 32,
                pkt->dat.user_clip.xmax * 32,
@@ -982,41 +1324,9 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     p4[1] = ta_fifo_float[11];
     // p4[2] will be determined later
 
-    /*
-     * unpack the texture coordinates.  The third vertex's coordinate is the
-     * scond vertex's coordinate plus the two side-vectors.  We do this
-     * unconditionally even if textures are disabled.  If textures are disabled
-     * then the output of this texture-coordinate algorithm is undefined but it
-     * does not matter because the rendering code won't be using it anyways.
-     */
-    unpack_uv16(quad->vert_tex_coords[0], quad->vert_tex_coords[0] + 1,
-                ta_fifo_float + 13);
-    unpack_uv16(quad->vert_tex_coords[1], quad->vert_tex_coords[1] + 1,
-                ta_fifo_float + 14);
-    unpack_uv16(quad->vert_tex_coords[2], quad->vert_tex_coords[2] + 1,
-                ta_fifo_float + 15);
-
-    float uv_vec[2][2] = {
-        { quad->vert_tex_coords[0][0] - quad->vert_tex_coords[1][0],
-          quad->vert_tex_coords[0][1] - quad->vert_tex_coords[1][1] },
-        { quad->vert_tex_coords[2][0] - quad->vert_tex_coords[1][0],
-          quad->vert_tex_coords[2][1] - quad->vert_tex_coords[1][1] }
-    };
-
-    quad->vert_tex_coords[3][0] =
-        quad->vert_tex_coords[1][0] + uv_vec[0][0] + uv_vec[1][0];
-    quad->vert_tex_coords[3][1] =
-        quad->vert_tex_coords[1][1] + uv_vec[0][1] + uv_vec[1][1];
-
-    if (ta->fifo_state.stride_sel) {
-        unsigned linestride =
-            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
-        int idx;
-        for (idx = 0; idx < 3; idx++) {
-            quad->vert_tex_coords[idx][0] *=
-                ((float)linestride) / ((float)(1 << ta->fifo_state.tex_width_shift));
-        }
-    }
+    quad->tex_coords_packed[0] = ta->fifo_state.ta_fifo32[13];
+    quad->tex_coords_packed[1] = ta->fifo_state.ta_fifo32[14];
+    quad->tex_coords_packed[2] = ta->fifo_state.ta_fifo32[15];
 
     /*
      * any three non-colinear points will define a 2-dimensional hyperplane in
@@ -1524,6 +1834,76 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     return 0;
 }
 
+static void
+display_list_exec(struct pvr2 *pvr2, struct pvr2_display_list const *listp) {
+    unsigned group_no;
+
+    // reset vertex array
+    pvr2->ta.pvr2_ta_vert_buf_count = 0;
+    pvr2->ta.pvr2_ta_vert_buf_start = 0;
+
+    for (group_no = PVR2_POLY_TYPE_OPAQUE;
+         group_no <= PVR2_POLY_TYPE_PUNCH_THROUGH; group_no++) {
+
+        // TODO: implement modifier volumes
+        if (group_no == PVR2_POLY_TYPE_OPAQUE_MOD ||
+            group_no == PVR2_POLY_TYPE_TRANS_MOD)
+            continue;
+
+        struct pvr2_display_list_group const *group =
+            listp->poly_groups + group_no;
+
+        if (!group->valid)
+            continue;
+
+        pvr2->ta.core_state.cur_poly_group = group_no;
+
+        bool sort_mode = false;
+        if ((group_no == PVR2_POLY_TYPE_TRANS) &&
+            !(pvr2->reg_backing[PVR2_ISP_FEED_CFG] & 1)) {
+            /*
+             * order-independent transparency is enabled when bit 0 of
+             * ISP_FEED_CFG is 0.
+             */
+            sort_mode = true;
+            struct gfx_il_inst gfx_cmd;
+            gfx_cmd.op = GFX_IL_BEGIN_DEPTH_SORT;
+            pvr2_ta_push_gfx_il(pvr2, gfx_cmd);
+        }
+
+        unsigned cmd_no;
+        unsigned n_cmds = group->n_cmds;
+        bool punch_through = (group_no == PVR2_POLY_TYPE_PUNCH_THROUGH);
+        bool blend_enable = (group_no == PVR2_POLY_TYPE_TRANS);
+
+        for (cmd_no = 0; cmd_no < n_cmds; cmd_no++) {
+            struct pvr2_display_list_command const *cmd = group->cmds + cmd_no;
+            switch (cmd->tp) {
+            case PVR2_DISPLAY_LIST_COMMAND_TP_HEADER:
+                display_list_exec_header(pvr2, cmd, punch_through, blend_enable);
+                break;
+            case PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX:
+                display_list_exec_vertex(pvr2, cmd);
+                break;
+            case PVR2_DISPLAY_LIST_COMMAND_TP_QUAD:
+                display_list_exec_quad(pvr2, cmd);
+                break;
+            case PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP:
+                display_list_exec_end_of_group(pvr2, cmd);
+                break;
+            default:
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);
+            }
+        }
+
+        if (sort_mode) {
+            struct gfx_il_inst gfx_cmd;
+            gfx_cmd.op = GFX_IL_END_DEPTH_SORT;
+            pvr2_ta_push_gfx_il(pvr2, gfx_cmd);
+        }
+    }
+}
+
 static int decode_input_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     pkt->tp = PVR2_PKT_INPUT_LIST;
     return 0;
@@ -1593,9 +1973,73 @@ static void pvr2_render_complete_int_event_handler(struct SchedEvent *event) {
 }
 
 void pvr2_ta_startrender(struct pvr2 *pvr2) {
-    PVR2_TRACE("STARTRENDER requested!\n");
     struct pvr2_ta *ta = &pvr2->ta;
     struct gfx_il_inst cmd;
+
+    render_frame_init(pvr2);
+
+    /*
+     * Algorithm here is to find the youngest display list which is within a
+     * certain range of where PVR2_PARAM_BASE points.  The reason for this is
+     * that in Resident Evil 2 (and probably other Windows games as well) the
+     * TA_OL_BASE is offset by 0x27280 from the PARAM_BASE register.  I'm not
+     * sure why exactly that is but these sorts of issues are to be expected
+     * with HLE.
+     */
+    uint32_t key = pvr2->reg_backing[PVR2_PARAM_BASE];
+    PVR2_TRACE("STARTRENDER requested!  key is %08X\n", (unsigned)key);
+    struct pvr2_display_list *listp = NULL;
+    unsigned list_no;
+    for (list_no = 0; list_no < PVR2_MAX_FRAMES_IN_FLIGHT; list_no++) {
+        if (ta->disp_lists[list_no].valid &&
+            key <= ta->disp_lists[list_no].key &&
+            (ta->disp_lists[list_no].key - key) < 0x00100000) {
+            if (!listp ||
+                pvr2_list_age(pvr2, ta->disp_lists + list_no) <
+                pvr2_list_age(pvr2, listp)) {
+                listp = ta->disp_lists + list_no;
+            }
+        }
+    }
+
+    if (listp) {
+        unsigned age;
+        if ((age = pvr2_list_age(pvr2, listp)) > 32) {
+            /*
+             * warn if the list is old.  This could be legitimately
+             * correct behavior, but it could also mean that the list used by
+             * the TA to generate the list somehow did not match up with the
+             * list key used by the CORE to render the list, and we ended up
+             * rendering the wrong list because the one that CORE used happened
+             * to match a list that actually exists.
+             */
+            LOG_WARN("PVR2 display list age is %u; possible list mismatch\n",
+                     age);
+        } else {
+            PVR2_TRACE("PVR2 display list age is %u\n", age);
+        }
+
+        /*
+         * incrememnt the age counter.  The purpose of this is so that lists
+         * which are created once but used often don't get old.
+         *
+         * e.g. one potential example is that you have a game which displays a
+         * quad containing a texture which represents a software-rendered
+         * framebuffer (as many emulators and 2D game engines do).  You might
+         * only generate the display list once and then render it with an
+         * updated texture every frame since the vertices never change.  In
+         * that situation we don't want WashingtonDC to think the display list
+         * is old and outdated just because it was generated a long time ago.
+         */
+        pvr2_inc_age_counter(pvr2);
+        listp->age_counter = ta->disp_list_counter;
+
+        display_list_exec(pvr2, listp);
+        pvr2_tex_cache_xmit(pvr2);
+    } else {
+        LOG_ERROR("PVR2 unable to locate display list for key %08X\n",
+                  (unsigned)key);
+    }
 
     unsigned tile_w = get_glob_tile_clip_x(pvr2) << 5;
     unsigned tile_h = get_glob_tile_clip_y(pvr2) << 5;
@@ -1653,12 +2097,6 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     /* uint32_t backgnd_depth_as_int = get_isp_backgnd_d(); */
     /* memcpy(&geo->bgdepth, &backgnd_depth_as_int, sizeof(float)); */
 
-    pvr2_tex_cache_xmit(pvr2);
-
-    if (ta->fifo_state.cur_poly_type != PVR2_POLY_TYPE_NONE)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    /* finish_poly_group(poly_state.current_list); */
-
     int tgt = framebuffer_set_render_target(pvr2);
 
     /*
@@ -1687,15 +2125,6 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
      * TODO: This is extremely inaccurate.  PVR2 only draws on a per-tile
      * basis; I think that includes clearing the framebuffer on a per-tile
      * basis as well.
-     *
-     * This is definitely the reason why the spinning graphics during Namco
-     * Museum's bootup disappear when they come to their final position (because
-     * the game issues a STARTRENDER without intending to draw anything).  It
-     * might also be related to the bad background color on the first frame of
-     * Dreamcast bootup (see issue #10 on github) and also maybe related to some
-     * of the incorrect screen transitions (like when the silver background at
-     * the end of IP.BIN is supposed to fade to black but instead it instantly
-     * turns black).
      */
 
     // set up rendering context
@@ -1719,30 +2148,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     rend_exec_il(&cmd, 1);
 
     // execute queued gfx_il commands
-    enum pvr2_poly_type poly_type;
-    for (poly_type = PVR2_POLY_TYPE_FIRST; poly_type <= PVR2_POLY_TYPE_LAST; poly_type++) {
-        bool sort_mode = false;
-        if (poly_type == PVR2_POLY_TYPE_TRANS) {
-            /*
-             * order-independent transparency is enabled when bit 0 of
-             * ISP_FEED_CFG is 0.
-             */
-            if (!(pvr2->reg_backing[PVR2_ISP_FEED_CFG] & 1)) {
-                sort_mode = true;
-                cmd.op = GFX_IL_BEGIN_DEPTH_SORT;
-                rend_exec_il(&cmd, 1);
-            }
-        }
-        struct gfx_il_inst_chain *chain = ta->poly_type_gfx_il_begin[poly_type];
-        while (chain) {
-            rend_exec_il(&chain->cmd, 1);
-            chain = chain->next;
-        }
-        if (sort_mode) {
-            cmd.op = GFX_IL_END_DEPTH_SORT;
-            rend_exec_il(&cmd, 1);
-        }
-    }
+    rend_exec_il(ta->gfx_il_inst_buf, ta->gfx_il_inst_buf_count);
 
     // tear down rendering context
     cmd.op = GFX_IL_END_REND;
@@ -1750,7 +2156,6 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     rend_exec_il(&cmd, 1);
 
     ta->next_frame_stamp++;
-    render_frame_init(pvr2);
 
     if (!ta->pvr2_render_complete_int_event_scheduled) {
         struct dc_clock *clk = pvr2->clk;
@@ -1762,9 +2167,56 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
 }
 
 void pvr2_ta_reinit(struct pvr2 *pvr2) {
-    int idx;
-    for (idx = 0; idx < PVR2_POLY_TYPE_COUNT; idx++)
-        set_poly_type_state(&pvr2->ta, idx, PVR2_POLY_TYPE_STATE_NOT_OPENED);
+    struct pvr2_ta *ta = &pvr2->ta;
+
+    int poly_type;
+    for (poly_type = 0; poly_type < PVR2_POLY_TYPE_COUNT; poly_type++)
+        set_poly_type_state(ta, poly_type, PVR2_POLY_TYPE_STATE_NOT_OPENED);
+    ta->fifo_state.open_group = false;
+    ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
+
+    pvr2_display_list_key key = pvr2->reg_backing[PVR2_TA_VERTBUF_POS];
+    struct pvr2_display_list *cur_list = NULL;
+    unsigned disp_list_idx;
+
+    PVR2_TRACE("PVR2 TA initializing new list for key %08X\n", (unsigned)key);
+
+    // first see if there are any display lists with a matching key
+    for (disp_list_idx = 0; disp_list_idx < PVR2_MAX_FRAMES_IN_FLIGHT;
+         disp_list_idx++)
+        if (ta->disp_lists[disp_list_idx].key == key &&
+            ta->disp_lists[disp_list_idx].valid) {
+            cur_list = ta->disp_lists + disp_list_idx;
+            break;
+        }
+
+    /*
+     * next see if any display lists are invalid.  Else, take the
+     * least-recently used list.
+     */
+    unsigned oldest_age = UINT_MAX;
+    if (!cur_list) {
+        for (disp_list_idx = 0; disp_list_idx < PVR2_MAX_FRAMES_IN_FLIGHT;
+             disp_list_idx++) {
+            if (!ta->disp_lists[disp_list_idx].valid) {
+                cur_list = ta->disp_lists + disp_list_idx;
+                break;
+            } else if (ta->disp_lists[disp_list_idx].age_counter <= oldest_age) {
+                oldest_age = ta->disp_lists[disp_list_idx].age_counter;
+                cur_list = ta->disp_lists + disp_list_idx;
+            }
+        }
+    }
+
+    // initialize the display list
+    pvr2_display_list_init(cur_list);
+    cur_list->valid = true;
+    cur_list->key = key;
+
+    pvr2_inc_age_counter(pvr2);
+    cur_list->age_counter = ta->disp_list_counter;
+
+    ta->cur_list_idx = cur_list - ta->disp_lists;
 }
 
 static void next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
@@ -1779,94 +2231,11 @@ static void next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
     if (ta->fifo_state.open_group)
         finish_poly_group(pvr2, poly_type);
     ta->fifo_state.open_group = true;
-
-    ta->pvr2_ta_vert_cur_group = ta->pvr2_ta_vert_buf_count;
 }
 
 static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
     struct pvr2_ta *ta = &pvr2->ta;
     PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_name(poly_type));
-    struct gfx_il_inst cmd;
-
-    if (poly_type < 0) {
-        PVR2_TRACE("%s - no polygon groups are open\n", __func__);
-        return;
-    }
-
-    // filter out modifier volumes from being rendered
-    if (poly_type == PVR2_POLY_TYPE_OPAQUE_MOD ||
-        poly_type == PVR2_POLY_TYPE_TRANS_MOD)
-        return;
-
-    if (!ta->fifo_state.open_group) {
-        LOG_WARN("%s - still waiting for a polygon header to be opened!\n",
-               __func__);
-        return;
-    }
-
-    cmd.op = GFX_IL_SET_REND_PARAM;
-    if (ta->fifo_state.tex_enable) {
-        PVR2_TRACE("tex_enable should be true\n");
-        cmd.arg.set_rend_param.param.tex_enable = true;
-        cmd.arg.set_rend_param.param.tex_idx = ta->tex_idx;
-    } else {
-        PVR2_TRACE("tex_enable should be false\n");
-        cmd.arg.set_rend_param.param.tex_enable = false;
-    }
-
-    cmd.arg.set_rend_param.param.src_blend_factor = ta->fifo_state.src_blend_factor;
-    cmd.arg.set_rend_param.param.dst_blend_factor = ta->fifo_state.dst_blend_factor;
-    cmd.arg.set_rend_param.param.tex_wrap_mode[0] = ta->fifo_state.tex_wrap_mode[0];
-    cmd.arg.set_rend_param.param.tex_wrap_mode[1] = ta->fifo_state.tex_wrap_mode[1];
-
-    cmd.arg.set_rend_param.param.enable_depth_writes =
-        ta->fifo_state.enable_depth_writes;
-    cmd.arg.set_rend_param.param.depth_func = ta->fifo_state.depth_func;
-
-    cmd.arg.set_rend_param.param.tex_inst = ta->fifo_state.tex_inst;
-    cmd.arg.set_rend_param.param.tex_filter = ta->fifo_state.tex_filter;
-
-    cmd.arg.set_rend_param.param.pt_mode =
-        (poly_type == PVR2_POLY_TYPE_PUNCH_THROUGH);
-    cmd.arg.set_rend_param.param.pt_ref = ta->pt_alpha_ref & 0xff;
-
-    // enqueue the configuration command
-    pvr2_ta_push_gfx_il(pvr2, cmd);
-
-    /*
-     * this check is a little silly, but I get segfaults sometimes when
-     * indexing into src_blend_factors and dst_blend_factors and I don't know
-     * why.
-     *
-     * TODO: this was (hopefully) fixed in commit
-     * 92059fe4f1714b914cec75fd2f91e676127d3097 but I am keeping the INVARIANTS
-     * test here just in case.  It should be safe to delete after a couple of
-     * months have gone by without this INVARIANTS test ever failing.
-     */
-    if (((unsigned)cmd.arg.set_rend_param.param.src_blend_factor >= PVR2_BLEND_FACTOR_COUNT) ||
-        ((unsigned)cmd.arg.set_rend_param.param.dst_blend_factor >= PVR2_BLEND_FACTOR_COUNT)) {
-        error_set_src_blend_factor(cmd.arg.set_rend_param.param.src_blend_factor);
-        error_set_dst_blend_factor(cmd.arg.set_rend_param.param.dst_blend_factor);
-        error_set_poly_type_index((unsigned)poly_type);
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
-
-    // TODO: this only needs to be done once per list, not once per polygon group
-    cmd.op = GFX_IL_SET_BLEND_ENABLE;
-    cmd.arg.set_blend_enable.do_enable = (poly_type == PVR2_POLY_TYPE_TRANS);
-    pvr2_ta_push_gfx_il(pvr2, cmd);
-
-    unsigned n_verts = ta->pvr2_ta_vert_buf_count - ta->pvr2_ta_vert_cur_group;
-    pvr2->stat.per_frame_counters.poly_count[poly_type] += n_verts / 3;
-
-    cmd.op = GFX_IL_DRAW_ARRAY;
-    cmd.arg.draw_array.n_verts = n_verts;
-    cmd.arg.draw_array.verts =
-        ta->pvr2_ta_vert_buf + ta->pvr2_ta_vert_cur_group * GFX_VERT_LEN;
-    pvr2_ta_push_gfx_il(pvr2, cmd);
-
-    ta->pvr2_ta_vert_cur_group = ta->pvr2_ta_vert_buf_count;
-
     ta->fifo_state.open_group = false;
 }
 
@@ -1877,28 +2246,11 @@ static void ta_fifo_finish_packet(struct pvr2_ta *ta) {
 static void render_frame_init(struct pvr2 *pvr2) {
     struct pvr2_ta *ta = &pvr2->ta;
 
-    // free vertex arrays
-    ta->pvr2_ta_vert_buf_count = 0;
-    ta->pvr2_ta_vert_cur_group = 0;
-
-    ta->fifo_state.open_group = false;
-
     // free up gfx_il commands
     ta->gfx_il_inst_buf_count = 0;
-    enum pvr2_poly_type poly_type;
-    for (poly_type = PVR2_POLY_TYPE_FIRST; poly_type < PVR2_POLY_TYPE_COUNT;
-         poly_type++) {
-        ta->poly_type_gfx_il_begin[poly_type] = NULL;
-        ta->poly_type_gfx_il_end[poly_type] = NULL;
-    }
 
     ta->clip_min = -1.0f;
     ta->clip_max = 1.0f;
-
-    int idx;
-    for (idx = 0; idx < PVR2_POLY_TYPE_COUNT; idx++)
-        set_poly_type_state(ta, idx, PVR2_POLY_TYPE_STATE_NOT_OPENED);
-    ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
 
     memset(&pvr2->stat.per_frame_counters, 0,
            sizeof(pvr2->stat.per_frame_counters));

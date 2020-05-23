@@ -247,7 +247,7 @@ enum washdc_pvr2_poly_group {
 };
 
 struct washdc_pvr2_stat {
-    unsigned poly_count[WASHDC_PVR2_POLY_GROUP_COUNT];
+    unsigned vert_count[WASHDC_PVR2_POLY_GROUP_COUNT];
 
     /*
      * number of times textures get transmitted to the gfx infra.

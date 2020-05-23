@@ -39,7 +39,7 @@
 struct pvr2_stat {
     // performance counters that get reset on a per-frame basis
     struct {
-        unsigned poly_count[PVR2_POLY_TYPE_COUNT];
+        unsigned vert_count[PVR2_POLY_TYPE_COUNT];
     } per_frame_counters;
 
     // performance counters that don't get reset ever

@@ -344,16 +344,16 @@ static void overlay::show_perf_win(void) {
         ImGui::Text("Average: %f%% (last %d frames)\n",
                     100.0 * (total / n_frames), MAX_FRAMES);
 
-    ImGui::Text("%u opaque polygons",
-                stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
-    ImGui::Text("%u opaque modifier polygons",
-                stat.poly_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD]);
-    ImGui::Text("%u transparent polygons",
-                stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS]);
-    ImGui::Text("%u transparent modifier polygons",
-                stat.poly_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
-    ImGui::Text("%u punch-through polygons",
-                stat.poly_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
+    ImGui::Text("%u opaque vertices",
+                stat.vert_count[WASHDC_PVR2_POLY_GROUP_OPAQUE]);
+    ImGui::Text("%u opaque modifier vertices",
+                stat.vert_count[WASHDC_PVR2_POLY_GROUP_OPAQUE_MOD]);
+    ImGui::Text("%u transparent vertices",
+                stat.vert_count[WASHDC_PVR2_POLY_GROUP_TRANS]);
+    ImGui::Text("%u transparent modifier vertices",
+                stat.vert_count[WASHDC_PVR2_POLY_GROUP_TRANS_MOD]);
+    ImGui::Text("%u punch-through vertices",
+                stat.vert_count[WASHDC_PVR2_POLY_GROUP_PUNCH_THROUGH]);
     ImGui::Text("%u texture transmissions",
                 stat.tex_xmit_count);
     ImGui::Text("%u texture invalidates",

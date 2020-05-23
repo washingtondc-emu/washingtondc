@@ -169,6 +169,7 @@ int pvr2_tex_cache_get_idx(struct pvr2 *pvr2, struct pvr2_tex const *tex);
 
 // this function sends the texture cache over to gfx by way of the gfx_il
 void pvr2_tex_cache_xmit(struct pvr2 *pvr2);
+void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx);
 
 /*
  * Read the meta-information of the given texture.  This function will return

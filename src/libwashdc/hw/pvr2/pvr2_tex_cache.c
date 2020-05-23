@@ -810,130 +810,133 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
     *n_bytes_out = n_bytes;
 }
 
-void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
-    unsigned idx;
+void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx) {
     unsigned cur_frame_stamp = get_cur_frame_stamp(pvr2);
     struct gfx_il_inst cmd;
     struct pvr2_tex_cache *cache = &pvr2->tex_cache;
     dc_cycle_stamp_t *page_stamps = cache->page_stamps;
     struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
+    struct pvr2_tex *tex_in = tex_cache + idx;
 
-    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
-        struct pvr2_tex *tex_in = tex_cache + idx;
+    if (tex_in->state != PVR2_TEX_INVALID) {
+        pvr2_framebuffer_notify_texture(pvr2,
+                                        tex_in->meta.addr_first +
+                                        ADDR_TEX64_FIRST,
+                                        tex_in->meta.addr_last +
+                                        ADDR_TEX64_FIRST);
+    }
 
-        if (tex_in->state != PVR2_TEX_INVALID) {
-            pvr2_framebuffer_notify_texture(pvr2,
-                                            tex_in->meta.addr_first +
-                                            ADDR_TEX64_FIRST,
-                                            tex_in->meta.addr_last +
-                                            ADDR_TEX64_FIRST);
-        }
-
-        bool need_update = false;
-        if (tex_in->state == PVR2_TEX_DIRTY)
-            need_update = true;
-        else if (tex_in->state == PVR2_TEX_READY) {
-            unsigned page = tex_in->meta.addr_first / PVR2_TEX_PAGE_SIZE;
-            unsigned last_page = tex_in->meta.addr_last / PVR2_TEX_PAGE_SIZE;
-            while (page <= last_page) {
-                if (page_stamps[page++] > tex_in->last_update) {
-                    pvr2->stat.persistent_counters.tex_invalidate_count++;
-                    need_update = true;
-                    break;
-                }
+    bool need_update = false;
+    if (tex_in->state == PVR2_TEX_DIRTY)
+        need_update = true;
+    else if (tex_in->state == PVR2_TEX_READY) {
+        unsigned page = tex_in->meta.addr_first / PVR2_TEX_PAGE_SIZE;
+        unsigned last_page = tex_in->meta.addr_last / PVR2_TEX_PAGE_SIZE;
+        while (page <= last_page) {
+            if (page_stamps[page++] > tex_in->last_update) {
+                pvr2->stat.persistent_counters.tex_invalidate_count++;
+                need_update = true;
+                break;
             }
-        }
-
-        if (need_update) {
-            pvr2->stat.persistent_counters.tex_xmit_count++;
-
-            /*
-             * If the texture has been written to this frame but it is not
-             * actively in use then tell the gfx system to evict it from the
-             * cache.
-             */
-            if (tex_in->frame_stamp_last_used != cur_frame_stamp) {
-                pvr2->stat.persistent_counters.tex_eviction_count++;
-
-                tex_in->state = PVR2_TEX_INVALID;
-
-                cmd.op = GFX_IL_UNBIND_TEX;
-                cmd.arg.unbind_tex.tex_no = idx;
-                rend_exec_il(&cmd, 1);
-
-                cmd.op = GFX_IL_FREE_OBJ;
-                cmd.arg.free_obj.obj_no = tex_in->obj_no;
-                rend_exec_il(&cmd, 1);
-
-                pvr2_free_gfx_obj(tex_in->obj_no);
-                tex_in->obj_no = -1;
-
-                continue;
-            }
-
-            if (tex_in->obj_no < 0) {
-                /*
-                 * This is a new texture; we need to create a data store,
-                 * upload the texture and bind the store to the texture object.
-                 */
-                tex_in->obj_no = pvr2_alloc_gfx_obj();
-
-                void *tex_dat;
-                size_t n_bytes;
-                struct pvr2_tex_meta tmp = tex_in->meta;
-                if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
-                    tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                    tmp.pix_fmt =
-                        translate_palette_to_pix_format(get_palette_tp(pvr2));
-                }
-                pvr2_tex_cache_read(pvr2, &tex_dat, &n_bytes, &tmp);
-
-                cmd.op = GFX_IL_INIT_OBJ;
-                cmd.arg.init_obj.obj_no = tex_in->obj_no;
-                cmd.arg.init_obj.n_bytes = n_bytes;
-                rend_exec_il(&cmd, 1);
-
-                cmd.op = GFX_IL_WRITE_OBJ;
-                cmd.arg.write_obj.dat = tex_dat;
-                cmd.arg.write_obj.obj_no = tex_in->obj_no;
-                cmd.arg.write_obj.n_bytes = n_bytes;
-                rend_exec_il(&cmd, 1);
-                free(tex_dat);
-
-                cmd.op = GFX_IL_BIND_TEX;
-                cmd.arg.bind_tex.gfx_obj_handle = tex_in->obj_no;
-                cmd.arg.bind_tex.tex_no = idx;
-                cmd.arg.bind_tex.pix_fmt = tmp.pix_fmt;
-                cmd.arg.bind_tex.width = tex_in->meta.linestride;
-                cmd.arg.bind_tex.height = 1 << tex_in->meta.h_shift;
-
-                rend_exec_il(&cmd, 1);
-            } else {
-                /*
-                 * This is a pre-existing texture; since the data-store has
-                 * already been created and bound, all we have to do is write
-                 * to it.
-                 */
-                struct pvr2_tex_meta tmp = tex_in->meta;
-                if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
-                    tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-                    tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp(pvr2));
-                }
-                void *tex_dat;
-                size_t n_bytes;
-                pvr2_tex_cache_read(pvr2, &tex_dat, &n_bytes, &tmp);
-                cmd.op = GFX_IL_WRITE_OBJ;
-                cmd.arg.write_obj.dat = tex_dat;
-                cmd.arg.write_obj.obj_no = tex_in->obj_no;
-                cmd.arg.write_obj.n_bytes = n_bytes;
-                rend_exec_il(&cmd, 1);
-                free(tex_dat);
-            }
-
-            tex_in->state = PVR2_TEX_READY;
-            tex_in->last_update = clock_cycle_stamp(pvr2->clk);
         }
     }
+
+    if (need_update) {
+        pvr2->stat.persistent_counters.tex_xmit_count++;
+
+        /*
+         * If the texture has been written to this frame but it is not
+         * actively in use then tell the gfx system to evict it from the
+         * cache.
+         */
+        if (tex_in->frame_stamp_last_used != cur_frame_stamp) {
+            pvr2->stat.persistent_counters.tex_eviction_count++;
+
+            tex_in->state = PVR2_TEX_INVALID;
+
+            cmd.op = GFX_IL_UNBIND_TEX;
+            cmd.arg.unbind_tex.tex_no = idx;
+            rend_exec_il(&cmd, 1);
+
+            cmd.op = GFX_IL_FREE_OBJ;
+            cmd.arg.free_obj.obj_no = tex_in->obj_no;
+            rend_exec_il(&cmd, 1);
+
+            pvr2_free_gfx_obj(tex_in->obj_no);
+            tex_in->obj_no = -1;
+
+            return;
+        }
+
+        if (tex_in->obj_no < 0) {
+            /*
+             * This is a new texture; we need to create a data store,
+             * upload the texture and bind the store to the texture object.
+             */
+            tex_in->obj_no = pvr2_alloc_gfx_obj();
+
+            void *tex_dat;
+            size_t n_bytes;
+            struct pvr2_tex_meta tmp = tex_in->meta;
+            if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+                tmp.pix_fmt =
+                    translate_palette_to_pix_format(get_palette_tp(pvr2));
+            }
+            pvr2_tex_cache_read(pvr2, &tex_dat, &n_bytes, &tmp);
+
+            cmd.op = GFX_IL_INIT_OBJ;
+            cmd.arg.init_obj.obj_no = tex_in->obj_no;
+            cmd.arg.init_obj.n_bytes = n_bytes;
+            rend_exec_il(&cmd, 1);
+
+            cmd.op = GFX_IL_WRITE_OBJ;
+            cmd.arg.write_obj.dat = tex_dat;
+            cmd.arg.write_obj.obj_no = tex_in->obj_no;
+            cmd.arg.write_obj.n_bytes = n_bytes;
+            rend_exec_il(&cmd, 1);
+            free(tex_dat);
+
+            cmd.op = GFX_IL_BIND_TEX;
+            cmd.arg.bind_tex.gfx_obj_handle = tex_in->obj_no;
+            cmd.arg.bind_tex.tex_no = idx;
+            cmd.arg.bind_tex.pix_fmt = tmp.pix_fmt;
+            cmd.arg.bind_tex.width = tex_in->meta.linestride;
+            cmd.arg.bind_tex.height = 1 << tex_in->meta.h_shift;
+
+            rend_exec_il(&cmd, 1);
+        } else {
+            /*
+             * This is a pre-existing texture; since the data-store has
+             * already been created and bound, all we have to do is write
+             * to it.
+             */
+            struct pvr2_tex_meta tmp = tex_in->meta;
+            if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+                tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp(pvr2));
+            }
+            void *tex_dat;
+            size_t n_bytes;
+            pvr2_tex_cache_read(pvr2, &tex_dat, &n_bytes, &tmp);
+            cmd.op = GFX_IL_WRITE_OBJ;
+            cmd.arg.write_obj.dat = tex_dat;
+            cmd.arg.write_obj.obj_no = tex_in->obj_no;
+            cmd.arg.write_obj.n_bytes = n_bytes;
+            rend_exec_il(&cmd, 1);
+            free(tex_dat);
+        }
+
+        tex_in->state = PVR2_TEX_READY;
+        tex_in->last_update = clock_cycle_stamp(pvr2->clk);
+    }
+}
+
+void pvr2_tex_cache_xmit(struct pvr2 *pvr2) {
+    unsigned idx;
+
+    for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++)
+        pvr2_tex_cache_xmit_one(pvr2, idx);
 }
 
 int pvr2_tex_cache_get_idx(struct pvr2 *pvr2, struct pvr2_tex const *tex) {
