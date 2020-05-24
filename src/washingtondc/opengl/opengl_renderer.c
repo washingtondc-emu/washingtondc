@@ -830,11 +830,6 @@ static void opengl_renderer_clear(float const bgcolor[4]) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     }
 
-    if (rend_cfg.tex_enable)
-        glEnable(GL_TEXTURE_2D);
-    else
-        glDisable(GL_TEXTURE_2D);
-
     /*
      * first draw the background plane
      * TODO: I should actually draw a background plane instead
