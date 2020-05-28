@@ -591,6 +591,9 @@ sh4_utlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     case SH4_TLB_PAGE_1MB:
         page_sz = "1MB";
         break;
+    default:
+        // should never happen
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     SH4_MEM_TRACE("UTLB INDEX %u:\n"
@@ -686,6 +689,9 @@ sh4_itlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     case SH4_TLB_PAGE_1MB:
         page_sz = "1MB";
         break;
+    default:
+        // should never happen
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     SH4_MEM_TRACE("ITLB INDEX %u:\n"
@@ -965,6 +971,9 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
     case SH4_TLB_PAGE_1MB:
         page_sz = "1MB";
         break;
+    default:
+        // should never happen
+        RAISE_ERROR(ERROR_INTEGRITY);
     }
 
     SH4_MEM_TRACE("LDTLB INTO UTLB INDEX %u:\n"

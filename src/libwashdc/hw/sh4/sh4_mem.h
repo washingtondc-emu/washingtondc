@@ -104,7 +104,7 @@ enum sh4_tlb_page_sz {
 };
 
 struct sh4_utlb_ent {
-    unsigned asid : 8;
+    unsigned asid;
     unsigned vpn /* : 22 */;
     unsigned ppn /* : 19 */;
 
@@ -113,27 +113,27 @@ struct sh4_utlb_ent {
      * bit 0 is set if writable, cleared for read-only.
      * bit 1 is set if accessible in user-mode, cleared for privileged-only.
      */
-    unsigned protection : 2;
+    unsigned protection;
 
     /*
      * space attribute (three bits)
      *
      * Has somethhing to do with PCMIA, we don't actually care about this.
      */
-    unsigned sa : 3;
+    unsigned sa;
 
-    enum sh4_tlb_page_sz sz : 2;
+    enum sh4_tlb_page_sz sz;
 
-    bool valid : 1;
-    bool shared : 1;
-    bool cacheable : 1;
-    bool dirty : 1;
-    bool wt : 1; //write-through
-    bool tc : 1; // i sincerely hope i never need to understand what this is.
+    bool valid;
+    bool shared;
+    bool cacheable;
+    bool dirty;
+    bool wt; //write-through
+    bool tc; // i sincerely hope i never need to understand what this is.
 };
 
 struct sh4_itlb_ent {
-    unsigned asid : 8;
+    unsigned asid;
     unsigned vpn /* : 22 */;
     unsigned ppn /* : 19 */;
 
@@ -143,21 +143,21 @@ struct sh4_itlb_ent {
      *
      * I guess it doesn't make sense to have a writable bit in the itlb.
      */
-    unsigned protection : 1;
+    unsigned protection;
 
     /*
      * space attribute (three bits)
      *
      * Has somethhing to do with PCMIA, we don't actually care about this.
      */
-    unsigned sa : 3;
+    unsigned sa;
 
-    enum sh4_tlb_page_sz sz : 2;
+    enum sh4_tlb_page_sz sz;
 
-    bool valid : 1;
-    bool shared : 1;
-    bool cacheable : 1;
-    bool tc : 1; // i sincerely hope i never need to understand what this is.
+    bool valid;
+    bool shared;
+    bool cacheable;
+    bool tc; // i sincerely hope i never need to understand what this is.
 };
 
 struct sh4_mem {
