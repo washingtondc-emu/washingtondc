@@ -6937,10 +6937,12 @@ void sh4_inst_binary_fmov_xd_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
-    error_set_feature("opcode implementation");
-    error_set_opcode_format("1111nnnnmmm11010");
-    error_set_opcode_name("FMOV XDm, @Rn");
-    SH4_INST_RAISE_ERROR(sh4, ERROR_UNIMPLEMENTED);
+    reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
+    double src_val = *sh4_fpu_xd(sh4, (inst >> 5) & 7);
+
+    if (sh4_writedouble(sh4, addr, src_val) != 0) {
+        // nothing to do here
+    }
 }
 
 #define INST_MASK_1111nnnnmmm11011 0xf01f
