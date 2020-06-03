@@ -6926,9 +6926,7 @@ void sh4_inst_binary_fmov_xd_indgen(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nnnnmmm11010, INST_CONS_1111nnnnmmm11010);
 
-#if defined(INVARIANTS) || defined(ENABLE_MMU)
     struct Sh4 *sh4 = (struct Sh4*)cpu;
-#endif
 
 #ifdef ENABLE_MMU
     if (sh4_check_fpu_disabled(sh4) != 0)
