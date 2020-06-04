@@ -27,6 +27,7 @@
 
 #include "dc_sched.h"
 #include "pvr2_ta.h"
+#include "pvr2_core.h"
 #include "mem_areas.h"
 #include "spg.h"
 #include "pvr2_yuv.h"
@@ -92,6 +93,7 @@ struct pvr2 {
     uint32_t reg_backing[N_PVR2_REGS / sizeof(uint32_t)];
     struct dc_clock *clk;
     struct pvr2_ta ta;
+    struct pvr2_core core;
     struct pvr2_spg spg;
     struct pvr2_yuv yuv;
     struct pvr2_fb fb;

@@ -39,6 +39,7 @@ void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk, struct maple *maple) {
     pvr2_reg_init(pvr2);
     spg_init(pvr2, maple);
     pvr2_tex_cache_init(pvr2);
+    pvr2_core_init(pvr2);
     pvr2_ta_init(pvr2);
     pvr2_yuv_init(pvr2);
     pvr2_framebuffer_init(pvr2);
@@ -48,6 +49,7 @@ void pvr2_cleanup(struct pvr2 *pvr2) {
     pvr2_framebuffer_cleanup(pvr2);
     pvr2_yuv_cleanup(pvr2);
     pvr2_ta_cleanup(pvr2);
+    pvr2_core_cleanup(pvr2);
     pvr2_tex_cache_cleanup(pvr2);
     spg_cleanup(pvr2);
     pvr2_reg_cleanup(pvr2);

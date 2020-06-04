@@ -33,6 +33,8 @@
 #include "gfx/gfx.h"
 #include "gfx/gfx_il.h"
 
+#include "pvr2_core.h"
+
 struct pvr2;
 
 // texture control word
@@ -76,27 +78,6 @@ struct pvr2;
 #define TSP_TEX_HEIGHT_SHIFT 0
 #define TSP_TEX_HEIGHT_MASK (7 << TSP_TEX_HEIGHT_SHIFT)
 
-/*
- * pixel formats for the texture control word.
- *
- * PAL here means "palette", not the European video standard.
- *
- * Also TEX_CTRL_PIX_FMT_INVALID is treated as TEX_CTRL_PIX_FMT_ARGB_1555 even
- * though it's still invalid.
- */
-enum TexCtrlPixFmt {
-    TEX_CTRL_PIX_FMT_ARGB_1555,
-    TEX_CTRL_PIX_FMT_RGB_565,
-    TEX_CTRL_PIX_FMT_ARGB_4444,
-    TEX_CTRL_PIX_FMT_YUV_422,
-    TEX_CTRL_PIX_FMT_BUMP_MAP,
-    TEX_CTRL_PIX_FMT_4_BPP_PAL,
-    TEX_CTRL_PIX_FMT_8_BPP_PAL,
-    TEX_CTRL_PIX_FMT_INVALID,
-
-    TEX_CTRL_PIX_FMT_COUNT // obviously this is not a real pixel format
-};
-
 #define PVR2_TEX_MAX_W 1024
 #define PVR2_TEX_MAX_H 1024
 #define PVR2_TEX_MAX_BYTES (PVR2_TEX_MAX_W * PVR2_TEX_MAX_H * 4)
@@ -125,45 +106,6 @@ void pvr2_ta_reinit(struct pvr2 *pvr2);
 void pvr2_ta_init(struct pvr2 *pvr2);
 void pvr2_ta_cleanup(struct pvr2 *pvr2);
 
-unsigned get_cur_frame_stamp(struct pvr2 *pvr2);
-
-/*
- * There are five polygon types:
- *
- * Opaque
- * Punch-through polygon
- * Opaque/punch-through modifier volume
- * Translucent
- * Translucent modifier volume
- *
- * They are rendered by the opengl backend in that order.
- */
-enum pvr2_poly_type {
-    PVR2_POLY_TYPE_FIRST,
-    PVR2_POLY_TYPE_OPAQUE = PVR2_POLY_TYPE_FIRST,
-    PVR2_POLY_TYPE_OPAQUE_MOD,
-    PVR2_POLY_TYPE_TRANS,
-    PVR2_POLY_TYPE_TRANS_MOD,
-    PVR2_POLY_TYPE_PUNCH_THROUGH,
-    PVR2_POLY_TYPE_LAST = PVR2_POLY_TYPE_PUNCH_THROUGH,
-
-    // These three list types are invalid, but I do see PVR2_POLY_TYPE_7 sometimes
-    PVR2_POLY_TYPE_5,
-    PVR2_POLY_TYPE_6,
-    PVR2_POLY_TYPE_7,
-
-    PVR2_POLY_TYPE_COUNT,
-
-    PVR2_POLY_TYPE_NONE = -1
-};
-
-enum ta_color_type {
-    TA_COLOR_TYPE_PACKED,
-    TA_COLOR_TYPE_FLOAT,
-    TA_COLOR_TYPE_INTENSITY_MODE_1,
-    TA_COLOR_TYPE_INTENSITY_MODE_2
-};
-
 enum pvr2_pkt_tp {
     PVR2_PKT_HDR,
     PVR2_PKT_VTX,
@@ -189,11 +131,6 @@ struct pvr2_pkt_quad {
     float vert_pos[4][3];
     unsigned tex_coords_packed[3];
     bool degenerate;
-};
-
-enum pvr2_hdr_tp {
-    PVR2_HDR_TRIANGLE_STRIP,
-    PVR2_HDR_QUAD
 };
 
 struct pvr2_pkt_hdr {
@@ -271,13 +208,6 @@ enum global_param {
     GLOBAL_PARAM_SPRITE = 5
 };
 
-struct pvr2_ta_vert {
-    float pos[3];
-    float base_color[4];
-    float offs_color[4];
-    float tex_coord[2];
-};
-
 #define PVR2_CMD_MAX_LEN 64
 
 enum pvr2_poly_type_state {
@@ -299,150 +229,6 @@ enum pvr2_poly_type_state {
      */
     PVR2_POLY_TYPE_STATE_SUBMITTED
 };
-
-/*
- * On a real Dreamcast, the CPU creates in GPU VRAM a per-tile array which
- * contains pointers to lists of polygon data for each of the five polygon
- * groups.  This tile array is pointed to by the PVR2_REGION_BASE register,
- * and the pointers to the five polygon groups are offset by the
- * PVR2_PARAM_BASE registero.  When the STARTRENDER command is issued, the GPU
- * reads in each tile from the tile array (pointed to by PVR2_REGION_BASE), and
- * then for each tile it renders the polygon data pointed to by the 5 polygon
- * group pointers (after adding the PVR2_REGION_BASE register to those
- * pointers).
- *
- * The TA creates the polygon data but it has no knowledge of the tile array.
- * Instead it has its own control registers which point it to where in GPU
- * memory polygon data should be written.  These registers are configured by
- * the CPU in a way that ought to be consistent with what's in the tile array.
- *
- * The tile array allows tiles to be laid out in-memory in any order.  I'm not
- * 100% sure on this but I think that the TA assumes they're laid out in a
- * sensible row-major order (thus restricting the layout to row-major unless
- * the CPU wants to generate its own display lists without the TA's help).
- *
- * The PVR2_TA_VERTBUF_POS register points to where the TA should start writing
- * polygon data.  So it corresponds to the PVR2_REGION_BASE register, so it's
- * *hopefully* safe to use this as a key for tracking display lists.  So our
- * HLE strategy here is keep track of the last PVR2_MAX_FRAMES_IN_FLIGHT values
- * of PVR2_TA_VERTBUF_POS that were used, and replay those TAFIFO inputs
- * whenever we see a STARTRENDER command with a matching PVR2_REGION_BASE.  This
- * will be faster and easier to implement than a real LLE of the display list
- * format, albeit less accurate.
- *
- * Potential failure cases include:
- * * there are more than PVR2_MAX_FRAMES_IN_FLIGHT frames in flight - it is
- *   extremely unlikely that anybody would ever use more than two, but if they
- *   really want to fuck with me by doing this then they can.
- * * PVR2_TA_VERTBUF_POS doesn't match PVR2_REGION_BASE, but the pointers in
- *   the tile array still line up with where the TA put the data - this is very
- *   possible but thankfully it never seems to be the case in any of the logs I
- *   have looked at.
- * * software generated its own display lists without using the TA - very
- *   possible but I seriously doubt anything actually does this.  If this case
- *   is ever encountered then true low-level display list emulation is the only
- *   possible solution.
- * * The game queued up more data then I have room to buffer - this is very
- *   avoidable even in the worst-case scenario since a modern PC can easily have
- *   thousands of times more memory than the Dreamcast's VRAM.
- *
- * I'm also not entirely sure how list continuation will need to be handled as
- * a special case, but hopefully the answer is "it won't".
- *
- */
-enum pvr2_display_list_command_tp {
-    PVR2_DISPLAY_LIST_COMMAND_TP_HEADER,
-    PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP,
-    PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX,
-    PVR2_DISPLAY_LIST_COMMAND_TP_QUAD
-};
-
-struct pvr2_display_list_command_header {
-    // current geometry type (either triangle strips or quads)
-    enum pvr2_hdr_tp geo_tp;
-
-    bool stride_sel;
-    bool tex_enable;
-    bool tex_twiddle;
-    bool tex_vq_compression;
-    bool tex_mipmap;
-    unsigned tex_width_shift, tex_height_shift;
-    enum tex_wrap_mode tex_wrap_mode[2];
-    enum tex_inst tex_inst;
-    enum tex_filter tex_filter;
-    enum TexCtrlPixFmt pix_fmt;
-    uint32_t tex_addr;
-
-    /*
-     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
-     * palette address referenced by this texture.  It needs to be shifted left
-     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
-     *
-     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
-     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
-     */
-    unsigned tex_palette_start;
-
-    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
-
-    bool enable_depth_writes;
-    enum Pvr2DepthFunc depth_func;
-};
-
-struct pvr2_display_list_end_of_group {
-    enum pvr2_poly_type poly_type;
-};
-
-struct pvr2_display_list_vertex {
-    float pos[3];
-    float tex_coord[2];
-    float base_color[4];
-    float offs_color[4];
-    bool end_of_strip;
-};
-
-struct pvr2_display_list_quad {
-    /*
-     * four vertices consisting of 3-component poistions
-     *and 2-component texture coordinates
-     */
-    float vert_pos[4][3];
-    unsigned tex_coords_packed[3];
-    bool degenerate;
-
-    float base_color[4];
-    float offs_color[4];
-};
-
-struct pvr2_display_list_command {
-    enum pvr2_display_list_command_tp tp;
-    union {
-        struct pvr2_display_list_command_header hdr;
-        struct pvr2_display_list_end_of_group end_of_group;
-        struct pvr2_display_list_vertex vtx;
-        struct pvr2_display_list_quad quad;
-    };
-};
-
-struct pvr2_display_list_group {
-    // if false, this polygon group is not used by the display list
-    bool valid;
-
-    unsigned n_cmds;
-
-#define PVR2_DISPLAY_LIST_MAX_LEN (128*1024) // TODO: made up bullshit limit
-    struct pvr2_display_list_command cmds[PVR2_DISPLAY_LIST_MAX_LEN];
-};
-
-typedef uint32_t pvr2_display_list_key;
-struct pvr2_display_list {
-    pvr2_display_list_key key;
-    unsigned age_counter; // used for determining the least-recently used list
-    bool valid;
-    struct pvr2_display_list_group poly_groups[PVR2_POLY_TYPE_COUNT];
-};
-
-#define PVR2_MAX_FRAMES_IN_FLIGHT 4
 
 /*
  * holds state which is preserved between TA FIFO packets.  Only things which
@@ -527,62 +313,22 @@ struct pvr2_fifo_state {
     enum Pvr2DepthFunc depth_func;
 };
 
-struct pvr2_core_state {
-    // textures
-    bool stride_sel;
-    unsigned tex_width_shift, tex_height_shift;
-    unsigned cur_poly_group;
-};
-
 struct pvr2_ta {
     struct pvr2_fifo_state fifo_state;
-    struct pvr2_core_state core_state;
 
-    /*
-     * used to store the previous two verts when we're
-     * rendering a triangle strip
-     */
-    struct pvr2_ta_vert strip_vert_1;
-    struct pvr2_ta_vert strip_vert_2;
-    unsigned strip_len; // number of verts in the current triangle strip
+    // if a list is open, this is the index
+    unsigned cur_list_idx;
 
-    /*
-     * minimum and maximum vertex depth per frame, used for mapping to OpenGL
-     * clip coordinates
-     */
-    float clip_min, clip_max;
-
-    // vertex buf containing vertices which have not yet been put into the gfx_il_inst_buf
-    float *pvr2_ta_vert_buf;
-    unsigned pvr2_ta_vert_buf_count;
-    unsigned pvr2_ta_vert_buf_start;
-
-    struct gfx_il_inst *gfx_il_inst_buf;
-    unsigned gfx_il_inst_buf_count;
-
-    // the 4-component color that gets sent to glClearColor
-    float pvr2_bgcolor[4];
-
-    unsigned next_frame_stamp;
-
-    unsigned pt_alpha_ref;
-
-    struct SchedEvent pvr2_render_complete_int_event,
-        pvr2_op_complete_int_event,
+    struct SchedEvent pvr2_op_complete_int_event,
         pvr2_op_mod_complete_int_event,
         pvr2_trans_complete_int_event,
         pvr2_trans_mod_complete_int_event,
         pvr2_pt_complete_int_event;
-    bool pvr2_render_complete_int_event_scheduled,
-        pvr2_op_complete_int_event_scheduled,
+    bool pvr2_op_complete_int_event_scheduled,
         pvr2_op_mod_complete_int_event_scheduled,
         pvr2_trans_complete_int_event_scheduled,
         pvr2_trans_mod_complete_int_event_scheduled,
         pvr2_pt_complete_int_event_scheduled;
-
-    struct pvr2_display_list disp_lists[PVR2_MAX_FRAMES_IN_FLIGHT];
-    unsigned disp_list_counter; // used to find least-recently used display list
-    unsigned cur_list_idx;
 };
 
 unsigned pvr2_ta_fifo_rem_bytes(void);
