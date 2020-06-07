@@ -34,7 +34,7 @@
 #include "hw/pvr2/pvr2_tex_cache.h"
 #include "hw/pvr2/pvr2_gfx_obj.h"
 #include "gfx/gfx.h"
-#include "gfx/gfx_il.h"
+#include "washdc/gfx/gfx_il.h"
 #include "gfx/gfx_obj.h"
 #include "log.h"
 #include "title.h"

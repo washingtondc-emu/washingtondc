@@ -31,7 +31,7 @@
 #include "washdc/types.h"
 #include "washdc/MemoryMap.h"
 #include "gfx/gfx.h"
-#include "gfx/gfx_il.h"
+#include "washdc/gfx/gfx_il.h"
 
 #include "pvr2_core.h"
 

@@ -41,7 +41,7 @@
 #include "log.h"
 #include "dc_sched.h"
 #include "dreamcast.h"
-#include "gfx/gfx_il.h"
+#include "washdc/gfx/gfx_il.h"
 #include "pvr2.h"
 #include "pvr2_reg.h"
 #include "intmath.h"

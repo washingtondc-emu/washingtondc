@@ -26,7 +26,8 @@
 #include "gfx/gfx_tex_cache.h"
 #include "dreamcast.h"
 #include "log.h"
-#include "gfx_il.h"
+#include "washdc/gfx/gfx_il.h"
+#include "gfx.h"
 
 #include "rend_common.h"
 

@@ -29,7 +29,7 @@
 #ifndef REND_COMMON_H_
 #define REND_COMMON_H_
 
-#include "gfx/gfx_il.h"
+#include "washdc/gfx/gfx_il.h"
 #include "washdc/gfx/gfx_all.h"
 
 // initialize and clean up the graphics renderer
