@@ -533,6 +533,16 @@ dreamcast_init(char const *gdi_path,
     washdc_atomic_int_init(&signal_exit_threads, 0);
     washdc_atomic_int_init(&is_running, 1);
 
+    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
+        win_width = 640;
+    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
+        win_height = 480;
+
+    // initialize host windowing, graphics and sound systems
+    win_init(win_width, win_height);
+    gfx_init(gfx_if, win_width, win_height);
+    dc_sound_init(snd_intf);
+
     memory_init(&dc_mem);
     flash_mem_init(&flash_mem, config_get_dc_flash_path(), flash_mem_writeable);
     boot_rom_init(&firmware, config_get_dc_bios_path());
@@ -699,7 +709,7 @@ dreamcast_init(char const *gdi_path,
 #ifdef ENABLE_DEBUGGER
     if (config_get_dbg_enable()) {
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
-        goto do_init_win_gfx;
+        goto init_complete;
     }
 #endif
 
@@ -714,17 +724,8 @@ dreamcast_init(char const *gdi_path,
     }
 
 #ifdef ENABLE_DEBUGGER
-do_init_win_gfx:
+init_complete:
 #endif
-    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
-        win_width = 640;
-    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
-        win_height = 480;
-
-    win_init(win_width, win_height);
-    gfx_init(gfx_if, win_width, win_height);
-
-    dc_sound_init(snd_intf);
 
     lmmode0 = 0;
     lmmode1 = 0;
@@ -742,11 +743,6 @@ void dreamcast_cleanup() {
     debug_cleanup();
     LOG_INFO("debugger cleaned up\n");
 #endif
-
-    dc_sound_cleanup();
-    gfx_cleanup();
-
-    win_cleanup();
 
     aica_rtc_cleanup(&rtc);
 
@@ -781,6 +777,11 @@ void dreamcast_cleanup() {
     boot_rom_cleanup(&firmware);
     flash_mem_cleanup(&flash_mem);
     memory_cleanup(&dc_mem);
+
+    dc_sound_cleanup();
+    gfx_cleanup();
+    win_cleanup();
+
     cfg_cleanup();
 
     if (mount_check())
