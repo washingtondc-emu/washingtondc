@@ -25,6 +25,6 @@
 
 #include "washdc/gfx/gfx_all.h"
 
-extern struct rend_if null_rend_if;
+struct rend_if const *null_rend_if_get(void);
 
 #endif

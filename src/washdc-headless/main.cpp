@@ -342,7 +342,7 @@ int main(int argc, char **argv) {
 
     settings.sndsrv = &snd_intf;
 
-    settings.gfx_rend_if = &null_rend_if;
+    settings.gfx_rend_if = null_rend_if_get();
 
 #ifdef USE_LIBEVENT
     io::init();

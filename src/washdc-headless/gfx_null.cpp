@@ -61,13 +61,8 @@ static void null_render_toggle_filter(void);
 static void null_render_obj_read(struct gfx_obj *obj, void *out,
                                  size_t n_bytes);
 
-struct rend_if null_rend_if;
-
-static void null_render_init(void) {
-    flip_screen = false;
-    bound_obj_handle = 0;
-    bound_obj_w = 0.0;
-    bound_obj_h = 0.0;
+struct rend_if const *null_rend_if_get(void) {
+    static struct rend_if null_rend_if;
 
     null_rend_if.init = null_render_init;
     null_rend_if.cleanup = null_render_cleanup;
@@ -89,6 +84,15 @@ static void null_render_init(void) {
     null_rend_if.video_present = null_render_present;
     null_rend_if.video_new_framebuffer = null_render_new_framebuffer;
     null_rend_if.video_toggle_filter = null_render_toggle_filter;
+
+    return &null_rend_if;
+}
+
+static void null_render_init(void) {
+    flip_screen = false;
+    bound_obj_handle = 0;
+    bound_obj_w = 0.0;
+    bound_obj_h = 0.0;
 }
 
 static void null_render_cleanup(void) {
