@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "washdc/gfx/obj.h"
+#include "gfx_obj.h"
 
 #include "gfx_null.hpp"
 
@@ -62,6 +62,11 @@ static void null_render_toggle_filter(void);
 
 static void null_render_obj_read(struct gfx_obj *obj, void *out,
                                  size_t n_bytes);
+static void null_render_obj_init(struct gfx_il_inst *cmd);
+static void null_render_obj_write(struct gfx_il_inst *cmd);
+static void null_render_obj_read(struct gfx_il_inst *cmd);
+static void null_render_obj_free(struct gfx_il_inst *cmd);
+static void null_render_grab_framebuffer(struct gfx_il_inst *cmd);
 
 struct rend_if const *null_rend_if_get(void) {
     static struct rend_if null_rend_if;
@@ -70,6 +75,11 @@ struct rend_if const *null_rend_if_get(void) {
     null_rend_if.cleanup = null_render_cleanup;
     null_rend_if.bind_tex = null_render_bind_tex;
     null_rend_if.unbind_tex = null_render_unbind_tex;
+    null_rend_if.obj_init = null_render_obj_init;
+    null_rend_if.obj_write = null_render_obj_write;
+    null_rend_if.obj_read = null_render_obj_read;
+    null_rend_if.obj_free = null_render_obj_free;
+    null_rend_if.grab_framebuffer = null_render_grab_framebuffer;
     null_rend_if.update_tex = null_render_update_tex;
     null_rend_if.release_tex = null_render_release_tex;
     null_rend_if.set_blend_enable = null_render_set_blend_enable;
@@ -197,4 +207,61 @@ static void null_render_new_framebuffer(int obj_handle,
 }
 
 static void null_render_toggle_filter(void) {
+}
+
+static void null_render_obj_init(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.init_obj.obj_no;
+    size_t n_bytes = cmd->arg.init_obj.n_bytes;
+    gfx_obj_init(obj_no, n_bytes);
+}
+
+static void null_render_obj_write(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.write_obj.obj_no;
+    size_t n_bytes = cmd->arg.write_obj.n_bytes;
+    void const *dat = cmd->arg.write_obj.dat;
+    gfx_obj_write(obj_no, dat, n_bytes);
+}
+
+static void null_render_obj_read(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.read_obj.obj_no;
+    size_t n_bytes = cmd->arg.read_obj.n_bytes;
+    void *dat = cmd->arg.read_obj.dat;
+    gfx_obj_read(obj_no, dat, n_bytes);
+}
+
+static void null_render_obj_free(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.free_obj.obj_no;
+    gfx_obj_free(obj_no);
+}
+
+static void null_render_grab_framebuffer(struct gfx_il_inst *cmd) {
+    int handle;
+    unsigned width, height;
+    bool do_flip;
+
+    if (null_render_get_fb(&handle, &width, &height, &do_flip) != 0) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    struct gfx_obj *obj = gfx_obj_get(handle);
+    if (!obj) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    size_t n_bytes = obj->dat_len;
+    void *dat = malloc(n_bytes);
+    if (!dat) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    gfx_obj_read(handle, dat, n_bytes);
+
+    cmd->arg.grab_framebuffer.fb->valid = true;
+    cmd->arg.grab_framebuffer.fb->width = width;
+    cmd->arg.grab_framebuffer.fb->height = height;
+    cmd->arg.grab_framebuffer.fb->dat = dat;
+    cmd->arg.grab_framebuffer.fb->flip = do_flip;
 }

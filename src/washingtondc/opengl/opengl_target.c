@@ -33,8 +33,8 @@
 #include <GL/gl.h>
 
 #include "washdc/error.h"
-#include "washdc/gfx/obj.h"
 
+#include "gfx_obj.h"
 #include "opengl_renderer.h"
 #include "opengl_target.h"
 

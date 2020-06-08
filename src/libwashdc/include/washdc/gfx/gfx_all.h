@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -38,6 +38,13 @@ struct rend_if {
 
     void (*bind_tex)(struct gfx_il_inst *cmd);
     void (*unbind_tex)(struct gfx_il_inst *cmd);
+
+    void (*obj_init)(struct gfx_il_inst *cmd);
+    void (*obj_write)(struct gfx_il_inst *cmd);
+    void (*obj_read)(struct gfx_il_inst *cmd);
+    void (*obj_free)(struct gfx_il_inst *cmd);
+
+    void (*grab_framebuffer)(struct gfx_il_inst *cmd);
 
     /*
      * called to notify the renderer that it needs to update the given

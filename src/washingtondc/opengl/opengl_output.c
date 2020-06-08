@@ -35,10 +35,10 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-#include "washdc/gfx/obj.h"
 #include "washdc/win.h"
 #include "washdc/config_file.h"
 
+#include "gfx_obj.h"
 #include "opengl_output.h"
 #include "opengl_renderer.h"
 #include "shader.h"

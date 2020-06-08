@@ -59,7 +59,9 @@ set(washdc_headless_sources "main.cpp"
                             "console_config.hpp"
                             "console_config.cpp"
 			    "gfx_null.hpp"
-			    "gfx_null.cpp")
+			    "gfx_null.cpp"
+			    "gfx_obj.h"
+			    "gfx_obj.c")
 
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)

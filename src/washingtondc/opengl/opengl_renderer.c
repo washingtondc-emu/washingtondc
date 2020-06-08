@@ -47,6 +47,7 @@
 #include "shader_cache.h"
 #include "opengl_renderer.h"
 #include "tex_cache.h"
+#include "gfx_obj.h"
 
 #define POSITION_SLOT          0
 #define BASE_COLOR_SLOT        1
@@ -172,12 +173,22 @@ static void opengl_renderer_begin_sort_mode(void);
 static void opengl_renderer_end_sort_mode(void);
 static void opengl_renderer_bind_tex(struct gfx_il_inst *cmd);
 static void opengl_renderer_unbind_tex(struct gfx_il_inst *cmd);
+static void opengl_renderer_obj_init(struct gfx_il_inst *cmd);
+static void opengl_renderer_obj_write(struct gfx_il_inst *cmd);
+static void opengl_renderer_obj_read(struct gfx_il_inst *cmd);
+static void opengl_renderer_obj_free(struct gfx_il_inst *cmd);
+static void opengl_renderer_grab_framebuffer(struct gfx_il_inst *cmd);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
     .cleanup = opengl_render_cleanup,
     .bind_tex = opengl_renderer_bind_tex,
     .unbind_tex = opengl_renderer_unbind_tex,
+    .obj_init = opengl_renderer_obj_init,
+    .obj_write = opengl_renderer_obj_write,
+    .obj_read = opengl_renderer_obj_read,
+    .obj_free = opengl_renderer_obj_free,
+    .grab_framebuffer = opengl_renderer_grab_framebuffer,
     .update_tex = opengl_renderer_update_tex,
     .release_tex = opengl_renderer_release_tex,
     .set_blend_enable = opengl_renderer_set_blend_enable,
@@ -994,4 +1005,61 @@ static void opengl_renderer_bind_tex(struct gfx_il_inst *cmd) {
 
 static void opengl_renderer_unbind_tex(struct gfx_il_inst *cmd) {
     tex_cache_unbind(cmd->arg.unbind_tex.tex_no);
+}
+
+static void opengl_renderer_obj_init(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.init_obj.obj_no;
+    size_t n_bytes = cmd->arg.init_obj.n_bytes;
+    gfx_obj_init(obj_no, n_bytes);
+}
+
+static void opengl_renderer_obj_write(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.write_obj.obj_no;
+    size_t n_bytes = cmd->arg.write_obj.n_bytes;
+    void const *dat = cmd->arg.write_obj.dat;
+    gfx_obj_write(obj_no, dat, n_bytes);
+}
+
+static void opengl_renderer_obj_read(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.read_obj.obj_no;
+    size_t n_bytes = cmd->arg.read_obj.n_bytes;
+    void *dat = cmd->arg.read_obj.dat;
+    gfx_obj_read(obj_no, dat, n_bytes);
+}
+
+static void opengl_renderer_obj_free(struct gfx_il_inst *cmd) {
+    int obj_no = cmd->arg.free_obj.obj_no;
+    gfx_obj_free(obj_no);
+}
+
+static void opengl_renderer_grab_framebuffer(struct gfx_il_inst *cmd) {
+    int handle;
+    unsigned width, height;
+    bool do_flip;
+
+    if (opengl_video_get_fb(&handle, &width, &height, &do_flip) != 0) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    struct gfx_obj *obj = gfx_obj_get(handle);
+    if (!obj) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    size_t n_bytes = obj->dat_len;
+    void *dat = malloc(n_bytes);
+    if (!dat) {
+        cmd->arg.grab_framebuffer.fb->valid = false;
+        return;
+    }
+
+    gfx_obj_read(handle, dat, n_bytes);
+
+    cmd->arg.grab_framebuffer.fb->valid = true;
+    cmd->arg.grab_framebuffer.fb->width = width;
+    cmd->arg.grab_framebuffer.fb->height = height;
+    cmd->arg.grab_framebuffer.fb->dat = dat;
+    cmd->arg.grab_framebuffer.fb->flip = do_flip;
 }

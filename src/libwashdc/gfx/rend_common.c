@@ -27,7 +27,6 @@
 #include "log.h"
 #include "washdc/gfx/gfx_il.h"
 #include "gfx.h"
-#include "gfx_obj.h"
 
 #include "rend_common.h"
 
@@ -92,31 +91,6 @@ static void rend_clear(struct gfx_il_inst *cmd) {
     gfx_rend_ifp->clear(cmd->arg.clear.bgcolor);
 }
 
-static void rend_obj_init(struct gfx_il_inst *cmd) {
-    int obj_no = cmd->arg.init_obj.obj_no;
-    size_t n_bytes = cmd->arg.init_obj.n_bytes;
-    gfx_obj_init(obj_no, n_bytes);
-}
-
-static void rend_obj_write(struct gfx_il_inst *cmd) {
-    int obj_no = cmd->arg.write_obj.obj_no;
-    size_t n_bytes = cmd->arg.write_obj.n_bytes;
-    void const *dat = cmd->arg.write_obj.dat;
-    gfx_obj_write(obj_no, dat, n_bytes);
-}
-
-static void rend_obj_read(struct gfx_il_inst *cmd) {
-    int obj_no = cmd->arg.read_obj.obj_no;
-    size_t n_bytes = cmd->arg.read_obj.n_bytes;
-    void *dat = cmd->arg.read_obj.dat;
-    gfx_obj_read(obj_no, dat, n_bytes);
-}
-
-static void rend_obj_free(struct gfx_il_inst *cmd) {
-    int obj_no = cmd->arg.free_obj.obj_no;
-    gfx_obj_free(obj_no);
-}
-
 static void rend_bind_render_target(struct gfx_il_inst *cmd) {
     gfx_rend_ifp->target_bind_obj(cmd->arg.bind_render_target.gfx_obj_handle);
 }
@@ -133,38 +107,6 @@ static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
     bool interlace = cmd->arg.post_framebuffer.interlaced;
 
     gfx_post_framebuffer(obj_handle, width, height, do_flip, interlace);
-}
-
-static void rend_grab_framebuffer(struct gfx_il_inst *cmd) {
-    int handle;
-    unsigned width, height;
-    bool do_flip;
-
-    if (gfx_rend_ifp->video_get_fb(&handle, &width, &height, &do_flip) != 0) {
-        cmd->arg.grab_framebuffer.fb->valid = false;
-        return;
-    }
-
-    struct gfx_obj *obj = gfx_obj_get(handle);
-    if (!obj) {
-        cmd->arg.grab_framebuffer.fb->valid = false;
-        return;
-    }
-
-    size_t n_bytes = obj->dat_len;
-    void *dat = malloc(n_bytes);
-    if (!dat) {
-        cmd->arg.grab_framebuffer.fb->valid = false;
-        return;
-    }
-
-    gfx_obj_read(handle, dat, n_bytes);
-
-    cmd->arg.grab_framebuffer.fb->valid = true;
-    cmd->arg.grab_framebuffer.fb->width = width;
-    cmd->arg.grab_framebuffer.fb->height = height;
-    cmd->arg.grab_framebuffer.fb->dat = dat;
-    cmd->arg.grab_framebuffer.fb->flip = do_flip;
 }
 
 static void rend_begin_depth_sort(struct gfx_il_inst *cmd) {
@@ -224,22 +166,22 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             rend_draw_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
-            rend_obj_init(cmd);
+            gfx_rend_ifp->obj_init(cmd);
             break;
         case GFX_IL_WRITE_OBJ:
-            rend_obj_write(cmd);
+            gfx_rend_ifp->obj_write(cmd);
             break;
         case GFX_IL_READ_OBJ:
-            rend_obj_read(cmd);
+            gfx_rend_ifp->obj_read(cmd);
             break;
         case GFX_IL_FREE_OBJ:
-            rend_obj_free(cmd);
+            gfx_rend_ifp->obj_free(cmd);
             break;
         case GFX_IL_POST_FRAMEBUFFER:
             rend_post_framebuffer(cmd);
             break;
         case GFX_IL_GRAB_FRAMEBUFFER:
-            rend_grab_framebuffer(cmd);
+            gfx_rend_ifp->grab_framebuffer(cmd);
             break;
         case GFX_IL_BEGIN_DEPTH_SORT:
             rend_begin_depth_sort(cmd);

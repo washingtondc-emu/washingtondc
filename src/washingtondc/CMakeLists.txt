@@ -95,7 +95,9 @@ set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader.h"
                   "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.h"
                   "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.c"
                   "${PROJECT_SOURCE_DIR}/opengl/tex_cache.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/tex_cache.c")
+                  "${PROJECT_SOURCE_DIR}/opengl/tex_cache.c"
+                  "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.h"
+                  "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.c")
 
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
