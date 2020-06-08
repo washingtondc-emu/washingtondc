@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "def.h"
+#include "washdc/gfx/gfx_il.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +35,9 @@ struct rend_if {
     void (*init)(void);
 
     void (*cleanup)(void);
+
+    void (*bind_tex)(struct gfx_il_inst *cmd);
+    void (*unbind_tex)(struct gfx_il_inst *cmd);
 
     /*
      * called to notify the renderer that it needs to update the given

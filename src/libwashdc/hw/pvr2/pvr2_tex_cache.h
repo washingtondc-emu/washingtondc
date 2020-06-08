@@ -28,7 +28,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "gfx/gfx_tex_cache.h"
+#include "washdc/gfx/tex_cache.h"
 #include "pvr2_ta.h"
 #include "dc_sched.h"
 #include "mem_areas.h"

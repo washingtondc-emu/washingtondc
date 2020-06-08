@@ -34,6 +34,8 @@ static unsigned bound_obj_w, bound_obj_h;
 
 static void null_render_init(void);
 static void null_render_cleanup(void);
+static void null_render_bind_tex(struct gfx_il_inst *cmd);
+static void null_render_unbind_tex(struct gfx_il_inst *cmd);
 static void null_render_update_tex(unsigned tex_obj);
 static void null_render_release_tex(unsigned tex_obj);
 static void null_render_set_blend_enable(bool enable);
@@ -66,6 +68,8 @@ struct rend_if const *null_rend_if_get(void) {
 
     null_rend_if.init = null_render_init;
     null_rend_if.cleanup = null_render_cleanup;
+    null_rend_if.bind_tex = null_render_bind_tex;
+    null_rend_if.unbind_tex = null_render_unbind_tex;
     null_rend_if.update_tex = null_render_update_tex;
     null_rend_if.release_tex = null_render_release_tex;
     null_rend_if.set_blend_enable = null_render_set_blend_enable;
@@ -96,6 +100,12 @@ static void null_render_init(void) {
 }
 
 static void null_render_cleanup(void) {
+}
+
+static void null_render_bind_tex(struct gfx_il_inst *cmd) {
+}
+
+static void null_render_unbind_tex(struct gfx_il_inst *cmd) {
 }
 
 static void null_render_update_tex(unsigned tex_obj) {

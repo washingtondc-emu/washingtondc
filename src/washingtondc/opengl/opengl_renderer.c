@@ -46,6 +46,7 @@
 #include "shader.h"
 #include "shader_cache.h"
 #include "opengl_renderer.h"
+#include "tex_cache.h"
 
 #define POSITION_SLOT          0
 #define BASE_COLOR_SLOT        1
@@ -169,10 +170,14 @@ static void opengl_renderer_set_clip_range(float new_clip_min,
                                            float new_clip_max);
 static void opengl_renderer_begin_sort_mode(void);
 static void opengl_renderer_end_sort_mode(void);
+static void opengl_renderer_bind_tex(struct gfx_il_inst *cmd);
+static void opengl_renderer_unbind_tex(struct gfx_il_inst *cmd);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
     .cleanup = opengl_render_cleanup,
+    .bind_tex = opengl_renderer_bind_tex,
+    .unbind_tex = opengl_renderer_unbind_tex,
     .update_tex = opengl_renderer_update_tex,
     .release_tex = opengl_renderer_release_tex,
     .set_blend_enable = opengl_renderer_set_blend_enable,
@@ -419,6 +424,8 @@ static struct shader_cache_ent* fetch_shader(shader_key key) {
 }
 
 static void opengl_render_init(void) {
+    tex_cache_init();
+
     win_make_context_current();
     glewExperimental = GL_TRUE;
     glewInit();
@@ -477,6 +484,8 @@ static void opengl_render_cleanup(void) {
     vao = 0;
     vbo = 0;
     memset(obj_tex_array, 0, sizeof(obj_tex_array));
+
+    tex_cache_cleanup();
 }
 
 static DEF_ERROR_INT_ATTR(max_length);
@@ -971,4 +980,18 @@ static GLenum tex_fmt_to_data_type(enum gfx_tex_fmt gfx_fmt) {
         error_set_gfx_tex_fmt(gfx_fmt);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+}
+
+static void opengl_renderer_bind_tex(struct gfx_il_inst *cmd) {
+    unsigned tex_no = cmd->arg.bind_tex.tex_no;
+    int obj_handle = cmd->arg.bind_tex.gfx_obj_handle;
+    enum gfx_tex_fmt pix_fmt = cmd->arg.bind_tex.pix_fmt;
+    int width = cmd->arg.bind_tex.width;
+    int height = cmd->arg.bind_tex.height;
+
+    tex_cache_bind(tex_no, obj_handle, width, height, pix_fmt);
+}
+
+static void opengl_renderer_unbind_tex(struct gfx_il_inst *cmd) {
+    tex_cache_unbind(cmd->arg.unbind_tex.tex_no);
 }

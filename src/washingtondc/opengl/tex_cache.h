@@ -31,14 +31,14 @@
 /*
  * Bind the given gfx_obj to the given texture-unit.
  */
-void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, enum gfx_tex_fmt tex_fmt);
+void tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
+                    unsigned height, enum gfx_tex_fmt tex_fmt);
 
-void gfx_tex_cache_unbind(unsigned tex_no);
+void tex_cache_unbind(unsigned tex_no);
 
-void gfx_tex_cache_evict(unsigned idx);
+void tex_cache_evict(unsigned idx);
 
-void gfx_tex_cache_init(void);
-void gfx_tex_cache_cleanup(void);
+void tex_cache_init(void);
+void tex_cache_cleanup(void);
 
 #endif

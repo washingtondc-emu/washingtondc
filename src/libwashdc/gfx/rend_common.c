@@ -23,11 +23,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "gfx/gfx_tex_cache.h"
 #include "dreamcast.h"
 #include "log.h"
 #include "washdc/gfx/gfx_il.h"
 #include "gfx.h"
+#include "gfx_obj.h"
 
 #include "rend_common.h"
 
@@ -52,20 +52,6 @@ void rend_update_tex(unsigned tex_no) {
 // tell the renderer to release the given texture from the cache
 void rend_release_tex(unsigned tex_no) {
     gfx_rend_ifp->release_tex(tex_no);
-}
-
-static void rend_bind_tex(struct gfx_il_inst *cmd) {
-    unsigned tex_no = cmd->arg.bind_tex.tex_no;
-    int obj_handle = cmd->arg.bind_tex.gfx_obj_handle;
-    enum gfx_tex_fmt pix_fmt = cmd->arg.bind_tex.pix_fmt;
-    int width = cmd->arg.bind_tex.width;
-    int height = cmd->arg.bind_tex.height;
-
-    gfx_tex_cache_bind(tex_no, obj_handle, width, height, pix_fmt);
-}
-
-static void rend_unbind_tex(struct gfx_il_inst *cmd) {
-    gfx_tex_cache_unbind(cmd->arg.unbind_tex.tex_no);
 }
 
 static void rend_begin_rend(struct gfx_il_inst *cmd) {
@@ -203,10 +189,10 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
 #endif
         switch (cmd->op) {
         case GFX_IL_BIND_TEX:
-            rend_bind_tex(cmd);
+            gfx_rend_ifp->bind_tex(cmd);
             break;
         case GFX_IL_UNBIND_TEX:
-            rend_unbind_tex(cmd);
+            gfx_rend_ifp->unbind_tex(cmd);
             break;
         case GFX_IL_BIND_RENDER_TARGET:
             rend_bind_render_target(cmd);

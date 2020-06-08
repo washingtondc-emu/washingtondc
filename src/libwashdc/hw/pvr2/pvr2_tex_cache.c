@@ -34,7 +34,7 @@
 #include "log.h"
 #include "washdc/error.h"
 #include "washdc/gfx/gfx_il.h"
-#include "gfx/gfx_tex_cache.h"
+#include "washdc/gfx/tex_cache.h"
 #include "dreamcast.h"
 #include "pvr2_reg.h"
 

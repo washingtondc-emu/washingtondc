@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,27 +23,26 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "rend_common.h"
-
-#include "gfx_tex_cache.h"
+#include "tex_cache.h"
+#include "washdc/gfx/obj.h"
 
 static struct gfx_tex tex_cache[GFX_TEX_CACHE_SIZE];
 
 static void update_tex_from_obj(struct gfx_obj *obj, void const *in, size_t n_bytes);
 
-void gfx_tex_cache_init(void) {
+void tex_cache_init(void) {
     memset(tex_cache, 0, sizeof(tex_cache));
 }
 
-void gfx_tex_cache_cleanup(void) {
+void tex_cache_cleanup(void) {
     unsigned idx;
     for (idx = 0; idx < GFX_TEX_CACHE_SIZE; idx++)
         if (tex_cache[idx].valid)
-            gfx_tex_cache_evict(idx);
+            tex_cache_evict(idx);
 }
 
-void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                        unsigned height, enum gfx_tex_fmt tex_fmt) {
+void tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
+                    unsigned height, enum gfx_tex_fmt tex_fmt) {
     struct gfx_obj *obj = gfx_obj_get(obj_no);
     struct gfx_tex *tex = tex_cache + tex_no;
 
@@ -59,8 +58,8 @@ void gfx_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
     rend_update_tex(tex_no);
 }
 
-void gfx_tex_cache_unbind(unsigned tex_no) {
-    gfx_tex_cache_evict(tex_no);
+void tex_cache_unbind(unsigned tex_no) {
+    tex_cache_evict(tex_no);
 }
 
 /*
@@ -69,7 +68,7 @@ void gfx_tex_cache_unbind(unsigned tex_no) {
  * already valid data or not, so the onus is on this function to make sure it
  * doesn't accidentally double-free something.
  */
-void gfx_tex_cache_evict(unsigned idx) {
+void tex_cache_evict(unsigned idx) {
     tex_cache[idx].valid = false;
     struct gfx_obj *obj = gfx_obj_get(tex_cache[idx].obj_handle);
     obj->on_write = NULL;
