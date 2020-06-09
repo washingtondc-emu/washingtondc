@@ -59,6 +59,8 @@ static GLint trans_mat_slot = -1;
 
 static GLuint vbo, vao;
 
+static struct opengl_renderer_callbacks const *switch_table;
+
 struct obj_tex_meta {
     unsigned width, height;
 
@@ -178,6 +180,7 @@ static void opengl_renderer_obj_write(struct gfx_il_inst *cmd);
 static void opengl_renderer_obj_read(struct gfx_il_inst *cmd);
 static void opengl_renderer_obj_free(struct gfx_il_inst *cmd);
 static void opengl_renderer_grab_framebuffer(struct gfx_il_inst *cmd);
+static void opengl_renderer_post_framebuffer(struct gfx_il_inst *cmd);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
@@ -206,6 +209,7 @@ struct rend_if const opengl_rend_if = {
     .video_get_fb = opengl_video_get_fb,
     .video_present = opengl_video_present,
     .video_new_framebuffer = opengl_video_new_framebuffer,
+    .video_post_framebuffer = opengl_renderer_post_framebuffer,
     .video_toggle_filter = opengl_video_toggle_filter
 };
 
@@ -432,6 +436,12 @@ static struct shader_cache_ent* fetch_shader(shader_key key) {
 
     error_set_shader_cache_key(key);
     RAISE_ERROR(ERROR_FAILED_ALLOC);
+}
+
+void
+opengl_renderer_set_callbacks(struct opengl_renderer_callbacks const
+                              *callbacks) {
+    switch_table = callbacks;
 }
 
 static void opengl_render_init(void) {
@@ -1062,4 +1072,24 @@ static void opengl_renderer_grab_framebuffer(struct gfx_il_inst *cmd) {
     cmd->arg.grab_framebuffer.fb->height = height;
     cmd->arg.grab_framebuffer.fb->dat = dat;
     cmd->arg.grab_framebuffer.fb->flip = do_flip;
+}
+
+static void opengl_renderer_post_framebuffer(struct gfx_il_inst *cmd) {
+    unsigned width = cmd->arg.post_framebuffer.width;
+    unsigned height = cmd->arg.post_framebuffer.height;
+    int obj_handle = cmd->arg.post_framebuffer.obj_handle;
+    bool do_flip = cmd->arg.post_framebuffer.vert_flip;
+    bool interlace = cmd->arg.post_framebuffer.interlaced;
+
+    opengl_video_new_framebuffer(obj_handle, width, height,
+                                 do_flip, interlace);
+    opengl_video_present();
+
+    if (switch_table) {
+        if (switch_table->overlay_draw)
+            switch_table->overlay_draw();
+
+        if (switch_table->win_update)
+            switch_table->win_update();
+    }
 }

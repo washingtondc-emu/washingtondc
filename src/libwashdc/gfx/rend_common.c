@@ -178,7 +178,7 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             gfx_rend_ifp->obj_free(cmd);
             break;
         case GFX_IL_POST_FRAMEBUFFER:
-            rend_post_framebuffer(cmd);
+            gfx_rend_ifp->video_post_framebuffer(cmd);
             break;
         case GFX_IL_GRAB_FRAMEBUFFER:
             gfx_rend_ifp->grab_framebuffer(cmd);

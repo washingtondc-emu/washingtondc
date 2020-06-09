@@ -35,6 +35,21 @@
 extern "C" {
 #endif
 
+/*
+ * functions the renderer calls to interact with stuff like the windowing
+ * system and overlay.
+ */
+struct opengl_renderer_callbacks {
+    // tells the window to check for events.  This is optional and can be NULL
+    void (*win_update)(void);
+
+    // tells the overlay to draw using OpenGL.  This is optional and can be NULL
+    void (*overlay_draw)(void);
+};
+void
+opengl_renderer_set_callbacks(struct opengl_renderer_callbacks const
+                              *callbacks);
+
 extern struct rend_if const opengl_rend_if;
 
 GLuint opengl_renderer_tex(unsigned obj_no);

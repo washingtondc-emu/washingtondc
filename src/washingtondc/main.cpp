@@ -441,11 +441,18 @@ int main(int argc, char **argv) {
     io::init();
 #endif
 
+    static struct opengl_renderer_callbacks renderer_callbacks;
+    renderer_callbacks.win_update = win_glfw_update;
+    renderer_callbacks.overlay_draw = overlay::draw;
+    opengl_renderer_set_callbacks(&renderer_callbacks);
+
     console = washdc_init(&settings);
 
     overlay::init(enable_debugger || enable_washdbg);
 
     washdc_run();
+
+    opengl_renderer_set_callbacks(NULL);
 
     overlay::cleanup();
 

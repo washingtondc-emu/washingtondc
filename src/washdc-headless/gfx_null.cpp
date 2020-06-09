@@ -66,6 +66,7 @@ static void null_render_obj_init(struct gfx_il_inst *cmd);
 static void null_render_obj_write(struct gfx_il_inst *cmd);
 static void null_render_obj_read(struct gfx_il_inst *cmd);
 static void null_render_obj_free(struct gfx_il_inst *cmd);
+static void null_render_post_framebuffer(struct gfx_il_inst *cmd);
 static void null_render_grab_framebuffer(struct gfx_il_inst *cmd);
 
 struct rend_if const *null_rend_if_get(void) {
@@ -97,6 +98,7 @@ struct rend_if const *null_rend_if_get(void) {
     null_rend_if.video_get_fb = null_render_get_fb;
     null_rend_if.video_present = null_render_present;
     null_rend_if.video_new_framebuffer = null_render_new_framebuffer;
+    null_rend_if.video_post_framebuffer = null_render_post_framebuffer;
     null_rend_if.video_toggle_filter = null_render_toggle_filter;
 
     return &null_rend_if;
@@ -264,4 +266,7 @@ static void null_render_grab_framebuffer(struct gfx_il_inst *cmd) {
     cmd->arg.grab_framebuffer.fb->height = height;
     cmd->arg.grab_framebuffer.fb->dat = dat;
     cmd->arg.grab_framebuffer.fb->flip = do_flip;
+}
+
+static void null_render_post_framebuffer(struct gfx_il_inst *cmd) {
 }

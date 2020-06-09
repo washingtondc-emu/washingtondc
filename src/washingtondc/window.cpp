@@ -39,7 +39,6 @@
 static void win_glfw_init(unsigned width, unsigned height);
 static void win_glfw_cleanup();
 static void win_glfw_check_events(void);
-static void win_glfw_update(void);
 static void win_glfw_make_context_current(void);
 static void win_glfw_update_title(void);
 int win_glfw_get_width(void);
@@ -629,7 +628,7 @@ static void win_glfw_check_events(void) {
         washdc_kill();
 }
 
-static void win_glfw_update() {
+void win_glfw_update() {
     glfwSwapBuffers(win);
 }
 

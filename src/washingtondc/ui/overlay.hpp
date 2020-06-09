@@ -32,9 +32,9 @@
 
 namespace overlay {
     void init(bool enabled_debugger);
-    void cleanup();
-    void draw();
-    void update();
+    void cleanup(void);
+    void draw(void);
+    void update(void);
     void show(bool do_show);
     void set_fps(double fps);
     void set_virt_fps(double fps);

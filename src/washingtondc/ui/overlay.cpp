@@ -118,7 +118,7 @@ void overlay::show(bool do_show) {
     not_hidden = do_show;
 }
 
-void overlay::draw() {
+void overlay::draw(void) {
     if (!not_hidden)
         return;
 
@@ -664,7 +664,7 @@ void overlay::init(bool enable_debugger) {
 #endif
 }
 
-void overlay::cleanup() {
+void overlay::cleanup(void) {
 #ifndef DISABLE_MEM_DUMP_UI
     mem_dump_browser.reset(nullptr);
 #endif
@@ -679,7 +679,7 @@ void overlay::cleanup() {
     delete[] sndchan_mute;
 }
 
-void overlay::update() {
+void overlay::update(void) {
     ui_renderer->update();
 }
 

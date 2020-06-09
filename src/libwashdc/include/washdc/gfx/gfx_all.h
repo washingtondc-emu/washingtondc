@@ -93,6 +93,8 @@ struct rend_if {
                                   unsigned fb_new_height,
                                   bool do_flip, bool interlaced);
 
+    void (*video_post_framebuffer)(struct gfx_il_inst *cmd);
+
     void (*video_toggle_filter)(void);
 };
 

@@ -38,8 +38,6 @@
 
 static unsigned win_width, win_height;
 
-static unsigned frame_counter;
-
 static struct washdc_overlay_intf const *overlay_intf;
 
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
@@ -90,7 +88,6 @@ void gfx_post_framebuffer(int obj_handle,
     if (overlay_intf && overlay_intf->overlay_draw)
         overlay_intf->overlay_draw();
     win_update();
-    frame_counter++;
 }
 
 void gfx_toggle_output_filter(void) {
