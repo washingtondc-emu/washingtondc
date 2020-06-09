@@ -55,7 +55,7 @@ void tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
     obj->arg = tex;
     obj->on_write = update_tex_from_obj;
 
-    rend_update_tex(tex_no);
+    opengl_renderer_update_tex(tex_no);
 }
 
 void tex_cache_unbind(unsigned tex_no) {
@@ -89,5 +89,5 @@ static void update_tex_from_obj(struct gfx_obj *obj,
     obj->state = GFX_OBJ_STATE_DAT;
 
     struct gfx_tex *tex = (struct gfx_tex*)obj->arg;
-    rend_update_tex(tex - tex_cache);
+    opengl_renderer_update_tex(tex - tex_cache);
 }

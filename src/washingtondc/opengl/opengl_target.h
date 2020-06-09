@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,12 +23,14 @@
 #ifndef OPENGL_TARGET_H_
 #define OPENGL_TARGET_H_
 
+#include "washdc/gfx/gfx_il.h"
+
 /* code for configuring opengl's rendering target (which is a texture+FBO) */
 
 void opengl_target_init(void);
 
-void opengl_target_bind_obj(int obj_handle);
-void opengl_target_unbind_obj(int obj_handle);
+void opengl_target_bind_obj(struct gfx_il_inst *cmd);
+void opengl_target_unbind_obj(struct gfx_il_inst *cmd);
 
 // call this before rendering to the target
 void opengl_target_begin(unsigned width, unsigned height, int tgt_handle);

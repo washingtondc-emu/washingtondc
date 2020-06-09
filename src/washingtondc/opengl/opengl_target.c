@@ -165,7 +165,8 @@ static void opengl_target_grab_pixels(int obj_handle, void *out,
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void opengl_target_bind_obj(int obj_handle) {
+void opengl_target_bind_obj(struct gfx_il_inst *cmd) {
+    int obj_handle = cmd->arg.bind_render_target.gfx_obj_handle;
 #ifdef INVARIANTS
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
     if (obj->on_write ||
@@ -178,7 +179,8 @@ void opengl_target_bind_obj(int obj_handle) {
     // TODO: should I set TEXTURE_MIN_FILTER and TEXTURE_MAG_FILTER here?
 }
 
-void opengl_target_unbind_obj(int obj_handle) {
+void opengl_target_unbind_obj(struct gfx_il_inst *cmd) {
+    int obj_handle = cmd->arg.unbind_render_target.gfx_obj_handle;
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
 
     gfx_obj_alloc(obj);

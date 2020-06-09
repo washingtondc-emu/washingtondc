@@ -79,17 +79,6 @@ static void gfx_do_init(struct rend_if const * rend_if) {
     rend_init(rend_if);
 }
 
-void gfx_post_framebuffer(int obj_handle,
-                          unsigned fb_new_width,
-                          unsigned fb_new_height, bool do_flip, bool interlaced) {
-    gfx_rend_ifp->video_new_framebuffer(obj_handle, fb_new_width, fb_new_height,
-                                        do_flip, interlaced);
-    gfx_rend_ifp->video_present();
-    if (overlay_intf && overlay_intf->overlay_draw)
-        overlay_intf->overlay_draw();
-    win_update();
-}
-
 void gfx_toggle_output_filter(void) {
     gfx_rend_ifp->video_toggle_filter();
 }

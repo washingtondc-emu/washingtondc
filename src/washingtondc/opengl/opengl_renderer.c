@@ -162,17 +162,14 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pizels);
 
 static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
-static void opengl_renderer_update_tex(unsigned tex_obj);
-static void opengl_renderer_release_tex(unsigned tex_obj);
-static void opengl_renderer_set_blend_enable(bool enable);
-static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param);
-static void opengl_renderer_draw_array(float const *verts, unsigned n_verts);
-static void opengl_renderer_clear(float const bgcolor[4]);
+static void opengl_renderer_set_blend_enable(struct gfx_il_inst *cmd);
+static void opengl_renderer_set_rend_param(struct gfx_il_inst *cmd);
+static void opengl_renderer_draw_array(struct gfx_il_inst *cmd);
+static void opengl_renderer_clear(struct gfx_il_inst *cmd);
 static void opengl_renderer_set_screen_dim(unsigned width, unsigned height);
-static void opengl_renderer_set_clip_range(float new_clip_min,
-                                           float new_clip_max);
-static void opengl_renderer_begin_sort_mode(void);
-static void opengl_renderer_end_sort_mode(void);
+static void opengl_renderer_set_clip_range(struct gfx_il_inst *cmd);
+static void opengl_renderer_begin_sort_mode(struct gfx_il_inst *cmd);
+static void opengl_renderer_end_sort_mode(struct gfx_il_inst *cmd);
 static void opengl_renderer_bind_tex(struct gfx_il_inst *cmd);
 static void opengl_renderer_unbind_tex(struct gfx_il_inst *cmd);
 static void opengl_renderer_obj_init(struct gfx_il_inst *cmd);
@@ -181,6 +178,11 @@ static void opengl_renderer_obj_read(struct gfx_il_inst *cmd);
 static void opengl_renderer_obj_free(struct gfx_il_inst *cmd);
 static void opengl_renderer_grab_framebuffer(struct gfx_il_inst *cmd);
 static void opengl_renderer_post_framebuffer(struct gfx_il_inst *cmd);
+static void opengl_renderer_begin_rend(struct gfx_il_inst *cmd);
+static void opengl_renderer_end_rend(struct gfx_il_inst *cmd);
+
+static void do_set_rend_param(struct gfx_rend_param const *param);
+static void do_draw_array(float const *verts, unsigned n_verts);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
@@ -192,23 +194,18 @@ struct rend_if const opengl_rend_if = {
     .obj_read = opengl_renderer_obj_read,
     .obj_free = opengl_renderer_obj_free,
     .grab_framebuffer = opengl_renderer_grab_framebuffer,
-    .update_tex = opengl_renderer_update_tex,
-    .release_tex = opengl_renderer_release_tex,
+    .begin_rend = opengl_renderer_begin_rend,
+    .end_rend = opengl_renderer_end_rend,
     .set_blend_enable = opengl_renderer_set_blend_enable,
     .set_rend_param = opengl_renderer_set_rend_param,
     .draw_array = opengl_renderer_draw_array,
     .clear = opengl_renderer_clear,
-    .set_screen_dim = opengl_renderer_set_screen_dim,
     .set_clip_range = opengl_renderer_set_clip_range,
     .begin_sort_mode = opengl_renderer_begin_sort_mode,
     .end_sort_mode = opengl_renderer_end_sort_mode,
     .target_bind_obj = opengl_target_bind_obj,
     .target_unbind_obj = opengl_target_unbind_obj,
-    .target_begin = opengl_target_begin,
-    .target_end = opengl_target_end,
-    .video_get_fb = opengl_video_get_fb,
     .video_present = opengl_video_present,
-    .video_new_framebuffer = opengl_video_new_framebuffer,
     .video_post_framebuffer = opengl_renderer_post_framebuffer,
     .video_toggle_filter = opengl_video_toggle_filter
 };
@@ -511,7 +508,7 @@ static void opengl_render_cleanup(void) {
 
 static DEF_ERROR_INT_ATTR(max_length);
 
-static void opengl_renderer_update_tex(unsigned tex_obj) {
+void opengl_renderer_update_tex(unsigned tex_obj) {
     struct gfx_tex const *tex = gfx_tex_cache_get(tex_obj);
     struct gfx_obj *obj = gfx_obj_get(tex->obj_handle);
 
@@ -611,7 +608,7 @@ static void opengl_renderer_update_tex(unsigned tex_obj) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-static void opengl_renderer_release_tex(unsigned tex_obj) {
+void opengl_renderer_release_tex(unsigned tex_obj) {
     // do nothing
 }
 
@@ -639,7 +636,8 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pixels) {
     }
 }
 
-static void opengl_renderer_set_blend_enable(bool enable) {
+static void opengl_renderer_set_blend_enable(struct gfx_il_inst *cmd) {
+    bool enable = cmd->arg.set_blend_enable.do_enable;
     struct gfx_cfg rend_cfg = gfx_config_read();
 
     if (rend_cfg.blend_enable && enable)
@@ -652,7 +650,12 @@ static float clip_min, clip_max;
 static bool tex_enable;
 static unsigned screen_width, screen_height;
 
-static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
+static void opengl_renderer_set_rend_param(struct gfx_il_inst *cmd) {
+    struct gfx_rend_param const *param = &cmd->arg.set_rend_param.param;
+    do_set_rend_param(param);
+}
+
+static void do_set_rend_param(struct gfx_rend_param const *param) {
     if (oit_state.enabled) {
         /*
          * This gets flipped around to GL_LEQUAL when we set the actual OpenGL
@@ -775,7 +778,13 @@ static void opengl_renderer_set_rend_param(struct gfx_rend_param const *param) {
     tex_enable = param->tex_enable;
 }
 
-static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
+static void opengl_renderer_draw_array(struct gfx_il_inst *cmd) {
+    unsigned n_verts = cmd->arg.draw_array.n_verts;
+    float const *verts = cmd->arg.draw_array.verts;
+    do_draw_array(verts, n_verts);
+}
+
+static void do_draw_array(float const *verts, unsigned n_verts) {
     if (!n_verts)
         return;
 
@@ -850,7 +859,8 @@ static void opengl_renderer_draw_array(float const *verts, unsigned n_verts) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-static void opengl_renderer_clear(float const bgcolor[4]) {
+static void opengl_renderer_clear(struct gfx_il_inst *cmd) {
+    float const *bgcolor = cmd->arg.clear.bgcolor;
     struct gfx_cfg rend_cfg = gfx_config_read();
 
     if (!rend_cfg.wireframe) {
@@ -895,10 +905,9 @@ static void opengl_renderer_set_screen_dim(unsigned width, unsigned height) {
     glViewport(0, 0, width, height);
 }
 
-static void opengl_renderer_set_clip_range(float new_clip_min,
-                                           float new_clip_max) {
-    clip_min = new_clip_min;
-    clip_max = new_clip_max;
+static void opengl_renderer_set_clip_range(struct gfx_il_inst *cmd) {
+    clip_min = cmd->arg.set_clip_range.clip_min;
+    clip_max = cmd->arg.set_clip_range.clip_max;
 }
 
 GLuint opengl_renderer_tex(unsigned obj_no) {
@@ -943,7 +952,7 @@ bool opengl_renderer_tex_get_dirty(unsigned obj_no) {
     return obj_tex_meta_array[obj_no].dirty;
 }
 
-static void opengl_renderer_begin_sort_mode(void) {
+static void opengl_renderer_begin_sort_mode(struct gfx_il_inst *cmd) {
     if (oit_state.enabled)
         RAISE_ERROR(ERROR_INTEGRITY);
 
@@ -954,7 +963,7 @@ static void opengl_renderer_begin_sort_mode(void) {
     }
 }
 
-static void opengl_renderer_end_sort_mode(void) {
+static void opengl_renderer_end_sort_mode(struct gfx_il_inst *cmd) {
     if (!gfx_config_read().depth_sort_enable)
         return;
     if (!oit_state.enabled)
@@ -981,8 +990,8 @@ static void opengl_renderer_end_sort_mode(void) {
 
         for (src_idx = 0; src_idx < grp_cnt; src_idx++) {
             struct oit_group *grp_src = oit_state.groups + src_idx;
-            opengl_renderer_set_rend_param(&grp_src->rend_param);
-            opengl_renderer_draw_array(grp_src->verts, grp_src->n_verts);
+            do_set_rend_param(&grp_src->rend_param);
+            do_draw_array(grp_src->verts, grp_src->n_verts);
         }
     }
 }
@@ -1092,4 +1101,16 @@ static void opengl_renderer_post_framebuffer(struct gfx_il_inst *cmd) {
         if (switch_table->win_update)
             switch_table->win_update();
     }
+}
+
+static void opengl_renderer_begin_rend(struct gfx_il_inst *cmd) {
+    opengl_target_begin(cmd->arg.begin_rend.screen_width,
+                        cmd->arg.begin_rend.screen_height,
+                        cmd->arg.begin_rend.rend_tgt_obj);
+    opengl_renderer_set_screen_dim(cmd->arg.begin_rend.screen_width,
+                                   cmd->arg.begin_rend.screen_height);
+}
+
+static void opengl_renderer_end_rend(struct gfx_il_inst *cmd) {
+    opengl_target_end(cmd->arg.end_rend.rend_tgt_obj);
 }

@@ -42,10 +42,6 @@ void gfx_expose(void);
 void gfx_redraw(void);
 void gfx_resize(int xres, int yres);
 
-void gfx_post_framebuffer(int obj_handle,
-                          unsigned fb_new_width,
-                          unsigned fb_new_height, bool do_flip, bool interlaced);
-
 /*
  * This takes place immediately because the user can toggle it asynchronously
  * with a keybind.  It is not part of gfx_il.

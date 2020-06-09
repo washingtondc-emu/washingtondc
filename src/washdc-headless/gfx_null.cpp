@@ -36,21 +36,15 @@ static void null_render_init(void);
 static void null_render_cleanup(void);
 static void null_render_bind_tex(struct gfx_il_inst *cmd);
 static void null_render_unbind_tex(struct gfx_il_inst *cmd);
-static void null_render_update_tex(unsigned tex_obj);
-static void null_render_release_tex(unsigned tex_obj);
-static void null_render_set_blend_enable(bool enable);
-static void null_render_set_rend_param(struct gfx_rend_param const *param);
-static void null_render_draw_array(float const *verts, unsigned n_verts);
-static void null_render_clear(float const bgcolor[4]);
-static void null_render_set_screen_dim(unsigned width, unsigned height);
-static void null_render_set_clip_range(float new_clip_min, float new_clip_max);
-static void null_render_begin_sort_mode(void);
-static void null_render_end_sort_mode(void);
-static void null_render_bind_obj(int obj_handle);
-static void null_render_unbind_obj(int obj_handle);
-static void null_render_target_begin(unsigned width,
-                                     unsigned height, int tgt_handle);
-static void null_render_target_end(int tgt_handle);
+static void null_render_set_blend_enable(struct gfx_il_inst *cmd);
+static void null_render_set_rend_param(struct gfx_il_inst *cmd);
+static void null_render_draw_array(struct gfx_il_inst *cmd);
+static void null_render_clear(struct gfx_il_inst *cmd);
+static void null_render_set_clip_range(struct gfx_il_inst *cmd);
+static void null_render_begin_sort_mode(struct gfx_il_inst *cmd);
+static void null_render_end_sort_mode(struct gfx_il_inst *cmd);
+static void null_render_bind_obj(struct gfx_il_inst *cmd);
+static void null_render_unbind_obj(struct gfx_il_inst *cmd);
 static int null_render_get_fb(int *obj_handle_out, unsigned *width_out,
                               unsigned *height_out, bool *flip_out);
 static void null_render_present(void);
@@ -68,6 +62,8 @@ static void null_render_obj_read(struct gfx_il_inst *cmd);
 static void null_render_obj_free(struct gfx_il_inst *cmd);
 static void null_render_post_framebuffer(struct gfx_il_inst *cmd);
 static void null_render_grab_framebuffer(struct gfx_il_inst *cmd);
+static void null_render_begin_rend(struct gfx_il_inst *cmd);
+static void null_render_end_rend(struct gfx_il_inst *cmd);
 
 struct rend_if const *null_rend_if_get(void) {
     static struct rend_if null_rend_if;
@@ -81,11 +77,10 @@ struct rend_if const *null_rend_if_get(void) {
     null_rend_if.obj_read = null_render_obj_read;
     null_rend_if.obj_free = null_render_obj_free;
     null_rend_if.grab_framebuffer = null_render_grab_framebuffer;
-    null_rend_if.update_tex = null_render_update_tex;
-    null_rend_if.release_tex = null_render_release_tex;
+    null_rend_if.begin_rend = null_render_begin_rend;
+    null_rend_if.end_rend = null_render_end_rend;
     null_rend_if.set_blend_enable = null_render_set_blend_enable;
     null_rend_if.set_rend_param = null_render_set_rend_param;
-    null_rend_if.set_screen_dim = null_render_set_screen_dim;
     null_rend_if.set_clip_range = null_render_set_clip_range;
     null_rend_if.draw_array = null_render_draw_array;
     null_rend_if.clear = null_render_clear;
@@ -93,11 +88,7 @@ struct rend_if const *null_rend_if_get(void) {
     null_rend_if.end_sort_mode = null_render_end_sort_mode;
     null_rend_if.target_bind_obj = null_render_bind_obj;
     null_rend_if.target_unbind_obj = null_render_unbind_obj;
-    null_rend_if.target_begin = null_render_target_begin;
-    null_rend_if.target_end = null_render_target_end;
-    null_rend_if.video_get_fb = null_render_get_fb;
     null_rend_if.video_present = null_render_present;
-    null_rend_if.video_new_framebuffer = null_render_new_framebuffer;
     null_rend_if.video_post_framebuffer = null_render_post_framebuffer;
     null_rend_if.video_toggle_filter = null_render_toggle_filter;
 
@@ -120,37 +111,30 @@ static void null_render_bind_tex(struct gfx_il_inst *cmd) {
 static void null_render_unbind_tex(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_update_tex(unsigned tex_obj) {
+static void null_render_set_blend_enable(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_release_tex(unsigned tex_obj) {
+static void null_render_set_rend_param(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_set_blend_enable(bool enable) {
+static void null_render_draw_array(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_set_rend_param(struct gfx_rend_param const *param) {
+static void null_render_clear(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_draw_array(float const *verts, unsigned n_verts) {
+static void null_render_set_clip_range(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_clear(float const bgcolor[4]) {
+static void null_render_begin_sort_mode(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_set_screen_dim(unsigned width, unsigned height) {
+static void null_render_end_sort_mode(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_set_clip_range(float new_clip_min, float new_clip_max) {
-}
+static void null_render_bind_obj(struct gfx_il_inst *cmd) {
+    int obj_handle = cmd->arg.bind_render_target.gfx_obj_handle;
 
-static void null_render_begin_sort_mode(void) {
-}
-
-static void null_render_end_sort_mode(void) {
-}
-
-static void null_render_bind_obj(int obj_handle) {
 #ifdef INVARIANTS
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
     if (obj->on_write ||
@@ -160,7 +144,8 @@ static void null_render_bind_obj(int obj_handle) {
     gfx_obj_get(obj_handle)->on_read = null_render_obj_read;
 }
 
-static void null_render_unbind_obj(int obj_handle) {
+static void null_render_unbind_obj(struct gfx_il_inst *cmd) {
+    int obj_handle = cmd->arg.unbind_render_target.gfx_obj_handle;
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
 
     gfx_obj_alloc(obj);
@@ -173,14 +158,6 @@ static void null_render_unbind_obj(int obj_handle) {
 static void null_render_obj_read(struct gfx_obj *obj, void *out,
                                  size_t n_bytes) {
     memset(out, 0, n_bytes);
-}
-
-static void null_render_target_begin(unsigned width,
-                                     unsigned height, int tgt_handle) {
-}
-
-static void null_render_target_end(int tgt_handle) {
-    gfx_obj_get(tgt_handle)->state = GFX_OBJ_STATE_TEX;
 }
 
 static int null_render_get_fb(int *obj_handle_out, unsigned *width_out,
@@ -269,4 +246,11 @@ static void null_render_grab_framebuffer(struct gfx_il_inst *cmd) {
 }
 
 static void null_render_post_framebuffer(struct gfx_il_inst *cmd) {
+}
+
+static void null_render_begin_rend(struct gfx_il_inst *cmd) {
+}
+
+static void null_render_end_rend(struct gfx_il_inst *cmd) {
+    gfx_obj_get(cmd->arg.end_rend.rend_tgt_obj)->state = GFX_OBJ_STATE_TEX;
 }

@@ -43,88 +43,12 @@ void rend_cleanup(void) {
     gfx_rend_ifp = NULL;
 }
 
-// tell the renderer to update the given texture from the cache
-void rend_update_tex(unsigned tex_no) {
-    gfx_rend_ifp->update_tex(tex_no);
-}
-
-// tell the renderer to release the given texture from the cache
-void rend_release_tex(unsigned tex_no) {
-    gfx_rend_ifp->release_tex(tex_no);
-}
-
-static void rend_begin_rend(struct gfx_il_inst *cmd) {
-    gfx_rend_ifp->target_begin(cmd->arg.begin_rend.screen_width,
-                           cmd->arg.begin_rend.screen_height,
-                           cmd->arg.begin_rend.rend_tgt_obj);
-    gfx_rend_ifp->set_screen_dim(cmd->arg.begin_rend.screen_width,
-                             cmd->arg.begin_rend.screen_height);
-}
-
-static void rend_end_rend(struct gfx_il_inst *cmd) {
-    gfx_rend_ifp->target_end(cmd->arg.end_rend.rend_tgt_obj);
-}
-
-static void rend_set_blend_enable(struct gfx_il_inst *cmd) {
-    bool en = cmd->arg.set_blend_enable.do_enable;
-    gfx_rend_ifp->set_blend_enable(en);
-}
-
-static void rend_set_rend_param(struct gfx_il_inst *cmd) {
-    struct gfx_rend_param const *param = &cmd->arg.set_rend_param.param;
-    gfx_rend_ifp->set_rend_param(param);
-}
-
-static void rend_set_clip_range(struct gfx_il_inst *cmd) {
-    float clip_min = cmd->arg.set_clip_range.clip_min;
-    float clip_max = cmd->arg.set_clip_range.clip_max;
-    gfx_rend_ifp->set_clip_range(clip_min, clip_max);
-}
-
-static void rend_draw_array(struct gfx_il_inst *cmd) {
-    unsigned n_verts = cmd->arg.draw_array.n_verts;
-    float const *verts = cmd->arg.draw_array.verts;
-    gfx_rend_ifp->draw_array(verts, n_verts);
-}
-
-static void rend_clear(struct gfx_il_inst *cmd) {
-    gfx_rend_ifp->clear(cmd->arg.clear.bgcolor);
-}
-
-static void rend_bind_render_target(struct gfx_il_inst *cmd) {
-    gfx_rend_ifp->target_bind_obj(cmd->arg.bind_render_target.gfx_obj_handle);
-}
-
-static void rend_unbind_render_target(struct gfx_il_inst *cmd) {
-    gfx_rend_ifp->target_unbind_obj(cmd->arg.unbind_render_target.gfx_obj_handle);
-}
-
-static void rend_post_framebuffer(struct gfx_il_inst *cmd) {
-    unsigned width = cmd->arg.post_framebuffer.width;
-    unsigned height = cmd->arg.post_framebuffer.height;
-    int obj_handle = cmd->arg.post_framebuffer.obj_handle;
-    bool do_flip = cmd->arg.post_framebuffer.vert_flip;
-    bool interlace = cmd->arg.post_framebuffer.interlaced;
-
-    gfx_post_framebuffer(obj_handle, width, height, do_flip, interlace);
-}
-
-static void rend_begin_depth_sort(struct gfx_il_inst *cmd) {
-    gfx_rend_ifp->begin_sort_mode();
-}
-
-static void rend_end_depth_sort(struct gfx_il_inst *cmd) {
-    gfx_rend_ifp->end_sort_mode();
-}
-
 #ifdef ENABLE_LOG_DEBUG
 #define GFX_IL_TAG "GFX_IL"
 static void gfx_log_il_cmd(struct gfx_il_inst const *cmd);
 #endif
 
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
-    /* bool rendering = false; */
-
     while (n_cmd--) {
 #ifdef ENABLE_LOG_DEBUG
         gfx_log_il_cmd(cmd);
@@ -137,33 +61,31 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             gfx_rend_ifp->unbind_tex(cmd);
             break;
         case GFX_IL_BIND_RENDER_TARGET:
-            rend_bind_render_target(cmd);
+            gfx_rend_ifp->target_bind_obj(cmd);
             break;
         case GFX_IL_UNBIND_RENDER_TARGET:
-            rend_unbind_render_target(cmd);
+            gfx_rend_ifp->target_unbind_obj(cmd);
             break;
         case GFX_IL_BEGIN_REND:
-            rend_begin_rend(cmd);
-            /* rendering = true; */
+            gfx_rend_ifp->begin_rend(cmd);
             break;
         case GFX_IL_END_REND:
-            rend_end_rend(cmd);
-            /* rendering = false; */
+            gfx_rend_ifp->end_rend(cmd);
             break;
         case GFX_IL_CLEAR:
-            rend_clear(cmd);
+            gfx_rend_ifp->clear(cmd);
             break;
         case GFX_IL_SET_BLEND_ENABLE:
-            rend_set_blend_enable(cmd);
+            gfx_rend_ifp->set_blend_enable(cmd);
             break;
         case GFX_IL_SET_REND_PARAM:
-            rend_set_rend_param(cmd);
+            gfx_rend_ifp->set_rend_param(cmd);
             break;
         case GFX_IL_SET_CLIP_RANGE:
-            rend_set_clip_range(cmd);
+            gfx_rend_ifp->set_clip_range(cmd);
             break;
         case GFX_IL_DRAW_ARRAY:
-            rend_draw_array(cmd);
+            gfx_rend_ifp->draw_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
             gfx_rend_ifp->obj_init(cmd);
@@ -184,19 +106,14 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             gfx_rend_ifp->grab_framebuffer(cmd);
             break;
         case GFX_IL_BEGIN_DEPTH_SORT:
-            rend_begin_depth_sort(cmd);
+            gfx_rend_ifp->begin_sort_mode(cmd);
             break;
         case GFX_IL_END_DEPTH_SORT:
-            rend_end_depth_sort(cmd);
+            gfx_rend_ifp->end_sort_mode(cmd);
             break;
         }
         cmd++;
     }
-
-    /* if (rendering) { */
-    /*     LOG_ERROR("Failure to end rendering!\n"); */
-    /*     RAISE_ERROR(ERROR_INTEGRITY); */
-    /* } */
 }
 
 #ifdef ENABLE_LOG_DEBUG

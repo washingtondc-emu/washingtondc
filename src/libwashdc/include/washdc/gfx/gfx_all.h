@@ -46,52 +46,29 @@ struct rend_if {
 
     void (*grab_framebuffer)(struct gfx_il_inst *cmd);
 
-    /*
-     * called to notify the renderer that it needs to update the given
-     * texture from the bound gfx_obj
-     */
-    void (*update_tex)(unsigned tex_obj);
-
-    /*
-     * called to notify the renderer that it needs to release the resources
-     * associated with the given texture.
-     */
-    void (*release_tex)(unsigned tex_obj);
+    void (*begin_rend)(struct gfx_il_inst *cmd);
+    void (*end_rend)(struct gfx_il_inst *cmd);
 
     // enable/disable blending
-    void (*set_blend_enable)(bool do_enable);
+    void (*set_blend_enable)(struct gfx_il_inst *cmd);
 
-    void (*set_rend_param)(struct gfx_rend_param const *param);
+    void (*set_rend_param)(struct gfx_il_inst *cmd);
 
-    void (*set_screen_dim)(unsigned width, unsigned height);
+    void (*set_clip_range)(struct gfx_il_inst *cmd);
 
-    void (*set_clip_range)(float clip_min, float clip_max);
+    void (*draw_array)(struct gfx_il_inst *cmd);
 
-    void (*draw_array)(float const *verts, unsigned n_verts);
+    void (*clear)(struct gfx_il_inst *cmd);
 
-    void (*clear)(float const bgcolor[4]);
+    void (*begin_sort_mode)(struct gfx_il_inst *cmd);
 
-    void (*begin_sort_mode)(void);
+    void (*end_sort_mode)(struct gfx_il_inst *cmd);
 
-    void (*end_sort_mode)(void);
+    void (*target_bind_obj)(struct gfx_il_inst *cmd);
 
-    void (*target_bind_obj)(int handle);
-
-    void (*target_unbind_obj)(int handle);
-
-    void (*target_begin)(unsigned width, unsigned height, int tgt_handle);
-
-    void (*target_end)(int tgt_handle);
-
-    int (*video_get_fb)(int *obj_handle_out, unsigned *width_out,
-                        unsigned *height_out, bool *flip_out);
+    void (*target_unbind_obj)(struct gfx_il_inst *cmd);
 
     void (*video_present)(void);
-
-    void (*video_new_framebuffer)(int obj_handle,
-                                  unsigned fb_new_width,
-                                  unsigned fb_new_height,
-                                  bool do_flip, bool interlaced);
 
     void (*video_post_framebuffer)(struct gfx_il_inst *cmd);
 

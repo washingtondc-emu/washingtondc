@@ -66,6 +66,9 @@ GLenum opengl_renderer_tex_get_format(unsigned obj_no);
 GLenum opengl_renderer_tex_get_dat_type(unsigned obj_no);
 bool opengl_renderer_tex_get_dirty(unsigned obj_no);
 
+void opengl_renderer_update_tex(unsigned tex_obj);
+void opengl_renderer_release_tex(unsigned tex_obj);
+
 #ifdef __cplusplus
 }
 #endif
