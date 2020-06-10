@@ -181,31 +181,16 @@ static void opengl_renderer_post_framebuffer(struct gfx_il_inst *cmd);
 static void opengl_renderer_begin_rend(struct gfx_il_inst *cmd);
 static void opengl_renderer_end_rend(struct gfx_il_inst *cmd);
 
+static void
+opengl_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
+
 static void do_set_rend_param(struct gfx_rend_param const *param);
 static void do_draw_array(float const *verts, unsigned n_verts);
 
 struct rend_if const opengl_rend_if = {
     .init = opengl_render_init,
     .cleanup = opengl_render_cleanup,
-    .bind_tex = opengl_renderer_bind_tex,
-    .unbind_tex = opengl_renderer_unbind_tex,
-    .obj_init = opengl_renderer_obj_init,
-    .obj_write = opengl_renderer_obj_write,
-    .obj_read = opengl_renderer_obj_read,
-    .obj_free = opengl_renderer_obj_free,
-    .grab_framebuffer = opengl_renderer_grab_framebuffer,
-    .begin_rend = opengl_renderer_begin_rend,
-    .end_rend = opengl_renderer_end_rend,
-    .set_blend_enable = opengl_renderer_set_blend_enable,
-    .set_rend_param = opengl_renderer_set_rend_param,
-    .draw_array = opengl_renderer_draw_array,
-    .clear = opengl_renderer_clear,
-    .set_clip_range = opengl_renderer_set_clip_range,
-    .begin_sort_mode = opengl_renderer_begin_sort_mode,
-    .end_sort_mode = opengl_renderer_end_sort_mode,
-    .target_bind_obj = opengl_target_bind_obj,
-    .target_unbind_obj = opengl_target_unbind_obj,
-    .video_post_framebuffer = opengl_renderer_post_framebuffer
+    .exec_gfx_il = opengl_renderer_exec_gfx_il
 };
 
 static char const * const pvr2_ta_vert_glsl =
@@ -1111,4 +1096,73 @@ static void opengl_renderer_begin_rend(struct gfx_il_inst *cmd) {
 
 static void opengl_renderer_end_rend(struct gfx_il_inst *cmd) {
     opengl_target_end(cmd->arg.end_rend.rend_tgt_obj);
+}
+
+static void
+opengl_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
+    while (n_cmd--) {
+        switch (cmd->op) {
+        case GFX_IL_BIND_TEX:
+            opengl_renderer_bind_tex(cmd);
+            break;
+        case GFX_IL_UNBIND_TEX:
+            opengl_renderer_unbind_tex(cmd);
+            break;
+        case GFX_IL_BIND_RENDER_TARGET:
+            opengl_target_bind_obj(cmd);
+            break;
+        case GFX_IL_UNBIND_RENDER_TARGET:
+            opengl_target_unbind_obj(cmd);
+            break;
+        case GFX_IL_BEGIN_REND:
+            opengl_renderer_begin_rend(cmd);
+            break;
+        case GFX_IL_END_REND:
+            opengl_renderer_end_rend(cmd);
+            break;
+        case GFX_IL_CLEAR:
+            opengl_renderer_clear(cmd);
+            break;
+        case GFX_IL_SET_BLEND_ENABLE:
+            opengl_renderer_set_blend_enable(cmd);
+            break;
+        case GFX_IL_SET_REND_PARAM:
+            opengl_renderer_set_rend_param(cmd);
+            break;
+        case GFX_IL_SET_CLIP_RANGE:
+            opengl_renderer_set_clip_range(cmd);
+            break;
+        case GFX_IL_DRAW_ARRAY:
+            opengl_renderer_draw_array(cmd);
+            break;
+        case GFX_IL_INIT_OBJ:
+            opengl_renderer_obj_init(cmd);
+            break;
+        case GFX_IL_WRITE_OBJ:
+             opengl_renderer_obj_write(cmd);
+            break;
+        case GFX_IL_READ_OBJ:
+            opengl_renderer_obj_read(cmd);
+            break;
+        case GFX_IL_FREE_OBJ:
+            opengl_renderer_obj_free(cmd);
+            break;
+        case GFX_IL_POST_FRAMEBUFFER:
+            opengl_renderer_post_framebuffer(cmd);
+            break;
+        case GFX_IL_GRAB_FRAMEBUFFER:
+            opengl_renderer_grab_framebuffer(cmd);
+            break;
+        case GFX_IL_BEGIN_DEPTH_SORT:
+            opengl_renderer_begin_sort_mode(cmd);
+            break;
+        case GFX_IL_END_DEPTH_SORT:
+            opengl_renderer_end_sort_mode(cmd);
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNKNOWN GFX IL COMMAND %02X\n",
+                    (unsigned)cmd->op);
+        }
+        cmd++;
+    }
 }

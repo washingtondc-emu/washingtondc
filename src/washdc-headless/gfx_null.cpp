@@ -63,30 +63,14 @@ static void null_render_grab_framebuffer(struct gfx_il_inst *cmd);
 static void null_render_begin_rend(struct gfx_il_inst *cmd);
 static void null_render_end_rend(struct gfx_il_inst *cmd);
 
+static void null_render_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
+
 struct rend_if const *null_rend_if_get(void) {
     static struct rend_if null_rend_if;
 
     null_rend_if.init = null_render_init;
     null_rend_if.cleanup = null_render_cleanup;
-    null_rend_if.bind_tex = null_render_bind_tex;
-    null_rend_if.unbind_tex = null_render_unbind_tex;
-    null_rend_if.obj_init = null_render_obj_init;
-    null_rend_if.obj_write = null_render_obj_write;
-    null_rend_if.obj_read = null_render_obj_read;
-    null_rend_if.obj_free = null_render_obj_free;
-    null_rend_if.grab_framebuffer = null_render_grab_framebuffer;
-    null_rend_if.begin_rend = null_render_begin_rend;
-    null_rend_if.end_rend = null_render_end_rend;
-    null_rend_if.set_blend_enable = null_render_set_blend_enable;
-    null_rend_if.set_rend_param = null_render_set_rend_param;
-    null_rend_if.set_clip_range = null_render_set_clip_range;
-    null_rend_if.draw_array = null_render_draw_array;
-    null_rend_if.clear = null_render_clear;
-    null_rend_if.begin_sort_mode = null_render_begin_sort_mode;
-    null_rend_if.end_sort_mode = null_render_end_sort_mode;
-    null_rend_if.target_bind_obj = null_render_bind_obj;
-    null_rend_if.target_unbind_obj = null_render_unbind_obj;
-    null_rend_if.video_post_framebuffer = null_render_post_framebuffer;
+    null_rend_if.exec_gfx_il = null_render_exec_gfx_il;
 
     return &null_rend_if;
 }
@@ -243,4 +227,72 @@ static void null_render_begin_rend(struct gfx_il_inst *cmd) {
 
 static void null_render_end_rend(struct gfx_il_inst *cmd) {
     gfx_obj_get(cmd->arg.end_rend.rend_tgt_obj)->state = GFX_OBJ_STATE_TEX;
+}
+
+static void null_render_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
+    while (n_cmd--) {
+        switch (cmd->op) {
+        case GFX_IL_BIND_TEX:
+            null_render_bind_tex(cmd);
+            break;
+        case GFX_IL_UNBIND_TEX:
+            null_render_unbind_tex(cmd);
+            break;
+        case GFX_IL_BIND_RENDER_TARGET:
+            null_render_bind_obj(cmd);
+            break;
+        case GFX_IL_UNBIND_RENDER_TARGET:
+            null_render_unbind_obj(cmd);
+            break;
+        case GFX_IL_BEGIN_REND:
+            null_render_begin_rend(cmd);
+            break;
+        case GFX_IL_END_REND:
+            null_render_end_rend(cmd);
+            break;
+        case GFX_IL_CLEAR:
+            null_render_clear(cmd);
+            break;
+        case GFX_IL_SET_BLEND_ENABLE:
+            null_render_set_blend_enable(cmd);
+            break;
+        case GFX_IL_SET_REND_PARAM:
+            null_render_set_rend_param(cmd);
+            break;
+        case GFX_IL_SET_CLIP_RANGE:
+            null_render_set_clip_range(cmd);
+            break;
+        case GFX_IL_DRAW_ARRAY:
+            null_render_draw_array(cmd);
+            break;
+        case GFX_IL_INIT_OBJ:
+            null_render_obj_init(cmd);
+            break;
+        case GFX_IL_WRITE_OBJ:
+            null_render_obj_write(cmd);
+            break;
+        case GFX_IL_READ_OBJ:
+            null_render_obj_read(cmd);
+            break;
+        case GFX_IL_FREE_OBJ:
+            null_render_obj_free(cmd);
+            break;
+        case GFX_IL_POST_FRAMEBUFFER:
+            null_render_post_framebuffer(cmd);
+            break;
+        case GFX_IL_GRAB_FRAMEBUFFER:
+            null_render_grab_framebuffer(cmd);
+            break;
+        case GFX_IL_BEGIN_DEPTH_SORT:
+            null_render_begin_sort_mode(cmd);
+            break;
+        case GFX_IL_END_DEPTH_SORT:
+            null_render_end_sort_mode(cmd);
+            break;
+        default:
+            fprintf(stderr, "ERROR: UNKNOWN GFX IL COMMAND %02X\n",
+                    (unsigned)cmd->op);
+        }
+        cmd++;
+    }
 }

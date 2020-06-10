@@ -36,39 +36,7 @@ struct rend_if {
 
     void (*cleanup)(void);
 
-    void (*bind_tex)(struct gfx_il_inst *cmd);
-    void (*unbind_tex)(struct gfx_il_inst *cmd);
-
-    void (*obj_init)(struct gfx_il_inst *cmd);
-    void (*obj_write)(struct gfx_il_inst *cmd);
-    void (*obj_read)(struct gfx_il_inst *cmd);
-    void (*obj_free)(struct gfx_il_inst *cmd);
-
-    void (*grab_framebuffer)(struct gfx_il_inst *cmd);
-
-    void (*begin_rend)(struct gfx_il_inst *cmd);
-    void (*end_rend)(struct gfx_il_inst *cmd);
-
-    // enable/disable blending
-    void (*set_blend_enable)(struct gfx_il_inst *cmd);
-
-    void (*set_rend_param)(struct gfx_il_inst *cmd);
-
-    void (*set_clip_range)(struct gfx_il_inst *cmd);
-
-    void (*draw_array)(struct gfx_il_inst *cmd);
-
-    void (*clear)(struct gfx_il_inst *cmd);
-
-    void (*begin_sort_mode)(struct gfx_il_inst *cmd);
-
-    void (*end_sort_mode)(struct gfx_il_inst *cmd);
-
-    void (*target_bind_obj)(struct gfx_il_inst *cmd);
-
-    void (*target_unbind_obj)(struct gfx_il_inst *cmd);
-
-    void (*video_post_framebuffer)(struct gfx_il_inst *cmd);
+    void (*exec_gfx_il)(struct gfx_il_inst *cmd, unsigned n_cmd);
 };
 
 #ifdef __cplusplus

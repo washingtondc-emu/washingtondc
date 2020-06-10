@@ -49,71 +49,16 @@ static void gfx_log_il_cmd(struct gfx_il_inst const *cmd);
 #endif
 
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
-    while (n_cmd--) {
+
+    struct gfx_il_inst *cmd_tmp = cmd;
+    unsigned n_cmd_tmp = n_cmd;
+
 #ifdef ENABLE_LOG_DEBUG
-        gfx_log_il_cmd(cmd);
+    while (n_cmd--)
+        gfx_log_il_cmd(cmd++);
 #endif
-        switch (cmd->op) {
-        case GFX_IL_BIND_TEX:
-            gfx_rend_ifp->bind_tex(cmd);
-            break;
-        case GFX_IL_UNBIND_TEX:
-            gfx_rend_ifp->unbind_tex(cmd);
-            break;
-        case GFX_IL_BIND_RENDER_TARGET:
-            gfx_rend_ifp->target_bind_obj(cmd);
-            break;
-        case GFX_IL_UNBIND_RENDER_TARGET:
-            gfx_rend_ifp->target_unbind_obj(cmd);
-            break;
-        case GFX_IL_BEGIN_REND:
-            gfx_rend_ifp->begin_rend(cmd);
-            break;
-        case GFX_IL_END_REND:
-            gfx_rend_ifp->end_rend(cmd);
-            break;
-        case GFX_IL_CLEAR:
-            gfx_rend_ifp->clear(cmd);
-            break;
-        case GFX_IL_SET_BLEND_ENABLE:
-            gfx_rend_ifp->set_blend_enable(cmd);
-            break;
-        case GFX_IL_SET_REND_PARAM:
-            gfx_rend_ifp->set_rend_param(cmd);
-            break;
-        case GFX_IL_SET_CLIP_RANGE:
-            gfx_rend_ifp->set_clip_range(cmd);
-            break;
-        case GFX_IL_DRAW_ARRAY:
-            gfx_rend_ifp->draw_array(cmd);
-            break;
-        case GFX_IL_INIT_OBJ:
-            gfx_rend_ifp->obj_init(cmd);
-            break;
-        case GFX_IL_WRITE_OBJ:
-            gfx_rend_ifp->obj_write(cmd);
-            break;
-        case GFX_IL_READ_OBJ:
-            gfx_rend_ifp->obj_read(cmd);
-            break;
-        case GFX_IL_FREE_OBJ:
-            gfx_rend_ifp->obj_free(cmd);
-            break;
-        case GFX_IL_POST_FRAMEBUFFER:
-            gfx_rend_ifp->video_post_framebuffer(cmd);
-            break;
-        case GFX_IL_GRAB_FRAMEBUFFER:
-            gfx_rend_ifp->grab_framebuffer(cmd);
-            break;
-        case GFX_IL_BEGIN_DEPTH_SORT:
-            gfx_rend_ifp->begin_sort_mode(cmd);
-            break;
-        case GFX_IL_END_DEPTH_SORT:
-            gfx_rend_ifp->end_sort_mode(cmd);
-            break;
-        }
-        cmd++;
-    }
+
+    gfx_rend_ifp->exec_gfx_il(cmd_tmp, n_cmd_tmp);
 }
 
 #ifdef ENABLE_LOG_DEBUG
