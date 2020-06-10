@@ -47,7 +47,6 @@ static void null_render_bind_obj(struct gfx_il_inst *cmd);
 static void null_render_unbind_obj(struct gfx_il_inst *cmd);
 static int null_render_get_fb(int *obj_handle_out, unsigned *width_out,
                               unsigned *height_out, bool *flip_out);
-static void null_render_present(void);
 static void null_render_new_framebuffer(int obj_handle,
                                         unsigned fb_new_width,
                                         unsigned fb_new_height,
@@ -87,7 +86,6 @@ struct rend_if const *null_rend_if_get(void) {
     null_rend_if.end_sort_mode = null_render_end_sort_mode;
     null_rend_if.target_bind_obj = null_render_bind_obj;
     null_rend_if.target_unbind_obj = null_render_unbind_obj;
-    null_rend_if.video_present = null_render_present;
     null_rend_if.video_post_framebuffer = null_render_post_framebuffer;
 
     return &null_rend_if;
@@ -167,9 +165,6 @@ static int null_render_get_fb(int *obj_handle_out, unsigned *width_out,
     *height_out = bound_obj_h;
     *flip_out = flip_screen;
     return 0;
-}
-
-static void null_render_present(void) {
 }
 
 static void null_render_new_framebuffer(int obj_handle,

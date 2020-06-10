@@ -1277,7 +1277,7 @@ static void suspend_loop(void) {
     if (cur_state == DC_STATE_SUSPEND) {
         do {
             win_check_events();
-            gfx_redraw();
+            /* gfx_redraw(); */
             /*
              * TODO: sleep on a pthread condition or something instead of
              * polling.

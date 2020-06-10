@@ -142,14 +142,6 @@ void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val) {
     dc_controller_set_axis(port_no, axis, val);
 }
 
-void washdc_on_expose(void) {
-    gfx_expose();
-}
-
-void washdc_on_resize(int xres, int yres) {
-    gfx_resize(xres, yres);
-}
-
 char const *washdc_win_get_title(void) {
     return title_get();
 }

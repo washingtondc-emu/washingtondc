@@ -130,9 +130,6 @@ struct washdc_launch_settings {
 int washdc_save_screenshot(char const *path);
 int washdc_save_screenshot_dir(void);
 
-void washdc_on_expose(void);
-void washdc_on_resize(int xres, int yres);
-
 char const *washdc_win_get_title(void);
 
 void washdc_gfx_toggle_wireframe(void);

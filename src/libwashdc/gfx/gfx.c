@@ -55,24 +55,6 @@ void gfx_cleanup(void) {
     rend_cleanup();
 }
 
-void gfx_expose(void) {
-    gfx_redraw();
-}
-
-void gfx_redraw(void) {
-    gfx_rend_ifp->video_present();
-    if (overlay_intf && overlay_intf->overlay_draw)
-        overlay_intf->overlay_draw();
-    win_update();
-}
-
-void gfx_resize(int xres, int yres) {
-    gfx_rend_ifp->video_present();
-    if (overlay_intf && overlay_intf->overlay_draw)
-        overlay_intf->overlay_draw();
-    win_update();
-}
-
 static void gfx_do_init(struct rend_if const * rend_if) {
     win_make_context_current();
 

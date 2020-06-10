@@ -37,11 +37,6 @@ struct rend_if;
 void gfx_init(struct rend_if const * rend_if, unsigned width, unsigned height);
 void gfx_cleanup(void);
 
-// refresh the window
-void gfx_expose(void);
-void gfx_redraw(void);
-void gfx_resize(int xres, int yres);
-
 void gfx_set_overlay_intf(struct washdc_overlay_intf const *intf);
 
 #endif

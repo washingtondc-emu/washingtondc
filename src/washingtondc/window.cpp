@@ -73,6 +73,12 @@ static void
 mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y);
 static void text_input_cb(GLFWwindow* window, unsigned int codepoint);
 
+static void do_redraw(void) {
+    opengl_video_present();
+    overlay::draw();
+    win_glfw_update();
+}
+
 struct win_intf const* get_win_intf_glfw(void) {
     static struct win_intf win_intf_glfw = { };
 
@@ -635,7 +641,7 @@ void win_glfw_update() {
 }
 
 static void expose_callback(GLFWwindow *win) {
-    washdc_on_expose();
+    do_redraw();
 }
 
 enum gamepad_btn {
@@ -1185,7 +1191,8 @@ static void win_glfw_update_title(void) {
 static void resize_callback(GLFWwindow *win, int width, int height) {
     res_x = width;
     res_y = height;
-    washdc_on_resize(width, height);
+
+    do_redraw();
 }
 
 int win_glfw_get_width(void) {
@@ -1221,7 +1228,7 @@ static void toggle_fullscreen(void) {
     }
 
     if (res_x != old_res_x || res_y != old_res_y)
-        washdc_on_resize(res_x, res_y);
+        do_redraw();
 }
 
 static void toggle_overlay(void) {

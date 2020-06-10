@@ -68,8 +68,6 @@ struct rend_if {
 
     void (*target_unbind_obj)(struct gfx_il_inst *cmd);
 
-    void (*video_present)(void);
-
     void (*video_post_framebuffer)(struct gfx_il_inst *cmd);
 };
 

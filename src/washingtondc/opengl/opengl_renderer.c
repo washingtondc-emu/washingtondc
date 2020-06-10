@@ -205,7 +205,6 @@ struct rend_if const opengl_rend_if = {
     .end_sort_mode = opengl_renderer_end_sort_mode,
     .target_bind_obj = opengl_target_bind_obj,
     .target_unbind_obj = opengl_target_unbind_obj,
-    .video_present = opengl_video_present,
     .video_post_framebuffer = opengl_renderer_post_framebuffer
 };
 
