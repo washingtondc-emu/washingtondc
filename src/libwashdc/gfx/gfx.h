@@ -42,12 +42,6 @@ void gfx_expose(void);
 void gfx_redraw(void);
 void gfx_resize(int xres, int yres);
 
-/*
- * This takes place immediately because the user can toggle it asynchronously
- * with a keybind.  It is not part of gfx_il.
- */
-void gfx_toggle_output_filter(void);
-
 void gfx_set_overlay_intf(struct washdc_overlay_intf const *intf);
 
 #endif

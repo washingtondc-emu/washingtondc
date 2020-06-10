@@ -79,10 +79,6 @@ static void gfx_do_init(struct rend_if const * rend_if) {
     rend_init(rend_if);
 }
 
-void gfx_toggle_output_filter(void) {
-    gfx_rend_ifp->video_toggle_filter();
-}
-
 void gfx_set_overlay_intf(struct washdc_overlay_intf const *intf) {
     overlay_intf = intf;
 }

@@ -27,6 +27,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include "opengl/opengl_output.h"
+
 #include "washdc/washdc.h"
 
 #include "washdc/config_file.h"
@@ -1126,7 +1128,7 @@ static void scan_input(void) {
     static bool filter_key_prev = false;
     bool filter_key = ctrl_get_button("toggle-filter");
     if (filter_key && !filter_key_prev)
-        washdc_gfx_toggle_filter();
+        opengl_video_toggle_filter();
     filter_key_prev = filter_key;
 
     static bool screenshot_key_prev = false;

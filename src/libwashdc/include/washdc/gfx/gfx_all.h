@@ -71,8 +71,6 @@ struct rend_if {
     void (*video_present)(void);
 
     void (*video_post_framebuffer)(struct gfx_il_inst *cmd);
-
-    void (*video_toggle_filter)(void);
 };
 
 #ifdef __cplusplus

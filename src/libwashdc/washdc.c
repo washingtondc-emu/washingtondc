@@ -158,10 +158,6 @@ void washdc_gfx_toggle_wireframe(void) {
     gfx_config_toggle_wireframe();
 }
 
-void washdc_gfx_toggle_filter(void) {
-    gfx_toggle_output_filter();
-}
-
 void washdc_get_pvr2_stat(struct washdc_pvr2_stat *stat) {
     struct pvr2_stat src;
     dc_get_pvr2_stats(&src);

@@ -136,7 +136,6 @@ void washdc_on_resize(int xres, int yres);
 char const *washdc_win_get_title(void);
 
 void washdc_gfx_toggle_wireframe(void);
-void washdc_gfx_toggle_filter(void);
 
 #define WASHDC_CONT_BTN_C_SHIFT 0
 #define WASHDC_CONT_BTN_C_MASK (1 << WASHDC_CONT_BTN_C_SHIFT)

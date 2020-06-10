@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -31,6 +31,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * this gets called every time the framebuffer has a new frame to render.
@@ -65,5 +69,9 @@ int opengl_video_get_fb(int *obj_handle_out, unsigned *width_out,
 #define OUTPUT_SLOT_TRANS_MAT 2
 
 #define OUTPUT_SLOT_TEX_MAT 3
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

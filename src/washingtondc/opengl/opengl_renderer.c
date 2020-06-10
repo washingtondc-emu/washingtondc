@@ -206,8 +206,7 @@ struct rend_if const opengl_rend_if = {
     .target_bind_obj = opengl_target_bind_obj,
     .target_unbind_obj = opengl_target_unbind_obj,
     .video_present = opengl_video_present,
-    .video_post_framebuffer = opengl_renderer_post_framebuffer,
-    .video_toggle_filter = opengl_video_toggle_filter
+    .video_post_framebuffer = opengl_renderer_post_framebuffer
 };
 
 static char const * const pvr2_ta_vert_glsl =

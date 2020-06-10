@@ -52,7 +52,6 @@ static void null_render_new_framebuffer(int obj_handle,
                                         unsigned fb_new_width,
                                         unsigned fb_new_height,
                                         bool do_flip, bool interlaced);
-static void null_render_toggle_filter(void);
 
 static void null_render_obj_read(struct gfx_obj *obj, void *out,
                                  size_t n_bytes);
@@ -90,7 +89,6 @@ struct rend_if const *null_rend_if_get(void) {
     null_rend_if.target_unbind_obj = null_render_unbind_obj;
     null_rend_if.video_present = null_render_present;
     null_rend_if.video_post_framebuffer = null_render_post_framebuffer;
-    null_rend_if.video_toggle_filter = null_render_toggle_filter;
 
     return &null_rend_if;
 }
@@ -183,9 +181,6 @@ static void null_render_new_framebuffer(int obj_handle,
     bound_obj_handle = obj_handle;
     bound_obj_w = fb_new_width;
     bound_obj_h = fb_new_height;
-}
-
-static void null_render_toggle_filter(void) {
 }
 
 static void null_render_obj_init(struct gfx_il_inst *cmd) {
