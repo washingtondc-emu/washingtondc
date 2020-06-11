@@ -38,8 +38,6 @@
 
 static unsigned win_width, win_height;
 
-static struct washdc_overlay_intf const *overlay_intf;
-
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
 static void gfx_do_init(struct rend_if const * rend_if);
 
@@ -59,8 +57,4 @@ static void gfx_do_init(struct rend_if const * rend_if) {
     win_make_context_current();
 
     rend_init(rend_if);
-}
-
-void gfx_set_overlay_intf(struct washdc_overlay_intf const *intf) {
-    overlay_intf = intf;
 }

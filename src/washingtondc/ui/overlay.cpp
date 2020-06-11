@@ -56,7 +56,6 @@
 // see main.cpp
 extern struct washdc_gameconsole const *console;
 
-static double framerate, virt_framerate;
 static bool not_hidden;
 static bool en_perf_win = true;
 static bool en_demo_win = false;
@@ -313,6 +312,9 @@ static void overlay::show_perf_win(void) {
 
     struct washdc_pvr2_stat stat;
     washdc_get_pvr2_stat(&stat);
+
+    double framerate = washdc_get_fps();
+    double virt_framerate = washdc_get_virt_fps();
 
     double framerate_ratio = framerate / virt_framerate;
     if (!washdc_is_paused()) {
@@ -610,14 +612,6 @@ static void overlay::show_tex_cache_win(void) {
 
     ImGui::EndChild();
     ImGui::End();
-}
-
-void overlay::set_fps(double fps) {
-    framerate = fps;
-}
-
-void overlay::set_virt_fps(double fps) {
-    virt_framerate = fps;
 }
 
 void overlay::init(bool enable_debugger) {

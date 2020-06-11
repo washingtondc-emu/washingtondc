@@ -37,6 +37,4 @@ struct rend_if;
 void gfx_init(struct rend_if const * rend_if, unsigned width, unsigned height);
 void gfx_cleanup(void);
 
-void gfx_set_overlay_intf(struct washdc_overlay_intf const *intf);
-
 #endif

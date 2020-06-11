@@ -95,8 +95,6 @@ static void print_usage(char const *cmd) {
             "(default)\n");
 }
 
-struct washdc_overlay_intf overlay_intf;
-
 struct washdc_gameconsole const *console;
 
 static void wizard(path_string console_name, path_string dc_bios_path,
@@ -428,12 +426,6 @@ int main(int argc, char **argv) {
     snd_intf.submit_samples = sound::submit_samples;
 
     settings.sndsrv = &snd_intf;
-
-    overlay_intf.overlay_draw = overlay::draw;
-    overlay_intf.overlay_set_fps = overlay::set_fps;
-    overlay_intf.overlay_set_virt_fps = overlay::set_virt_fps;
-
-    settings.overlay_intf = &overlay_intf;
 
     settings.gfx_rend_if = &opengl_rend_if;
 

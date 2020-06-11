@@ -161,6 +161,8 @@ static bool run_to_next_arm7_event(void *ctxt);
 
 static int lmmode0, lmmode1;
 
+static double dc_framerate, dc_virt_framerate;
+
 #ifdef ENABLE_JIT_X86_64
 static bool run_to_next_sh4_event_jit_native(void *ctxt);
 #endif
@@ -207,7 +209,6 @@ void washdc_dump_main_memory(char const *path) {
 static void periodic_event_handler(struct SchedEvent *event);
 static struct SchedEvent periodic_event;
 
-static struct washdc_overlay_intf const *overlay_intf;
 static struct debug_frontend const *dbg_intf;
 static struct serial_server_intf const *sersrv;
 
@@ -480,7 +481,6 @@ static struct washdc_gameconsole dccons = {
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
                struct rend_if const *gfx_if,
-               struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,
                struct washdc_sound_intf const *snd_intf,
@@ -489,7 +489,6 @@ dreamcast_init(char const *gdi_path,
 
     frame_count = 0;
 
-    overlay_intf = overlay_intf_fns;
     dbg_intf = dbg_frontend;
     sersrv = ser_intf;
 
@@ -1322,18 +1321,22 @@ void dc_end_frame(void) {
 
     last_frame_realtime = timestamp;
     last_frame_virttime = virt_timestamp;
-    if (overlay_intf) {
-        if (overlay_intf->overlay_set_fps)
-            overlay_intf->overlay_set_fps(framerate);
-        if (overlay_intf->overlay_set_virt_fps)
-            overlay_intf->overlay_set_virt_fps(virt_framerate);
-    }
+    dc_framerate = framerate;
+    dc_virt_framerate = virt_framerate;
 
     title_set_fps_internal(virt_framerate);
 
     win_update_title();
     framebuffer_render(&dc_pvr2);
     win_check_events();
+}
+
+double dc_get_fps(void) {
+    return dc_framerate;
+}
+
+double dc_get_virt_fps(void) {
+    return dc_virt_framerate;
 }
 
 void dc_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,

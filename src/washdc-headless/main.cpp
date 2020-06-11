@@ -60,7 +60,6 @@ wizard(path_string console_name, path_string dc_bios_path,
        path_string dc_flash_path);
 
 static struct washdc_hostfile_api hostfile_api;
-struct washdc_overlay_intf overlay_intf;
 static struct washdc_sound_intf snd_intf;
 static struct win_intf null_win_intf;
 

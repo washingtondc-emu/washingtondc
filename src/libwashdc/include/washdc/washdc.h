@@ -69,21 +69,6 @@ enum washdc_boot_mode {
 
 struct win_intf;
 
-/*
- * functions for drawing an overlay on top of the emulator output.
- * The overlay must use the same graphics API as the gfx backend (which so far
- * is always OpenGL).
- *
- * TODO: I really want to port the entire gfx renderer over from libwashdc into
- * the frontend, but that would take a while and I have other more pressing
- * things to work on now.
- */
-struct washdc_overlay_intf {
-    void (*overlay_draw)(void);
-    void (*overlay_set_fps)(double fps);
-    void (*overlay_set_virt_fps)(double fps);
-};
-
 struct washdc_launch_settings {
     char const *path_ip_bin;
     char const *path_1st_read_bin;
@@ -96,7 +81,6 @@ struct washdc_launch_settings {
     struct washdc_hostfile_api const *hostfile_api;
 
     struct win_intf const *win_intf;
-    struct washdc_overlay_intf const *overlay_intf;
 
     // only valid if dbg_enable is true
     struct debug_frontend const *dbg_intf;
@@ -296,6 +280,9 @@ bool washdc_is_paused(void);
 void washdc_run_one_frame(void);
 
 unsigned washdc_get_frame_count(void);
+
+double washdc_get_fps(void);
+double washdc_get_virt_fps(void);
 
 #ifdef __cplusplus
 }

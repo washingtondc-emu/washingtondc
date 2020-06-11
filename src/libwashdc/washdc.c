@@ -75,13 +75,12 @@ washdc_init(struct washdc_launch_settings const *settings) {
     config_set_dc_path_rtc(settings->path_rtc);
 
     win_set_intf(settings->win_intf);
-    gfx_set_overlay_intf(settings->overlay_intf);
 
     hostfile_api = settings->hostfile_api;
 
     return dreamcast_init(settings->path_gdi,
                           settings->gfx_rend_if,
-                          settings->overlay_intf, settings->dbg_intf,
+                          settings->dbg_intf,
                           settings->sersrv, settings->sndsrv,
                           settings->write_to_flash);
 }
@@ -300,4 +299,12 @@ enum washdc_controller_tp washdc_controller_type(unsigned port_no) {
             return WASHDC_CONTROLLER_TP_DREAMCAST_KEYBOARD;
     }
     return WASHDC_CONTROLLER_TP_NONE;
+}
+
+double washdc_get_fps(void) {
+    return dc_get_fps();
+}
+
+double washdc_get_virt_fps(void) {
+    return dc_get_virt_fps();
 }

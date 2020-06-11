@@ -36,8 +36,6 @@ namespace overlay {
     void draw(void);
     void update(void);
     void show(bool do_show);
-    void set_fps(double fps);
-    void set_virt_fps(double fps);
     void input_text(unsigned codepoint);
 }
 

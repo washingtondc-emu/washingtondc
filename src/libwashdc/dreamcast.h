@@ -51,13 +51,11 @@ extern struct dc_clock sh4_clock;
  * win_width and win_height are window dimensions
  * cmd_session should be true if the remote command prompt is enabled.
  */
-struct washdc_overlay_intf;
 struct washdc_sound_intf;
 
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
                struct rend_if const *gfx_if,
-               struct washdc_overlay_intf const *overlay_intf_fns,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,
                struct washdc_sound_intf const *snd_intf,
@@ -127,8 +125,6 @@ enum dc_boot_mode {
     DC_BOOT_DIRECT
 };
 
-void dc_toggle_overlay(void);
-
 void dc_request_frame_stop(void);
 
 dc_cycle_stamp_t
@@ -178,4 +174,8 @@ void dc_keyboard_press_special(unsigned port_no,
                                enum washdc_keyboard_special_keys which);
 void dc_keyboard_release_special(unsigned port_no,
                                  enum washdc_keyboard_special_keys which);
+
+double dc_get_fps(void);
+double dc_get_virt_fps(void);
+
 #endif
