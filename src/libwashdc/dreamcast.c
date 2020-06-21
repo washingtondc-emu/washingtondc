@@ -77,7 +77,6 @@
 #include "title.h"
 #include "washdc/config_file.h"
 #include "mount.h"
-#include "cdi.h"
 #include "gdi.h"
 #include "washdc/win.h"
 #include "washdc/sound_intf.h"
@@ -499,10 +498,7 @@ dreamcast_init(char const *gdi_path,
 
     if (gdi_path) {
         char const *ext = strrchr(gdi_path, '.');
-        if (ext && strcmp(ext, ".cdi") == 0) // TODO: case-sensitive
-            mount_cdi(gdi_path);
-        else
-            mount_gdi(gdi_path);
+        mount_gdi(gdi_path);
         if (mount_get_meta(&content_meta) == 0) {
             // dump meta to stdout and set the window title to the game title
             title_content = content_meta.title;

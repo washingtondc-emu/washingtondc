@@ -159,10 +159,6 @@ GNU Lesser General Public License (LGPL).  The GNU LGPL allows licensees to
 optionally accept code under the terms of the GPL instead; I have chosen to do
 that and accept it under the terms of the GNU GPL version 3.
 
-Code to read .cdi images in src/libwashdc/cdi.c was copied from lxdream by
-Nathan Keynes.  This code is licensed under the terms of GNU GPL version 2 or
-greater.
-
 ## CONTACT
 You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
 
