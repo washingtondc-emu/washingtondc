@@ -1,33 +1,31 @@
 /*
- * Copyright (c) 2001-2003 The FFmpeg project
+ * Copyright 2020 snickerbockers
+ * snickerbockers@washemu.org
  *
- * first version by Francois Revol (revol@free.fr)
- * fringe ADPCM codecs (e.g., DK3, DK4, Westwood)
- *   by Mike Melanson (melanson@pcisys.net)
- * CD-ROM XA ADPCM codec by BERO
- * EA ADPCM decoder by Robin Kay (komadori@myrealbox.com)
- * EA ADPCM R1/R2/R3 decoder by Peter Ross (pross@xvid.org)
- * EA IMA EACS decoder by Peter Ross (pross@xvid.org)
- * EA IMA SEAD decoder by Peter Ross (pross@xvid.org)
- * EA ADPCM XAS decoder by Peter Ross (pross@xvid.org)
- * MAXIS EA ADPCM decoder by Robert Marston (rmarston@gmail.com)
- * THP ADPCM decoder by Marco Gerards (mgerards@xs4all.nl)
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This file is part of FFmpeg.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
  *
- * FFmpeg is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
  *
- * FFmpeg is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with FFmpeg; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
+ * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef AICA_ADPCM_H_
@@ -37,32 +35,32 @@
 
 #include "aica.h"
 
-static const int16_t ff_adpcm_yamaha_indexscale[] = {
-    230, 230, 230, 230, 307, 409, 512, 614,
-    230, 230, 230, 230, 307, 409, 512, 614
-};
-
-static const int8_t ff_adpcm_yamaha_difflookup[] = {
-     1,  3,  5,  7,  9,  11,  13,  15,
-    -1, -3, -5, -7, -9, -11, -13, -15
-};
-
 static inline int32_t adpcm_yamaha_expand_nibble(struct aica_chan *c, uint8_t nibble)
 {
-    if(!c->step) {
-        c->predictor = 0;
-        c->step = 127;
-    }
+    /*
+     * TODO: support for Yamaha's ADPCM audio format goes here.
+     *
+     * This is used in several games and also the dreamcast's boot animation.
+     * This doesn't seem like too complicated of a sound format, but I was
+     * never able to find any docs explaining exactly *how* it works so the only option
+     * was to copy over code from another open-source project.  There are a few
+     * magic numbers involved so I suspect that there's a document somewhere
+     * that explains it all but I've never been able to find it.
+     *
+     * Previously this file contained LGPL-licensed code from FFMPEG.  since this is
+     * obviously not compatible with the BSD re-licensing I've had to remove it and
+     * replace it with this stub which does nothing.
+     *
+     * MAME, Reicast, and older versions of redream from back when it was
+     * MIT-licensed ought to have implementations which can be put in here
+     * without violating their licenses.
+     *
+     * Back when it had FFMPEG code this function was less than 20 lines long,
+     * so It's really not that hard to implement, I just never knew where the
+     * math was coming from which is why I couldn't do it myself.
+     */
 
-    c->predictor += (c->step * ff_adpcm_yamaha_difflookup[nibble]) / 8;
-    c->step = (c->step * ff_adpcm_yamaha_indexscale[nibble]) >> 8;
-
-    if (c->step < 127)
-        c->step = 127;
-    else if (c->step > 24576)
-        c->step = 24576;
-
-    return c->predictor;
+    return 0;
 }
 
 #endif

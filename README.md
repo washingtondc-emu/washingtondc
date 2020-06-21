@@ -8,8 +8,19 @@ snickerbockers@washemu.org
 
 Discord Server: https://discord.gg/2vmxMCd
 
-WashingtonDC is an open-source SEGA Dreamcast emulator for Linux.  It's still at
-an early stage of development; it's able to play several dozen Dreamcast games.
+WashingtonDC is an open-source SEGA Dreamcast emulator for Linux and
+Microsoft Windows.
+
+## NOTE ON AUDIO
+there is currently no support for Yamaha's ADPCM audio format, which causes
+sound to sometimes not play.  This is due to the on-going BSD re-licensing;
+previously I was using LGPL-licensed source code which I do not own.
+
+The ADPCM code needs to be inserted into adpcm_yamaha_expand_nibble in
+src/libwashdc/hw/aica/adpcm.h .
+
+Also I never got CDDA implemented, and the AICA emulation kinda sucks in
+general...
 
 ## COMPILING
 ```
@@ -152,12 +163,6 @@ external/glew/LICENSE.txt.
 WashingtonDC uses the imgui library.  This software is included via a git
 submodule.  The license for this software can be found at
 external/imgui/LICENSE.txt.
-
-Some code from FFmpeg was used to implement Yamaha's ADPCM format.  This code is
-part of the FFmpeg library and is licensed under version 2.1 or greater of the
-GNU Lesser General Public License (LGPL).  The GNU LGPL allows licensees to
-optionally accept code under the terms of the GPL instead; I have chosen to do
-that and accept it under the terms of the GNU GPL version 3.
 
 ## CONTACT
 You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
