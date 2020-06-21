@@ -1,7 +1,5 @@
 ![WashingtonDC](media/washingtondc_logo_640x320.png)
 
-![GPLv3](media/gplv3-with-text-84x42.png)
-
 http://washemu.org
 
 snickerbockers@washemu.org
@@ -126,8 +124,8 @@ direct-boot a homebrew program (requires a system call table dump):
 src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -u 1st_read.bin
 ```
 ## LICENSE
-WashingtonDC is licensed under the terms of the GNU GPLv3.  The terms of this
-license can be found in COPYING.
+WashingtonDC is licensed under the terms of the 3-clause BSD license.  The
+terms of this license can be found in LICENSE.
 
 WashingtonDC also makes use of several third-party libraries available under
 various different licenses.
@@ -169,4 +167,4 @@ You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
 
 I'm also @sbockers on twitter if you can tolerate my lame sense of humor.
 
-WashingtonDC's official website (such as it is) can be found at http://snickerbockers.github.io.
+WashingtonDC's official website (such as it is) can be found at http://www.washemu.org.
