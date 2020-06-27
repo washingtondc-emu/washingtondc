@@ -1288,7 +1288,7 @@ static void suspend_loop(void) {
              * TODO: sleep on a pthread condition or something instead of
              * polling.
              */
-            washdc_sleep_ms(1000 * 1000 / 60);
+            washdc_sleep_ms(1000 / 60);
         } while (dc_emu_thread_is_running() &&
                  ((cur_state = dc_get_state()) == DC_STATE_SUSPEND));
     }
