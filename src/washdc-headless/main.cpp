@@ -79,6 +79,7 @@ struct washdc_gameconsole const *console;
 static void null_win_init(unsigned width, unsigned height);
 static void null_win_cleanup();
 static void null_win_check_events(void);
+static void null_win_run_once_on_suspend(void);
 static void null_win_update(void);
 static void null_win_make_context_current(void);
 static int null_win_get_width(void);
@@ -334,6 +335,7 @@ int main(int argc, char **argv) {
     null_win_intf.init = null_win_init;
     null_win_intf.cleanup = null_win_cleanup;
     null_win_intf.check_events = null_win_check_events;
+    null_win_intf.run_once_on_suspend = null_win_run_once_on_suspend;
     null_win_intf.update = null_win_update;
     null_win_intf.make_context_current = null_win_make_context_current;
     null_win_intf.update_title = null_win_update_title;
@@ -493,6 +495,9 @@ static void null_win_cleanup() {
 }
 
 static void null_win_check_events(void) {
+}
+
+static void null_win_run_once_on_suspend(void) {
 }
 
 static void null_win_update(void) {

@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2019 snickerbockers
+ * Copyright 2019, 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -42,6 +42,7 @@ struct win_intf {
     void (*init)(unsigned width, unsigned height);
     void (*cleanup)(void);
     void (*check_events)(void);
+    void (*run_once_on_suspend)(void);
     void (*update)(void);
     void (*make_context_current)(void);
     void (*update_title)(void);
@@ -54,6 +55,7 @@ void win_set_intf(struct win_intf const *intf);
 void win_init(unsigned width, unsigned height);
 void win_cleanup();
 void win_check_events(void);
+void win_run_once_on_suspend(void);
 void win_update(void);
 void win_make_context_current(void);
 void win_update_title(void);

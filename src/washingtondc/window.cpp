@@ -52,6 +52,7 @@
 static void win_glfw_init(unsigned width, unsigned height);
 static void win_glfw_cleanup();
 static void win_glfw_check_events(void);
+static void win_glfw_run_once_on_suspend(void);
 static void win_glfw_make_context_current(void);
 static void win_glfw_update_title(void);
 int win_glfw_get_width(void);
@@ -96,6 +97,7 @@ struct win_intf const* get_win_intf_glfw(void) {
     win_intf_glfw.init = win_glfw_init;
     win_intf_glfw.cleanup = win_glfw_cleanup;
     win_intf_glfw.check_events = win_glfw_check_events;
+    win_intf_glfw.run_once_on_suspend = win_glfw_run_once_on_suspend;
     win_intf_glfw.update = win_glfw_update;
     win_intf_glfw.make_context_current = win_glfw_make_context_current;
     win_intf_glfw.get_width = win_glfw_get_width;
@@ -645,6 +647,11 @@ static void win_glfw_check_events(void) {
 
     if (glfwWindowShouldClose(win))
         washdc_kill();
+}
+
+static void win_glfw_run_once_on_suspend(void) {
+    win_glfw_check_events();
+    do_redraw();
 }
 
 void win_glfw_update() {

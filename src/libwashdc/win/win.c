@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2019 snickerbockers
+ * Copyright 2019, 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -49,6 +49,10 @@ void win_cleanup() {
 
 void win_check_events(void) {
     win_intf->check_events();
+}
+
+void win_run_once_on_suspend(void) {
+    win_intf->run_once_on_suspend();
 }
 
 void win_update(void) {
