@@ -578,14 +578,14 @@ void opengl_renderer_update_tex(unsigned tex_obj) {
         free(tex_dat_conv);
     } else if (tex->tex_fmt == GFX_TEX_FMT_YUV_422) {
         uint8_t *tmp_dat =
-            (uint8_t*)malloc(sizeof(uint8_t) * 3 * tex_w * tex_h);
+            (uint8_t*)malloc(sizeof(uint8_t) * 4 * tex_w * tex_h);
         if (!tmp_dat)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
-        washdc_conv_yuv422_rgb888(tmp_dat, tex_dat, tex_w, tex_h);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex_w, tex_h, 0,
-                     GL_RGB, GL_UNSIGNED_BYTE, tmp_dat);
+        washdc_conv_yuv422_rgba8888(tmp_dat, tex_dat, tex_w, tex_h);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_w, tex_h, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, tmp_dat);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
-        opengl_renderer_tex_set_format(tex->obj_handle, GL_RGB);
+        opengl_renderer_tex_set_format(tex->obj_handle, GL_RGBA);
         opengl_renderer_tex_set_dat_type(tex->obj_handle, GL_UNSIGNED_BYTE);
         opengl_renderer_tex_set_dirty(tex->obj_handle, false);
         free(tmp_dat);

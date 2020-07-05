@@ -485,13 +485,12 @@ overlay::update_tex_cache_ent(struct washdc_texinfo *texinfo,
         fmt = GL_RGBA;
         break;
     case WASHDC_TEX_FMT_YUV_422:
-        fmt = GL_RGB;
-        n_colors = 3;
+        n_colors = 4;
         pvr2_pix_size = 3;
         dat_conv.resize(n_colors * tex_w * tex_h);
-        washdc_conv_yuv422_rgb888(dat_conv.data(), dat, tex_w, tex_h);
+        washdc_conv_yuv422_rgba8888(dat_conv.data(), dat, tex_w, tex_h);
         dat = dat_conv.data();
-        fmt = GL_RGB;
+        fmt = GL_RGBA;
         break;
     default:
         glBindTexture(GL_TEXTURE_2D, 0);

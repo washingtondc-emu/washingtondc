@@ -31,6 +31,8 @@
  *
  ******************************************************************************/
 
+#include <stdint.h>
+
 #include "washdc/pix_conv.h"
 
 // pix_conv.c: The future home of all texture and pixel conversion functions
@@ -41,72 +43,84 @@
  * https://en.wikipedia.org/wiki/YUV#Y′UV444_to_RGB888_conversion
  */
 static void
-washdc_yuv_to_rgb_2pixels(uint8_t *rgb_out, unsigned lum1, unsigned lum2,
+washdc_yuv_to_rgba_2pixels(uint8_t *rgba_out, int lum1, int lum2,
                           int chrom_b, int chrom_r) {
     int adds[3] = {
         (0x166e8 * chrom_r) >> 16,
         (0x5810 * chrom_b + 0xb6c8 * chrom_r) >> 16,
         (0x1c5a0 * chrom_b) >> 16
     };
-    int rgb[6] = {
+    int rgba[8] = {
         lum1 + adds[0],
         lum1 + adds[1],
         lum1 + adds[2],
+        255,
         lum2 + adds[0],
         lum2 + adds[1],
-        lum2 + adds[2]
+        lum2 + adds[2],
+        255
     };
 
-    if (rgb[0] < 0)
-        rgb[0] = 0;
-    else if (rgb[0] > 255)
-        rgb[0] = 255;
-    if (rgb[1] < 0)
-        rgb[1] = 0;
-    else if (rgb[1] > 255)
-        rgb[1] = 255;
-    if (rgb[2] < 0)
-        rgb[2] = 0;
-    else if (rgb[2] > 255)
-        rgb[2] = 255;
-    if (rgb[3] < 0)
-        rgb[3] = 0;
-    else if (rgb[3] > 255)
-        rgb[3] = 255;
-    if (rgb[4] < 0)
-        rgb[4] = 0;
-    else if (rgb[4] > 255)
-        rgb[4] = 255;
-    if (rgb[5] < 0)
-        rgb[5] = 0;
-    else if (rgb[5] > 255)
-        rgb[5] = 255;
+    if (rgba[0] < 0)
+        rgba[0] = 0;
+    else if (rgba[0] > 255)
+        rgba[0] = 255;
+    if (rgba[1] < 0)
+        rgba[1] = 0;
+    else if (rgba[1] > 255)
+        rgba[1] = 255;
+    if (rgba[2] < 0)
+        rgba[2] = 0;
+    else if (rgba[2] > 255)
+        rgba[2] = 255;
+    if (rgba[3] < 0)
+        rgba[3] = 0;
+    else if (rgba[3] > 255)
+        rgba[3] = 255;
+    if (rgba[4] < 0)
+        rgba[4] = 0;
+    else if (rgba[4] > 255)
+        rgba[4] = 255;
+    if (rgba[5] < 0)
+        rgba[5] = 0;
+    else if (rgba[5] > 255)
+        rgba[5] = 255;
+    if (rgba[6] < 0)
+        rgba[6] = 0;
+    else if (rgba[6] > 255)
+        rgba[6] = 255;
+    if (rgba[7] < 0)
+        rgba[7] = 0;
+    else if (rgba[7] > 255)
+        rgba[7] = 255;
 
-    rgb_out[0] = (uint8_t)rgb[0];
-    rgb_out[1] = (uint8_t)rgb[1];
-    rgb_out[2] = (uint8_t)rgb[2];
-    rgb_out[3] = (uint8_t)rgb[3];
-    rgb_out[4] = (uint8_t)rgb[4];
-    rgb_out[5] = (uint8_t)rgb[5];
+    rgba_out[0] = (uint8_t)rgba[0];
+    rgba_out[1] = (uint8_t)rgba[1];
+    rgba_out[2] = (uint8_t)rgba[2];
+    rgba_out[3] = (uint8_t)rgba[3];
+    rgba_out[4] = (uint8_t)rgba[4];
+    rgba_out[5] = (uint8_t)rgba[5];
+    rgba_out[6] = (uint8_t)rgba[6];
+    rgba_out[7] = (uint8_t)rgba[7];
 }
 
-void washdc_conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
-                               unsigned width, unsigned height) {
-    uint8_t *rgbp = (uint8_t*)rgb_out;
+void washdc_conv_yuv422_rgba8888(void *rgba_out, void const* yuv_in,
+                                 unsigned width, unsigned height) {
+    uint8_t *rgbap = (uint8_t*)rgba_out;
     uint32_t const *tex_in = (uint32_t const *)yuv_in;
     unsigned half_width = width / 2;
 
     unsigned col, row;
-    for (col = 0; col < half_width; col++) {
-        for (row = 0; row < height; row++) {
-            uint8_t *outp = 3 * (row * width + col * 2) + rgbp;
-            uint32_t in = tex_in[row * half_width + col];
+    for (row = 0; row < height; row++) {
+        for (col = 0; col < half_width; col++) {
+            uint32_t in = *tex_in++;
             unsigned lum[2] = { (in >> 8) & 0xff, (in >> 24) & 0xff };
             int chrom_b = in & 0xff;
             int chrom_r = (in >> 16) & 0xff;
 
-            washdc_yuv_to_rgb_2pixels(outp, lum[0], lum[1],
-                                      chrom_b - 128, chrom_r - 128);
+            washdc_yuv_to_rgba_2pixels(rgbap, lum[0], lum[1],
+                                       chrom_b - 128, chrom_r - 128);
+            rgbap += 8;
         }
     }
 }

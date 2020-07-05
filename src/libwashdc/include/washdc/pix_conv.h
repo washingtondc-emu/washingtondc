@@ -34,14 +34,12 @@
 #ifndef WASHDC_PIX_CONV_H_
 #define WASHDC_PIX_CONV_H_
 
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void washdc_conv_yuv422_rgb888(void *rgb_out, void const* yuv_in,
-                               unsigned width, unsigned height);
+void washdc_conv_yuv422_rgba8888(void *rgba_out, void const* yuv_in,
+                                 unsigned width, unsigned height);
 
 #ifdef __cplusplus
 }
