@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2018 snickerbockers
+ * Copyright 2018-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,18 +37,13 @@
 
 // pix_conv.c: The future home of all texture and pixel conversion functions
 
-/*
- * converts a given YUV value pair to two 24-bit RGB pixels
- * The source for these values is the wikipedia article on YUV:
- * https://en.wikipedia.org/wiki/YUV#Y′UV444_to_RGB888_conversion
- */
 static void
 washdc_yuv_to_rgba_2pixels(uint8_t *rgba_out, int lum1, int lum2,
                           int chrom_b, int chrom_r) {
     int adds[3] = {
-        (0x166e8 * chrom_r) >> 16,
-        (0x5810 * chrom_b + 0xb6c8 * chrom_r) >> 16,
-        (0x1c5a0 * chrom_b) >> 16
+        (0x16000  * chrom_r) >> 16,
+        -((0x5800 * chrom_b + 0xb000 * chrom_r) >> 16),
+        (0x1b800 * chrom_b) >> 16
     };
     int rgba[8] = {
         lum1 + adds[0],
