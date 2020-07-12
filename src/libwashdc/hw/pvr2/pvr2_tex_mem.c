@@ -386,6 +386,22 @@ void pvr2_tex_mem_64bit_write_raw(struct pvr2 *pvr2,
     }
 }
 
+void pvr2_tex_mem_64bit_write_dwords(struct pvr2 *pvr2,
+                                     uint32_t addr, uint32_t const *srcp,
+                                     unsigned n_dwords) {
+    unsigned n_bytes = 4 * n_dwords;
+    if (addr + (n_bytes - 1) >= PVR2_TEX64_MEM_LEN) {
+        error_set_address(addr);
+        error_set_length(n_bytes);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    while (n_dwords--) {
+        pvr2_tex_mem_64bit_write32(pvr2, addr, *srcp++);
+        addr += sizeof(uint32_t);
+    }
+}
+
 void
 pvr2_tex_mem_64bit_write_double(struct pvr2 *pvr2,
                                 unsigned addr, double val) {

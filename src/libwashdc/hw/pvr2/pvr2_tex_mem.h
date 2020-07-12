@@ -129,6 +129,9 @@ void pvr2_tex_mem_64bit_read_raw(struct pvr2 *pvr2,
 void pvr2_tex_mem_64bit_write_raw(struct pvr2 *pvr2,
                                   uint32_t addr, void const *srcp,
                                   unsigned n_bytes);
+void pvr2_tex_mem_64bit_write_dwords(struct pvr2 *pvr2,
+                                     uint32_t addr, uint32_t const *srcp,
+                                     unsigned n_dwords);
 void
 pvr2_tex_mem_64bit_write_double(struct pvr2 *pvr2,
                                 unsigned addr, double val);
