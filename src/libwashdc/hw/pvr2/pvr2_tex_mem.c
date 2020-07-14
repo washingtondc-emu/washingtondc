@@ -365,6 +365,24 @@ void pvr2_tex_mem_64bit_read_raw(struct pvr2 *pvr2,
     }
 }
 
+void
+pvr2_tex_mem_64bit_read_dwords(struct pvr2 *pvr2,
+                               uint32_t *dstp, uint32_t addr,
+                               unsigned n_dwords) {
+    unsigned n_bytes = 4 * n_dwords;
+    if (addr + (n_bytes - 1) >= PVR2_TEX64_MEM_LEN) {
+        error_set_address(addr);
+        error_set_length(n_bytes);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    while (n_dwords--) {
+        *dstp++ = pvr2_tex_mem_64bit_read32(pvr2, addr);
+        addr += 4;
+    }
+}
+
+
 void pvr2_tex_mem_64bit_write_raw(struct pvr2 *pvr2,
                                   uint32_t addr, void const *srcp,
                                   unsigned n_bytes) {
@@ -398,7 +416,7 @@ void pvr2_tex_mem_64bit_write_dwords(struct pvr2 *pvr2,
 
     while (n_dwords--) {
         pvr2_tex_mem_64bit_write32(pvr2, addr, *srcp++);
-        addr += sizeof(uint32_t);
+        addr += 4;
     }
 }
 

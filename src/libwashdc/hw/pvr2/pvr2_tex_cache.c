@@ -586,6 +586,26 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
                          struct pvr2_tex_meta const *meta) {
     unsigned tex_w = meta->linestride, tex_h = 1 << meta->h_shift;
 
+    if (tex_w % 8 || tex_h % 8) {
+        /*
+         * there are two ways to specify a texture width: either as a
+         * power-of-two greater than or equal to 8 (most common), or as a
+         * multiple of 32 (usually only used for pre-rendered FMV videos and
+         * sometimes homebrews that emulate a framebuffer).
+         *
+         * Either way, the texture width should be a multiple of 8.
+         *
+         * Texture height can only be specified as a power-of-two greater than
+         * or equal to 8 so it also should be a multiple of 8.
+         *
+         * this is important because some of the code below assumes that the
+         * total size of the texture is a multiple of 4 bytes..
+         */
+        error_set_width(tex_w);
+        error_set_height(tex_h);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
     // TODO: better error-handling
     if ((ADDR_TEX64_LAST - ADDR_TEX64_FIRST + 1) <=
         (meta->addr_last - meta->addr_first + 1)) {
@@ -718,9 +738,14 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
                                pixel_sizes[meta->tex_fmt]);
         }
     } else {
-        size_t idx;
-        for (idx = 0; idx < n_bytes; idx++)
-            tex_dat[idx] = pvr2_tex_mem_64bit_read8(pvr2, beg_addr + idx);
+#ifdef INVARIANTS
+        if (n_bytes % 4) {
+            error_set_length(n_bytes);
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+#endif
+
+        pvr2_tex_mem_64bit_read_dwords(pvr2, tex_dat, beg_addr, n_bytes / 4);
     }
 
     if (meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {

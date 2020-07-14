@@ -52,8 +52,6 @@
 
 #include "framebuffer.h"
 
-static DEF_ERROR_INT_ATTR(width)
-static DEF_ERROR_INT_ATTR(height)
 static DEF_ERROR_INT_ATTR(fb_pix_fmt)
 
 enum fb_state {

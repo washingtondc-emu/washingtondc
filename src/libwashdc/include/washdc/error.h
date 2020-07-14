@@ -247,6 +247,9 @@ ERROR_U32_ATTR(address);
 
 ERROR_INT_ATTR(length);
 
+ERROR_INT_ATTR(width);
+ERROR_INT_ATTR(height);
+
 ERROR_U32_ATTR(value);
 
 ERROR_INT_ATTR(errno_val);
