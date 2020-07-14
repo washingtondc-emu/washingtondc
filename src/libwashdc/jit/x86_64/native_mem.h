@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2018, 2019 snickerbockers
+ * Copyright 2018-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,6 +55,8 @@ void native_mem_read_float(struct code_block_x86_64 *blk,
                            struct memory_map const *map);
 void native_mem_write_8(struct code_block_x86_64 *blk,
                         struct memory_map const *map);
+void native_mem_write_16(struct code_block_x86_64 *blk,
+                         struct memory_map const *map);
 void native_mem_write_32(struct code_block_x86_64 *blk,
                          struct memory_map const *map);
 void native_mem_write_float(struct code_block_x86_64 *blk,

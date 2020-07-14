@@ -128,6 +128,12 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                immed->write_8_slot.src_slot,
                                immed->write_8_slot.addr_slot);
         break;
+    case JIT_OP_WRITE_16_SLOT:
+        washdc_hostfile_printf(out, "%02X: WRITE_16_SLOT <SLOT %02X>, "
+                               "*(U16*)<SLOT %02X>\n", idx,
+                               immed->write_16_slot.src_slot,
+                               immed->write_16_slot.addr_slot);
+        break;
     case JIT_OP_WRITE_32_SLOT:
         washdc_hostfile_printf(out, "%02X: WRITE_32_SLOT <SLOT %02X>, "
                                "*(U32*)<SLOT %02X>\n",

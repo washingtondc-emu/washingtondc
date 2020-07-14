@@ -244,6 +244,10 @@ void x86asm_movb_sib_reg(unsigned reg_base, unsigned scale,
 void x86asm_movq_reg_sib(unsigned reg_src, unsigned reg_base,
                          unsigned scale, unsigned reg_index);
 
+// movw %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
+void x86asm_movw_reg_sib(unsigned reg_src, unsigned reg_base,
+                         unsigned scale, unsigned reg_index);
+
 // movl %<reg_src>, (%<reg_base>, <scale>, %<reg_index>)
 void x86asm_movl_reg_sib(unsigned reg_src, unsigned reg_base,
                          unsigned scale, unsigned reg_index);
