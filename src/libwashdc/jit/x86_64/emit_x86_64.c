@@ -1630,3 +1630,8 @@ void x86asm_subss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
     put8(0xf3);
     emit_mod_reg_rm_2(0, 0x0f, 0x5c, 3, xmm_reg_dst, xmm_reg_src);
 }
+
+void x86asm_addss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
+    put8(0xf3);
+    emit_mod_reg_rm_2(0, 0x0f, 0x58, 3, xmm_reg_dst, xmm_reg_src);
+}

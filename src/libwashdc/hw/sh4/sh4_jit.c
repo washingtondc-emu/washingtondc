@@ -2433,21 +2433,32 @@ bool sh4_jit_fadd_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                           struct InstOpcode const *op, cpu_inst_param inst) {
     void (*handler)(void*, cpu_inst_param);
 
-    if (ctx->pr_bit)
-        handler = sh4_inst_binary_fadd_dr_dr;
-    else
-        handler = sh4_inst_binary_fadd_fr_fr;
-
     struct jit_inst il_inst;
 
-    res_drain_all_regs(sh4, ctx, block);
-    res_invalidate_all_regs(block);
+    if (ctx->pr_bit) {
+        handler = sh4_inst_binary_fadd_dr_dr;
 
-    il_inst.op = JIT_OP_FALLBACK;
-    il_inst.immed.fallback.fallback_fn = handler;
-    il_inst.immed.fallback.inst = inst;
+        res_drain_all_regs(sh4, ctx, block);
+        res_invalidate_all_regs(block);
 
-    il_code_block_push_inst(block, &il_inst);
+        il_inst.op = JIT_OP_FALLBACK;
+        il_inst.immed.fallback.fallback_fn = handler;
+        il_inst.immed.fallback.inst = inst;
+
+        il_code_block_push_inst(block, &il_inst);
+    } else {
+        unsigned fr_src_reg = ((inst >> 4) & 0xf) + SH4_REG_FR0;
+        unsigned fr_dst_reg = ((inst >> 8) & 0xf) + SH4_REG_FR0;
+
+        unsigned fr_src_slot =
+            reg_slot(sh4, ctx, block, fr_src_reg, WASHDC_JIT_SLOT_FLOAT);
+        unsigned fr_dst_slot =
+            reg_slot(sh4, ctx, block, fr_dst_reg, WASHDC_JIT_SLOT_FLOAT);
+
+        jit_add_float(block, fr_src_slot, fr_dst_slot);
+
+        reg_map[fr_dst_reg].stat = REG_STATUS_SLOT;
+    }
 
     return true;
 }

@@ -207,6 +207,10 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
         washdc_hostfile_printf(out, "%02X: SUB_FLOAT <SLOT %02X>, <SLOT %02X>\n",
                                idx, immed->sub_float.slot_src, immed->sub_float.slot_dst);
         break;
+    case JIT_OP_ADD_FLOAT:
+        washdc_hostfile_printf(out, "%02X: ADD_FLOAT <SLOT %02X>, <SLOT %02X>\n",
+                               idx, immed->add_float.slot_src, immed->add_float.slot_dst);
+        break;
     case JIT_OP_ADD_CONST32:
         washdc_hostfile_printf(out, "%02X: ADD_CONST32 %08X, <SLOT %02X>\n",
                                idx,

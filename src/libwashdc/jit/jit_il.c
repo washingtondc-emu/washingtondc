@@ -467,6 +467,20 @@ void jit_sub_float(struct il_code_block *block, unsigned slot_src,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_add_float(struct il_code_block *block, unsigned slot_src,
+                   unsigned slot_dst) {
+    struct jit_inst op;
+
+    check_slot(block, slot_src, WASHDC_JIT_SLOT_FLOAT);
+    check_slot(block, slot_dst, WASHDC_JIT_SLOT_FLOAT);
+
+    op.op = JIT_OP_ADD_FLOAT;
+    op.immed.add_float.slot_src = slot_src;
+    op.immed.add_float.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_add_const32(struct il_code_block *block, unsigned slot_dst,
                      uint32_t const32) {
     struct jit_inst op;
@@ -890,6 +904,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return slot_no == immed->sub.slot_src || slot_no == immed->sub.slot_dst;
     case JIT_OP_SUB_FLOAT:
         return slot_no == immed->sub_float.slot_src || slot_no == immed->sub_float.slot_dst;
+    case JIT_OP_ADD_FLOAT:
+        return slot_no == immed->add_float.slot_src || slot_no == immed->add_float.slot_dst;
     case JIT_OP_ADD_CONST32:
         return slot_no == immed->add_const32.slot_dst;
     case JIT_OP_DISCARD_SLOT:
@@ -1047,6 +1063,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         break;
     case JIT_OP_SUB_FLOAT:
         write_slots[0] = immed->sub_float.slot_dst;
+        break;
+    case JIT_OP_ADD_FLOAT:
+        write_slots[0] = immed->add_float.slot_dst;
         break;
     case JIT_OP_ADD_CONST32:
         write_slots[0] = immed->add_const32.slot_dst;

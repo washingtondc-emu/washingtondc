@@ -262,6 +262,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                 block->slots[inst->immed.sub_float.slot_src].as_float;
             inst++;
             break;
+        case JIT_OP_ADD_FLOAT:
+            block->slots[inst->immed.add_float.slot_dst].as_float +=
+                block->slots[inst->immed.add_float.slot_src].as_float;
+            inst++;
+            break;
         case JIT_OP_ADD_CONST32:
             block->slots[inst->immed.add_const32.slot_dst].as_u32 +=
                 inst->immed.add_const32.const32;

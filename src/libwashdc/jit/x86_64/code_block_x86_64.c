@@ -2063,6 +2063,23 @@ static void emit_sub_float(struct code_block_x86_64 *blk,
     ungrab_slot(slot_src);
 }
 
+static void emit_add_float(struct code_block_x86_64 *blk,
+                           struct il_code_block const *il_blk,
+                           void *cpu, struct jit_inst const *inst) {
+    unsigned slot_src = inst->immed.add_float.slot_src;
+    unsigned slot_dst = inst->immed.add_float.slot_dst;
+
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_src, 4);
+    if (slot_src != slot_dst)
+        grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_dst, 4);
+
+    x86asm_addss_xmm_xmm(slots[slot_src].reg_no, slots[slot_dst].reg_no);
+
+    if (slot_src != slot_dst)
+        ungrab_slot(slot_dst);
+    ungrab_slot(slot_src);
+}
+
 static void emit_shad(struct code_block_x86_64 *blk,
                       struct il_code_block const *il_blk,
                       void *cpu, struct jit_inst const *inst) {
@@ -2374,6 +2391,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_SUB_FLOAT:
             emit_sub_float(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_ADD_FLOAT:
+            emit_add_float(out, il_blk, cpu, inst);
             break;
         case JIT_OP_ADD_CONST32:
             emit_add_const32(out, il_blk, cpu, inst);
