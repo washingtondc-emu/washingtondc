@@ -47,6 +47,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
+#include <ctype.h>
 
 #include "config.h"
 #include "washdc/error.h"
@@ -89,6 +90,7 @@
 #include "washdc/config_file.h"
 #include "mount.h"
 #include "gdi.h"
+#include "cdi.h"
 #include "washdc/win.h"
 #include "washdc/sound_intf.h"
 #include "sound.h"
@@ -488,6 +490,15 @@ static struct washdc_gameconsole dccons = {
     .do_inject_irq = dc_inject_irq
 };
 
+static bool streq_case_insensitive(char const* str1, char const* str2) {
+    if (strlen(str1) != strlen(str2))
+        return false;
+    while (*str1 && *str2)
+        if (toupper(*str1++) != toupper(*str2++))
+            return false;
+    return true;
+}
+
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
                struct rend_if const *gfx_if,
@@ -509,7 +520,15 @@ dreamcast_init(char const *gdi_path,
 
     if (gdi_path) {
         char const *ext = strrchr(gdi_path, '.');
-        mount_gdi(gdi_path);
+        if (ext && streq_case_insensitive(ext, ".cdi"))
+            mount_cdi(gdi_path);
+        else if (ext && streq_case_insensitive(ext, ".gdi"))
+            mount_gdi(gdi_path);
+        else {
+            LOG_ERROR("Unknown file type (need either GDI or CDI)!\n");
+            exit(1);
+        }
+
         if (mount_get_meta(&content_meta) == 0) {
             // dump meta to stdout and set the window title to the game title
             title_content = content_meta.title;
