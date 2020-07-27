@@ -105,7 +105,7 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     memset(sh4->reg, 0, sizeof(sh4->reg));
     sh4_init_regs(sh4);
     sh4->reg[SH4_REG_SR] = SH4_SR_MD_MASK | SH4_SR_RB_MASK | SH4_SR_BL_MASK |
-        SH4_SR_FD_MASK | SH4_SR_IMASK_MASK;
+        SH4_SR_IMASK_MASK;
     sh4->reg[SH4_REG_VBR] = 0;
     sh4->reg[SH4_REG_PC] = 0xa0000000;
 
