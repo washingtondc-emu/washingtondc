@@ -109,7 +109,7 @@ void sh4_on_hard_reset(Sh4 *sh4) {
     sh4->reg[SH4_REG_VBR] = 0;
     sh4->reg[SH4_REG_PC] = 0xa0000000;
 
-    sh4_set_fpscr(sh4, 0x41);
+    sh4_set_fpscr(sh4, 0x40001);
 
     unsigned idx;
     for (idx = 0; idx < SH4_N_FLOAT_REGS; idx++) {
