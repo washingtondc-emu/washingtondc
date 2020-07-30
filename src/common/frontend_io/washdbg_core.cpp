@@ -262,7 +262,10 @@ void washdbg_do_help(int argc, char **argv) {
         "trans_itlb   - translate pointer using ITLB or UTLB\n"
         "trans_utlb   - translate pointer using UTLB only\n"
 #endif
-        "x            - eXamine memory address\n";
+        "x            - eXamine memory address\n"
+        "\n"
+        "to asynchronously suspend execution and return to this prompt, send a "
+        "line break\n";
 
     help_state.txt.txt = help_msg;
     help_state.txt.pos = 0;

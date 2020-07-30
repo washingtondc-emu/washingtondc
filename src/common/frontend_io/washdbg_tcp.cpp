@@ -360,12 +360,27 @@ static void handle_read(struct bufferevent *bev, void *arg) {
     bufferevent_read_buffer(bev, read_buffer);
     size_t buflen = evbuffer_get_length(read_buffer);
 
+    bool potential_break = false;
+
     size_t idx;
     unsigned read_buf_idx = 0;
     for (idx = 0; idx < buflen; idx++) {
         uint8_t tmp;
         if (evbuffer_remove(read_buffer, &tmp, sizeof(tmp)) < 0) {
             fprintf(stderr, "CMD_THREAD %s unable to remove text\n", __func__);
+            continue;
+        }
+
+        if (potential_break) {
+            if ((char)tmp == -13) {
+                printf("line break!\n");
+                debug_request_break();
+                continue;
+            } else {
+                potential_break = false;
+            }
+        } else if ((char)tmp == -1) {
+            potential_break = true;
             continue;
         }
 
