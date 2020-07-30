@@ -272,10 +272,33 @@ int sh4_get_next_irq_line(Sh4 const *sh4, struct sh4_irq_meta *irq_meta) {
 
     unsigned line;
     for (line = 0; line <= last_line; line++) {
-        unsigned ipr_reg_idx = SH4_REG_IPRA + line / 4;
-        unsigned prio_shift_amt = 4 * (line % 4);
-        unsigned mask = 0xf << prio_shift_amt;
-        int prio = (mask & sh4->reg[ipr_reg_idx]) >> prio_shift_amt;
+        int prio;
+        /*
+         * irl priorities are fixed.  Some versions of the SH4 let you
+         * configure these using the IPRD register, but not the SH7750 used in
+         * SEGA products.
+         */
+        switch (line) {
+        case SH4_IRQ_IRL3:
+            prio = 4;
+            break;
+        case SH4_IRQ_IRL2:
+            prio = 7;
+            break;
+        case SH4_IRQ_IRL1:
+            prio = 10;
+            break;
+        case SH4_IRQ_IRL0:
+            prio = 13;
+            break;
+        default:
+            {
+                unsigned ipr_reg_idx = SH4_REG_IPRA + line / 4;
+                unsigned prio_shift_amt = 4 * (line % 4);
+                unsigned mask = 0xf << prio_shift_amt;
+                prio = (mask & sh4->reg[ipr_reg_idx]) >> prio_shift_amt;
+            }
+        }
 
         /* check the sh4's interrupt mask */
         if (prio > (int)((sh4->reg[SH4_REG_SR] & SH4_SR_IMASK_MASK) >>
