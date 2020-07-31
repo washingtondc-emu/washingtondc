@@ -88,6 +88,23 @@ struct Sh4 {
     reg32_t reg[SH4_REGISTER_COUNT];
 
     /*
+     * read/write handlers for implementing the PDTRA register; this register
+     * corresponds to external I/O pins on the SH4.  The PCTRA register is
+     * used to set these pins to input or output mode.
+     *
+     * On Dreamcast, PDTRA is connected to video hardware, and is used to
+     * determine what type of video cable is being used.
+     *
+     * On Hikaru, PDTRA is used for IRQ multiplexing; when IRL 2 is raised, the
+     * IRQ handler will individually check bits 0x40, 0x80, 0x100, and 0x200
+     * (see PC=0c001748 in hikaru firmware).
+     */
+
+    uint32_t(*pdtra_read_handler)(struct Sh4 *);
+    void(*pdtra_write_handler)(struct Sh4*, uint32_t);
+
+
+    /*
      * If the CPU is executing a delayed branch instruction, then
      * delayed_branch will be true and delayed_branch_addr will point to the
      * address to branch to.  After executing one instruction, delayed_branch
@@ -407,5 +424,10 @@ static inline bool sh4_fpu_enabled(struct Sh4 const *sh4) {
 }
 
 #endif
+
+void sh4_register_pdtra_read_handler(struct Sh4 *sh4,
+                                     uint32_t(*handler)(struct Sh4*));
+void sh4_register_pdtra_write_handler(struct Sh4 *sh4,
+                                      void(*handler)(struct Sh4*, uint32_t));
 
 #endif

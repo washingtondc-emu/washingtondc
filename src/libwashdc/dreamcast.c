@@ -207,6 +207,9 @@ void washdc_dump_main_memory(char const *path) {
     }
 }
 
+static uint32_t on_pdtra_read(struct Sh4*);
+static void on_pdtra_write(struct Sh4*, uint32_t);
+
 /*
  * XXX this used to be (SCHED_FREQUENCY / 10).  Now it's (SCHED_FREQUENCY / 100)
  * because programs that use the serial port (like KallistiOS) can timeout if
@@ -694,6 +697,10 @@ dreamcast_init(char const *gdi_path,
     // hook up the irl line
     sh4_register_irl_line(&cpu, holly_intc_irl_line_fn, NULL);
 
+    // hook up pdtra read/write handlers
+    sh4_register_pdtra_read_handler(&cpu, on_pdtra_read);
+    sh4_register_pdtra_write_handler(&cpu, on_pdtra_write);
+
     memory_map_init(&mem_map);
     construct_sh4_mem_map(&cpu, &mem_map);
     sh4_set_mem_map(&cpu, &mem_map);
@@ -773,6 +780,11 @@ void dreamcast_cleanup() {
 
     memory_map_cleanup(&arm7_mem_map);
     memory_map_cleanup(&mem_map);
+
+    // disconnect PDTRA read/write handlers
+    sh4_register_pdtra_read_handler(&cpu, NULL);
+    sh4_register_pdtra_write_handler(&cpu, NULL);
+
 
     // disconnect the irl line
     sh4_register_irl_line(&cpu, NULL, NULL);
@@ -2064,6 +2076,130 @@ static struct memory_interface sh4_unmapped_mem = {
     .write16 = sh4_unmapped_write16,
     .write8 = sh4_unmapped_write8
 };
+
+static uint32_t on_pdtra_read(struct Sh4* sh4) {
+    /*
+     * HACK - prevent infinite loop during bios boot at pc=0x8c00b94e
+     * I'm not 100% sure what I'm doing here, I *think* PDTRA has something to
+     * do with the display adapter.
+     *
+     * Basically, the boot rom writes a sequence of values to PDTRA (with
+     * pctra's i/o selects toggling occasionally) and it expects a certain
+     * sequence of values when it reads back from pdtra.  I mask in the values
+     * it writes as outputs into the value of pdtra which is read back (because
+     * according to the sh4 spec, output bits can be read as inputs and they
+     * will have the value which was last written to them) and send it either 0
+     * or 3 on the input bits based on the address in the PR register.
+     * Hopefully this is good enough.
+     *
+     * If the boot rom doesn't get a value it wants to see after 10 attempts,
+     * then it branches to GBR (0x8c000000), where it will put the processor to
+     * sleep with interrupts disabled (ie forever).  Presumably this is all it
+     * can due to handle an error at such an early stage in the boot process.
+     */
+
+    /*
+     * n_pup = "not pullup"
+     * n_input = "not input"
+     */
+    uint16_t n_pup_mask = 0, n_input_mask = 0;
+    uint32_t pctra = sh4->reg[SH4_REG_PCTRA];
+
+    /* parse out the PCTRA register */
+    unsigned bit_no;
+    for (bit_no = 0; bit_no < 16; bit_no++) {
+        uint32_t n_input = (1 << (bit_no * 2) & pctra) >> (bit_no * 2);
+        uint32_t n_pup = (1 << (bit_no * 2 + 1) & pctra) >> (bit_no * 2 + 1);
+
+        n_pup_mask |= n_pup << bit_no;
+        n_input_mask |= n_input << bit_no;
+    }
+
+    /*
+     * Put the first byte to 0xe because that seems to be what it always is on
+     * real hardware.
+     */
+    uint32_t out_val = 0xe0;
+
+    out_val |= 0x0300; // hardocde cable type to composite NTSC video
+
+    /*
+     * The lower 4 bits of the output value appear to be important, but I don't
+     * know what they represent.  The below table was dumped from an NTSC-U
+     * Dreamcast connected to a TV via composite video.  If these values are
+     * wrong, then the Dreamcast firmware will hang during early bootup.
+     */
+    unsigned const tbl[16][4] = {
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 },
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x03, 0x03, 0x03, 0x03 },
+        { 0x00, 0x03, 0x00, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 },
+        { 0x00, 0x00, 0x03, 0x03 },
+        { 0x00, 0x01, 0x02, 0x03 }
+    };
+
+    out_val |= tbl[pctra & 0xf][sh4->reg[SH4_REG_PDTRA] & 3];
+
+    /*
+     * TODO:
+     * I also need to add in a way to select the TV video type in bits 4:2.  For
+     * now I leave those three bits at zero, which corresponds to NTSC.  For PAL
+     * formats, some of those bits are supposed to be non-zero.
+     *
+     * ALSO TODO: What about the upper two bytes of PDTRA?
+     */
+
+    /*
+     * Now combine this with the values previously written to PDTRA - remember
+     * that bits set to output can be read back, and that they should have the
+     * same values that were written to them.
+     */
+    out_val = (out_val & ~n_input_mask) |
+        (sh4->reg[SH4_REG_PDTRA] & n_input_mask);
+
+    /* I got my eye on you...*/
+    LOG_DBG("reading 0x%04x from register PDTRa\n", (unsigned)out_val);
+
+    return out_val;
+}
+
+static void on_pdtra_write(struct Sh4* sh4, uint32_t val) {
+    WASHDC_UNUSED sh4_reg_val val_orig = val;
+
+    /*
+     * n_pup = "not pullup"
+     * n_input = "not input"
+     */
+    uint16_t n_pup_mask = 0, n_input_mask = 0;
+    uint32_t pctra = sh4->reg[SH4_REG_PCTRA];
+
+    /* parse out the PCTRA register */
+    unsigned bit_no;
+    for (bit_no = 0; bit_no < 16; bit_no++) {
+        uint32_t n_input = (1 << (bit_no * 2) & pctra) >> (bit_no * 2);
+        uint32_t n_pup = (1 << (bit_no * 2 + 1) & pctra) >> (bit_no * 2 + 1);
+
+        n_pup_mask |= n_pup << bit_no;
+        n_input_mask |= n_input << bit_no;
+    }
+
+    /* I got my eye on you...*/
+    LOG_DBG("WARNING: writing 0x%04x to register pdtra "
+            "(attempted write was %x)\n",
+            (unsigned)val, (unsigned)val_orig);
+
+    sh4->reg[SH4_REG_PDTRA] = val;
+}
 
 /*
  * Evolution: The World of Sacred Device will attempt to read and write to

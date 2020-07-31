@@ -254,6 +254,16 @@ uint32_t sh4_pc_next(struct Sh4 *sh4) {
     return sh4->reg[SH4_REG_PC];
 }
 
+void sh4_register_pdtra_read_handler(struct Sh4 *sh4,
+                                     uint32_t(*handler)(struct Sh4*)) {
+    sh4->pdtra_read_handler = handler;
+}
+
+void sh4_register_pdtra_write_handler(struct Sh4 *sh4,
+                                      void(*handler)(struct Sh4*, uint32_t)) {
+    sh4->pdtra_write_handler = handler;
+}
+
 static DEF_ERROR_U32_ATTR(sh4_reg_sr)
 static DEF_ERROR_U32_ATTR(sh4_reg_ssr)
 static DEF_ERROR_U32_ATTR(sh4_reg_pc)
