@@ -141,6 +141,7 @@ enum washdbg_state {
     WASHDBG_STATE_CMD_ASID,
     WASHDBG_STAT_CMD_AT_MODE,
     WASHDBG_STATE_CMD_AT_MODE,
+    WASHDBG_STATE_CMD_DUMP,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -247,6 +248,7 @@ void washdbg_do_help(int argc, char **argv) {
         "bplist       - list all breakpoints\n"
         "bpset <addr> - set a breakpoint\n"
         "continue     - continue execution when suspended.\n"
+        "dump         - dump memory to disk\n"
         "echo         - echo back text\n"
         "exit         - exit the debugger and close WashingtonDC\n"
         "help         - display this message\n"
@@ -1095,6 +1097,32 @@ static void washdbg_at_mode(int argc, char **argv) {
 #endif
 }
 
+#define WASHDBG_DUMP_MODE_STR_LEN 64
+
+static struct dump_state {
+    char msg[WASHDBG_DUMP_MODE_STR_LEN];
+    struct washdbg_txt_state txt;
+} dump_state;
+
+static bool washdbg_is_dump_cmd(char const *str) {
+    return strcmp(str, "dump") == 0;
+}
+
+static void washdbg_dump(int argc, char **argv) {
+    if (argc != 2) {
+        washdbg_print_error("usage: dump path\n");
+        return;
+    }
+
+    washdc_dump_main_memory(argv[1]);
+
+    snprintf(dump_state.msg, sizeof(dump_state.msg),
+             "memory dumped\n");
+    dump_state.txt.txt = dump_state.msg;
+    dump_state.txt.pos = 0;
+    cur_state = WASHDBG_STATE_CMD_DUMP;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1165,6 +1193,10 @@ void washdbg_core_run_once(void) {
         break;
     case WASHDBG_STATE_CMD_AT_MODE:
         if (washdbg_print_buffer(&at_mode_state.txt) == 0)
+            washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_DUMP:
+        if (washdbg_print_buffer(&dump_state.txt) == 0)
             washdbg_print_prompt();
         break;
     default:
@@ -1283,6 +1315,8 @@ static void washdbg_process_input(void) {
                 washdbg_asid(argc, argv);
             } else if (washdbg_is_at_mode_cmd(cmd)) {
                 washdbg_at_mode(argc, argv);
+            } else if (washdbg_is_dump_cmd(cmd)) {
+                washdbg_dump(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
