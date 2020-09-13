@@ -192,6 +192,14 @@ static struct Sh4MemMappedReg mem_mapped_regs[] = {
       sh4_id_read_handler, sh4_read_only_write_handler, 0, 0 },
 
     /*
+     * undocumented SH-4 register that Worms Armageddon writes to sometimes.
+     * IDK if it's actually write-only, I just made it that way to keep track
+     * of other games that might use try to it.
+     */
+    { "UKNKNOWN_ff000088", 0xff000088, 2, (sh4_reg_idx_t)-1, false,
+      sh4_write_only_read_handler, sh4_warn_write_handler, 0, 0 },
+
+    /*
      * Bus-state registers.
      *
      * These all seem pretty low-level, so we just blindly let
