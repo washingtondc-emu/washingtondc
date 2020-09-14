@@ -480,7 +480,7 @@ display_list_exec_vertex(struct pvr2 *pvr2,
 
     vert.pos[0] = cmd_vtx->pos[0];
     vert.pos[1] = cmd_vtx->pos[1];
-    vert.pos[2] = z_recip;
+    vert.pos[2] = cmd_vtx->pos[2];
 
     PVR2_TRACE("(%f, %f, %f)\n", vert.pos[0], vert.pos[1], vert.pos[2]);
 

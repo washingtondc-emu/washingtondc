@@ -175,9 +175,12 @@ union gfx_il_arg {
         /*
          * each vert has a len of GFX_IL_VERT_LEN; ergo the total length of
          * verts (in terms of sizeof float) is n_verts * GFX_IL_VERT_LEN.
+         *
+         * note that the contents of verts can be modified by the gfx_il
+         * implementation; contents after drawing are undefined.
          */
         unsigned n_verts;
-        float const *verts;
+        float *verts;
     } draw_array;
 
     struct {

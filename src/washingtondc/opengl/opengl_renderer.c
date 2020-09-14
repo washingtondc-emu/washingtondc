@@ -775,6 +775,15 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
 static void opengl_renderer_draw_array(struct gfx_il_inst *cmd) {
     unsigned n_verts = cmd->arg.draw_array.n_verts;
     float const *verts = cmd->arg.draw_array.verts;
+
+    unsigned vert_no;
+    float *cur_vert = verts;
+    for (vert_no = 0; vert_no < n_verts; vert_no++) {
+        cur_vert[GFX_VERT_POS_OFFSET + 2] =
+            1.0f / cur_vert[GFX_VERT_POS_OFFSET + 2];
+        cur_vert += GFX_VERT_LEN;
+    }
+
     do_draw_array(verts, n_verts);
 }
 
