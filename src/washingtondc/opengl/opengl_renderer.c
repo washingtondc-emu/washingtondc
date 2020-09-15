@@ -264,7 +264,7 @@ static char const * const pvr2_ta_vert_glsl =
      * I have to multiply all of them by z.
      */
     "    vec4 pos = trans_mat * vec4(vert_pos, 1.0);\n"
-    "    gl_Position = vec4(pos.x * vert_pos.z, pos.y * vert_pos.z, pos.z * vert_pos.z, vert_pos.z);\n"
+    "    gl_Position = vec4(pos.x * pos.w, pos.y * pos.w, pos.z * pos.w, pos.w);\n"
     "}\n"
 
     "void color_transform() {\n"
@@ -826,7 +826,7 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
         1.0 / half_screen_dims[0], 0, 0, -1,
         0, -1.0 / half_screen_dims[1], 0, 1,
         0, 0, 2.0 / clip_delta, -2.0 * clip_min_actual / clip_delta - 1,
-        0, 0, 0, 1
+        0, 0, 1, 0
     };
 
     glUniformMatrix4fv(trans_mat_slot, 1, GL_TRUE, trans_mat);
