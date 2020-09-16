@@ -363,6 +363,12 @@ static void soft_gfx_begin_rend(struct gfx_il_inst *cmd) {
     render_tgt = obj_handle;
 }
 
+static void soft_gfx_end_rend(struct gfx_il_inst *cmd) {
+    if (render_tgt < 0)
+        fprintf(stderr, "%s - no render target bound!\n", __func__);
+    render_tgt = -1;
+}
+
 static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
     int pix_y;
     int x_l = x_pos - side_len;
@@ -434,6 +440,7 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_END_REND:
             printf("GFX_IL_END_REND\n");
+            soft_gfx_end_rend(cmd);
             break;
         case GFX_IL_CLEAR:
             printf("GFX_IL_CLEAR\n");
