@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
+#include <iostream>
 
 #include <GLFW/glfw3.h>
 
@@ -49,6 +50,7 @@
 #include "window.hpp"
 #include "ui/overlay.hpp"
 #include "sound.hpp"
+#include "rend_if.hpp"
 
 static void win_glfw_init(unsigned width, unsigned height);
 static void win_glfw_cleanup();
@@ -87,8 +89,14 @@ mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y);
 static void text_input_cb(GLFWwindow* window, unsigned int codepoint);
 
 static void do_redraw(void) {
-    opengl_video_present();
-    overlay::draw();
+    if (rend_name() == "opengl") {
+        opengl_video_present();
+    } else {
+        std::cerr << "ERROR: no video_present implementation for renderer \"" <<
+        rend_name() << "\"" << std::endl;
+    }
+    if (overlay_enabled())
+        overlay::draw();
     win_glfw_update();
 }
 
@@ -645,7 +653,8 @@ static void win_glfw_check_events(void) {
 
     scan_input();
 
-    overlay::update();
+    if (overlay_enabled())
+        overlay::update();
 
     if (glfwWindowShouldClose(win))
         washdc_kill();
@@ -1133,8 +1142,10 @@ static void scan_input(void) {
     // Allow the user to toggle the overlay by pressing F2
     static bool overlay_key_prev = false;
     bool overlay_key = ctrl_get_button("toggle-overlay");
-    if (overlay_key && !overlay_key_prev)
-        toggle_overlay();
+    if (overlay_key && !overlay_key_prev) {
+        if (overlay_enabled())
+            toggle_overlay();
+    }
     overlay_key_prev = overlay_key;
 
     // toggle wireframe rendering
@@ -1153,8 +1164,11 @@ static void scan_input(void) {
 
     static bool filter_key_prev = false;
     bool filter_key = ctrl_get_button("toggle-filter");
-    if (filter_key && !filter_key_prev)
-        opengl_video_toggle_filter();
+    if (filter_key && !filter_key_prev) {
+        if (rend_name() == "opengl") {
+            opengl_video_toggle_filter();
+        }
+    }
     filter_key_prev = filter_key;
 
     static bool screenshot_key_prev = false;
@@ -1260,7 +1274,8 @@ static void toggle_fullscreen(void) {
 
 static void toggle_overlay(void) {
     show_overlay = !show_overlay;
-    overlay::show(show_overlay);
+    if (overlay_enabled())
+        overlay::show(show_overlay);
 }
 
 static void mouse_btn_cb(GLFWwindow *win, int btn, int action, int mods) {
@@ -1290,5 +1305,6 @@ mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y) {
 }
 
 static void text_input_cb(GLFWwindow* window, unsigned int codepoint) {
-    overlay::input_text(codepoint);
+    if (overlay_enabled())
+        overlay::input_text(codepoint);
 }

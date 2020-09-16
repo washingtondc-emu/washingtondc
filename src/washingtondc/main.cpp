@@ -52,8 +52,10 @@
 #include "washdc/hostfile.h"
 #include "console_config.hpp"
 #include "opengl/opengl_renderer.h"
+#include "soft_gfx/soft_gfx.h"
 #include "stdio_hostfile.hpp"
 #include "washdc_getopt.h"
+#include "rend_if.hpp"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -72,6 +74,9 @@
 
 #include "stdio_hostfile.hpp"
 #include "paths.hpp"
+
+static struct rend_if const *rend_if;
+static std::string rend_string;
 
 static struct washdc_sound_intf snd_intf;
 static struct washdc_hostfile_api hostfile_api;
@@ -103,7 +108,8 @@ static void print_usage(char const *cmd) {
             "\t-j\t\tenable dynamic recompiler (as opposed to interpreter)\n"
             "\t-v\t\tenable verbose logging\n"
             "\t-x\t\tenable native x86_64 dynamic recompiler backend "
-            "(default)\n");
+            "(default)\n"
+            "\t-r opengl|soft\tselect renderer (default is opengl))\n");
 }
 
 struct washdc_gameconsole const *console;
@@ -202,12 +208,13 @@ int main(int argc, char **argv) {
     bool launch_wizard = false;
     char const *dc_bios_path = NULL, *dc_flash_path = NULL;
     bool write_to_flash_mem = false;
+    char const *gfx_backend = "opengl";
 
     create_cfg_dir();
     create_data_dir();
     create_screenshot_dir();
 
-    while ((opt = washdc_getopt(argc, argv, "w:b:f:c:s:m:d:u:g:htjxpnlv")) != -1) {
+    while ((opt = washdc_getopt(argc, argv, "w:b:f:c:s:m:d:u:g:r:htjxpnlv")) != -1) {
         switch (opt) {
         case 'g':
             enable_debugger = true;
@@ -265,6 +272,9 @@ int main(int argc, char **argv) {
             break;
         case 'w':
             launch_wizard = true;
+            break;
+        case 'r':
+            gfx_backend = washdc_optarg;
             break;
         default:
             print_usage(cmd);
@@ -438,26 +448,48 @@ int main(int argc, char **argv) {
 
     settings.sndsrv = &snd_intf;
 
-    settings.gfx_rend_if = &opengl_rend_if;
+    if (strcmp(gfx_backend, "opengl") == 0) {
+        rend_if = &opengl_rend_if;
+    } else if (strcmp(gfx_backend, "soft") == 0) {
+        rend_if = &soft_gfx_if;
+    } else {
+        fprintf(stderr, "ERROR: unknown rendering backend \"%s\"\n", gfx_backend);
+        exit(1);
+    }
+
+    settings.gfx_rend_if = rend_if;
+    rend_string = gfx_backend;
 
 #ifdef USE_LIBEVENT
     io::init();
 #endif
 
-    static struct opengl_renderer_callbacks renderer_callbacks;
-    renderer_callbacks.win_update = win_glfw_update;
-    renderer_callbacks.overlay_draw = overlay::draw;
-    opengl_renderer_set_callbacks(&renderer_callbacks);
+    if (rend_if == &opengl_rend_if) {
+        static struct opengl_renderer_callbacks renderer_callbacks;
+        renderer_callbacks.win_update = win_glfw_update;
+        if (overlay_enabled())
+            renderer_callbacks.overlay_draw = overlay::draw;
+        else
+            renderer_callbacks.overlay_draw = nullptr;
+        opengl_renderer_set_callbacks(&renderer_callbacks);
+    } else if (rend_if == &soft_gfx_if) {
+        static struct soft_gfx_callbacks renderer_callbacks;
+        renderer_callbacks.win_update = win_glfw_update;
+        soft_gfx_set_callbacks(&renderer_callbacks);
+    }
 
     console = washdc_init(&settings);
 
-    overlay::init(enable_debugger || enable_washdbg);
+    if (overlay_enabled())
+        overlay::init(enable_debugger || enable_washdbg);
 
     washdc_run();
 
-    opengl_renderer_set_callbacks(NULL);
+    if (rend_if == &opengl_rend_if)
+        opengl_renderer_set_callbacks(NULL);
 
-    overlay::cleanup();
+    if (overlay_enabled())
+        overlay::cleanup();
 
 #ifdef USE_LIBEVENT
     io::kick();
@@ -479,4 +511,12 @@ void do_run_one_frame(void) {
 
 void do_pause(void) {
     washdc_pause();
+}
+
+std::string const& rend_name(void) {
+    return rend_string;
+}
+
+bool overlay_enabled(void) {
+    return rend_if == &opengl_rend_if;
 }

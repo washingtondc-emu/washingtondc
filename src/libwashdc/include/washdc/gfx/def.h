@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2019 snickerbockers
+ * Copyright 2019, 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@
 #define WASHDC_GFX_DEF_H_
 
 #include <assert.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

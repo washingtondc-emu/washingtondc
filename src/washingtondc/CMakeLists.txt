@@ -110,6 +110,8 @@ set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader.h"
                   "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.c"
                   "${PROJECT_SOURCE_DIR}/opengl/renderdoc_app.h")
 
+set(soft_gfx_sources "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.c"
+                     "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h")
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/washingtondc.hpp"
@@ -121,7 +123,9 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/sound.cpp"
                          "${PROJECT_SOURCE_DIR}/console_config.hpp"
                          "${PROJECT_SOURCE_DIR}/console_config.cpp"
-                         "${gfxgl_sources}")
+                         "${PROJECT_SOURCE_DIR}/rend_if.hpp"
+                         "${gfxgl_sources}"
+                         "${soft_gfx_sources}")
 
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)
