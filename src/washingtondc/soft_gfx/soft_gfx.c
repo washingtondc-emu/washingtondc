@@ -112,6 +112,8 @@ static struct fb_poly {
 static uint32_t fb[FB_WIDTH * FB_HEIGHT];
 static GLuint fb_tex;
 static struct shader fb_shader;
+static int render_tgt = -1;
+static unsigned screen_width, screen_height;
 
 struct rend_if const soft_gfx_if = {
     .init = soft_gfx_init,
@@ -209,6 +211,7 @@ static void soft_gfx_obj_init(struct gfx_il_inst *cmd) {
     int obj_no = cmd->arg.init_obj.obj_no;
     size_t n_bytes = cmd->arg.init_obj.n_bytes;
     gfx_obj_init(obj_no, n_bytes);
+    printf("\tinitialize object %d\n", obj_no);
 }
 
 static void soft_gfx_obj_write(struct gfx_il_inst *cmd) {
@@ -230,12 +233,21 @@ static void soft_gfx_obj_free(struct gfx_il_inst *cmd) {
     gfx_obj_free(obj_no);
 }
 
+static void soft_gfx_bind_render_target(struct gfx_il_inst *cmd) {
+    int obj_handle = cmd->arg.bind_render_target.gfx_obj_handle;
+    struct gfx_obj *obj = gfx_obj_get(obj_handle);
+
+    gfx_obj_alloc(obj);
+}
+
 static void soft_gfx_post_fb(struct gfx_il_inst *cmd) {
     int obj_handle = cmd->arg.post_framebuffer.obj_handle;
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
     bool do_flip = cmd->arg.post_framebuffer.vert_flip;
 
-    if (obj->dat_len && obj->dat) {
+    printf("\tpost object %d\n", obj_handle);
+
+    if (obj->dat_len && obj->dat){
         size_t n_bytes = obj->dat_len < sizeof(fb) ? obj->dat_len : sizeof(fb);
         if (do_flip) {
             unsigned src_width = cmd->arg.post_framebuffer.width;
@@ -274,6 +286,83 @@ static void soft_gfx_post_fb(struct gfx_il_inst *cmd) {
     switch_table->win_update();
 }
 
+static int clamp_int(int val, int min, int max) {
+    if (val < min)
+        return min;
+    else if (val > max)
+        return max;
+    else
+        return val;
+}
+
+static void soft_gfx_clear(struct gfx_il_inst *cmd) {
+    if (render_tgt < 0) {
+        fprintf(stderr, "ERROR: no render target bound for %s\n", __func__);
+        return;
+    }
+    struct gfx_obj *obj = gfx_obj_get(render_tgt);
+
+    float const *bgcolor = cmd->arg.clear.bgcolor;
+    int rgba[4] = {
+        clamp_int(bgcolor[0] * 255, 0, 255),
+        clamp_int(bgcolor[1] * 255, 0, 255),
+        clamp_int(bgcolor[2] * 255, 0, 255),
+        clamp_int(bgcolor[3] * 255, 0, 255)
+    };
+    uint32_t as_32 =
+        rgba[0]       |
+        rgba[1] << 8  |
+        rgba[2] << 16 |
+        rgba[3] << 24;
+
+    if (obj->dat_len && !obj->dat) {
+        fprintf(stderr, "ERROR: %s: object has no data pointer!\n", __func__);
+        return;
+    }
+
+    if (obj->dat_len % sizeof(as_32)) {
+        fprintf(stderr, "ERROR: %s: obj not aligned by four!\n", __func__);
+        return;
+    }
+
+    size_t n_dwords = obj->dat_len / sizeof(as_32);
+    unsigned idx;
+    char *datp = (char*)obj->dat;
+    for (idx = 0; idx < n_dwords; idx++) {
+        memcpy(datp, &as_32, sizeof(as_32));
+        datp += sizeof(as_32);
+    }
+}
+
+static void soft_gfx_begin_rend(struct gfx_il_inst *cmd) {
+    screen_width = cmd->arg.begin_rend.screen_width;
+    screen_height = cmd->arg.begin_rend.screen_height;
+    int obj_handle = cmd->arg.begin_rend.rend_tgt_obj;
+
+    if (obj_handle < 0) {
+        fprintf(stderr, "%s - invalid render target handle %d\n",
+                __func__, obj_handle);
+        return;
+    }
+
+    if (render_tgt != -1) {
+        fprintf(stderr, "%s - %d still bound as render target!\n",
+                __func__, render_tgt);
+    }
+
+    struct gfx_obj *obj = gfx_obj_get(obj_handle);
+    if (!obj->dat || obj->dat_len < screen_width * screen_height * 4) {
+        fprintf(stderr, "%s - invalid object %d data length %llu or NULL "
+                "pointer for %ux%u; has it been bound as a render target "
+                "yet?\n",
+                __func__, obj_handle, (unsigned long long)obj->dat_len,
+                screen_width, screen_height);
+        return;
+    }
+
+    render_tgt = obj_handle;
+}
+
 static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     while (n_cmd--) {
         switch (cmd->op) {
@@ -285,18 +374,21 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_BIND_RENDER_TARGET:
             printf("GFX_IL_BIND_RENDER_TARGET\n");
+            soft_gfx_bind_render_target(cmd);
             break;
         case GFX_IL_UNBIND_RENDER_TARGET:
             printf("GFX_IL_UNBIND_RENDER_TARGET\n");
             break;
         case GFX_IL_BEGIN_REND:
             printf("GFX_IL_BEGIN_REND\n");
+            soft_gfx_begin_rend(cmd);
             break;
         case GFX_IL_END_REND:
             printf("GFX_IL_END_REND\n");
             break;
         case GFX_IL_CLEAR:
             printf("GFX_IL_CLEAR\n");
+            soft_gfx_clear(cmd);
             break;
         case GFX_IL_SET_BLEND_ENABLE:
             printf("GFX_IL_SET_BLEND_ENABLE\n");
