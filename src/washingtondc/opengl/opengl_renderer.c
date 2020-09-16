@@ -58,11 +58,11 @@
 
 #include "opengl_output.h"
 #include "opengl_target.h"
-#include "shader.h"
+#include "../shader.h"
 #include "shader_cache.h"
 #include "opengl_renderer.h"
 #include "tex_cache.h"
-#include "gfx_obj.h"
+#include "../gfx_obj.h"
 
 #include "renderdoc_app.h"
 

@@ -40,7 +40,7 @@
 
 #include <GL/gl.h>
 
-#include "shader.h"
+#include "../shader.h"
 
 typedef unsigned shader_key;
 

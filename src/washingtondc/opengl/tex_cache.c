@@ -35,7 +35,7 @@
 #include <stdlib.h>
 
 #include "tex_cache.h"
-#include "gfx_obj.h"
+#include "../gfx_obj.h"
 
 static struct gfx_tex tex_cache[GFX_TEX_CACHE_SIZE];
 

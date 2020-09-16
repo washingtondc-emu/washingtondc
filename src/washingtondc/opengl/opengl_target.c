@@ -45,7 +45,7 @@
 
 #include "washdc/error.h"
 
-#include "gfx_obj.h"
+#include "../gfx_obj.h"
 #include "opengl_renderer.h"
 #include "opengl_target.h"
 

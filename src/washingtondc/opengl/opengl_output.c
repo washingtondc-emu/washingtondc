@@ -49,10 +49,10 @@
 #include "washdc/win.h"
 #include "washdc/config_file.h"
 
-#include "gfx_obj.h"
+#include "../gfx_obj.h"
 #include "opengl_output.h"
 #include "opengl_renderer.h"
-#include "shader.h"
+#include "../shader.h"
 
 static void init_poly();
 
@@ -78,7 +78,7 @@ static GLfloat fb_quad_verts[FB_VERT_LEN * FB_VERT_COUNT] = {
 };
 
 #define FB_QUAD_IDX_COUNT 4
-GLuint fb_quad_idx[FB_QUAD_IDX_COUNT] = {
+static GLuint fb_quad_idx[FB_QUAD_IDX_COUNT] = {
     1, 0, 2, 3
 };
 

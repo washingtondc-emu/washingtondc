@@ -94,9 +94,7 @@ set(debug_sources "${IO_SOURCE_DIR}/washdbg_tcp.hpp"
 set(serial_sources "${IO_SOURCE_DIR}/serial_server.hpp"
                    "${IO_SOURCE_DIR}/serial_server.cpp")
 
-set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/shader.c"
-                  "${PROJECT_SOURCE_DIR}/opengl/shader_cache.h"
+set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader_cache.h"
                   "${PROJECT_SOURCE_DIR}/opengl/shader_cache.c"
                   "${PROJECT_SOURCE_DIR}/opengl/opengl_output.h"
                   "${PROJECT_SOURCE_DIR}/opengl/opengl_output.c"
@@ -105,10 +103,8 @@ set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader.h"
                   "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.h"
                   "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.c"
                   "${PROJECT_SOURCE_DIR}/opengl/tex_cache.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/tex_cache.c"
-                  "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.c"
-                  "${PROJECT_SOURCE_DIR}/opengl/renderdoc_app.h")
+                  "${PROJECT_SOURCE_DIR}/opengl/renderdoc_app.h"
+                  "${PROJECT_SOURCE_DIR}/opengl/tex_cache.c")
 
 set(soft_gfx_sources "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.c"
                      "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h")
@@ -124,6 +120,10 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/console_config.hpp"
                          "${PROJECT_SOURCE_DIR}/console_config.cpp"
                          "${PROJECT_SOURCE_DIR}/rend_if.hpp"
+                         "${PROJECT_SOURCE_DIR}/gfx_obj.h"
+                         "${PROJECT_SOURCE_DIR}/gfx_obj.c"
+                         "${PROJECT_SOURCE_DIR}/shader.h"
+                         "${PROJECT_SOURCE_DIR}/shader.c"
                          "${gfxgl_sources}"
                          "${soft_gfx_sources}")
 
