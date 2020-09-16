@@ -113,7 +113,7 @@ static uint32_t fb[FB_WIDTH * FB_HEIGHT];
 static GLuint fb_tex;
 static struct shader fb_shader;
 static int render_tgt = -1;
-static unsigned screen_width, screen_height;
+static int screen_width, screen_height;
 
 struct rend_if const soft_gfx_if = {
     .init = soft_gfx_init,
@@ -363,6 +363,55 @@ static void soft_gfx_begin_rend(struct gfx_il_inst *cmd) {
     render_tgt = obj_handle;
 }
 
+static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
+    int pix_y;
+    int x_l = x_pos - side_len;
+    int x_r = x_pos + side_len;
+    int y_t = y_pos - side_len;
+    int y_b = y_pos + side_len;
+
+    if (x_l < 0)
+        x_l = 0;
+    else if (x_l >= screen_width)
+        return;
+
+    if (x_r >= screen_width)
+        x_r = screen_width - 1;
+    else if (x_r < 0)
+        return;
+
+    if (y_t < 0)
+        y_t = 0;
+    else if (y_t >= screen_height)
+        return;
+
+    if (y_b >= screen_height)
+        y_b = screen_height - 1;
+    else if (y_b < 0)
+        return;
+
+    size_t n_bytes = sizeof(uint32_t) * (x_r - x_l + 1);
+    for (pix_y = y_t; pix_y <= y_b; pix_y++) {
+        memset(((char*)dat) + (pix_y * screen_width + x_l) * sizeof(uint32_t),
+               0xff, n_bytes);
+    }
+}
+
+static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
+    if (render_tgt < 0) {
+        fprintf(stderr, "%s - no render target bound!\n", __func__);
+        return;
+    }
+
+    struct gfx_obj *obj = gfx_obj_get(render_tgt);
+    unsigned n_verts = cmd->arg.draw_array.n_verts;
+    float const *verts = cmd->arg.draw_array.verts;
+
+    unsigned vert_no;
+    for (vert_no = 0; vert_no < n_verts; vert_no++)
+        draw_pt(obj->dat, verts[vert_no * GFX_VERT_LEN], verts[vert_no * GFX_VERT_LEN + 1], 5);
+}
+
 static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     while (n_cmd--) {
         switch (cmd->op) {
@@ -401,6 +450,7 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_DRAW_ARRAY:
             printf("GFX_IL_DRAW_ARRAY\n");
+            soft_gfx_draw_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
             printf("GFX_IL_INIT_OBJ\n");
