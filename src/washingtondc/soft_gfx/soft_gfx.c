@@ -114,6 +114,7 @@ static GLuint fb_tex;
 static struct shader fb_shader;
 static int render_tgt = -1;
 static int screen_width, screen_height;
+static bool wireframe_mode;
 
 struct rend_if const soft_gfx_if = {
     .init = soft_gfx_init,
@@ -302,18 +303,23 @@ static void soft_gfx_clear(struct gfx_il_inst *cmd) {
     }
     struct gfx_obj *obj = gfx_obj_get(render_tgt);
 
-    float const *bgcolor = cmd->arg.clear.bgcolor;
-    int rgba[4] = {
-        clamp_int(bgcolor[0] * 255, 0, 255),
-        clamp_int(bgcolor[1] * 255, 0, 255),
-        clamp_int(bgcolor[2] * 255, 0, 255),
-        clamp_int(bgcolor[3] * 255, 0, 255)
-    };
-    uint32_t as_32 =
-        rgba[0]       |
-        rgba[1] << 8  |
-        rgba[2] << 16 |
-        rgba[3] << 24;
+    uint32_t as_32;
+    if (wireframe_mode) {
+        as_32 = 0;
+    } else {
+        float const *bgcolor = cmd->arg.clear.bgcolor;
+        int rgba[4] = {
+                       clamp_int(bgcolor[0] * 255, 0, 255),
+                       clamp_int(bgcolor[1] * 255, 0, 255),
+                       clamp_int(bgcolor[2] * 255, 0, 255),
+                       clamp_int(bgcolor[3] * 255, 0, 255)
+        };
+        as_32 =
+            rgba[0]       |
+            rgba[1] << 8  |
+            rgba[2] << 16 |
+            rgba[3] << 24;
+    }
 
     if (obj->dat_len && !obj->dat) {
         fprintf(stderr, "ERROR: %s: object has no data pointer!\n", __func__);
@@ -361,6 +367,9 @@ static void soft_gfx_begin_rend(struct gfx_il_inst *cmd) {
     }
 
     render_tgt = obj_handle;
+
+    // frontend rendering parameters
+    wireframe_mode = gfx_config_read().wireframe;
 }
 
 static void soft_gfx_end_rend(struct gfx_il_inst *cmd) {
@@ -590,15 +599,23 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     unsigned n_verts = cmd->arg.draw_array.n_verts;
     float const *verts = cmd->arg.draw_array.verts;
 
-    unsigned vert_no;
-    for (vert_no = 0; vert_no < n_verts; vert_no += 3) {
-        float const *p1 = verts + (vert_no + 0) * GFX_VERT_LEN;
-        float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
-        float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
+    if (wireframe_mode) {
+        /*
+         * draw triangles as white lines with no depth testing or
+         * per-vertex attributes
+         */
+        unsigned vert_no;
+        for (vert_no = 0; vert_no < n_verts; vert_no += 3) {
+            float const *p1 = verts + (vert_no + 0) * GFX_VERT_LEN;
+            float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
+            float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
 
-        draw_line(obj->dat, p1[0], p1[1], p2[0], p2[1], 0xffffffff);
-        draw_line(obj->dat, p2[0], p2[1], p3[0], p3[1], 0xffffffff);
-        draw_line(obj->dat, p3[0], p3[1], p1[0], p1[1], 0xffffffff);
+            draw_line(obj->dat, p1[0], p1[1], p2[0], p2[1], 0xffffffff);
+            draw_line(obj->dat, p2[0], p2[1], p3[0], p3[1], 0xffffffff);
+            draw_line(obj->dat, p3[0], p3[1], p1[0], p1[1], 0xffffffff);
+        }
+    } else {
+        // TODO: triangle rasterization
     }
 }
 
