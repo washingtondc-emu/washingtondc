@@ -369,6 +369,7 @@ static void soft_gfx_end_rend(struct gfx_il_inst *cmd) {
     render_tgt = -1;
 }
 
+#if 0
 static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
     int pix_y;
     int x_l = x_pos - side_len;
@@ -402,6 +403,182 @@ static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
                0xff, n_bytes);
     }
 }
+#endif
+
+static inline void
+put_pix(void *dat, int x_pix, int y_pix, uint32_t color) {
+
+    if (x_pix < 0 || y_pix < 0 ||
+        x_pix >= screen_width || y_pix >= screen_height) {
+        fprintf(stderr, "%s - ERROR out of bounds (%d, %d)\n",
+                __func__, x_pix, y_pix);
+        abort();
+    }
+
+    y_pix = screen_height - 1 - y_pix;
+    memcpy((char*)dat + (y_pix * screen_width + x_pix) * sizeof(uint32_t),
+           &color, sizeof(uint32_t));
+}
+
+static void
+draw_line(void *dat, int x1, int y1, int x2, int y2, uint32_t color) {
+    if ((x1 < 0 && x2 < 0) ||
+        (x1 >= screen_width && x2 >= screen_width) ||
+        (y1 < 0 && y2 < 0) ||
+        (y1 >= screen_height && y2 >= screen_height)) {
+        return;
+    }
+
+    x1 = clamp_int(x1, 0, screen_width - 1);
+    x2 = clamp_int(x2, 0, screen_width - 1);
+    y1 = clamp_int(y1, 0, screen_height - 1);
+    y2 = clamp_int(y2, 0, screen_height - 1);
+
+
+    int delta_y = y2 - y1;
+    int delta_x = x2 - x1;
+
+    // use bresenham's line algorithm
+    if (abs(delta_x) >= abs(delta_y)) {
+        if ((delta_x >= 0 && delta_y >= 0) ||
+            (delta_x <= 0 && delta_y <= 0)) {
+            /*
+             * angle is either between 0 and 45 degrees,
+             * or between 180 and 225 degrees
+             */
+            if (delta_x < 0) {
+                /*
+                 * angle is between 180 and 225, so swap direction to make
+                 * it between 0 and 45
+                 */
+                int tmp_x = x1;
+                x1 = x2;
+                x2 = tmp_x;
+
+                int tmp_y = y1;
+                y1 = y2;
+                y2 = tmp_y;
+
+                delta_x = -delta_x;
+                delta_y = -delta_y;
+            }
+
+            // draw the line
+            int x_pos = x1, y_pos = y1;
+            int error = 0;
+            do {
+                put_pix(dat, x_pos, y_pos, color);
+                error += delta_y;
+                if (2 * error >= delta_x) {
+                    y_pos++;
+                    error -= delta_x;
+                }
+            } while (x_pos++ != x2);
+        } else {
+            /*
+             * angle is either between 135 and 180 degrees,
+             * or between 315 and 360 degrees
+             */
+            if (delta_x < 0) {
+                /*
+                 * angle is between 135 and 180 degrees, so swap direction to make
+                 * it between 0 and 45
+                 */
+                int tmp_x = x1;
+                x1 = x2;
+                x2 = tmp_x;
+
+                int tmp_y = y1;
+                y1 = y2;
+                y2 = tmp_y;
+
+                delta_x = -delta_x;
+                delta_y = -delta_y;
+            }
+
+            // draw the line
+            int x_pos = x1, y_pos = y1;
+            int error = 0;
+            do {
+                put_pix(dat, x_pos, y_pos, color);
+                error += delta_y;
+                if (2 * error < -delta_x) {
+                    y_pos--;
+                    error += delta_x;
+                }
+            } while (x_pos++ != x2);
+        }
+    } else {
+        if ((delta_x >= 0 && delta_y >= 0) ||
+            (delta_x <= 0 && delta_y <= 0)) {
+            /*
+             * angle is either between 45 and 90 degrees,
+             * or between 225 and 270 degrees
+             */
+            if (delta_y < 0) {
+                /*
+                 * angle is between 225 and 270 degrees, so swap direction to make
+                 * it between 0 and 45
+                 */
+                int tmp_x = x1;
+                x1 = x2;
+                x2 = tmp_x;
+
+                int tmp_y = y1;
+                y1 = y2;
+                y2 = tmp_y;
+
+                delta_x = -delta_x;
+                delta_y = -delta_y;
+            }
+
+            // draw the line
+            int x_pos = x1, y_pos = y1;
+            int error = 0;
+            do {
+                put_pix(dat, x_pos, y_pos, color);
+                error += delta_x;
+                if (2 * error >= delta_y) {
+                    x_pos++;
+                    error -= delta_y;
+                }
+            } while (y_pos++ != y2);
+        } else {
+            /*
+             * angle is either between either 90 and 135 degrees,
+             * or between 270 and 315 degrees
+             */
+            if (delta_y < 0) {
+                /*
+                 * angle is between 270 and 315 degrees, so swap direction to make
+                 * it between 90 and 135
+                 */
+                int tmp_x = x1;
+                x1 = x2;
+                x2 = tmp_x;
+
+                int tmp_y = y1;
+                y1 = y2;
+                y2 = tmp_y;
+
+                delta_x = -delta_x;
+                delta_y = -delta_y;
+            }
+
+            // draw the line
+            int x_pos = x1, y_pos = y1;
+            int error = 0;
+            do {
+                put_pix(dat, x_pos, y_pos, color);
+                error += delta_x;
+                if (2 * error < -delta_y) {
+                    x_pos--;
+                    error += delta_y;
+                }
+            } while (y_pos++ != y2);
+        }
+    }
+}
 
 static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     if (render_tgt < 0) {
@@ -414,8 +591,15 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     float const *verts = cmd->arg.draw_array.verts;
 
     unsigned vert_no;
-    for (vert_no = 0; vert_no < n_verts; vert_no++)
-        draw_pt(obj->dat, verts[vert_no * GFX_VERT_LEN], verts[vert_no * GFX_VERT_LEN + 1], 5);
+    for (vert_no = 0; vert_no < n_verts; vert_no += 3) {
+        float const *p1 = verts + (vert_no + 0) * GFX_VERT_LEN;
+        float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
+        float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
+
+        draw_line(obj->dat, p1[0], p1[1], p2[0], p2[1], 0xffffffff);
+        draw_line(obj->dat, p2[0], p2[1], p3[0], p3[1], 0xffffffff);
+        draw_line(obj->dat, p3[0], p3[1], p1[0], p1[1], 0xffffffff);
+    }
 }
 
 static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
