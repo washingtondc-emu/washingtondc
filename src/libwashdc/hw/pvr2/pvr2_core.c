@@ -461,8 +461,17 @@ display_list_exec_vertex(struct pvr2 *pvr2,
      * together with degenerate triangles...
      */
     if (core->strip_len >= 3) {
-        pvr2_core_push_vert(pvr2, core->strip_vert_1);
-        pvr2_core_push_vert(pvr2, core->strip_vert_2);
+        /*
+         * reverse winding order on every other triangle so that they all have
+         * the same winding order
+         */
+        if (core->strip_len % 2) {
+            pvr2_core_push_vert(pvr2, core->strip_vert_2);
+            pvr2_core_push_vert(pvr2, core->strip_vert_1);
+        } else {
+            pvr2_core_push_vert(pvr2, core->strip_vert_1);
+            pvr2_core_push_vert(pvr2, core->strip_vert_2);
+        }
     }
 
     // first update the clipping planes
