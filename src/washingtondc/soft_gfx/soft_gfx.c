@@ -33,6 +33,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
@@ -115,6 +116,8 @@ static struct shader fb_shader;
 static int render_tgt = -1;
 static int screen_width, screen_height;
 static bool wireframe_mode;
+
+static void rot90(float out[2], float const in[2]);
 
 struct rend_if const soft_gfx_if = {
     .init = soft_gfx_init,
@@ -589,6 +592,54 @@ draw_line(void *dat, int x1, int y1, int x2, int y2, uint32_t color) {
     }
 }
 
+static void rot90(float out[2], float const in[2]) {
+    // be careful in case in == out
+    float new_x = -in[1];
+    float new_y = in[0];
+    out[0] = new_x;
+    out[1] = new_y;
+}
+
+/* static float dot(float const v1[2], float const v2[2]) { */
+/*     return v1[0] * v2[0] + v1[1] * v2[1]; */
+/* } */
+
+/*
+ * dot product of v1 rotated by 90 degrees and v2
+ *
+ * this is a scalar with the magnitude and sign of the three-dimensional cross
+ * product, ie |v1| * |v2| * sin(angle_between_v1_and_v2)
+ */
+static float ortho_dot(float const v1[2], float const v2[2]) {
+    return -v1[1] * v2[0] + v1[0] * v2[1];
+}
+
+/*
+ * return 2-dimensional bounding-box of given triangle
+ * bounds[0] is x_min
+ * bounds[1] is y_min
+ * bounds[2] is x_max
+ * bounds[3] is y_max
+ */
+static void
+tri_bbox(float bounds[4], float const p1[2],
+         float const p2[2], float const p3[2]) {
+    bounds[0] = fminf(fminf(p1[0], p2[0]), p3[0]);
+    bounds[1] = fminf(fminf(p1[1], p2[1]), p3[1]);
+    bounds[2] = fmaxf(fmaxf(p1[0], p2[0]), p3[0]);
+    bounds[3] = fmaxf(fmaxf(p1[1], p2[1]), p3[1]);
+}
+
+static void line_coeff(float coeff[3], float const p1[2], float const p2[2]) {
+    float vec[2] = {
+        p2[0] - p1[0],
+        p2[1] - p1[1]
+    };
+
+    rot90(coeff, vec);
+    coeff[2] = -(coeff[0] * p1[0] + coeff[1] * p1[1]);
+}
+
 static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     if (render_tgt < 0) {
         fprintf(stderr, "%s - no render target bound!\n", __func__);
@@ -615,7 +666,78 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
             draw_line(obj->dat, p3[0], p3[1], p1[0], p1[1], 0xffffffff);
         }
     } else {
-        // TODO: triangle rasterization
+        unsigned vert_no;
+        for (vert_no = 0; vert_no < n_verts; vert_no += 3) {
+            float const *p1 = verts + (vert_no + 0) * GFX_VERT_LEN;
+            float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
+            float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
+
+            float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
+            float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2] };
+
+            /*
+             * positive is counter-clockwise and negative is clockwise
+             *
+             * except the y-coordinate is inverted so really it's the other way
+             * around.
+             */
+            int sign = ortho_dot(v1, v2) < 0.0f ? -1 : 1;
+
+            float bbox_float[4];
+            tri_bbox(bbox_float, p1, p2, p3);
+
+            int bbox[4] = { bbox_float[0], bbox_float[1],
+                            bbox_float[2], bbox_float[3] };
+
+            if (bbox[0] < 0)
+                bbox[0] = 0;
+            else if (bbox[0] >= screen_width)
+                continue;
+            if (bbox[1] < 0)
+                bbox[1] = 0;
+            else if (bbox[1] >= screen_height)
+                continue;
+            if (bbox[2] >= screen_width)
+                bbox[2] = screen_width - 1;
+            else if (bbox[2] < 0)
+                continue;
+            if (bbox[3] >= screen_height)
+                bbox[3] = screen_height - 1;
+            else if (bbox[3] < 0)
+                continue;
+
+            /*
+             * edge line coefficients
+             * ax + by + c == 0
+             *
+             * index 0 - a
+             * index 1 - b
+             * index 2 - c
+             */
+            float e1[3], e2[3], e3[3];
+            line_coeff(e1, p1, p2);
+            line_coeff(e2, p2, p3);
+            line_coeff(e3, p3, p1);
+
+            int x_pos, y_pos;
+            for (y_pos = bbox[1]; y_pos <= bbox[3]; y_pos++) {
+                for (x_pos = bbox[0]; x_pos <= bbox[2]; x_pos++) {
+                    float pos[2] = { x_pos, y_pos };
+                    float dist[3] = {
+                        e1[0] * pos[0] + e1[1] * pos[1] + e1[2],
+                        e2[0] * pos[0] + e2[1] * pos[1] + e2[2],
+                        e3[0] * pos[0] + e3[1] * pos[1] + e3[2]
+                    };
+
+                    if ((sign == -1 && dist[0] <= 0.0f &&
+                         dist[1] <= 0.0f && dist[2] <= 0.0f) ||
+                        (sign == 1 && dist[0] >= 0.0f &&
+                         dist[1] >= 0.0f && dist[2] >= 0.0f)) {
+                        put_pix(obj->dat, x_pos, y_pos, 0xffffffff);
+                    }
+                }
+            }
+        }
     }
 }
 
