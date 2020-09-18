@@ -498,7 +498,8 @@ display_list_exec_vertex(struct pvr2 *pvr2,
 
     if (pvr2->core.stride_sel) {
         unsigned linestride =
-            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));vert.tex_coord[0] =
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
+        vert.tex_coord[0] =
             cmd_vtx->tex_coord[0] * ((float)(1 << pvr2->core.tex_width_shift) /
                           (float)linestride);
         vert.tex_coord[1] = cmd_vtx->tex_coord[1];
