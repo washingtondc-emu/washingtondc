@@ -463,22 +463,26 @@ static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
 #endif
 
 static inline void
-put_pix(void *dat, int x_pix, int y_pix, uint32_t color) {
+put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
+
+    y_pix = screen_height - 1 - y_pix;
+    unsigned byte_offs = (y_pix * screen_width + x_pix) * sizeof(uint32_t);
 
     if (x_pix < 0 || y_pix < 0 ||
-        x_pix >= screen_width || y_pix >= screen_height) {
+        x_pix >= screen_width || y_pix >= screen_height ||
+        byte_offs + (sizeof(uint32_t) - 1) >= obj->dat_len) {
         fprintf(stderr, "%s - ERROR out of bounds (%d, %d)\n",
                 __func__, x_pix, y_pix);
+        fflush(stdout);
+        fflush(stderr);
         abort();
     }
 
-    y_pix = screen_height - 1 - y_pix;
-    memcpy((char*)dat + (y_pix * screen_width + x_pix) * sizeof(uint32_t),
-           &color, sizeof(uint32_t));
+    memcpy(((char*)obj->dat) + byte_offs, &color, sizeof(uint32_t));
 }
 
 static void
-draw_line(void *dat, int x1, int y1, int x2, int y2, uint32_t color) {
+draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
     if ((x1 < 0 && x2 < 0) ||
         (x1 >= screen_width && x2 >= screen_width) ||
         (y1 < 0 && y2 < 0) ||
@@ -524,7 +528,7 @@ draw_line(void *dat, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(dat, x_pos, y_pos, color);
+                put_pix(obj, x_pos, y_pos, color);
                 error += delta_y;
                 if (2 * error >= delta_x) {
                     y_pos++;
@@ -557,7 +561,7 @@ draw_line(void *dat, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(dat, x_pos, y_pos, color);
+                put_pix(obj, x_pos, y_pos, color);
                 error += delta_y;
                 if (2 * error < -delta_x) {
                     y_pos--;
@@ -593,7 +597,7 @@ draw_line(void *dat, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(dat, x_pos, y_pos, color);
+                put_pix(obj, x_pos, y_pos, color);
                 error += delta_x;
                 if (2 * error >= delta_y) {
                     x_pos++;
@@ -626,7 +630,7 @@ draw_line(void *dat, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(dat, x_pos, y_pos, color);
+                put_pix(obj, x_pos, y_pos, color);
                 error += delta_x;
                 if (2 * error < -delta_y) {
                     x_pos--;
@@ -739,9 +743,9 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
             float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
             float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
 
-            draw_line(obj->dat, p1[0], p1[1], p2[0], p2[1], 0xffffffff);
-            draw_line(obj->dat, p2[0], p2[1], p3[0], p3[1], 0xffffffff);
-            draw_line(obj->dat, p3[0], p3[1], p1[0], p1[1], 0xffffffff);
+            draw_line(obj, p1[0], p1[1], p2[0], p2[1], 0xffffffff);
+            draw_line(obj, p2[0], p2[1], p3[0], p3[1], 0xffffffff);
+            draw_line(obj, p3[0], p3[1], p1[0], p1[1], 0xffffffff);
         }
     } else {
         unsigned vert_no;
@@ -873,7 +877,7 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                             clamp_int(base_col[3] * 255, 0, 255)
                         };
 
-                        put_pix(obj->dat, x_pos, y_pos,
+                        put_pix(obj, x_pos, y_pos,
                                 rgba[0]          |
                                 (rgba[1] << 8)   |
                                 (rgba[2] << 16)  |
