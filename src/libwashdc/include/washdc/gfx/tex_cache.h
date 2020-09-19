@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2019 snickerbockers
+ * Copyright 2019, 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,15 +58,6 @@ enum gfx_tex_fmt {
 
 #define GFX_TEX_CACHE_SIZE 512
 #define GFX_TEX_CACHE_MASK (GFX_TEX_CACHE_SIZE - 1)
-
-struct gfx_tex {
-    int obj_handle;
-    enum gfx_tex_fmt tex_fmt;
-    unsigned width, height;
-    bool valid;
-};
-
-struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
 
 #ifdef __cplusplus
 }

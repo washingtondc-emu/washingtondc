@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2017, 2018 snickerbockers
+ * Copyright 2017, 2018, 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,15 @@
 #include <stdint.h>
 
 #include "washdc/gfx/tex_cache.h"
+
+struct gfx_tex {
+    int obj_handle;
+    enum gfx_tex_fmt tex_fmt;
+    unsigned width, height;
+    bool valid;
+};
+
+struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
 
 /*
  * Bind the given gfx_obj to the given texture-unit.
