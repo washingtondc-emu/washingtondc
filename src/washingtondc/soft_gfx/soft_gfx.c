@@ -122,6 +122,14 @@ static int render_tgt = -1;
 static int screen_width, screen_height;
 static bool wireframe_mode;
 
+struct tex {
+    int obj_no;
+    unsigned width, height;
+    enum gfx_tex_fmt fmt;
+};
+// maps texture objects to gfx objects
+static struct tex textures[GFX_TEX_CACHE_SIZE];
+
 static void rot90(float out[2], float const in[2]);
 
 struct rend_if const soft_gfx_if = {
@@ -174,8 +182,10 @@ static void soft_gfx_init(void) {
 
     memset(fb, 0, sizeof(fb));
 
+    unsigned idx;
+    for (idx = 0; idx < GFX_TEX_CACHE_SIZE; idx++)
+        textures[idx].obj_no = -1;
     render_tgt = -1;
-
     screen_width = 0;
     screen_height = 0;
     w_buffer = NULL;
@@ -722,6 +732,196 @@ static bool depth_test(int x_pos, int y_pos, float w_coord) {
     }
 }
 
+static void
+tex_sample(struct tex const *texp, float rgba[4], int const texcoord[2]) {
+    if (texp->obj_no < 0) {
+        fprintf(stderr, "%s - invalid texture/object binding %d\n", __func__, texp->obj_no);
+        rgba[0] = 1.0f;
+        rgba[1] = 1.0f;
+        rgba[2] = 1.0f;
+        rgba[3] = 1.0f;
+        return;
+    }
+
+    struct gfx_obj *obj = gfx_obj_get(texp->obj_no);
+
+    int uv[2];
+
+    switch (rend_param.tex_wrap_mode[0]) {
+    case TEX_WRAP_CLAMP:
+        uv[0] = clamp_int(texcoord[0], 0, texp->width - 1);
+        break;
+    case TEX_WRAP_REPEAT:
+        uv[0] = texcoord[0] % texp->width;
+        break;
+    case TEX_WRAP_FLIP:
+        if ((texcoord[0] / texp->width) % 2 == 0)
+            uv[0] = texcoord[0] % texp->width;
+        else
+            uv[0] = texp->width - 1 - (texcoord[0] % texp->width);
+        break;
+    default:
+        fprintf(stderr, "%s - invalid tex clamp mode\n", __func__);
+        rgba[0] = 1.0f;
+        rgba[1] = 1.0f;
+        rgba[2] = 1.0f;
+        rgba[3] = 1.0f;
+        return;
+    }
+
+    switch (rend_param.tex_wrap_mode[1]) {
+    case TEX_WRAP_CLAMP:
+        uv[1] = clamp_int(texcoord[1], 0, texp->height - 1);
+        break;
+    case TEX_WRAP_REPEAT:
+        uv[1] = texcoord[1] % texp->height;
+        break;
+    case TEX_WRAP_FLIP:
+        if ((texcoord[1] / texp->height) % 2 == 0)
+            uv[1] = texcoord[1] % texp->height;
+        else
+            uv[1] = texp->height - 1 - (texcoord[1] % texp->height);
+        break;
+    default:
+        fprintf(stderr, "%s - invalid tex clamp mode\n", __func__);
+        rgba[0] = 1.0f;
+        rgba[1] = 1.0f;
+        rgba[2] = 1.0f;
+        rgba[3] = 1.0f;
+        return;
+    }
+
+    unsigned tex_idx = uv[1] * texp->width + uv[0];
+
+    switch (texp->fmt) {
+    case GFX_TEX_FMT_ARGB_1555:
+        {
+            if (tex_idx * sizeof(uint16_t) + (sizeof(uint16_t) - 1) >=
+                obj->dat_len || !obj->dat) {
+                fprintf(stderr, "%s - buffer overflow\n", __func__);
+                fprintf(stderr, "\tdat_len %llu\n",
+                        (unsigned long long)obj->dat_len);
+                fprintf(stderr, "\ttex_idx: %u\n", tex_idx);
+                rgba[0] = 1.0f;
+                rgba[1] = 1.0f;
+                rgba[2] = 1.0f;
+                rgba[3] = 1.0f;
+                return;
+            }
+            uint16_t val;
+            memcpy(&val, ((char*)obj->dat) + sizeof(uint16_t) * tex_idx,
+                   sizeof(val));
+
+            rgba[0] = ((val >> 10) & 0x1f) / 31.0f;
+            rgba[1] = ((val >> 5) & 0x1f) / 31.0f;
+            rgba[2] = ((val >> 0) & 0x1f) / 31.0f;
+            rgba[3] = val & 0x8000 ? 1.0f : 0.0f;
+        }
+        return;
+    case GFX_TEX_FMT_ARGB_4444:
+        {
+            if (tex_idx * sizeof(uint16_t) + (sizeof(uint16_t) - 1) >=
+                obj->dat_len || !obj->dat) {
+                fprintf(stderr, "%s - buffer overflow\n", __func__);
+                fprintf(stderr, "\tdat_len %llu\n",
+                        (unsigned long long)obj->dat_len);
+                fprintf(stderr, "\ttex_idx: %u\n", tex_idx);
+                rgba[0] = 1.0f;
+                rgba[1] = 1.0f;
+                rgba[2] = 1.0f;
+                rgba[3] = 1.0f;
+                return;
+            }
+            uint16_t val;
+            memcpy(&val, ((char*)obj->dat) + sizeof(uint16_t) * tex_idx,
+                   sizeof(val));
+
+            rgba[0] = ((val >> 8) & 0xf) / 15.0f;
+            rgba[1] = ((val >> 4) & 0xf) / 15.0f;
+            rgba[2] = ((val >> 0) & 0xf) / 15.0f;
+            rgba[3] = ((val >> 12) & 0xf) / 15.0f;
+        }
+        return;
+    case GFX_TEX_FMT_RGB_565:
+        {
+            if (tex_idx * sizeof(uint16_t) + (sizeof(uint16_t) - 1) >=
+                obj->dat_len || !obj->dat) {
+                fprintf(stderr, "%s - buffer overflow\n", __func__);
+                fprintf(stderr, "\tdat_len %llu\n",
+                        (unsigned long long)obj->dat_len);
+                fprintf(stderr, "\ttex_idx: %u\n", tex_idx);
+                rgba[0] = 1.0f;
+                rgba[1] = 1.0f;
+                rgba[2] = 1.0f;
+                rgba[3] = 1.0f;
+                return;
+            }
+            uint16_t val;
+            memcpy(&val, ((char*)obj->dat) + sizeof(uint16_t) * tex_idx,
+                   sizeof(val));
+
+            rgba[0] = ((val >> 11) & 0x1f) / 31.0f;
+            rgba[1] = ((val >> 5) & 0x3f) / 63.0f;
+            rgba[2] = ((val >> 0) & 0x1f) / 31.0f;
+            rgba[3] = 1.0f;
+        }
+        return;
+    case GFX_TEX_FMT_YUV_422:
+        {
+            if ((tex_idx / 2) * sizeof(uint32_t) + (sizeof(uint32_t) - 1) >=
+                obj->dat_len || !obj->dat) {
+                fprintf(stderr, "%s - buffer overflow\n", __func__);
+                fprintf(stderr, "\tdat_len %llu\n",
+                        (unsigned long long)obj->dat_len);
+                fprintf(stderr, "\ttex_idx: %u\n", tex_idx);
+                rgba[0] = 1.0f;
+                rgba[1] = 1.0f;
+                rgba[2] = 1.0f;
+                rgba[3] = 1.0f;
+                return;
+            }
+
+            uint32_t val;
+            memcpy(&val, ((char*)obj->dat) + sizeof(uint32_t) * (tex_idx / 2),
+                   sizeof(val));
+
+            unsigned lum;
+            int chrom_b = val & 0xff, chrom_r = (val >> 16) & 0xff;
+
+            chrom_b -= 128;
+            chrom_r -= 128;
+
+            if (texcoord[0] % 2)
+                lum = (val >> 24) & 0xff;
+            else
+                lum = (val >> 8) & 0xff;
+
+            int adds[3] = {
+                           (0x16000  * chrom_r) >> 16,
+                           -((0x5800 * chrom_b + 0xb000 * chrom_r) >> 16),
+                           (0x1b800 * chrom_b) >> 16
+            };
+            rgba[0] = clamp_int(lum + adds[0], 0, 255) / 255.0f;
+            rgba[1] = clamp_int(lum + adds[1], 0, 255) / 255.0f;
+            rgba[2] = clamp_int(lum + adds[2], 0, 255) / 255.0f;
+            rgba[3] = 1.0f;
+        }
+        return;
+    case GFX_TEX_FMT_ARGB_8888:
+    default:
+        fprintf(stderr, "%s - unimplemented tex format %d\n",
+                __func__, (int)texp->fmt);
+        rgba[0] = 1.0f;
+        rgba[1] = 1.0f;
+        rgba[2] = 1.0f;
+        rgba[3] = 1.0f;
+
+        abort();
+
+        return;
+    }
+}
+
 static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     if (render_tgt < 0) {
         fprintf(stderr, "%s - no render target bound!\n", __func__);
@@ -824,6 +1024,35 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                 p3[GFX_VERT_BASE_COLOR_OFFSET + 3] * p3[2]
             };
 
+            // perspective-correct texture coordinates
+            float p1_texcoord[2] = {
+                p1[GFX_VERT_TEX_COORD_OFFSET] * p1[2],
+                p1[GFX_VERT_TEX_COORD_OFFSET + 1] * p1[2]
+            };
+            float p2_texcoord[2] = {
+                p2[GFX_VERT_TEX_COORD_OFFSET] * p2[2],
+                p2[GFX_VERT_TEX_COORD_OFFSET + 1] * p2[2]
+            };
+            float p3_texcoord[2] = {
+                p3[GFX_VERT_TEX_COORD_OFFSET] * p3[2],
+                p3[GFX_VERT_TEX_COORD_OFFSET + 1] * p3[2]
+            };
+
+            struct tex *texp = NULL;
+            if (rend_param.tex_enable) {
+                if (rend_param.tex_idx < GFX_TEX_CACHE_SIZE) {
+                    if (textures[rend_param.tex_idx].obj_no >= 0 &&
+                        textures[rend_param.tex_idx].obj_no < GFX_OBJ_COUNT)
+                        texp = textures + rend_param.tex_idx;
+                    else
+                        fprintf(stderr, "%s - texture %d not bound to object\n",
+                                __func__, rend_param.tex_idx);
+                } else {
+                    fprintf(stderr, "%s - invalid tex_idx %u\n",
+                            __func__, rend_param.tex_idx);
+                }
+            }
+
             int x_pos, y_pos;
             for (y_pos = bbox[1]; y_pos <= bbox[3]; y_pos++) {
                 for (x_pos = bbox[0]; x_pos <= bbox[2]; x_pos++) {
@@ -870,11 +1099,35 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                              p3_base_col[3] * bary[2]) / w_coord
                         };
 
+                        float pix_color[4];
+
+                        if (texp) {
+                            float texcoord[2] = {
+                                (p1_texcoord[0] * bary[0] +
+                                 p2_texcoord[0] * bary[1] +
+                                 p3_texcoord[0] * bary[2]) / w_coord,
+
+                                (p1_texcoord[1] * bary[0] +
+                                 p2_texcoord[1] * bary[1] +
+                                 p3_texcoord[1] * bary[2]) / w_coord,
+                            };
+
+                            // TODO: bilinear filtering
+                            int texcoord_pix[2] = {
+                                texcoord[0] * (texp->width - 1),
+                                texcoord[1] * (texp->height - 1)
+                            };
+
+                            tex_sample(texp, pix_color, texcoord_pix);
+                        } else {
+                            memcpy(pix_color, base_col, sizeof(pix_color));
+                        }
+
                         int rgba[4] = {
-                            clamp_int(base_col[0] * 255, 0, 255),
-                            clamp_int(base_col[1] * 255, 0, 255),
-                            clamp_int(base_col[2] * 255, 0, 255),
-                            clamp_int(base_col[3] * 255, 0, 255)
+                            clamp_int(pix_color[0] * 255, 0, 255),
+                            clamp_int(pix_color[1] * 255, 0, 255),
+                            clamp_int(pix_color[2] * 255, 0, 255),
+                            clamp_int(pix_color[3] * 255, 0, 255)
                         };
 
                         put_pix(obj, x_pos, y_pos,
@@ -889,14 +1142,44 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     }
 }
 
+static void soft_gfx_bind_tex(struct gfx_il_inst *cmd) {
+    unsigned tex_no = cmd->arg.bind_tex.tex_no;
+    int obj_handle = cmd->arg.bind_tex.gfx_obj_handle;
+    unsigned width = cmd->arg.bind_tex.width;
+    unsigned height = cmd->arg.bind_tex.height;
+    enum gfx_tex_fmt pix_fmt = cmd->arg.bind_tex.pix_fmt;
+
+    if (tex_no >= GFX_TEX_CACHE_SIZE) {
+        fprintf(stderr, "%s - invalid texture handle %u\n", __func__, tex_no);
+    } else {
+        struct tex *texp = textures + tex_no;
+
+        texp->obj_no = obj_handle;
+        texp->width = width;
+        texp->height = height;
+        texp->fmt = pix_fmt;
+    }
+}
+
+static void soft_gfx_unbind_tex(struct gfx_il_inst *cmd) {
+    unsigned tex_no = cmd->arg.unbind_tex.tex_no;
+    if (tex_no >= GFX_TEX_CACHE_SIZE) {
+        fprintf(stderr, "%s - invalid texture handle %u\n", __func__, tex_no);
+    } else {
+        textures[tex_no].obj_no = -1;
+    }
+}
+
 static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     while (n_cmd--) {
         switch (cmd->op) {
         case GFX_IL_BIND_TEX:
             printf("GFX_IL_BIND_TEX\n");
+            soft_gfx_bind_tex(cmd);
             break;
         case GFX_IL_UNBIND_TEX:
             printf("GFX_IL_UNBIND_TEX\n");
+            soft_gfx_unbind_tex(cmd);
             break;
         case GFX_IL_BIND_RENDER_TARGET:
             printf("GFX_IL_BIND_RENDER_TARGET\n");
