@@ -111,6 +111,11 @@ static struct fb_poly {
 } fb_poly;
 
 static uint32_t fb[FB_WIDTH * FB_HEIGHT];
+
+static float *w_buffer = NULL;
+
+static struct gfx_rend_param rend_param;
+
 static GLuint fb_tex;
 static struct shader fb_shader;
 static int render_tgt = -1;
@@ -169,11 +174,20 @@ static void soft_gfx_init(void) {
 
     memset(fb, 0, sizeof(fb));
 
+    render_tgt = -1;
+
+    screen_width = 0;
+    screen_height = 0;
+    w_buffer = NULL;
+
     init_poly();
 }
 
 static void soft_gfx_cleanup(void) {
     glDeleteTextures(1, &fb_tex);
+
+    free(w_buffer);
+    w_buffer = NULL;
 }
 
 static void init_poly() {
@@ -341,11 +355,42 @@ static void soft_gfx_clear(struct gfx_il_inst *cmd) {
         memcpy(datp, &as_32, sizeof(as_32));
         datp += sizeof(as_32);
     }
+
+    /*
+     * clear depth buffer
+     *
+     * XXX not entirely sure what the best default value here should be since
+     * there are several different depth tests that games can configure.
+     * Greater/Greater-or-equal seem to be the most popular ones (and the only
+     * one supports for order-independent transparency) so -INFINITY works well
+     * here.  Ideally we would be implementing the depth test on a per-tile
+     * basis using the same algorithm as the actual PVR2 hardware instead of
+     * using a persistent depth buffer like high-level APIs do.
+     */
+    for (idx = 0; idx < screen_width * screen_height; idx++)
+        w_buffer[idx] = -INFINITY;
 }
 
 static void soft_gfx_begin_rend(struct gfx_il_inst *cmd) {
+    int old_screen_width = screen_width;
+    int old_screen_height = screen_height;
+
     screen_width = cmd->arg.begin_rend.screen_width;
     screen_height = cmd->arg.begin_rend.screen_height;
+
+    if (screen_width != old_screen_width ||
+        screen_height != old_screen_height) {
+        float *w_buf_new = realloc(w_buffer,
+                                   sizeof(float) *
+                                   screen_width * screen_height);
+        if (!w_buf_new) {
+            fprintf(stderr, "ERROR: %s - failure to allocate new w_buffer\n",
+                    __func__);
+            abort();
+        }
+        w_buffer = w_buf_new;
+    }
+
     int obj_handle = cmd->arg.begin_rend.rend_tgt_obj;
 
     if (obj_handle < 0) {
@@ -647,6 +692,32 @@ static float tri_area(float const v1[2], float const v2[2], float const v3[2]) {
     return 0.5f * fabsf(ortho_dot(vec1, vec2));
 }
 
+static bool depth_test(int x_pos, int y_pos, float w_coord) {
+    float w_ref = w_buffer[y_pos * screen_width + x_pos];
+    switch (rend_param.depth_func) {
+    case PVR2_DEPTH_NEVER:
+        return false;
+    case PVR2_DEPTH_LESS:
+        return w_coord < w_ref;
+    case PVR2_DEPTH_EQUAL:
+        return w_coord == w_ref;
+    case PVR2_DEPTH_LEQUAL:
+        return w_coord <= w_ref;
+    case PVR2_DEPTH_GREATER:
+        return w_coord > w_ref;
+    case PVR2_DEPTH_NOTEQUAL:
+        return w_coord != w_ref;
+    case PVR2_DEPTH_GEQUAL:
+        return w_coord >= w_ref;
+    case PVR2_DEPTH_ALWAYS:
+        return true;
+    default:
+        fprintf(stderr, "Unknown depth function %d!\n",
+                (int)rend_param.depth_func);
+        return true;
+    }
+}
+
 static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     if (render_tgt < 0) {
         fprintf(stderr, "%s - no render target bound!\n", __func__);
@@ -775,6 +846,12 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                         float w_coord =
                             p1[2] * bary[0] + p2[2] * bary[1] + p3[2] * bary[2];
 
+                        if (!depth_test(x_pos, y_pos, w_coord))
+                            continue;
+
+                        if (rend_param.enable_depth_writes)
+                            w_buffer[y_pos * screen_width + x_pos] = w_coord;
+
                         float base_col[4] = {
                             (p1_base_col[0] * bary[0] + p2_base_col[0] * bary[1] +
                              p3_base_col[0] * bary[2]) / w_coord,
@@ -841,6 +918,7 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_SET_REND_PARAM:
             printf("GFX_IL_SET_REND_PARAM\n");
+            rend_param = cmd->arg.set_rend_param.param;
             break;
         case GFX_IL_SET_CLIP_RANGE:
             printf("GFX_IL_SET_CLIP_RANGE\n");
