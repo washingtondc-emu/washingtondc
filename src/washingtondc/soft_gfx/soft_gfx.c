@@ -640,6 +640,13 @@ static void line_coeff(float coeff[3], float const p1[2], float const p2[2]) {
     coeff[2] = -(coeff[0] * p1[0] + coeff[1] * p1[1]);
 }
 
+static float tri_area(float const v1[2], float const v2[2], float const v3[2]) {
+    float vec1[2] = { v2[0] - v1[0], v2[1] - v1[1] };
+    float vec2[2] = { v3[0] - v1[0], v3[1] - v1[1] };
+
+    return 0.5f * fabsf(ortho_dot(vec1, vec2));
+}
+
 static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     if (render_tgt < 0) {
         fprintf(stderr, "%s - no render target bound!\n", __func__);
@@ -719,6 +726,29 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
             line_coeff(e2, p2, p3);
             line_coeff(e3, p3, p1);
 
+            float area = tri_area(p1, p2, p3);
+            float area_recip = 1.0f / area;
+
+            // perspective-correct base color
+            float p1_base_col[4] = {
+                p1[GFX_VERT_BASE_COLOR_OFFSET] * p1[2],
+                p1[GFX_VERT_BASE_COLOR_OFFSET + 1] * p1[2],
+                p1[GFX_VERT_BASE_COLOR_OFFSET + 2] * p1[2],
+                p1[GFX_VERT_BASE_COLOR_OFFSET + 3] * p1[2]
+            };
+            float p2_base_col[4] = {
+                p2[GFX_VERT_BASE_COLOR_OFFSET] * p2[2],
+                p2[GFX_VERT_BASE_COLOR_OFFSET + 1] * p2[2],
+                p2[GFX_VERT_BASE_COLOR_OFFSET + 2] * p2[2],
+                p2[GFX_VERT_BASE_COLOR_OFFSET + 3] * p2[2]
+            };
+            float p3_base_col[4] = {
+                p3[GFX_VERT_BASE_COLOR_OFFSET] * p3[2],
+                p3[GFX_VERT_BASE_COLOR_OFFSET + 1] * p3[2],
+                p3[GFX_VERT_BASE_COLOR_OFFSET + 2] * p3[2],
+                p3[GFX_VERT_BASE_COLOR_OFFSET + 3] * p3[2]
+            };
+
             int x_pos, y_pos;
             for (y_pos = bbox[1]; y_pos <= bbox[3]; y_pos++) {
                 for (x_pos = bbox[0]; x_pos <= bbox[2]; x_pos++) {
@@ -733,7 +763,44 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                          dist[1] <= 0.0f && dist[2] <= 0.0f) ||
                         (sign == 1 && dist[0] >= 0.0f &&
                          dist[1] >= 0.0f && dist[2] >= 0.0f)) {
-                        put_pix(obj->dat, x_pos, y_pos, 0xffffffff);
+
+                        // barycentric coordinates
+                        float bary[3] = {
+                            tri_area(p2, p3, pos) / area,
+                            tri_area(p3, p1, pos) / area,
+                            tri_area(p1, p2, pos) / area
+                        };
+
+                        // reciprocal depth
+                        float w_coord =
+                            p1[2] * bary[0] + p2[2] * bary[1] + p3[2] * bary[2];
+
+                        float base_col[4] = {
+                            (p1_base_col[0] * bary[0] + p2_base_col[0] * bary[1] +
+                             p3_base_col[0] * bary[2]) / w_coord,
+
+                            (p1_base_col[1] * bary[0] + p2_base_col[1] * bary[1] +
+                             p3_base_col[1] * bary[2]) / w_coord,
+
+                            (p1_base_col[2] * bary[0] + p2_base_col[2] * bary[1] +
+                             p3_base_col[2] * bary[2]) / w_coord,
+
+                            (p1_base_col[3] * bary[0] + p2_base_col[3] * bary[1] +
+                             p3_base_col[3] * bary[2]) / w_coord
+                        };
+
+                        int rgba[4] = {
+                            clamp_int(base_col[0] * 255, 0, 255),
+                            clamp_int(base_col[1] * 255, 0, 255),
+                            clamp_int(base_col[2] * 255, 0, 255),
+                            clamp_int(base_col[3] * 255, 0, 255)
+                        };
+
+                        put_pix(obj->dat, x_pos, y_pos,
+                                rgba[0]          |
+                                (rgba[1] << 8)   |
+                                (rgba[2] << 16)  |
+                                (rgba[3] << 24));
                     }
                 }
             }
