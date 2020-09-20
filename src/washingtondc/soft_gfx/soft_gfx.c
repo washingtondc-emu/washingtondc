@@ -1024,6 +1024,26 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                 p3[GFX_VERT_BASE_COLOR_OFFSET + 3] * p3[2]
             };
 
+            // perspective-correct offset color
+            float p1_offs_col[4] = {
+                p1[GFX_VERT_OFFS_COLOR_OFFSET] * p1[2],
+                p1[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p1[2],
+                p1[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p1[2],
+                p1[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p1[2]
+            };
+            float p2_offs_col[4] = {
+                p2[GFX_VERT_OFFS_COLOR_OFFSET] * p2[2],
+                p2[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p2[2],
+                p2[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p2[2],
+                p2[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p2[2]
+            };
+            float p3_offs_col[4] = {
+                p3[GFX_VERT_OFFS_COLOR_OFFSET] * p3[2],
+                p3[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p3[2],
+                p3[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p3[2],
+                p3[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p3[2]
+            };
+
             // perspective-correct texture coordinates
             float p1_texcoord[2] = {
                 p1[GFX_VERT_TEX_COORD_OFFSET] * p1[2],
@@ -1099,6 +1119,20 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                              p3_base_col[3] * bary[2]) / w_coord
                         };
 
+                        float offs_col[4] = {
+                            (p1_offs_col[0] * bary[0] + p2_offs_col[0] * bary[1] +
+                             p3_offs_col[0] * bary[2]) / w_coord,
+
+                            (p1_offs_col[1] * bary[0] + p2_offs_col[1] * bary[1] +
+                             p3_offs_col[1] * bary[2]) / w_coord,
+
+                            (p1_offs_col[2] * bary[0] + p2_offs_col[2] * bary[1] +
+                             p3_offs_col[2] * bary[2]) / w_coord,
+
+                            (p1_offs_col[3] * bary[0] + p2_offs_col[3] * bary[1] +
+                             p3_offs_col[3] * bary[2]) / w_coord
+                        };
+
                         float pix_color[4];
 
                         if (texp) {
@@ -1118,7 +1152,45 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                                 texcoord[1] * (texp->height - 1)
                             };
 
-                            tex_sample(texp, pix_color, texcoord_pix);
+                            float sample[4];
+                            tex_sample(texp, sample, texcoord_pix);
+
+                            switch (rend_param.tex_inst) {
+                            case TEX_INST_DECAL:
+                                pix_color[0] = sample[0] + offs_col[0];
+                                pix_color[1] = sample[1] + offs_col[1];
+                                pix_color[2] = sample[2] + offs_col[2];
+                                pix_color[3] = sample[3];
+                                break;
+                            case TEX_INST_MOD:
+                                pix_color[0] = sample[0] * base_col[0] + offs_col[0];
+                                pix_color[1] = sample[1] * base_col[1] + offs_col[1];
+                                pix_color[2] = sample[2] * base_col[2] + offs_col[2];
+                                pix_color[3] = sample[3];
+                                break;
+                            case TEXT_INST_DECAL_ALPHA:
+                                pix_color[0] = sample[0] * sample[3] +
+                                    base_col[0] * (1.0f - sample[3]) + offs_col[0];
+                                pix_color[1] = sample[1] * sample[3] +
+                                    base_col[1] * (1.0f - sample[3]) + offs_col[1];
+                                pix_color[2] = sample[2] * sample[3] +
+                                    base_col[2] * (1.0f - sample[3]) + offs_col[2];
+                                pix_color[3] = base_col[3];
+                                break;
+                            case TEX_INST_MOD_ALPHA:
+                                pix_color[0] = sample[0] * base_col[0] + offs_col[0];
+                                pix_color[1] = sample[1] * base_col[1] + offs_col[1];
+                                pix_color[2] = sample[2] * base_col[2] + offs_col[2];
+                                pix_color[3] = sample[3] * base_col[3];
+                                break;
+                            default:
+                                fprintf(stderr, "unknown texture inst %d\n",
+                                        (int)rend_param.tex_inst);
+                                pix_color[0] = 1.0f;
+                                pix_color[1] = 1.0f;
+                                pix_color[2] = 1.0f;
+                                pix_color[3] = 1.0f;
+                            }
                         } else {
                             memcpy(pix_color, base_col, sizeof(pix_color));
                         }
