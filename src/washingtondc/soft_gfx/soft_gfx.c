@@ -491,6 +491,172 @@ put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
     memcpy(((char*)obj->dat) + byte_offs, &color, sizeof(uint32_t));
 }
 
+static inline void
+put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
+
+    y_pix = screen_height - 1 - y_pix;
+    unsigned byte_offs = (y_pix * screen_width + x_pix) * sizeof(uint32_t);
+
+    if (x_pix < 0 || y_pix < 0 ||
+        x_pix >= screen_width || y_pix >= screen_height ||
+        byte_offs + (sizeof(uint32_t) - 1) >= obj->dat_len) {
+        fprintf(stderr, "%s - ERROR out of bounds (%d, %d)\n",
+                __func__, x_pix, y_pix);
+        fflush(stdout);
+        fflush(stderr);
+        abort();
+    }
+
+    uint32_t dst_val;
+    memcpy(&dst_val, ((char*)obj->dat) + byte_offs, sizeof(dst_val));
+
+    float dst_rgba[4] = {
+        (dst_val & 0xff) / 255.0f,
+        ((dst_val >> 8) & 0xff) / 255.0f,
+        ((dst_val >> 16) & 0xff) / 255.0f,
+        ((dst_val >> 24) & 0xff) / 255.0f
+    };
+
+    float src_rgba[4] = {
+        (color & 0xff) / 255.0f,
+        ((color >> 8) & 0xff) / 255.0f,
+        ((color >> 16) & 0xff) / 255.0f,
+        ((color >> 24) & 0xff) / 255.0f
+    };
+
+    float src_fact[4], dst_fact[4];
+
+    switch (rend_param.src_blend_factor) {
+    default:
+        fprintf(stderr, "ERROR: src Unknown blend factor\n");
+    case PVR2_BLEND_ZERO:
+        src_fact[0] = 0.0f;
+        src_fact[1] = 0.0f;
+        src_fact[2] = 0.0f;
+        src_fact[3] = 0.0f;
+        break;
+    case PVR2_BLEND_ONE:
+        src_fact[0] = 1.0f;
+        src_fact[1] = 1.0f;
+        src_fact[2] = 1.0f;
+        src_fact[3] = 1.0f;
+        break;
+    case PVR2_BLEND_OTHER:
+        src_fact[0] = dst_rgba[0];
+        src_fact[1] = dst_rgba[1];
+        src_fact[2] = dst_rgba[2];
+        src_fact[3] = dst_rgba[3];
+        break;
+    case PVR2_BLEND_ONE_MINUS_OTHER:
+        src_fact[0] = 1.0f - dst_rgba[0];
+        src_fact[1] = 1.0f - dst_rgba[1];
+        src_fact[2] = 1.0f - dst_rgba[2];
+        src_fact[3] = 1.0f - dst_rgba[3];
+        break;
+    case PVR2_BLEND_SRC_ALPHA:
+        src_fact[0] = src_rgba[3];
+        src_fact[1] = src_rgba[3];
+        src_fact[2] = src_rgba[3];
+        src_fact[3] = src_rgba[3];
+        break;
+    case PVR2_BLEND_ONE_MINUS_SRC_ALPHA:
+        src_fact[0] = 1.0f - src_rgba[3];
+        src_fact[1] = 1.0f - src_rgba[3];
+        src_fact[2] = 1.0f - src_rgba[3];
+        src_fact[3] = 1.0f - src_rgba[3];
+        break;
+    case PVR2_BLEND_DST_ALPHA:
+        src_fact[0] = dst_rgba[3];
+        src_fact[1] = dst_rgba[3];
+        src_fact[2] = dst_rgba[3];
+        src_fact[3] = dst_rgba[3];
+        break;
+    case PVR2_BLEND_ONE_MINUS_DST_ALPHA:
+        src_fact[0] = 1.0f - dst_rgba[3];
+        src_fact[1] = 1.0f - dst_rgba[3];
+        src_fact[2] = 1.0f - dst_rgba[3];
+        src_fact[3] = 1.0f - dst_rgba[3];
+        break;
+    }
+
+    switch (rend_param.dst_blend_factor) {
+    default:
+        fprintf(stderr, "ERROR: dst Unknown blend factor\n");
+    case PVR2_BLEND_ZERO:
+        dst_fact[0] = 0.0f;
+        dst_fact[1] = 0.0f;
+        dst_fact[2] = 0.0f;
+        dst_fact[3] = 0.0f;
+        break;
+    case PVR2_BLEND_ONE:
+        dst_fact[0] = 1.0f;
+        dst_fact[1] = 1.0f;
+        dst_fact[2] = 1.0f;
+        dst_fact[3] = 1.0f;
+        break;
+    case PVR2_BLEND_OTHER:
+        dst_fact[0] = src_rgba[0];
+        dst_fact[1] = src_rgba[1];
+        dst_fact[2] = src_rgba[2];
+        dst_fact[3] = src_rgba[3];
+        break;
+    case PVR2_BLEND_ONE_MINUS_OTHER:
+        dst_fact[0] = 1.0f - src_rgba[0];
+        dst_fact[1] = 1.0f - src_rgba[1];
+        dst_fact[2] = 1.0f - src_rgba[2];
+        dst_fact[3] = 1.0f - src_rgba[3];
+        break;
+    case PVR2_BLEND_SRC_ALPHA:
+        dst_fact[0] = src_rgba[3];
+        dst_fact[1] = src_rgba[3];
+        dst_fact[2] = src_rgba[3];
+        dst_fact[3] = src_rgba[3];
+        break;
+    case PVR2_BLEND_ONE_MINUS_SRC_ALPHA:
+        dst_fact[0] = 1.0f - src_rgba[3];
+        dst_fact[1] = 1.0f - src_rgba[3];
+        dst_fact[2] = 1.0f - src_rgba[3];
+        dst_fact[3] = 1.0f - src_rgba[3];
+        break;
+    case PVR2_BLEND_DST_ALPHA:
+        dst_fact[0] = dst_rgba[3];
+        dst_fact[1] = dst_rgba[3];
+        dst_fact[2] = dst_rgba[3];
+        dst_fact[3] = dst_rgba[3];
+        break;
+    case PVR2_BLEND_ONE_MINUS_DST_ALPHA:
+        dst_fact[0] = 1.0f - dst_rgba[3];
+        dst_fact[1] = 1.0f - dst_rgba[3];
+        dst_fact[2] = 1.0f - dst_rgba[3];
+        dst_fact[3] = 1.0f - dst_rgba[3];
+        break;
+    }
+
+    src_rgba[0] *= src_fact[0];
+    src_rgba[1] *= src_fact[1];
+    src_rgba[2] *= src_fact[2];
+    src_rgba[3] *= src_fact[3];
+
+    dst_rgba[0] *= dst_fact[0];
+    dst_rgba[1] *= dst_fact[1];
+    dst_rgba[2] *= dst_fact[2];
+    dst_rgba[3] *= dst_fact[3];
+
+    float out_rgba[4] = {
+        src_rgba[0] + dst_rgba[0],
+        src_rgba[1] + dst_rgba[1],
+        src_rgba[2] + dst_rgba[2],
+        src_rgba[3] + dst_rgba[3]
+    };
+
+    uint32_t out32 = clamp_int(out_rgba[0] * 255, 0, 255) |
+        (clamp_int(out_rgba[1] * 255, 0, 255) << 8)       |
+        (clamp_int(out_rgba[2] * 255, 0, 255) << 16)      |
+        (clamp_int(out_rgba[3] * 255, 0, 255) << 24);
+
+    memcpy(((char*)obj->dat) + byte_offs, &out32, sizeof(out32));
+}
+
 static void
 draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
     if ((x1 < 0 && x2 < 0) ||
@@ -1202,11 +1368,11 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                             clamp_int(pix_color[3] * 255, 0, 255)
                         };
 
-                        put_pix(obj, x_pos, y_pos,
-                                rgba[0]          |
-                                (rgba[1] << 8)   |
-                                (rgba[2] << 16)  |
-                                (rgba[3] << 24));
+                        put_pix_blended(obj, x_pos, y_pos,
+                                        rgba[0]          |
+                                        (rgba[1] << 8)   |
+                                        (rgba[2] << 16)  |
+                                        (rgba[3] << 24));
                     }
                 }
             }
