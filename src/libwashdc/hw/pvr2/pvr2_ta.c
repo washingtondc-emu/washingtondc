@@ -1219,7 +1219,7 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         hdr->tex_wrap_mode[1] = TEX_WRAP_REPEAT;
 
     hdr->enable_depth_writes =
-        !((ta_fifo32[0] & DEPTH_WRITE_DISABLE_MASK) >>
+        !((ta_fifo32[1] & DEPTH_WRITE_DISABLE_MASK) >>
           DEPTH_WRITE_DISABLE_SHIFT);
     hdr->depth_func =
         (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
