@@ -1567,6 +1567,8 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_GRAB_FRAMEBUFFER:
             printf("GFX_IL_GRAB_FRAMEBUFFER\n");
+            fprintf(stderr, "ERROR: GFX_IL_GRAB_FRAMEBUFFER not implemented for soft_gfx\n");
+            abort(); // we can't give the emulator what it needs here
             break;
         case GFX_IL_BEGIN_DEPTH_SORT:
             printf("GFX_IL_BEGIN_DEPTH_SORT\n");
