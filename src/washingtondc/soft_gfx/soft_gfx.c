@@ -114,6 +114,7 @@ static uint32_t fb[FB_WIDTH * FB_HEIGHT];
 
 static float *w_buffer = NULL;
 
+static bool blend_enable;
 static struct gfx_rend_param rend_param;
 
 static GLuint fb_tex;
@@ -1461,11 +1462,19 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                             clamp_int(pix_color[3] * 255, 0, 255)
                         };
 
-                        put_pix_blended(obj, x_pos, y_pos,
-                                        rgba[0]          |
-                                        (rgba[1] << 8)   |
-                                        (rgba[2] << 16)  |
-                                        (rgba[3] << 24));
+                        if (blend_enable) {
+                            put_pix_blended(obj, x_pos, y_pos,
+                                            rgba[0]          |
+                                            (rgba[1] << 8)   |
+                                            (rgba[2] << 16)  |
+                                            (rgba[3] << 24));
+                        } else {
+                            put_pix(obj, x_pos, y_pos,
+                                    rgba[0]          |
+                                    (rgba[1] << 8)   |
+                                    (rgba[2] << 16)  |
+                                    (rgba[3] << 24));
+                        }
                     }
                 }
             }
@@ -1533,6 +1542,7 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_SET_BLEND_ENABLE:
             printf("GFX_IL_SET_BLEND_ENABLE\n");
+            blend_enable = cmd->arg.set_blend_enable.do_enable;
             break;
         case GFX_IL_SET_REND_PARAM:
             printf("GFX_IL_SET_REND_PARAM\n");
