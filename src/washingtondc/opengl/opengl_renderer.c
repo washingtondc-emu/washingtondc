@@ -39,6 +39,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef _WIN32
+#include <dlfcn.h> // for loading renderdoc API
+#endif
+
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
 #include <GL/gl.h>
@@ -60,6 +64,8 @@
 #include "tex_cache.h"
 #include "gfx_obj.h"
 
+#include "renderdoc_app.h"
+
 #define POSITION_SLOT          0
 #define BASE_COLOR_SLOT        1
 #define OFFS_COLOR_SLOT        2
@@ -71,6 +77,32 @@ static GLint trans_mat_slot = -1;
 static GLuint vbo, vao;
 
 static struct opengl_renderer_callbacks const *switch_table;
+
+/*******************************************************************************
+ *
+ * RENDERDOC API SUPPORT
+ *
+ * RenderDoc is an open-source graphics debugger that comes in handy every now
+ * and again.  WashingtonDC's rendering pipeline always renders everything to an
+ * off-screen buffer and then renders that onto the screen as a textured quad
+ * when it's time to present; this can cause problems with RenderDoc because the
+ * debugger will only see us rendering the textured quad instead of the texture
+ * that went onto the quad.  We fix this by using RenderDoc's API to show it
+ * where each capture needs to begin and end.
+ *
+ * The capture key is set from the wash.ctrl.renderdoc-capture keybind; default
+ * binding is f10.  YOU MUST PRESS THIS KEY, NOT THE KEY THAT RENDERDOC TELLS
+ * YOU TO PRESS.  Otherwise, the capture will be triggered externally instead
+ * of being triggered by WashingtonDC via renderdoc's API and renderdoc will
+ * just show you WashingtonDC presenting a textured quad as described above.
+ *
+ ******************************************************************************/
+static RENDERDOC_API_1_4_1 *rdoc_api = NULL;
+static bool renderdoc_capture_requested, renderdoc_capture_in_progress;
+
+void opengl_renderer_capture_renderdoc(void) {
+    renderdoc_capture_requested = true;
+}
 
 struct obj_tex_meta {
     unsigned width, height;
@@ -203,6 +235,10 @@ struct rend_if const opengl_rend_if = {
     .cleanup = opengl_render_cleanup,
     .exec_gfx_il = opengl_renderer_exec_gfx_il
 };
+
+static void init_renderdoc_api(void);
+static void cleanup_renderdoc_api(void);
+static bool is_renderdoc_enabled(void);
 
 static char const * const pvr2_ta_vert_glsl =
     "layout (location = 0) in vec3 vert_pos;\n"
@@ -435,7 +471,50 @@ opengl_renderer_set_callbacks(struct opengl_renderer_callbacks const
     switch_table = callbacks;
 }
 
+static void init_renderdoc_api(void) {
+#ifdef _WIN32
+    HMODULE renderdoc_dll = GetModuleHandleA("renderdoc.dll");
+    if (renderdoc_dll) {
+        pRENDERDOC_GetAPI RENDERDOC_GetAPI =
+            (pRENDERDOC_GetAPI)GetProcAddress(renderdoc_dll, "RENDERDOC_GetAPI");
+        if (RENDERDOC_GetAPI) {
+            if (RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_4_1,
+                                 (void **)&rdoc_api) != 1) {
+                rdoc_api = NULL;
+            }
+        }
+    }
+#else
+    void *renderdoc_so = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD);
+    if (renderdoc_so) {
+        pRENDERDOC_GetAPI RENDERDOC_GetAPI =
+            (pRENDERDOC_GetAPI)dlsym(renderdoc_so, "RENDERDOC_GetAPI");
+        if (RENDERDOC_GetAPI) {
+            if (RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_4_1,
+                                 (void **)&rdoc_api) != 1) {
+                rdoc_api = NULL;
+            }
+        }
+    }
+#endif
+
+    if (is_renderdoc_enabled())
+        printf("OpenGL renderer: renderdoc API is enabled\n");
+    else
+        printf("OpenGL renderer: renderdoc API is disabled\n");
+}
+
+
+static void cleanup_renderdoc_api(void) {
+}
+
+static bool is_renderdoc_enabled(void) {
+    return rdoc_api && rdoc_api->StartFrameCapture;
+}
+
 static void opengl_render_init(void) {
+    init_renderdoc_api();
+
     tex_cache_init();
 
     win_make_context_current();
@@ -498,6 +577,8 @@ static void opengl_render_cleanup(void) {
     memset(obj_tex_array, 0, sizeof(obj_tex_array));
 
     tex_cache_cleanup();
+
+    cleanup_renderdoc_api();
 }
 
 static DEF_ERROR_INT_ATTR(max_length);
@@ -1107,6 +1188,14 @@ static void opengl_renderer_post_framebuffer(struct gfx_il_inst *cmd) {
 }
 
 static void opengl_renderer_begin_rend(struct gfx_il_inst *cmd) {
+    if (!renderdoc_capture_in_progress && renderdoc_capture_requested) {
+        if (is_renderdoc_enabled()) {
+            rdoc_api->StartFrameCapture(NULL, NULL);
+            renderdoc_capture_in_progress = true;
+        }
+        renderdoc_capture_requested = false;
+    }
+
     opengl_target_begin(cmd->arg.begin_rend.screen_width,
                         cmd->arg.begin_rend.screen_height,
                         cmd->arg.begin_rend.rend_tgt_obj);
@@ -1116,6 +1205,11 @@ static void opengl_renderer_begin_rend(struct gfx_il_inst *cmd) {
 
 static void opengl_renderer_end_rend(struct gfx_il_inst *cmd) {
     opengl_target_end(cmd->arg.end_rend.rend_tgt_obj);
+
+    if (renderdoc_capture_in_progress && is_renderdoc_enabled()) {
+        rdoc_api->EndFrameCapture(NULL, NULL);
+        renderdoc_capture_in_progress = false;
+    }
 }
 
 static void

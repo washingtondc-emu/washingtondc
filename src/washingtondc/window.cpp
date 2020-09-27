@@ -39,6 +39,7 @@
 #include <GLFW/glfw3.h>
 
 #include "opengl/opengl_output.h"
+#include "opengl/opengl_renderer.h"
 
 #include "washdc/washdc.h"
 
@@ -232,6 +233,7 @@ static void win_glfw_init(unsigned width, unsigned height) {
     bind_ctrl_from_cfg("resume-execution", "wash.ctrl.resume-execution");
     bind_ctrl_from_cfg("run-one-frame", "wash.ctrl.run-one-frame");
     bind_ctrl_from_cfg("pause-execution", "wash.ctrl.pause-execution");
+    bind_ctrl_from_cfg("renderdoc-capture", "wash.ctrl.renderdoc-capture");
 
     /*
      * This bind immediately exits the emulator.  It is unbound in the default
@@ -1190,6 +1192,13 @@ static void scan_input(void) {
             washdc_pause();
     }
     pause_key_prev = pause_key;
+
+    static bool renderdoc_key_prev = false;
+    bool renderdoc_key = ctrl_get_button("renderdoc-capture");
+    if (renderdoc_key && !renderdoc_key_prev) {
+        opengl_renderer_capture_renderdoc();
+    }
+    renderdoc_key_prev = renderdoc_key;
 
     bool exit_key = ctrl_get_button("exit-now");
     if (exit_key) {

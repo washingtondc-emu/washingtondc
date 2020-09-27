@@ -46,6 +46,8 @@
 extern "C" {
 #endif
 
+void opengl_renderer_capture_renderdoc(void);
+
 /*
  * functions the renderer calls to interact with stuff like the windowing
  * system and overlay.

@@ -107,7 +107,8 @@ set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader.h"
                   "${PROJECT_SOURCE_DIR}/opengl/tex_cache.h"
                   "${PROJECT_SOURCE_DIR}/opengl/tex_cache.c"
                   "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.c")
+                  "${PROJECT_SOURCE_DIR}/opengl/gfx_obj.c"
+                  "${PROJECT_SOURCE_DIR}/opengl/renderdoc_app.h")
 
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
@@ -202,7 +203,8 @@ set(washingtondc_libs "washdc"
                       "png"
                       "${vid_libs}"
                       "zlib"
-                      "portaudio_static")
+                      "portaudio_static"
+                      "${CMAKE_DL_LIBS}")
 
 if (NOT WIN32)
    set (washingtondc_libs "${washingtondc_libs}" "m")
