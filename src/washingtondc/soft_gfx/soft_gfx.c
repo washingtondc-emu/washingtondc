@@ -240,7 +240,6 @@ static void soft_gfx_obj_init(struct gfx_il_inst *cmd) {
     int obj_no = cmd->arg.init_obj.obj_no;
     size_t n_bytes = cmd->arg.init_obj.n_bytes;
     gfx_obj_init(obj_no, n_bytes);
-    printf("\tinitialize object %d\n", obj_no);
 }
 
 static void soft_gfx_obj_write(struct gfx_il_inst *cmd) {
@@ -273,8 +272,6 @@ static void soft_gfx_post_fb(struct gfx_il_inst *cmd) {
     int obj_handle = cmd->arg.post_framebuffer.obj_handle;
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
     bool do_flip = cmd->arg.post_framebuffer.vert_flip;
-
-    printf("\tpost object %d\n", obj_handle);
 
     if (obj->dat_len && obj->dat){
         size_t n_bytes = obj->dat_len < sizeof(fb) ? obj->dat_len : sizeof(fb);
@@ -1514,77 +1511,58 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     while (n_cmd--) {
         switch (cmd->op) {
         case GFX_IL_BIND_TEX:
-            printf("GFX_IL_BIND_TEX\n");
             soft_gfx_bind_tex(cmd);
             break;
         case GFX_IL_UNBIND_TEX:
-            printf("GFX_IL_UNBIND_TEX\n");
             soft_gfx_unbind_tex(cmd);
             break;
         case GFX_IL_BIND_RENDER_TARGET:
-            printf("GFX_IL_BIND_RENDER_TARGET\n");
             soft_gfx_bind_render_target(cmd);
             break;
         case GFX_IL_UNBIND_RENDER_TARGET:
-            printf("GFX_IL_UNBIND_RENDER_TARGET\n");
             break;
         case GFX_IL_BEGIN_REND:
-            printf("GFX_IL_BEGIN_REND\n");
             soft_gfx_begin_rend(cmd);
             break;
         case GFX_IL_END_REND:
-            printf("GFX_IL_END_REND\n");
             soft_gfx_end_rend(cmd);
             break;
         case GFX_IL_CLEAR:
-            printf("GFX_IL_CLEAR\n");
             soft_gfx_clear(cmd);
             break;
         case GFX_IL_SET_BLEND_ENABLE:
-            printf("GFX_IL_SET_BLEND_ENABLE\n");
             blend_enable = cmd->arg.set_blend_enable.do_enable;
             break;
         case GFX_IL_SET_REND_PARAM:
-            printf("GFX_IL_SET_REND_PARAM\n");
             rend_param = cmd->arg.set_rend_param.param;
             break;
         case GFX_IL_SET_CLIP_RANGE:
-            printf("GFX_IL_SET_CLIP_RANGE\n");
             break;
         case GFX_IL_DRAW_ARRAY:
-            printf("GFX_IL_DRAW_ARRAY\n");
             soft_gfx_draw_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
-            printf("GFX_IL_INIT_OBJ\n");
             soft_gfx_obj_init(cmd);
             break;
         case GFX_IL_WRITE_OBJ:
-            printf("GFX_IL_WRITE_OBJ\n");
             soft_gfx_obj_write(cmd);
             break;
         case GFX_IL_READ_OBJ:
-            printf("GFX_IL_READ_OBJ\n");
             soft_gfx_obj_read(cmd);
             break;
         case GFX_IL_FREE_OBJ:
-            printf("GFX_IL_FREE_OBJ\n");
             soft_gfx_obj_free(cmd);
             break;
         case GFX_IL_POST_FRAMEBUFFER:
-            printf("GFX_IL_POST_FRAMEBUFFER\n");
             soft_gfx_post_fb(cmd);
             break;
         case GFX_IL_GRAB_FRAMEBUFFER:
-            printf("GFX_IL_GRAB_FRAMEBUFFER\n");
             fprintf(stderr, "ERROR: GFX_IL_GRAB_FRAMEBUFFER not implemented for soft_gfx\n");
             abort(); // we can't give the emulator what it needs here
             break;
         case GFX_IL_BEGIN_DEPTH_SORT:
-            printf("GFX_IL_BEGIN_DEPTH_SORT\n");
             break;
         case GFX_IL_END_DEPTH_SORT:
-            printf("GFX_IL_END_DEPTH_SORT\n");
             break;
         default:
             fprintf(stderr, "ERROR: UNKNOWN GFX IL COMMAND %02X\n",
