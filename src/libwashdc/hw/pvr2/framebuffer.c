@@ -906,17 +906,20 @@ static void
 fb_sync_from_host_0565_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
-    unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
-    unsigned y_max = fb->tile_h < fb->y_clip_max ? fb->tile_h : fb->y_clip_max;
-    unsigned width = x_max - x_min + 1;
-    unsigned height = y_max - y_min + 1;
+    unsigned width = fb->tile_w;
+    unsigned height = fb->tile_h;
+    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
+    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
 
     uint16_t const k_val = 0;
 
-    assert((width * height * 4) < OGL_FB_BYTES);
+#ifdef INVARIANTS
+    if (width * height * 4 >= OGL_FB_BYTES)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     unsigned row, col;
     uint8_t *ogl_fb = pvr2->fb.ogl_fb;
@@ -937,17 +940,20 @@ static void
 fb_sync_from_host_0555_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
-    unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
-    unsigned y_max = fb->tile_h < fb->y_clip_max ? fb->tile_h : fb->y_clip_max;
-    unsigned width = x_max - x_min + 1;
-    unsigned height = y_max - y_min + 1;
+    unsigned width = fb->tile_w;
+    unsigned height = fb->tile_h;
+    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
+    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
 
     uint16_t const k_val = 0;
 
-    assert((width * height * 4) < OGL_FB_BYTES);
+#ifdef INVARIANTS
+    if ((width * height * 4) >= OGL_FB_BYTES)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     unsigned row, col;
     uint8_t *ogl_fb = pvr2->fb.ogl_fb;
@@ -969,15 +975,18 @@ static void
 fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
     unsigned x_min = fb->x_clip_min;
     unsigned y_min = fb->y_clip_min;
-    unsigned x_max = fb->tile_w < fb->x_clip_max ? fb->tile_w : fb->x_clip_max;
-    unsigned y_max = fb->tile_h < fb->y_clip_max ? fb->tile_h : fb->y_clip_max;
-    unsigned width = x_max - x_min + 1;
-    unsigned height = y_max - y_min + 1;
+    unsigned width = fb->tile_w;
+    unsigned height = fb->tile_h;
+    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
+    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
 
-    assert((width * height * 4) < OGL_FB_BYTES);
+#ifdef INVARIANTS
+    if ((width * height * 4) >= OGL_FB_BYTES)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     unsigned row, col;
     uint8_t *ogl_fb = pvr2->fb.ogl_fb;
@@ -1011,95 +1020,65 @@ fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
 }
 
 static void fb_sync_from_host_rgb0888(struct pvr2 *pvr2, struct framebuffer *fb) {
-    /*
-     * TODO: don't get width, height from fb_read_width and fb_read_height
-     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
-     * work).
-     */
-    unsigned width = fb->fb_read_width;
-    unsigned height = fb->fb_read_height;
-    unsigned stride = fb->linestride;
-    uint32_t const *fb_in = (uint32_t*)pvr2->fb.ogl_fb;
-    unsigned rows_per_field = height / 2;
-    unsigned const *addr = fb->addr_first;
+    // TODO: this code is untested lol
+    unsigned x_min = fb->x_clip_min;
+    unsigned y_min = fb->y_clip_min;
+    unsigned width = fb->tile_w;
+    unsigned height = fb->tile_h;
+    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
+    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
 
-    assert((width * height * 4) < OGL_FB_BYTES);
+    unsigned stride = fb->linestride;
+    uint32_t const *addr = fb->addr_first;
+
+#ifdef INVARIANTS
+    if ((width * height * 4) >= OGL_FB_BYTES)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     unsigned row, col;
-    for (row = 0; row < rows_per_field; row++) {
-        unsigned row_actual[2] = { 2 * row, 2 * row + 1 };
-        unsigned line_offs[2] = {
-            addr[0] + (rows_per_field - (row + 1)) * stride,
-            addr[1] + (rows_per_field - (row + 1)) * stride
-        };
-
-        for (col = 0; col < width; col++) {
-            unsigned ogl_fb_idx[2] = {
-                row_actual[0] * width + col,
-                row_actual[1] * width + col
-            };
-
-            uint32_t pix_in[2] = {
-                fb_in[ogl_fb_idx[0]],
-                fb_in[ogl_fb_idx[1]]
-            };
-
-            uint32_t pix_out[2] = {
-                pix_in[0] & 0x00ffffff,
-                pix_in[1] & 0x00ffffff
-            };
-
-            copy_to_tex_mem(pvr2, pix_out + 0,
-                            line_offs[0] + 2 * col, sizeof(pix_out[0]));
-            copy_to_tex_mem(pvr2, pix_out + 1,
-                            line_offs[1] + 2 * col, sizeof(pix_out[1]));
+    char *ogl_fb = pvr2->fb.ogl_fb;
+    for (row = y_min; row <= y_max; row++) {
+        unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
+        for (col = x_min; col <= x_max; col++) {
+            uint32_t pix_in;
+            unsigned fb_idx = row * width + col;
+            memcpy(&pix_in, ogl_fb + sizeof(uint32_t) * fb_idx, sizeof(pix_in));
+            uint32_t pix_out = pix_in & 0x00ffffff;
+            copy_to_tex_mem(pvr2, &pix_out,
+                            line_offs + 4 * col, sizeof(pix_out));
         }
     }
 }
 
 static void fb_sync_from_host_argb8888(struct pvr2 *pvr2, struct framebuffer *fb) {
-    /*
-     * TODO: don't get width, height from fb_read_width and fb_read_height
-     * (see fb_sync_from_host_0565_krgb_intl for an example of how this should
-     * work).
-     */
-    unsigned width = fb->fb_read_width;
-    unsigned height = fb->fb_read_height;
-    unsigned stride = fb->linestride;
-    uint32_t const *fb_in = (uint32_t*)pvr2->fb.ogl_fb;
-    unsigned rows_per_field = height / 2;
-    unsigned const *addr = fb->addr_first;
+    // TODO: this code is untested lol
+    unsigned x_min = fb->x_clip_min;
+    unsigned y_min = fb->y_clip_min;
+    unsigned width = fb->tile_w;
+    unsigned height = fb->tile_h;
+    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
+    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
 
-    assert((width * height * 4) < OGL_FB_BYTES);
+    unsigned stride = fb->linestride;
+    uint32_t const *addr = fb->addr_first;
+
+#ifdef INVARIANTS
+    if ((width * height * 4) >= OGL_FB_BYTES)
+        RAISE_ERROR(ERROR_INTEGRITY);
+#endif
 
     unsigned row, col;
-    for (row = 0; row < rows_per_field; row++) {
-        unsigned row_actual[2] = { 2 * row, 2 * row + 1 };
-        unsigned line_offs[2] = {
-            addr[0] + (rows_per_field - (row + 1)) * stride,
-            addr[1] + (rows_per_field - (row + 1)) * stride
-        };
-
-        for (col = 0; col < width; col++) {
-            unsigned ogl_fb_idx[2] = {
-                row_actual[0] * width + col,
-                row_actual[1] * width + col
-            };
-
-            uint32_t pix_in[2] = {
-                fb_in[ogl_fb_idx[0]],
-                fb_in[ogl_fb_idx[1]]
-            };
-
-            uint32_t pix_out[2] = {
-                pix_in[0],
-                pix_in[1]
-            };
-
-            copy_to_tex_mem(pvr2, pix_out + 0,
-                            line_offs[0] + 2 * col, sizeof(pix_out[0]));
-            copy_to_tex_mem(pvr2, pix_out + 1,
-                            line_offs[1] + 2 * col, sizeof(pix_out[1]));
+    char *ogl_fb = pvr2->fb.ogl_fb;
+    for (row = y_min; row <= y_max; row++) {
+        unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
+        for (col = x_min; col <= x_max; col++) {
+            uint32_t pix_in;
+            unsigned fb_idx = row * width + col;
+            memcpy(&pix_in, ogl_fb + sizeof(uint32_t) * fb_idx, sizeof(pix_in));
+            uint32_t pix_out = pix_in;
+            copy_to_tex_mem(pvr2, &pix_out,
+                            line_offs + 4 * col, sizeof(pix_out));
         }
     }
 }

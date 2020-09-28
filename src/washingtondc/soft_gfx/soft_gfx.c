@@ -123,6 +123,9 @@ static int render_tgt = -1;
 static int screen_width, screen_height;
 static bool wireframe_mode;
 
+// pixel-space clip rectangle, for OpenGL-style scissor test
+static unsigned clip[4];
+
 struct tex {
     int obj_no;
     unsigned width, height;
@@ -386,6 +389,8 @@ static void soft_gfx_begin_rend(struct gfx_il_inst *cmd) {
     screen_width = cmd->arg.begin_rend.screen_width;
     screen_height = cmd->arg.begin_rend.screen_height;
 
+    memcpy(clip, cmd->arg.begin_rend.clip, sizeof(clip));
+
     if (screen_width != old_screen_width ||
         screen_height != old_screen_height) {
         float *w_buf_new = realloc(w_buffer,
@@ -473,6 +478,12 @@ static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
 static inline void
 put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
 
+    if (x_pix < clip[0] ||
+        x_pix > clip[2] ||
+        y_pix < clip[1] ||
+        y_pix > clip[3])
+        return;
+
     y_pix = screen_height - 1 - y_pix;
     unsigned byte_offs = (y_pix * screen_width + x_pix) * sizeof(uint32_t);
 
@@ -491,6 +502,12 @@ put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
 
 static inline void
 put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
+
+    if (x_pix < clip[0] ||
+        x_pix > clip[2] ||
+        y_pix < clip[1] ||
+        y_pix > clip[3])
+        return;
 
     y_pix = screen_height - 1 - y_pix;
     unsigned byte_offs = (y_pix * screen_width + x_pix) * sizeof(uint32_t);

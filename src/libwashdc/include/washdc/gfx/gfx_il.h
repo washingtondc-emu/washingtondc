@@ -148,6 +148,18 @@ union gfx_il_arg {
 
     struct {
         unsigned screen_width, screen_height;
+
+        /*
+         * clip rectangle, pixels within it will be written to; pixels outside
+         * of it will not.
+         *
+         * [0] - x_min
+         * [1] - y_min
+         * [2] - x_max
+         * [3] - y_max
+         */
+        unsigned clip[4];
+
         int rend_tgt_obj;
     } begin_rend;
 

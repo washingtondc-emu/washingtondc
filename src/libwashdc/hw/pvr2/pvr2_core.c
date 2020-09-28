@@ -710,6 +710,13 @@ pvr2_core_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst) {
     core->gfx_il_inst_buf[core->gfx_il_inst_buf_count++] = inst;
 }
 
+static DEF_ERROR_INT_ATTR(screen_width)
+static DEF_ERROR_INT_ATTR(screen_height)
+static DEF_ERROR_INT_ATTR(x_clip_min)
+static DEF_ERROR_INT_ATTR(y_clip_min)
+static DEF_ERROR_INT_ATTR(x_clip_max)
+static DEF_ERROR_INT_ATTR(y_clip_max)
+
 void pvr2_ta_startrender(struct pvr2 *pvr2) {
     struct pvr2_core *core = &pvr2->core;
     struct gfx_il_inst cmd;
@@ -779,19 +786,26 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
                   (unsigned)key);
     }
 
-    unsigned tile_w = get_glob_tile_clip_x(pvr2) << 5;
-    unsigned tile_h = get_glob_tile_clip_y(pvr2) << 5;
+    /*
+     * XXX glob_tile_clip is supposed to apply to TA display list creation
+     * and not core rendering, so it's definitely not correct to be referencing
+     * it here but IDK how else to get framebuffer dimensions so we do it
+     * anyways.
+     *
+     * Note that if this ever gets fixed, then framebuffer.c may need to be
+     * updated as well
+     */
+    unsigned screen_width = get_glob_tile_clip_x(pvr2) << 5;
+    unsigned screen_height = get_glob_tile_clip_y(pvr2) << 5;
     unsigned x_clip_min = get_fb_x_clip_min(pvr2);
     unsigned x_clip_max = get_fb_x_clip_max(pvr2);
     unsigned y_clip_min = get_fb_y_clip_min(pvr2);
     unsigned y_clip_max = get_fb_y_clip_max(pvr2);
 
-    unsigned x_min = x_clip_min;
-    unsigned y_min = y_clip_min;
-    unsigned x_max = tile_w < x_clip_max ? tile_w : x_clip_max;
-    unsigned y_max = tile_h < y_clip_max ? tile_h : y_clip_max;
-    unsigned width = x_max - x_min + 1;
-    unsigned height = y_max - y_min + 1;
+    if (x_clip_max >= screen_width)
+        x_clip_max = screen_width - 1;
+    if (y_clip_max >= screen_height)
+        y_clip_max = screen_height - 1;
 
     /*
      * backgnd_info points to a structure containing some ISP/TSP parameters
@@ -848,7 +862,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
      */
     unsigned read_width, read_height;
     framebuffer_get_render_target_dims(pvr2, tgt, &read_width, &read_height);
-    if (read_width != width || read_height != height) {
+    if (read_width != screen_width || read_height != screen_height) {
         /*
          * Also I suspect that the read-width needs to be doubled because it's
          * always half what I expect it to be.  That's fairly reasonably and
@@ -856,7 +870,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
          */
         LOG_DBG("Warning: read-dimensions of framebuffer are %ux%u, but "
                 "write-dimensions are %ux%u\n",
-                read_width, read_height, width, height);
+                read_width, read_height, screen_width, screen_height);
     }
 
     /*
@@ -867,8 +881,12 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
 
     // set up rendering context
     cmd.op = GFX_IL_BEGIN_REND;
-    cmd.arg.begin_rend.screen_width = width;
-    cmd.arg.begin_rend.screen_height = height;
+    cmd.arg.begin_rend.screen_width = screen_width;
+    cmd.arg.begin_rend.screen_height = screen_height;
+    cmd.arg.begin_rend.clip[0] = x_clip_min;
+    cmd.arg.begin_rend.clip[1] = y_clip_min;
+    cmd.arg.begin_rend.clip[2] = x_clip_max;
+    cmd.arg.begin_rend.clip[3] = y_clip_max;
     cmd.arg.begin_rend.rend_tgt_obj = tgt;
     rend_exec_il(&cmd, 1);
 
