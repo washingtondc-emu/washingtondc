@@ -54,6 +54,11 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
 
 static void init_poly();
 
+static inline void
+put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color);
+static inline void
+put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color);
+
 #define FB_WIDTH 640
 #define FB_HEIGHT 480
 
@@ -359,13 +364,16 @@ static void soft_gfx_clear(struct gfx_il_inst *cmd) {
         return;
     }
 
-    size_t n_dwords = obj->dat_len / sizeof(as_32);
-    unsigned idx;
-    char *datp = (char*)obj->dat;
-    for (idx = 0; idx < n_dwords; idx++) {
-        memcpy(datp, &as_32, sizeof(as_32));
-        datp += sizeof(as_32);
-    }
+    /*
+     * TODO: write directly to the framebuffer instead of calling put_pix.
+     *
+     * It should be faster that way, and we can skip the per-pixel clip
+     * rectangle check by looping across the range of the rectangle.
+     */
+    unsigned row, col;
+    for (row = 0; row <= screen_height-1; row++)
+        for (col = 0; col <= screen_width-1; col++)
+            put_pix(obj, col, row, as_32);
 
     /*
      * clear depth buffer
@@ -378,6 +386,7 @@ static void soft_gfx_clear(struct gfx_il_inst *cmd) {
      * basis using the same algorithm as the actual PVR2 hardware instead of
      * using a persistent depth buffer like high-level APIs do.
      */
+    unsigned idx;
     for (idx = 0; idx < screen_width * screen_height; idx++)
         w_buffer[idx] = -INFINITY;
 }
