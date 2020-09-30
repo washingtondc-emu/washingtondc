@@ -1199,11 +1199,15 @@ static void opengl_renderer_begin_rend(struct gfx_il_inst *cmd) {
     opengl_target_begin(cmd->arg.begin_rend.screen_width,
                         cmd->arg.begin_rend.screen_height,
                         cmd->arg.begin_rend.rend_tgt_obj);
+
+    unsigned *clip = cmd->arg.begin_rend.clip;
+
+    // flip y-coordinates of clip rectangle
+    clip[1] = screen_height - 1 - clip[1];
+    clip[3] = screen_height - 1 - clip[3];
+
     glEnable(GL_SCISSOR_TEST);
-    glScissor(cmd->arg.begin_rend.clip[0],
-              cmd->arg.begin_rend.clip[1],
-              cmd->arg.begin_rend.clip[2] - cmd->arg.begin_rend.clip[0] + 1,
-              cmd->arg.begin_rend.clip[3] - cmd->arg.begin_rend.clip[0] + 1);
+    glScissor(clip[0], clip[3], clip[2] - clip[0] + 1, clip[1] - clip[3] + 1);
     opengl_renderer_set_screen_dim(cmd->arg.begin_rend.screen_width,
                                    cmd->arg.begin_rend.screen_height);
 }
