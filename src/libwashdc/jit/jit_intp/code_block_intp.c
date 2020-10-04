@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2018, 2019 snickerbockers
+ * Copyright 2018-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -107,6 +107,11 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                                        block->slots[
                                            inst->immed.call_func.slot_no
                                            ].as_u32);
+            inst++;
+            break;
+        case JIT_OP_CALL_FUNC_IMM32:
+            inst->immed.call_func_imm32.func(cpu,
+                                             inst->immed.call_func_imm32.imm32);
             inst++;
             break;
         case JIT_OP_READ_16_CONSTADDR:

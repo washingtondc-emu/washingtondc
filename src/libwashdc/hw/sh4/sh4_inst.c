@@ -737,7 +737,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_BR, 1, 0xf000, 0xb000 },
 
     // TRAPA #immed
-    { &sh4_inst_unary_trapa_disp, sh4_jit_fallback, false,
+    { &sh4_inst_unary_trapa_disp, sh4_jit_trapa_imm, false,
       SH4_GROUP_CO, 7, 0xff00, 0xc300 },
 
     // TAS.B @Rn

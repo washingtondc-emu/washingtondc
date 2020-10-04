@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2018, 2019 snickerbockers
+ * Copyright 2018-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -113,6 +113,17 @@ void jit_call_func(struct il_code_block *block,
     op.op = JIT_OP_CALL_FUNC;
     op.immed.call_func.slot_no = slot_no;
     op.immed.call_func.func = func;
+
+    il_code_block_push_inst(block, &op);
+}
+
+void jit_call_func_imm32(struct il_code_block *block,
+                         void(*func)(void*,uint32_t), uint32_t imm32) {
+    struct jit_inst op;
+
+    op.op = JIT_OP_CALL_FUNC_IMM32;
+    op.immed.call_func_imm32.imm32 = imm32;
+    op.immed.call_func_imm32.func = func;
 
     il_code_block_push_inst(block, &op);
 }
@@ -808,6 +819,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return false;
     case JIT_OP_CALL_FUNC:
         return slot_no == immed->call_func.slot_no;
+    case JIT_OP_CALL_FUNC_IMM32:
+        return false;
     case JIT_OP_READ_16_CONSTADDR:
         return false;
     case JIT_OP_SIGN_EXTEND_8:
@@ -950,6 +963,8 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         write_slots[0] = immed->set_slot_host_ptr.slot_idx;
         break;
     case JIT_OP_CALL_FUNC:
+        break;
+    case JIT_OP_CALL_FUNC_IMM32:
         break;
     case JIT_OP_READ_16_CONSTADDR:
         write_slots[0] = immed->read_16_constaddr.slot_no;

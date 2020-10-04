@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2018, 2019 snickerbockers
+ * Copyright 2018-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,8 +63,19 @@ enum jit_opcode {
     // this will set a register to point to something on te host machine
     JIT_SET_SLOT_HOST_PTR,
 
-    // this will copy a slot into SR and handle any state changes
+    /*
+     * this will call a function which accepts a 32-bit int as its sole argument.
+     *
+     * the argument will be read from a slot.
+     */
     JIT_OP_CALL_FUNC,
+
+    /*
+     * this will call a function which accepts a 32-bit int as its sole argument.
+     *
+     * the argument will be a constant immediate value
+     */
+    JIT_OP_CALL_FUNC_IMM32,
 
     // read 16 bits from a constant address and store them in a given slot
     JIT_OP_READ_16_CONSTADDR,
@@ -266,6 +277,11 @@ struct set_slot_host_ptr_immed {
 struct call_func_immed {
     void(*func)(void*,uint32_t);
     unsigned slot_no;
+};
+
+struct call_func_imm32_immed {
+    void(*func)(void*,uint32_t);
+    uint32_t imm32;
 };
 
 struct read_16_constaddr_immed {
@@ -523,6 +539,7 @@ union jit_immed {
     struct set_slot_immed set_slot;
     struct set_slot_host_ptr_immed set_slot_host_ptr;
     struct call_func_immed call_func;
+    struct call_func_imm32_immed call_func_imm32;
     struct read_16_constaddr_immed read_16_constaddr;
     struct sign_extend_16_immed sign_extend_8;
     struct sign_extend_16_immed sign_extend_16;
@@ -600,6 +617,8 @@ void jit_set_slot_host_ptr(struct il_code_block *block, unsigned slot_idx,
                            void *ptr);
 void jit_call_func(struct il_code_block *block,
                    void(*func)(void*,uint32_t), unsigned slot_no);
+void jit_call_func_imm32(struct il_code_block *block,
+                         void(*func)(void*,uint32_t), uint32_t imm32);
 void jit_read_16_constaddr(struct il_code_block *block, struct memory_map *map,
                            addr32_t addr, unsigned slot_no);
 void jit_sign_extend_8(struct il_code_block *block, unsigned slot_no);

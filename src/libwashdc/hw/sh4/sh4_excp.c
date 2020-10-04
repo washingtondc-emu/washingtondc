@@ -214,9 +214,19 @@ void sh4_set_exception(Sh4 *sh4, unsigned excp_code) {
      * block.  From a guest-program's point-of-view, the only
      * potentially-visible artifact from this would be the CPU briefly becoming
      * faster for a few instructions.
+     *
+     * we let SH4_EXCP_UNCONDITIONAL_TRAP through because that exception type
+     * is actually implemented (see the trapa implementation in sh4_jit.c) since
+     * trapa is unconditional and it's easy to know at compile-time what the PC
+     * will be.  For other types of exceptions where the exception is
+     * conditional, I think we're going to actually have to implement that as a
+     * conditional branch within the JIT code.
      */
-    if (config_get_jit())
+    if (excp_code != SH4_EXCP_UNCONDITIONAL_TRAP && config_get_jit()) {
+        error_set_excp_code(excp_code);
+        error_set_feature("CPU exception with JIT enabled");
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 
     sh4->dont_increment_pc = true;
     struct Sh4ExcpMeta const *meta = sh4_excp_meta_find(excp_code);

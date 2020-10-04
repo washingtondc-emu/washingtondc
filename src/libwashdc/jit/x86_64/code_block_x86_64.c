@@ -1055,6 +1055,24 @@ static void emit_call_func(struct code_block_x86_64 *blk,
     ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
+// JIT_OP_CALL_FUNC_IMM32 implementation
+static void emit_call_func_imm32(struct code_block_x86_64 *blk,
+                                 struct il_code_block const *il_blk,
+                                 void *cpu, struct jit_inst const *inst) {
+    prefunc(blk);
+
+    x86asm_mov_imm64_reg64((uint64_t)(uintptr_t)cpu, REG_ARG0);
+    x86asm_mov_imm32_reg32(inst->immed.call_func_imm32.imm32, REG_ARG1);
+
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(inst->immed.call_func.func);
+    ms_shadow_close();
+
+    postfunc();
+    ungrab_register(&gen_reg_state.set, REG_RET);
+}
+
 // JIT_OP_READ_16_CONSTADDR implementation
 static void emit_read_16_constaddr(struct code_block_x86_64 *blk,
                                    struct il_code_block const *il_blk,
@@ -2258,6 +2276,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_CALL_FUNC:
             emit_call_func(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_CALL_FUNC_IMM32:
+            emit_call_func_imm32(out, il_blk, cpu, inst);
             break;
         case JIT_OP_READ_16_CONSTADDR:
             emit_read_16_constaddr(out, il_blk, cpu, inst);

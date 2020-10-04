@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2018, 2019 snickerbockers
+ * Copyright 2018-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -804,5 +804,11 @@ bool sh4_jit_fmovs_a_r0_rm_fpu(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 bool sh4_jit_fmov_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                           struct il_code_block *block, unsigned pc,
                           struct InstOpcode const *op, cpu_inst_param inst);
+
+// TRAPA #immed
+// 11000011iiiiiiii
+bool sh4_jit_trapa_imm(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, cpu_inst_param inst);
 
 #endif

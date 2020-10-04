@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2019 snickerbockers
+ * Copyright 2019, 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -70,6 +70,11 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
         washdc_hostfile_printf(out, "%02X: CALL %p(<CPU CTXT>, <SLOT %02X>)\n",
                                idx, immed->call_func.func,
                                immed->call_func.slot_no);
+        break;
+    case JIT_OP_CALL_FUNC_IMM32:
+        washdc_hostfile_printf(out, "%02X: CALL %p(<CPU CTXT>, %08X)\n",
+                               idx, immed->call_func_imm32.func,
+                               (unsigned)immed->call_func_imm32.imm32);
         break;
     case JIT_OP_READ_16_CONSTADDR:
         washdc_hostfile_printf(out,

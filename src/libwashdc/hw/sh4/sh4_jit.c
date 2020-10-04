@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2018, 2019 snickerbockers
+ * Copyright 2018-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1933,6 +1933,52 @@ sh4_jit_extub_rm_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     reg_map[dst_reg].stat = REG_STATUS_SLOT;
 
     return true;
+}
+
+// TRAPA #immed
+// 11000011iiiiiiii
+bool sh4_jit_trapa_imm(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, cpu_inst_param inst) {
+    unsigned tra_slot = reg_slot(sh4, ctx, block,
+                                 SH4_REG_TRA, WASHDC_JIT_SLOT_GEN);
+    jit_set_slot(block, tra_slot, (inst & BIT_RANGE(0, 7)) << 2);
+    reg_map[SH4_REG_TRA].stat = REG_STATUS_SLOT;
+
+    /*
+     * set SH4_REG_PC to point to the next instruction after this.
+     *
+     * sh4_set_exception will use this to initialize SPC so it has to be
+     * the correct value.
+     */
+    unsigned pc_slot = reg_slot(sh4, ctx, block,
+                                SH4_REG_PC, WASHDC_JIT_SLOT_GEN);
+    jit_set_slot(block, pc_slot, pc + 2);
+    reg_map[SH4_REG_PC].stat = REG_STATUS_SLOT;
+
+    /* calling sh4_set_exception will change the sr */
+    res_drain_all_regs(sh4, ctx, block);
+    res_invalidate_all_regs(block);
+    jit_call_func_imm32(block, sh4_set_exception,
+                        SH4_EXCP_UNCONDITIONAL_TRAP);
+
+    // jump to new PC which was set by sh4_set_exception
+    unsigned hash_slot = alloc_slot(block, WASHDC_JIT_SLOT_GEN);
+    pc_slot = reg_slot(sh4, ctx, block,
+                       SH4_REG_PC, WASHDC_JIT_SLOT_GEN);
+    unsigned fpscr_slot = reg_slot(sh4, ctx, block, SH4_REG_FPSCR,
+                                   WASHDC_JIT_SLOT_GEN);
+
+    sh4_jit_hash_slot(sh4, block, pc_slot, hash_slot, fpscr_slot);
+    free_slot(block, fpscr_slot);
+
+    res_drain_all_regs(sh4, ctx, block);
+    jit_jump(block, pc_slot, hash_slot);
+
+    free_slot(block, hash_slot);
+    free_slot(block, pc_slot);
+
+    return false;
 }
 
 // LDS Rm, FPSCR
