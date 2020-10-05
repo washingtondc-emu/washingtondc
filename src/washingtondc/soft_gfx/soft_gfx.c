@@ -1098,6 +1098,29 @@ tex_sample(struct tex const *texp, float rgba[4], int const texcoord[2]) {
         }
         return;
     case GFX_TEX_FMT_ARGB_8888:
+        {
+            if (tex_idx * sizeof(uint32_t) + (sizeof(uint32_t) - 1) >=
+                obj->dat_len || !obj->dat) {
+                fprintf(stderr, "%s - buffer overflow\n", __func__);
+                fprintf(stderr, "\tdat_len %llu\n",
+                        (unsigned long long)obj->dat_len);
+                fprintf(stderr, "\ttex_idx: %u\n", tex_idx);
+                rgba[0] = 1.0f;
+                rgba[1] = 1.0f;
+                rgba[2] = 1.0f;
+                rgba[3] = 1.0f;
+                return;
+            }
+            uint32_t val;
+            memcpy(&val, ((char*)obj->dat) + sizeof(uint32_t) * tex_idx,
+                   sizeof(val));
+
+            rgba[0] = ((val >> 16) & 0xff) / 255.0f;
+            rgba[1] = ((val >> 8) & 0xff) / 255.0f;
+            rgba[2] = ((val >> 0) & 0xff) / 255.0f;
+            rgba[3] = ((val >> 24) & 0xff) / 255.0f;
+        }
+        return;
     default:
         fprintf(stderr, "%s - unimplemented tex format %d\n",
                 __func__, (int)texp->fmt);
