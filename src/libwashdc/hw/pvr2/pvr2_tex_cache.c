@@ -391,6 +391,8 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
                     tex->meta.addr_last += mipmap_byte_offset_norm[w_shift];
                     break;
                 case TEX_CTRL_PIX_FMT_4_BPP_PAL:
+                    tex->meta.addr_last += mipmap_byte_offset_palette[w_shift] / 2;
+                    break;
                 case TEX_CTRL_PIX_FMT_8_BPP_PAL:
                     tex->meta.addr_last += mipmap_byte_offset_palette[w_shift];
                     break;
@@ -651,6 +653,9 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
                     meta->addr_first + mipmap_byte_offset_norm[meta->w_shift];
                 break;
             case TEX_CTRL_PIX_FMT_4_BPP_PAL:
+                beg_addr =
+                    meta->addr_first + mipmap_byte_offset_palette[meta->w_shift] / 2;
+                break;
             case TEX_CTRL_PIX_FMT_8_BPP_PAL:
                 beg_addr =
                     meta->addr_first + mipmap_byte_offset_palette[meta->w_shift];
