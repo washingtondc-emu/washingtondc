@@ -594,8 +594,21 @@ void opengl_renderer_update_tex(unsigned tex_obj) {
     gfx_obj_alloc(obj);
 
     void const *tex_dat = obj->dat;
-    GLenum format = tex->tex_fmt == GFX_TEX_FMT_RGB_565 ?
-        GL_RGB : GL_RGBA;
+
+    GLenum internal_format, format;
+    switch (tex->tex_fmt) {
+    case GFX_TEX_FMT_RGB_565:
+        internal_format = GL_RGB;
+        format = GL_RGB;
+        break;
+    case GFX_TEX_FMT_ARGB_8888:
+        internal_format = GL_RGBA;
+        format = GL_BGRA;
+        break;
+    default:
+        internal_format = GL_RGBA;
+        format = GL_RGBA;
+    }
 
     unsigned tex_w = tex->width;
     unsigned tex_h = tex->height;
@@ -671,7 +684,7 @@ void opengl_renderer_update_tex(unsigned tex_obj) {
         opengl_renderer_tex_set_dirty(tex->obj_handle, false);
         free(tmp_dat);
     } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
+        glTexImage2D(GL_TEXTURE_2D, 0, internal_format, tex_w, tex_h, 0,
                      format, tex_fmt_to_data_type(tex->tex_fmt), tex_dat);
         opengl_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
         opengl_renderer_tex_set_format(tex->obj_handle, format);
