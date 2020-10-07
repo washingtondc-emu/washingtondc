@@ -371,6 +371,21 @@ pvr2_hdr_tex_palette_start(struct pvr2_pkt_hdr const *hdr) {
     }
 }
 
+static inline unsigned
+pvr2_hdr_user_clip_mode(struct pvr2_pkt_hdr const *hdr) {
+    switch ((hdr->param[0] >> 16) & 3) {
+    case 0:
+    default:
+        return PVR2_USER_CLIP_DISABLE;
+    case 1:
+        return PVR2_USER_CLIP_RESERVED;
+    case 2:
+        return PVR2_USER_CLIP_INSIDE;
+    case 3:
+        return PVR2_USER_CLIP_OUTSIDE;
+    }
+}
+
 struct pvr2_pkt_user_clip {
     /*
      * these are in terms of tiles, so the actual coordinates are these

@@ -59,6 +59,8 @@ put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color);
 static inline void
 put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color);
 
+static bool user_clip_test(int x_pix, int y_pix);
+
 #define FB_WIDTH 640
 #define FB_HEIGHT 480
 
@@ -130,6 +132,12 @@ static bool wireframe_mode;
 
 // pixel-space clip rectangle, for OpenGL-style scissor test
 static unsigned clip[4];
+
+/*
+ * second pixel-space clip-rectangle which can be selectively enabled/disabled,
+ * and also optionally can be inverted.
+ */
+static unsigned user_clip[4];
 
 struct tex {
     int obj_no;
@@ -486,7 +494,6 @@ static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
 
 static inline void
 put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
-
     if (x_pix < clip[0] ||
         x_pix > clip[2] ||
         y_pix < clip[1] ||
@@ -728,7 +735,8 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(obj, x_pos, y_pos, color);
+                if (user_clip_test(x_pos, y_pos))
+                    put_pix(obj, x_pos, y_pos, color);
                 error += delta_y;
                 if (2 * error >= delta_x) {
                     y_pos++;
@@ -761,7 +769,8 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(obj, x_pos, y_pos, color);
+                if (user_clip_test(x_pos, y_pos))
+                    put_pix(obj, x_pos, y_pos, color);
                 error += delta_y;
                 if (2 * error < -delta_x) {
                     y_pos--;
@@ -797,7 +806,8 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(obj, x_pos, y_pos, color);
+                if (user_clip_test(x_pos, y_pos))
+                    put_pix(obj, x_pos, y_pos, color);
                 error += delta_x;
                 if (2 * error >= delta_y) {
                     x_pos++;
@@ -830,7 +840,8 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                put_pix(obj, x_pos, y_pos, color);
+                if (user_clip_test(x_pos, y_pos))
+                    put_pix(obj, x_pos, y_pos, color);
                 error += delta_x;
                 if (2 * error < -delta_y) {
                     x_pos--;
@@ -920,6 +931,30 @@ static bool depth_test(int x_pos, int y_pos, float w_coord) {
                 (int)rend_param.depth_func);
         return true;
     }
+}
+
+static bool user_clip_test(int x_pix, int y_pix) {
+    switch (rend_param.user_clip_mode) {
+    case GFX_USER_CLIP_INSIDE:
+        if (x_pix < user_clip[0] ||
+            x_pix > user_clip[2] ||
+            y_pix < user_clip[1] ||
+            y_pix > user_clip[3])
+            return false;
+        break;
+    case GFX_USER_CLIP_OUTSIDE:
+        if (!(x_pix < user_clip[0] ||
+              x_pix > user_clip[2] ||
+              y_pix < user_clip[1] ||
+              y_pix > user_clip[3]))
+            return false;
+        break;
+    case GFX_USER_CLIP_DISABLE:
+    default:
+        break;
+    }
+
+    return true;
 }
 
 static void
@@ -1312,7 +1347,7 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                         float w_coord =
                             p1[2] * bary[0] + p2[2] * bary[1] + p3[2] * bary[2];
 
-                        if (!depth_test(x_pos, y_pos, w_coord))
+                        if (!depth_test(x_pos, y_pos, w_coord) || !user_clip_test(x_pos, y_pos))
                             continue;
 
                         if (rend_param.enable_depth_writes)
@@ -1612,6 +1647,12 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
         case GFX_IL_BEGIN_DEPTH_SORT:
             break;
         case GFX_IL_END_DEPTH_SORT:
+            break;
+        case GFX_IL_SET_USER_CLIP:
+            user_clip[0] = cmd->arg.set_user_clip.x_min;
+            user_clip[1] = cmd->arg.set_user_clip.y_min;
+            user_clip[2] = cmd->arg.set_user_clip.x_max;
+            user_clip[3] = cmd->arg.set_user_clip.y_max;
             break;
         default:
             fprintf(stderr, "ERROR: UNKNOWN GFX IL COMMAND %02X\n",

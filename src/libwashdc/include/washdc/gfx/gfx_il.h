@@ -89,6 +89,8 @@ enum gfx_il {
     // call this to set clip_min, clip_max
     GFX_IL_SET_CLIP_RANGE,
 
+    GFX_IL_SET_USER_CLIP,
+
     // use this to render a group of polygons
     GFX_IL_DRAW_ARRAY,
 
@@ -182,6 +184,10 @@ union gfx_il_arg {
     struct {
         float clip_min, clip_max;
     } set_clip_range;
+
+    struct {
+        unsigned x_min, y_min, x_max, y_max;
+    } set_user_clip;
 
     struct {
         /*

@@ -114,6 +114,14 @@ enum ta_color_type {
     TA_COLOR_TYPE_INTENSITY_MODE_2
 };
 
+// determines how the user tile clip rectangle is to be used
+enum pvr2_user_clip_mode {
+    PVR2_USER_CLIP_DISABLE,
+    PVR2_USER_CLIP_RESERVED,// error
+    PVR2_USER_CLIP_INSIDE,
+    PVR2_USER_CLIP_OUTSIDE
+};
+
 // unpack 16-bit texture coordinates into two floats
 inline static void
 unpack_uv16(float *u_coord, float *v_coord, void const *input) {

@@ -81,6 +81,10 @@ static void
 display_list_exec_end_of_group(struct pvr2 *pvr2,
                                struct pvr2_display_list_command const *cmd);
 
+static void
+display_list_exec_user_clip(struct pvr2 *pvr2,
+                            struct pvr2_display_list_command const *cmd);
+
 static inline void pvr2_core_push_vert(struct pvr2 *pvr2,
                                        struct pvr2_core_vert vert);
 static inline void
@@ -296,6 +300,9 @@ display_list_exec(struct pvr2 *pvr2, struct pvr2_display_list const *listp) {
             case PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP:
                 display_list_exec_end_of_group(pvr2, cmd);
                 break;
+            case PVR2_DISPLAY_LIST_COMMAND_TP_USER_CLIP:
+                display_list_exec_user_clip(pvr2, cmd);
+                break;
             default:
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
@@ -391,6 +398,20 @@ display_list_exec_header(struct pvr2 *pvr2,
         }
     } else {
         gfx_cmd.arg.set_rend_param.param.tex_enable = false;
+    }
+
+    switch (cmd_hdr->user_clip_mode) {
+    case PVR2_USER_CLIP_INSIDE:
+        gfx_cmd.arg.set_rend_param.param.user_clip_mode = GFX_USER_CLIP_INSIDE;
+        break;
+    case PVR2_USER_CLIP_OUTSIDE:
+        gfx_cmd.arg.set_rend_param.param.user_clip_mode = GFX_USER_CLIP_OUTSIDE;
+        break;
+    case PVR2_USER_CLIP_DISABLE:
+    case PVR2_USER_CLIP_RESERVED:
+    default:
+        gfx_cmd.arg.set_rend_param.param.user_clip_mode = GFX_USER_CLIP_DISABLE;
+        break;
     }
 
     gfx_cmd.op = GFX_IL_SET_REND_PARAM;
@@ -673,6 +694,20 @@ display_list_exec_end_of_group(struct pvr2 *pvr2,
         pvr2_core_push_gfx_il(pvr2, gfx_cmd);
         core->pvr2_core_vert_buf_start = core->pvr2_core_vert_buf_count;
     }
+}
+
+static void
+display_list_exec_user_clip(struct pvr2 *pvr2,
+                            struct pvr2_display_list_command const *cmd) {
+    struct gfx_il_inst gfx_cmd;
+
+    gfx_cmd.op = GFX_IL_SET_USER_CLIP;
+    gfx_cmd.arg.set_user_clip.x_min = cmd->user_clip.x_min * 32;
+    gfx_cmd.arg.set_user_clip.y_min = cmd->user_clip.y_min * 32;
+    gfx_cmd.arg.set_user_clip.x_max = cmd->user_clip.x_max * 32 + 31;
+    gfx_cmd.arg.set_user_clip.y_max = cmd->user_clip.y_max * 32 + 31;
+
+    pvr2_core_push_gfx_il(pvr2, gfx_cmd);
 }
 
 static inline void pvr2_core_push_vert(struct pvr2 *pvr2, struct pvr2_core_vert vert) {

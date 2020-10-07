@@ -400,6 +400,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     cmd_hdr->tex_palette_start = pvr2_hdr_tex_palette_start(hdr);
     cmd_hdr->tex_vq_compression = pvr2_hdr_vq_compression(hdr);
     cmd_hdr->tex_mipmap = pvr2_hdr_tex_mipmap(hdr);
+    cmd_hdr->user_clip_mode = pvr2_hdr_user_clip_mode(hdr);
 }
 
 static void
@@ -579,12 +580,29 @@ on_pkt_input_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 }
 
 static void on_pkt_user_clip_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
-    LOG_WARN("PVR2: unimplemented type 1 (user tile clip) packet received\n");
-    PVR2_TRACE("\tmin: (%u, %u)\n\tmax: (%u, %u)\n",
-               pkt->dat.user_clip.xmin * 32,
-               pkt->dat.user_clip.ymin * 32,
-               pkt->dat.user_clip.xmax * 32,
-               pkt->dat.user_clip.ymax * 32);
+    struct pvr2_ta *ta = &pvr2->ta;
+    struct pvr2_core *core = &pvr2->core;
+
+    if (ta->fifo_state.cur_poly_type >= PVR2_POLY_TYPE_FIRST &&
+        ta->fifo_state.cur_poly_type <= PVR2_POLY_TYPE_LAST) {
+        // queue up in a display list
+        struct pvr2_display_list *cur_list = core->disp_lists + ta->cur_list_idx;
+        if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
+            RAISE_ERROR(ERROR_INTEGRITY);
+        struct pvr2_display_list_command *cmd =
+            pvr2_list_alloc_new_cmd(cur_list, ta->fifo_state.cur_poly_type);
+        if (!cmd) {
+            LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
+            return;
+        }
+
+        cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_USER_CLIP;
+        struct pvr2_display_list_user_clip *user_clip = &cmd->user_clip;
+        user_clip->x_min = pkt->dat.user_clip.xmin;
+        user_clip->y_min = pkt->dat.user_clip.ymin;
+        user_clip->x_max = pkt->dat.user_clip.xmax;
+        user_clip->y_max = pkt->dat.user_clip.ymax;
+    }
 }
 
 static void handle_packet(struct pvr2 *pvr2) {

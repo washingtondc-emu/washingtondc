@@ -117,6 +117,12 @@ enum Pvr2DepthFunc {
     PVR2_DEPTH_FUNC_COUNT
 };
 
+enum gfx_user_clip_mode {
+    GFX_USER_CLIP_DISABLE,
+    GFX_USER_CLIP_INSIDE,
+    GFX_USER_CLIP_OUTSIDE
+};
+
 struct gfx_rend_param {
     bool tex_enable;
     unsigned tex_idx;
@@ -124,6 +130,8 @@ struct gfx_rend_param {
     enum tex_inst tex_inst;
     enum tex_filter tex_filter;
     enum tex_wrap_mode tex_wrap_mode[2]; // wrap mode for u and v coordinates
+
+    enum gfx_user_clip_mode user_clip_mode;
 
     // only valid if blend_enable=true
     enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;

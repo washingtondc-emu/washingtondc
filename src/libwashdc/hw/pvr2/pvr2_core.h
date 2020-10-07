@@ -95,7 +95,8 @@ enum pvr2_display_list_command_tp {
     PVR2_DISPLAY_LIST_COMMAND_TP_HEADER,
     PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP,
     PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX,
-    PVR2_DISPLAY_LIST_COMMAND_TP_QUAD
+    PVR2_DISPLAY_LIST_COMMAND_TP_QUAD,
+    PVR2_DISPLAY_LIST_COMMAND_TP_USER_CLIP
 };
 
 struct pvr2_display_list_command_header {
@@ -113,6 +114,8 @@ struct pvr2_display_list_command_header {
     enum tex_filter tex_filter;
     enum TexCtrlPixFmt pix_fmt;
     uint32_t tex_addr;
+
+    enum pvr2_user_clip_mode user_clip_mode;
 
     /*
      * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
@@ -155,6 +158,11 @@ struct pvr2_display_list_quad {
     float offs_color[4];
 };
 
+struct pvr2_display_list_user_clip {
+    // these coordinates are in terms of tiles, not pixels
+    unsigned x_min, y_min, x_max, y_max;
+};
+
 struct pvr2_display_list_command {
     enum pvr2_display_list_command_tp tp;
     union {
@@ -162,6 +170,7 @@ struct pvr2_display_list_command {
         struct pvr2_display_list_end_of_group end_of_group;
         struct pvr2_display_list_vertex vtx;
         struct pvr2_display_list_quad quad;
+        struct pvr2_display_list_user_clip user_clip;
     };
 };
 

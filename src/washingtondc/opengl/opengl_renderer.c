@@ -78,6 +78,13 @@ static GLuint vbo, vao;
 
 static struct opengl_renderer_callbacks const *switch_table;
 
+static float clip_min, clip_max;
+static bool tex_enable;
+static unsigned screen_width, screen_height;
+static enum gfx_user_clip_mode user_clip_mode;
+static GLfloat user_clip[4];
+static GLint user_clip_slot = -1;
+
 /*******************************************************************************
  *
  * RENDERDOC API SUPPORT
@@ -333,6 +340,30 @@ static char const * const pvr2_ta_frag_glsl =
     "uniform sampler2D bound_tex;\n"
     "#endif\n"
 
+    "#ifdef USER_CLIP_ENABLE\n"
+    /*
+     * user_clip.x - x_min
+     * user_clip.y - y_min
+     * user_clip.z - x_max
+     * user_clip.w - y_max
+     */
+    "uniform vec4 user_clip;\n"
+
+    "void user_clip_test() {\n"
+    "    bool in_rect = gl_FragCoord.x >= user_clip[0] &&\n"
+    "        gl_FragCoord.x <= user_clip[2] &&\n"
+    "        gl_FragCoord.y >= user_clip[1] &&\n"
+    "        gl_FragCoord.y <= user_clip[3];\n"
+    "#ifdef USER_CLIP_INVERT\n"
+    "    if (in_rect)\n"
+    "        discard;\n"
+    "#else\n"
+    "    if (!in_rect)\n"
+    "        discard;\n"
+    "#endif\n"
+    "}\n"
+    "#endif\n"
+
     "#ifdef PUNCH_THROUGH_ENABLE\n"
     "uniform int pt_alpha_ref;\n"
 
@@ -368,6 +399,11 @@ static char const * const pvr2_ta_frag_glsl =
     "#endif\n"
 
     "void main() {\n"
+
+    "#ifdef USER_CLIP_ENABLE\n"
+    "    user_clip_test();\n"
+    "#endif\n"
+
     "    vec4 color;\n"
     "#ifdef TEX_ENABLE\n"
     "    color = eval_tex_inst();\n"
@@ -385,10 +421,12 @@ static char const * const pvr2_ta_frag_glsl =
 static struct shader_cache_ent* create_shader(shader_key key) {
     #define PREAMBLE_LEN 256
     static char preamble[PREAMBLE_LEN];
-    bool tex_en = (bool)(key & SHADER_KEY_TEX_ENABLE_BIT);
-    bool color_en = (bool)(key & SHADER_KEY_COLOR_ENABLE_BIT);
-    bool punchthrough = (bool)(key & SHADER_KEY_PUNCH_THROUGH_BIT);
+    bool tex_en = key & SHADER_KEY_TEX_ENABLE_BIT;
+    bool color_en = key & SHADER_KEY_COLOR_ENABLE_BIT;
+    bool punchthrough = key & SHADER_KEY_PUNCH_THROUGH_BIT;
     int tex_inst = key & SHADER_KEY_TEX_INST_MASK;
+    bool user_clip_en = key & SHADER_KEY_USER_CLIP_ENABLE_BIT;
+    bool user_clip_invert = key & SHADER_KEY_USER_CLIP_INVERT_BIT;
 
     char const *tex_inst_str = "";
     if (tex_en) {
@@ -415,10 +453,12 @@ static struct shader_cache_ent* create_shader(shader_key key) {
         }
     }
 
-    snprintf(preamble, PREAMBLE_LEN, "%s%s%s%s",
+    snprintf(preamble, PREAMBLE_LEN, "%s%s%s%s%s%s",
              tex_en ? "#define TEX_ENABLE\n" : "",
              color_en ? "#define COLOR_ENABLE\n" : "",
              punchthrough ? "#define PUNCH_THROUGH_ENABLE\n" : "",
+             user_clip_en ? "#define USER_CLIP_ENABLE\n" : "",
+             user_clip_invert ? "#define USER_CLIP_INVERT\n" : "",
              tex_inst_str);
     preamble[PREAMBLE_LEN - 1] = '\0';
 
@@ -446,6 +486,8 @@ static struct shader_cache_ent* create_shader(shader_key key) {
         glGetUniformLocation(ent->shader.shader_prog_obj, "pt_alpha_ref");
     ent->slots[SHADER_CACHE_SLOT_TRANS_MAT] =
         glGetUniformLocation(ent->shader.shader_prog_obj, "trans_mat");
+    ent->slots[SHADER_CACHE_SLOT_USER_CLIP] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "user_clip");
 
     return ent;
 }
@@ -513,6 +555,8 @@ static bool is_renderdoc_enabled(void) {
 }
 
 static void opengl_render_init(void) {
+    user_clip_slot = -1;
+
     init_renderdoc_api();
 
     tex_cache_init();
@@ -579,6 +623,8 @@ static void opengl_render_cleanup(void) {
     tex_cache_cleanup();
 
     cleanup_renderdoc_api();
+
+    user_clip_slot = -1;
 }
 
 static DEF_ERROR_INT_ATTR(max_length);
@@ -734,10 +780,6 @@ static void opengl_renderer_set_blend_enable(struct gfx_il_inst *cmd) {
         glDisable(GL_BLEND);
 }
 
-static float clip_min, clip_max;
-static bool tex_enable;
-static unsigned screen_width, screen_height;
-
 static void opengl_renderer_set_rend_param(struct gfx_il_inst *cmd) {
     struct gfx_rend_param const *param = &cmd->arg.set_rend_param.param;
     do_set_rend_param(param);
@@ -845,6 +887,15 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     if (param->pt_mode && rend_cfg.pt_enable)
         shader_cache_key |= SHADER_KEY_PUNCH_THROUGH_BIT;
 
+    user_clip_mode = param->user_clip_mode;
+
+    if (user_clip_mode == GFX_USER_CLIP_INSIDE) {
+        shader_cache_key |= SHADER_KEY_USER_CLIP_ENABLE_BIT;
+    } else if (user_clip_mode == GFX_USER_CLIP_OUTSIDE) {
+        shader_cache_key |= SHADER_KEY_USER_CLIP_ENABLE_BIT |
+            SHADER_KEY_USER_CLIP_INVERT_BIT;
+    }
+
     struct shader_cache_ent *shader_ent = fetch_shader(shader_cache_key);
     if (!shader_ent) {
         fprintf(stderr, "%s Failure to set render parameter: unable to find "
@@ -856,6 +907,9 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF],
                 param->pt_ref - 1);
     trans_mat_slot = shader_ent->slots[SHADER_CACHE_SLOT_TRANS_MAT];
+    user_clip_slot = shader_ent->slots[SHADER_CACHE_SLOT_USER_CLIP];
+    glUniform4f(user_clip_slot, user_clip[0], user_clip[1],
+                user_clip[2], user_clip[3]);
 
     glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],
                 dst_blend_factors[(unsigned)param->dst_blend_factor]);
@@ -1295,6 +1349,23 @@ opengl_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_END_DEPTH_SORT:
             opengl_renderer_end_sort_mode(cmd);
+            break;
+        case GFX_IL_SET_USER_CLIP:
+            user_clip[0] = cmd->arg.set_user_clip.x_min;
+
+            if (cmd->arg.set_user_clip.y_max <= screen_height - 1)
+                user_clip[1] = screen_height - 1 - cmd->arg.set_user_clip.y_max;
+            else
+                user_clip[1] = 0;
+            user_clip[2] = cmd->arg.set_user_clip.x_max;
+
+            if (cmd->arg.set_user_clip.y_min <= screen_height - 1)
+                user_clip[3] = screen_height - 1 - cmd->arg.set_user_clip.y_min;
+            else
+                user_clip[3] = 0;
+
+            glUniform4f(user_clip_slot, user_clip[0], user_clip[1],
+                        user_clip[2], user_clip[3]);
             break;
         default:
             fprintf(stderr, "ERROR: UNKNOWN GFX IL COMMAND %02X\n",
