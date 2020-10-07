@@ -59,63 +59,8 @@
 
 #include "pvr2_ta.h"
 
-#define TA_CMD_TYPE_SHIFT 29
-#define TA_CMD_TYPE_MASK (0x7 << TA_CMD_TYPE_SHIFT)
-
 #define TA_CMD_END_OF_STRIP_SHIFT 28
 #define TA_CMD_END_OF_STRIP_MASK (1 << TA_CMD_END_OF_STRIP_SHIFT)
-
-#define TA_CMD_POLY_TYPE_SHIFT 24
-#define TA_CMD_POLY_TYPE_MASK (0x7 << TA_CMD_POLY_TYPE_SHIFT)
-
-/*
- * this has something to do with swapping out the ISP parameters
- * when modifier volumes are in use, I think
- */
-#define TA_CMD_SHADOW_SHIFT 7
-#define TA_CMD_SHADOW_MASK (1 << TA_CMD_SHADOW_SHIFT)
-
-#define TA_CMD_TWO_VOLUMES_SHIFT 6
-#define TA_CMD_TWO_VOLUMES_MASK (1 << TA_CMD_TWO_VOLUMES_SHIFT)
-
-#define TA_CMD_COLOR_TYPE_SHIFT 4
-#define TA_CMD_COLOR_TYPE_MASK (3 << TA_CMD_COLOR_TYPE_SHIFT)
-
-#define TA_CMD_TEX_ENABLE_SHIFT 3
-#define TA_CMD_TEX_ENABLE_MASK (1 << TA_CMD_TEX_ENABLE_SHIFT)
-
-#define TA_CMD_OFFSET_COLOR_SHIFT 2
-#define TA_CMD_OFFSET_COLOR_MASK (1 << TA_CMD_OFFSET_COLOR_SHIFT)
-
-#define TA_CMD_GOURAD_SHADING_SHIFT 1
-#define TA_CMD_GOURAD_SHADING_MASK (1 << TA_CMD_GOURAD_SHADING_SHIFT)
-
-#define TA_CMD_16_BIT_TEX_COORD_SHIFT 0
-#define TA_CMD_16_BIT_TEX_COORD_MASK (1 << TA_CMD_16_BIT_TEX_COORD_SHIFT)
-
-#define TA_CMD_TYPE_END_OF_LIST 0x0
-#define TA_CMD_TYPE_USER_CLIP   0x1
-#define TA_CMD_TYPE_INPUT_LIST  0x2
-// what is 3?
-#define TA_CMD_TYPE_POLY_HDR    0x4
-#define TA_CMD_TYPE_SPRITE_HDR  0x5
-#define TA_CMD_TYPE_UNKNOWN     0x6  // I can't find any info on what this is
-#define TA_CMD_TYPE_VERTEX      0x7
-
-#define TA_COLOR_FMT_SHIFT 4
-#define TA_COLOR_FMT_MASK (3 << TA_COLOR_FMT_SHIFT)
-
-#define TSP_WORD_SRC_ALPHA_FACTOR_SHIFT 29
-#define TSP_WORD_SRC_ALPHA_FACTOR_MASK (7 << TSP_WORD_SRC_ALPHA_FACTOR_SHIFT)
-
-#define TSP_WORD_DST_ALPHA_FACTOR_SHIFT 26
-#define TSP_WORD_DST_ALPHA_FACTOR_MASK (7 << TSP_WORD_DST_ALPHA_FACTOR_SHIFT)
-
-#define DEPTH_FUNC_SHIFT 29
-#define DEPTH_FUNC_MASK (7 << DEPTH_FUNC_SHIFT)
-
-#define DEPTH_WRITE_DISABLE_SHIFT 26
-#define DEPTH_WRITE_DISABLE_MASK (1 << DEPTH_WRITE_DISABLE_SHIFT)
 
 static DEF_ERROR_INT_ATTR(poly_type_index);
 static DEF_ERROR_INT_ATTR(geo_buf_group_index);
@@ -318,35 +263,40 @@ void pvr2_ta_fifo_poly_write_double(addr32_t addr, double val, void *ctxt) {
 #ifdef PVR2_LOG_VERBOSE
 static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
 #define HDR_BOOL(hdr, mem) PVR2_TRACE("\t"#mem": %s\n", hdr->mem ? "true" : "false")
+#define HDR_BOOL_FUNC(hdr, mem, func) PVR2_TRACE("\t"#mem": %s\n", func(hdr) ? "true" : "false")
 #define HDR_INT(hdr, mem) PVR2_TRACE("\t"#mem": %d\n", (int)hdr->mem)
+#define HDR_INT_FUNC(hdr, mem, func) PVR2_TRACE("\t"#mem": %d\n", (int)func(hdr))
 #define HDR_HEX(hdr, mem) PVR2_TRACE("\t"#mem": 0x%08x\n", (int)hdr->mem)
+#define HDR_HEX_FUNC(hdr, mem, func) PVR2_TRACE("\t"#mem": 0x%08x\n", (int)func(hdr))
     PVR2_TRACE("packet header:\n");
     PVR2_TRACE("\ttype: %s\n", hdr->tp == PVR2_HDR_TRIANGLE_STRIP ?
                "triangle strip" : "quadrilateral");
     HDR_INT(hdr, vtx_len);
-    PVR2_TRACE("\tpolygon type: %s\n", pvr2_poly_type_name(hdr->poly_type));
-    HDR_BOOL(hdr, tex_enable);
-    HDR_HEX(hdr, tex_addr);
+    PVR2_TRACE("\tpolygon type: %s\n",
+               pvr2_poly_type_name(pvr2_hdr_poly_type(hdr)));
+    HDR_BOOL_FUNC(hdr, tex_enable, pvr2_hdr_tex_enable);
+    HDR_HEX_FUNC(hdr, tex_addr, pvr2_hdr_tex_addr);
     PVR2_TRACE("\ttexture dimensions: %ux%u\n",
-               1 << hdr->tex_width_shift, 1 << hdr->tex_height_shift);
-    HDR_BOOL(hdr, tex_twiddle);
-    HDR_BOOL(hdr, stride_sel);
-    HDR_BOOL(hdr, tex_vq_compression);
-    HDR_BOOL(hdr, tex_mipmap);
-    HDR_INT(hdr, pix_fmt);
-    HDR_INT(hdr, tex_inst);
-    HDR_INT(hdr, tex_filter);
-    HDR_INT(hdr, tex_wrap_mode[0]);
-    HDR_INT(hdr, tex_wrap_mode[1]);
-    HDR_INT(hdr, ta_color_fmt);
-    HDR_INT(hdr, src_blend_factor);
-    HDR_INT(hdr, dst_blend_factor);
-    HDR_BOOL(hdr, enable_depth_writes);
-    HDR_INT(hdr, depth_func);
-    HDR_BOOL(hdr, two_volumes_mode);
-    HDR_BOOL(hdr, offset_color_enable);
-    HDR_BOOL(hdr, gourad_shading_enable);
-    HDR_BOOL(hdr, tex_coord_16_bit_enable);
+               1 << pvr2_hdr_tex_width_shift(hdr),
+               1 << pvr2_hdr_tex_height_shift(hdr));
+    HDR_BOOL_FUNC(hdr, tex_twiddle, pvr2_hdr_tex_twiddle);
+    HDR_BOOL_FUNC(hdr, stride_sel, pvr2_hdr_stride_sel);
+    HDR_BOOL_FUNC(hdr, tex_vq_compression, pvr2_hdr_vq_compression);
+    HDR_BOOL_FUNC(hdr, tex_mipmap, pvr2_hdr_tex_mipmap);
+    HDR_INT_FUNC(hdr, pix_fmt, pvr2_hdr_pix_fmt);
+    HDR_INT_FUNC(hdr, tex_inst, pvr2_hdr_tex_inst);
+    HDR_INT_FUNC(hdr, pvr2_hdr_tex_filter);
+    HDR_INT_FUNC(hdr, tex_wrap_mode[0], pvr2_hdr_tex_wrap_mode_s);
+    HDR_INT_FUNC(hdr, tex_wrap_mode[1], pvr2_hdr_tex_wrap_mode_t);
+    HDR_INT_FUNC(hdr, ta_color_fmt, pvr2_hdr_color_fmt);
+    HDR_INT_FUNC(hdr, src_blend_factor, pvr2_hdr_src_blend_factor);
+    HDR_INT_FUNC(hdr, dst_blend_factor, pvr2_hdr_dst_blend_factor);
+    HDR_BOOL_FUNC(hdr, enable_depth_writes, pvr2_hdr_enable_depth_writes);
+    HDR_INT_FUNC(hdr, depth_func, pvr2_hdr_depth_func);
+    HDR_BOOL_FUNC(hdr, two_volumes_mode, pvr2_hdr_two_volumes_mode);
+    HDR_BOOL_FUNC(hdr, offset_color_enable, pvr2_hdr_offset_color_enable);
+    HDR_BOOL_FUNC(hdr, gourad_shading_enable, pvr2_hdr_gourad_shading);
+    HDR_BOOL_FUNC(hdr, tex_coord_16_bit_enable, pvr2_hdr_tex_coord_16_bit);
 }
 #endif
 
@@ -359,11 +309,12 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     dump_pkt_hdr(hdr);
 #endif
 
-    if (hdr->two_volumes_mode)
+    if (pvr2_hdr_two_volumes_mode(hdr))
         LOG_DBG("Unimplemented two-volumes mode polygon!\n");
 
-    if (ta->fifo_state.cur_poly_type != hdr->poly_type) {
-        if (get_poly_type_state(ta, hdr->poly_type) ==
+    enum pvr2_poly_type poly_type = pvr2_hdr_poly_type(hdr);
+    if (ta->fifo_state.cur_poly_type != poly_type) {
+        if (get_poly_type_state(ta, poly_type) ==
             PVR2_POLY_TYPE_STATE_SUBMITTED) {
             /*
              * TODO: I want to make this an ERROR_UNIMPLEMENTED, but enough
@@ -371,15 +322,15 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
              * real hardware.
              */
             LOG_ERROR("PVR2: re-opening polython type %s after it was already "
-                      "submitted?\n", pvr2_poly_type_name(hdr->poly_type));
+                      "submitted?\n", pvr2_poly_type_name(poly_type));
         }
 
         if (ta->fifo_state.cur_poly_type == PVR2_POLY_TYPE_NONE) {
             PVR2_TRACE("Opening polygon group \"%s\"\n",
-                       pvr2_poly_type_name(hdr->poly_type));
-            set_poly_type_state(ta, hdr->poly_type,
+                       pvr2_poly_type_name(poly_type));
+            set_poly_type_state(ta, poly_type,
                                 PVR2_POLY_TYPE_STATE_IN_PROGRESS);
-            ta->fifo_state.cur_poly_type = hdr->poly_type;
+            ta->fifo_state.cur_poly_type = poly_type;
             ta->fifo_state.open_group = true;
         } else {
             PVR2_TRACE("software did not close polygon group %d\n",
@@ -391,7 +342,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         }
     } else {
         PVR2_TRACE("Beginning polygon group within group \"%s\"\n",
-                   pvr2_poly_type_name(hdr->poly_type));
+                   pvr2_poly_type_name(poly_type));
 
         next_poly_group(pvr2, ta->fifo_state.cur_poly_type);
     }
@@ -401,20 +352,20 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
      * able to disable textures if the cache is full, but hdr is const.
      */
     ta->fifo_state.vtx_len = hdr->vtx_len;
-    ta->fifo_state.tex_enable = hdr->tex_enable;
+    ta->fifo_state.tex_enable = pvr2_hdr_tex_enable(hdr);
     ta->fifo_state.geo_tp = hdr->tp;
-    ta->fifo_state.tex_coord_16_bit_enable = hdr->tex_coord_16_bit_enable;
-    ta->fifo_state.two_volumes_mode = hdr->two_volumes_mode;
-    ta->fifo_state.ta_color_fmt = hdr->ta_color_fmt;
-    ta->fifo_state.offset_color_enable = hdr->offset_color_enable;
-    ta->fifo_state.src_blend_factor = hdr->src_blend_factor;
-    ta->fifo_state.dst_blend_factor = hdr->dst_blend_factor;
-    ta->fifo_state.tex_wrap_mode[0] = hdr->tex_wrap_mode[0];
-    ta->fifo_state.tex_wrap_mode[1] = hdr->tex_wrap_mode[1];
-    ta->fifo_state.enable_depth_writes = hdr->enable_depth_writes;
-    ta->fifo_state.depth_func = hdr->depth_func;
-    ta->fifo_state.tex_inst = hdr->tex_inst;
-    ta->fifo_state.tex_filter = hdr->tex_filter;
+    ta->fifo_state.tex_coord_16_bit_enable = pvr2_hdr_tex_coord_16_bit(hdr);
+    ta->fifo_state.two_volumes_mode = pvr2_hdr_two_volumes_mode(hdr);
+    ta->fifo_state.ta_color_fmt = pvr2_hdr_color_fmt(hdr);
+    ta->fifo_state.offset_color_enable = pvr2_hdr_offset_color_enable(hdr);
+    ta->fifo_state.src_blend_factor = pvr2_hdr_src_blend_factor(hdr);
+    ta->fifo_state.dst_blend_factor = pvr2_hdr_dst_blend_factor(hdr);
+    ta->fifo_state.tex_wrap_mode[0] = pvr2_hdr_tex_wrap_mode_s(hdr);
+    ta->fifo_state.tex_wrap_mode[1] = pvr2_hdr_tex_wrap_mode_t(hdr);
+    ta->fifo_state.enable_depth_writes = pvr2_hdr_enable_depth_writes(hdr);
+    ta->fifo_state.depth_func = pvr2_hdr_depth_func(hdr);
+    ta->fifo_state.tex_inst = pvr2_hdr_tex_inst(hdr);
+    ta->fifo_state.tex_filter = pvr2_hdr_tex_filter(hdr);
 
     // queue up in a display list
     struct pvr2_display_list *cur_list = core->disp_lists + ta->cur_list_idx;
@@ -440,15 +391,15 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     cmd_hdr->enable_depth_writes = ta->fifo_state.enable_depth_writes;
     cmd_hdr->depth_func = ta->fifo_state.depth_func;
 
-    cmd_hdr->tex_width_shift = hdr->tex_width_shift;
-    cmd_hdr->tex_height_shift = hdr->tex_height_shift;
-    cmd_hdr->stride_sel = hdr->stride_sel;
-    cmd_hdr->tex_twiddle = hdr->tex_twiddle;
-    cmd_hdr->pix_fmt = hdr->pix_fmt;
-    cmd_hdr->tex_addr = hdr->tex_addr;
-    cmd_hdr->tex_palette_start = hdr->tex_palette_start;
-    cmd_hdr->tex_vq_compression = hdr->tex_vq_compression;
-    cmd_hdr->tex_mipmap = hdr->tex_mipmap;
+    cmd_hdr->tex_width_shift = pvr2_hdr_tex_width_shift(hdr);
+    cmd_hdr->tex_height_shift = pvr2_hdr_tex_height_shift(hdr);
+    cmd_hdr->stride_sel = pvr2_hdr_stride_sel(hdr);
+    cmd_hdr->tex_twiddle = pvr2_hdr_tex_twiddle(hdr);
+    cmd_hdr->pix_fmt = pvr2_hdr_pix_fmt(hdr);
+    cmd_hdr->tex_addr = pvr2_hdr_tex_addr(hdr);
+    cmd_hdr->tex_palette_start = pvr2_hdr_tex_palette_start(hdr);
+    cmd_hdr->tex_vq_compression = pvr2_hdr_vq_compression(hdr);
+    cmd_hdr->tex_mipmap = pvr2_hdr_tex_mipmap(hdr);
 }
 
 static void
@@ -1100,6 +1051,8 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     uint32_t const *ta_fifo32 = (uint32_t const*)ta->fifo_state.ta_fifo32;
     struct pvr2_pkt_hdr *hdr = &pkt->dat.hdr;
 
+    memcpy(hdr->param, ta_fifo32, sizeof(hdr->param));
+
     unsigned param_tp = (ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT;
     enum pvr2_hdr_tp tp;
 
@@ -1108,17 +1061,6 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         RAISE_ERROR(ERROR_INTEGRITY);
     unsigned hdr_len = dims.hdr_len;
     unsigned vtx_len = dims.vtx_len;
-
-    // we need these to figure out whether the header is 32 bytes or 64 bytes.
-    bool two_volumes_mode = (bool)(ta_fifo32[0] & TA_CMD_TWO_VOLUMES_MASK);
-    enum ta_color_type col_tp =
-        (enum ta_color_type)((ta_fifo32[0] & TA_CMD_COLOR_TYPE_MASK) >>
-                             TA_CMD_COLOR_TYPE_SHIFT);
-    bool tex_enable = (bool)(ta_fifo32[0] & TA_CMD_TEX_ENABLE_MASK);
-    bool offset_color_enable = (bool)(ta_fifo32[0] & TA_CMD_OFFSET_COLOR_MASK);
-    enum pvr2_poly_type poly_type =
-        (enum pvr2_poly_type)((ta_fifo32[0] & TA_CMD_POLY_TYPE_MASK) >>
-                              TA_CMD_POLY_TYPE_SHIFT);
 
     if (param_tp == TA_CMD_TYPE_POLY_HDR)
         tp = PVR2_HDR_TRIANGLE_STRIP;
@@ -1135,101 +1077,6 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     pkt->tp = PVR2_PKT_HDR;
     hdr->tp = tp;
     hdr->vtx_len = vtx_len;
-
-    hdr->poly_type = poly_type;
-
-    hdr->two_volumes_mode = two_volumes_mode;
-    hdr->tex_enable = tex_enable;
-    hdr->ta_color_fmt = col_tp;
-
-    /*
-     * When textures are disabled, offset colors are implicitly disabled even
-     * if the offset_color_enable bit was set.
-     */
-    if (hdr->tex_enable &&
-        hdr->ta_color_fmt != TA_COLOR_TYPE_PACKED &&
-        hdr->ta_color_fmt != TA_COLOR_TYPE_FLOAT) {
-        hdr->offset_color_enable = offset_color_enable;
-    } else {
-        hdr->offset_color_enable = false;
-    }
-
-    hdr->tex_width_shift = 3 +
-        ((ta_fifo32[2] & TSP_TEX_WIDTH_MASK) >> TSP_TEX_WIDTH_SHIFT);
-    hdr->tex_height_shift = 3 +
-        ((ta_fifo32[2] & TSP_TEX_HEIGHT_MASK) >> TSP_TEX_HEIGHT_SHIFT);
-    hdr->tex_inst = (ta_fifo32[2] & TSP_TEX_INST_MASK) >>
-        TSP_TEX_INST_SHIFT;
-    hdr->pix_fmt =
-        (enum TexCtrlPixFmt)((ta_fifo32[3] & TEX_CTRL_PIX_FMT_MASK) >>
-                             TEX_CTRL_PIX_FMT_SHIFT);
-
-
-    hdr->gourad_shading_enable =
-        (bool)(ta_fifo32[0] & TA_CMD_GOURAD_SHADING_MASK);
-    hdr->tex_coord_16_bit_enable =
-        (bool)(ta_fifo32[0] & TA_CMD_16_BIT_TEX_COORD_MASK);
-
-    if (hdr->pix_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
-        hdr->pix_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
-        hdr->tex_twiddle = !(bool)(TEX_CTRL_NOT_TWIDDLED_MASK & ta_fifo32[3]);
-        if (!hdr->tex_twiddle)
-            hdr->stride_sel = (bool)(TEX_CTRL_STRIDE_SEL_MASK & ta_fifo32[3]);
-        else
-            hdr->stride_sel = false;
-        hdr->tex_palette_start = 0xdeadbeef;
-    } else {
-        hdr->tex_twiddle = true;
-        hdr->stride_sel = false;
-        hdr->tex_palette_start = (ta_fifo32[3] & TEX_CTRL_PALETTE_START_MASK) >>
-            TEX_CTRL_PALETTE_START_SHIFT;
-    }
-
-    if (hdr->stride_sel)
-        hdr->tex_mipmap = false;
-    else
-        hdr->tex_mipmap = (bool)(TEX_CTRL_MIP_MAPPED_MASK & ta_fifo32[3]);
-
-    hdr->tex_vq_compression = (bool)(TEX_CTRL_VQ_MASK & ta_fifo32[3]);
-
-    hdr->tex_addr = ((ta_fifo32[3] & TEX_CTRL_TEX_ADDR_MASK) >>
-                     TEX_CTRL_TEX_ADDR_SHIFT) << 3;
-    hdr->tex_filter = (ta_fifo32[2] & TSP_TEX_INST_FILTER_MASK) >>
-        TSP_TEX_INST_FILTER_SHIFT;
-
-    hdr->src_blend_factor =
-        (ta_fifo32[2] & TSP_WORD_SRC_ALPHA_FACTOR_MASK) >>
-        TSP_WORD_SRC_ALPHA_FACTOR_SHIFT;
-    hdr->dst_blend_factor =
-        (ta_fifo32[2] & TSP_WORD_DST_ALPHA_FACTOR_MASK) >>
-        TSP_WORD_DST_ALPHA_FACTOR_SHIFT;
-
-    if (ta_fifo32[2] & (2 << TSP_TEX_CLAMP_SHIFT))
-        hdr->tex_wrap_mode[0] = TEX_WRAP_CLAMP;
-    else if (ta_fifo32[2] & (2 << TSP_TEX_FLIP_SHIFT))
-        hdr->tex_wrap_mode[0] = TEX_WRAP_FLIP;
-    else
-        hdr->tex_wrap_mode[0] = TEX_WRAP_REPEAT;
-
-    if (ta_fifo32[2] & (1 << TSP_TEX_CLAMP_SHIFT))
-        hdr->tex_wrap_mode[1] = TEX_WRAP_CLAMP;
-    else if (ta_fifo32[2] & (1 << TSP_TEX_FLIP_SHIFT))
-        hdr->tex_wrap_mode[1] = TEX_WRAP_FLIP;
-    else
-        hdr->tex_wrap_mode[1] = TEX_WRAP_REPEAT;
-
-    hdr->enable_depth_writes =
-        !((ta_fifo32[1] & DEPTH_WRITE_DISABLE_MASK) >>
-          DEPTH_WRITE_DISABLE_SHIFT);
-    hdr->depth_func =
-        (ta_fifo32[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
-
-    hdr->shadow = (bool)(ta_fifo32[0] & TA_CMD_SHADOW_MASK);
-
-    if (((ta_fifo32[0] & TA_CMD_TYPE_MASK) >> TA_CMD_TYPE_SHIFT) ==
-        TA_CMD_TYPE_SPRITE_HDR) {
-        hdr->tex_coord_16_bit_enable = true; // force this on
-    }
 
     // unpack the sprite color
     if (tp == PVR2_HDR_QUAD) {
@@ -1249,7 +1096,7 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
         hdr->sprite_base_color_rgba[2] = base_b / 255.0f;
         hdr->sprite_base_color_rgba[3] = base_a / 255.0f;
 
-        if (hdr->offset_color_enable) {
+        if (pvr2_hdr_offset_color_enable(hdr)) {
             hdr->sprite_offs_color_rgba[0] = offset_r / 255.0f;
             hdr->sprite_offs_color_rgba[1] = offset_g / 255.0f;
             hdr->sprite_offs_color_rgba[2] = offset_b / 255.0f;
@@ -1265,8 +1112,8 @@ static int decode_poly_hdr(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
                sizeof(ta->fifo_state.sprite_offs_color_rgba));
     }
 
-    if (hdr->ta_color_fmt == TA_COLOR_TYPE_INTENSITY_MODE_1) {
-        if (hdr->offset_color_enable) {
+    if (pvr2_hdr_color_fmt(hdr) == TA_COLOR_TYPE_INTENSITY_MODE_1) {
+        if (pvr2_hdr_offset_color_enable(hdr)) {
             memcpy(hdr->poly_base_color_rgba, ta_fifo32 + 9, 3 * sizeof(float));
             memcpy(hdr->poly_base_color_rgba + 3, ta_fifo32 + 8, sizeof(float));
             memcpy(hdr->poly_offs_color_rgba, ta_fifo32 + 13, 3 * sizeof(float));
