@@ -57,9 +57,12 @@ static void init_poly();
 static inline void
 put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color);
 static inline void
-put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color);
+put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color,
+                enum Pvr2BlendFactor src_blend_factor,
+                enum Pvr2BlendFactor dst_blend_factor);
 
 static bool user_clip_test(int x_pix, int y_pix);
+static bool clip_test(int x_pix, int y_pix);
 
 static void soft_gfx_set_callbacks(struct renderer_callbacks const *callbacks);
 
@@ -123,6 +126,25 @@ static uint32_t fb[FB_WIDTH * FB_HEIGHT];
 
 static float *w_buffer = NULL;
 
+// used for per-pixel order-independent transparency if sort_mode==true
+#define MAX_OIT_PIXELS (FB_WIDTH * FB_HEIGHT * 32)
+static struct oit_pixel {
+    int rgba[4];
+    float w_coord;
+    int next_pix_idx; // if less than 0, then there is no next index
+    enum Pvr2BlendFactor src_blend_factor, dst_blend_factor;
+} oit_pixels[MAX_OIT_PIXELS];
+static unsigned n_oit_pixels;
+
+/*
+ * 1 index into oit_pixels per pixel.  If less than 0 then there is nothing
+ * there.
+ */
+static int oit_buf[FB_WIDTH * FB_HEIGHT];
+
+static void sort_oit_pix_list(int first_idx);
+
+static bool sort_mode_enable;
 static bool blend_enable;
 static struct gfx_rend_param rend_param;
 
@@ -213,6 +235,10 @@ static void soft_gfx_init(void) {
     screen_width = 0;
     screen_height = 0;
     w_buffer = NULL;
+
+    n_oit_pixels = 0;
+    for (idx = 0; idx < FB_WIDTH * FB_HEIGHT; idx++)
+        oit_buf[idx] = -1;
 
     init_poly();
 }
@@ -501,12 +527,6 @@ static void draw_pt(void *dat, int x_pos, int y_pos, int side_len) {
 
 static inline void
 put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
-    if (x_pix < clip[0] ||
-        x_pix > clip[2] ||
-        y_pix < clip[1] ||
-        y_pix > clip[3])
-        return;
-
     y_pix = screen_height - 1 - y_pix;
     unsigned byte_offs = (y_pix * screen_width + x_pix) * sizeof(uint32_t);
 
@@ -524,14 +544,9 @@ put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
 }
 
 static inline void
-put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
-
-    if (x_pix < clip[0] ||
-        x_pix > clip[2] ||
-        y_pix < clip[1] ||
-        y_pix > clip[3])
-        return;
-
+put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color,
+                enum Pvr2BlendFactor src_blend_factor,
+                enum Pvr2BlendFactor dst_blend_factor) {
     y_pix = screen_height - 1 - y_pix;
     unsigned byte_offs = (y_pix * screen_width + x_pix) * sizeof(uint32_t);
 
@@ -564,7 +579,7 @@ put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
 
     float src_fact[4], dst_fact[4];
 
-    switch (rend_param.src_blend_factor) {
+    switch (src_blend_factor) {
     default:
         fprintf(stderr, "ERROR: src Unknown blend factor\n");
     case PVR2_BLEND_ZERO:
@@ -617,7 +632,7 @@ put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
         break;
     }
 
-    switch (rend_param.dst_blend_factor) {
+    switch (dst_blend_factor) {
     default:
         fprintf(stderr, "ERROR: dst Unknown blend factor\n");
     case PVR2_BLEND_ZERO:
@@ -742,7 +757,7 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                if (user_clip_test(x_pos, y_pos))
+                if (user_clip_test(x_pos, y_pos) && clip_test(x_pos, y_pos))
                     put_pix(obj, x_pos, y_pos, color);
                 error += delta_y;
                 if (2 * error >= delta_x) {
@@ -776,7 +791,7 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                if (user_clip_test(x_pos, y_pos))
+                if (user_clip_test(x_pos, y_pos) && clip_test(x_pos, y_pos))
                     put_pix(obj, x_pos, y_pos, color);
                 error += delta_y;
                 if (2 * error < -delta_x) {
@@ -813,7 +828,7 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                if (user_clip_test(x_pos, y_pos))
+                if (user_clip_test(x_pos, y_pos) && clip_test(x_pos, y_pos))
                     put_pix(obj, x_pos, y_pos, color);
                 error += delta_x;
                 if (2 * error >= delta_y) {
@@ -847,7 +862,7 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
             int x_pos = x1, y_pos = y1;
             int error = 0;
             do {
-                if (user_clip_test(x_pos, y_pos))
+                if (user_clip_test(x_pos, y_pos) && clip_test(x_pos, y_pos))
                     put_pix(obj, x_pos, y_pos, color);
                 error += delta_x;
                 if (2 * error < -delta_y) {
@@ -916,6 +931,8 @@ static float tri_area(float const v1[2], float const v2[2], float const v3[2]) {
 
 static bool depth_test(int x_pos, int y_pos, float w_coord) {
     float w_ref = w_buffer[y_pos * screen_width + x_pos];
+    if (sort_mode_enable)
+        return w_coord >= w_ref;
     switch (rend_param.depth_func) {
     case PVR2_DEPTH_NEVER:
         return false;
@@ -961,6 +978,15 @@ static bool user_clip_test(int x_pix, int y_pix) {
         break;
     }
 
+    return true;
+}
+
+static bool clip_test(int x_pix, int y_pix) {
+    if (x_pix < clip[0] ||
+        x_pix > clip[2] ||
+        y_pix < clip[1] ||
+        y_pix > clip[3])
+        return false;
     return true;
 }
 
@@ -1354,10 +1380,13 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                         float w_coord =
                             p1[2] * bary[0] + p2[2] * bary[1] + p3[2] * bary[2];
 
-                        if (!depth_test(x_pos, y_pos, w_coord) || !user_clip_test(x_pos, y_pos))
+                        if ((!sort_mode_enable &&
+                             !depth_test(x_pos, y_pos, w_coord)) ||
+                            !user_clip_test(x_pos, y_pos) ||
+                            !clip_test(x_pos, y_pos))
                             continue;
 
-                        if (rend_param.enable_depth_writes)
+                        if (rend_param.enable_depth_writes && !sort_mode_enable)
                             w_buffer[y_pos * screen_width + x_pos] = w_coord;
 
                         float base_col[4] = {
@@ -1550,12 +1579,27 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                             clamp_int(pix_color[3] * 255, 0, 255)
                         };
 
-                        if (blend_enable) {
+                        if (sort_mode_enable) {
+                            if (x_pos < 0 || x_pos >= FB_WIDTH ||
+                                y_pos < 0 || y_pos >= FB_HEIGHT ||
+                                n_oit_pixels >= MAX_OIT_PIXELS)
+                                continue;
+                            unsigned oit_node_idx = n_oit_pixels++;
+                            struct oit_pixel *pix = oit_pixels + oit_node_idx;
+                            memcpy(pix->rgba, rgba, sizeof(pix->rgba));
+                            pix->w_coord = w_coord;
+                            pix->src_blend_factor = rend_param.src_blend_factor;
+                            pix->dst_blend_factor = rend_param.dst_blend_factor;
+                            pix->next_pix_idx = oit_buf[y_pos * FB_WIDTH + x_pos];
+                            oit_buf[y_pos * FB_WIDTH + x_pos] = oit_node_idx;
+                        } else if (blend_enable) {
                             put_pix_blended(obj, x_pos, y_pos,
                                             rgba[0]          |
                                             (rgba[1] << 8)   |
                                             (rgba[2] << 16)  |
-                                            (rgba[3] << 24));
+                                            (rgba[3] << 24),
+                                            rend_param.src_blend_factor,
+                                            rend_param.dst_blend_factor);
                         } else {
                             put_pix(obj, x_pos, y_pos,
                                     rgba[0]          |
@@ -1596,6 +1640,38 @@ static void soft_gfx_unbind_tex(struct gfx_il_inst *cmd) {
     } else {
         textures[tex_no].obj_no = -1;
     }
+}
+
+static void sort_oit_pix_list(int first_idx) {
+    int src_idx = first_idx;
+    struct oit_pixel *srcp = oit_pixels + src_idx;
+    struct oit_pixel *cmpp = srcp;
+    int cmp_idx;
+
+    while ((cmp_idx = cmpp->next_pix_idx) >= 0) {
+        cmpp = oit_pixels + cmp_idx;
+        if (cmpp->w_coord < srcp->w_coord) {
+            int rgba_tmp[4];
+            memcpy(rgba_tmp, cmpp->rgba, sizeof(rgba_tmp));
+            memcpy(cmpp->rgba, srcp->rgba, sizeof(cmpp->rgba));
+            memcpy(srcp->rgba, rgba_tmp, sizeof(srcp->rgba));
+            float w_tmp;
+            w_tmp = cmpp->w_coord;
+            cmpp->w_coord = srcp->w_coord;
+            srcp->w_coord = w_tmp;
+
+            enum Pvr2BlendFactor src_blend_tmp, dst_blend_tmp;
+            src_blend_tmp = cmpp->src_blend_factor;
+            dst_blend_tmp = cmpp->dst_blend_factor;
+            cmpp->src_blend_factor = srcp->src_blend_factor;
+            cmpp->dst_blend_factor = srcp->dst_blend_factor;
+            srcp->src_blend_factor = src_blend_tmp;
+            srcp->dst_blend_factor = dst_blend_tmp;
+        }
+    }
+
+    if (srcp->next_pix_idx >= 0)
+        sort_oit_pix_list(srcp->next_pix_idx);
 }
 
 static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
@@ -1652,8 +1728,44 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             abort(); // we can't give the emulator what it needs here
             break;
         case GFX_IL_BEGIN_DEPTH_SORT:
+            sort_mode_enable = true;
+
+            // re-initialize
+            n_oit_pixels = 0;
+            {
+                unsigned idx;
+                for (idx = 0; idx < FB_WIDTH * FB_HEIGHT; idx++)
+                    oit_buf[idx] = -1;
+            }
             break;
         case GFX_IL_END_DEPTH_SORT:
+            // sort pixels and render back-to-front
+            {
+                int row, col;
+                for (row = 0; row < FB_HEIGHT; row++)
+                    for (col = 0; col < FB_WIDTH; col++) {
+                        int pix_idx = oit_buf[row * FB_WIDTH + col];
+                        if (pix_idx >= 0) {
+                            sort_oit_pix_list(pix_idx);
+                            struct gfx_obj *obj = gfx_obj_get(render_tgt);
+                            do {
+                                struct oit_pixel *pix = oit_pixels + pix_idx;
+                                if (depth_test(col, row, pix->w_coord)) {
+                                    put_pix_blended(obj, col, row,
+                                                    pix->rgba[0]          |
+                                                    (pix->rgba[1] << 8)   |
+                                                    (pix->rgba[2] << 16)  |
+                                                    (pix->rgba[3] << 24),
+                                                    pix->src_blend_factor,
+                                                    pix->dst_blend_factor);
+                                    w_buffer[row * screen_width + col] = pix->w_coord;
+                                }
+                                pix_idx = pix->next_pix_idx;
+                            } while (pix_idx >= 0);
+                        }
+                    }
+            }
+            sort_mode_enable = false;
             break;
         case GFX_IL_SET_USER_CLIP:
             user_clip[0] = cmd->arg.set_user_clip.x_min;
