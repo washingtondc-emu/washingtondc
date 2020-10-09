@@ -191,6 +191,8 @@ struct oit_group {
 
     float avg_depth;
 
+    GLfloat user_clip[4];
+
     struct gfx_rend_param rend_param;
 };
 
@@ -955,6 +957,8 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
             avg_depth /= n_verts;
 
             grp->avg_depth = avg_depth;
+
+            memcpy(grp->user_clip, user_clip, sizeof(grp->user_clip));
         } else {
             fprintf(stderr, "OPENGL GFX: OIT BUFFER OVERFLOW!!!\n");
         }
@@ -1142,6 +1146,11 @@ static void opengl_renderer_end_sort_mode(struct gfx_il_inst *cmd) {
         for (src_idx = 0; src_idx < grp_cnt; src_idx++) {
             struct oit_group *grp_src = oit_state.groups + src_idx;
             do_set_rend_param(&grp_src->rend_param);
+            if (grp_src->rend_param.user_clip_mode != GFX_USER_CLIP_DISABLE) {
+                glUniform4f(user_clip_slot,
+                            grp_src->user_clip[0], grp_src->user_clip[1],
+                            grp_src->user_clip[2], grp_src->user_clip[3]);
+            }
             do_draw_array(grp_src->verts, grp_src->n_verts);
         }
     }
