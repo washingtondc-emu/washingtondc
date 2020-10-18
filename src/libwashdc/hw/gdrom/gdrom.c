@@ -620,8 +620,8 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
          */
         if (addr < gdrom_dma_prot_top(gdrom)) {
             // don't do this chunk if the end is below gdrom_dma_prot_top
-            /* error_set_feature("the GD-ROM DMA protection register"); */
-            /* RAISE_ERROR(ERROR_UNIMPLEMENTED); */
+            error_set_feature("the GD-ROM DMA protection register");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
         if ((addr + chunk_sz - 1) > gdrom_dma_prot_bot(gdrom)) {
