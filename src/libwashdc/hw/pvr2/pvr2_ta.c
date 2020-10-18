@@ -285,7 +285,7 @@ static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
     HDR_BOOL_FUNC(hdr, tex_mipmap, pvr2_hdr_tex_mipmap);
     HDR_INT_FUNC(hdr, pix_fmt, pvr2_hdr_pix_fmt);
     HDR_INT_FUNC(hdr, tex_inst, pvr2_hdr_tex_inst);
-    HDR_INT_FUNC(hdr, pvr2_hdr_tex_filter);
+    HDR_INT_FUNC(hdr, tex_filter, pvr2_hdr_tex_filter);
     HDR_INT_FUNC(hdr, tex_wrap_mode[0], pvr2_hdr_tex_wrap_mode_s);
     HDR_INT_FUNC(hdr, tex_wrap_mode[1], pvr2_hdr_tex_wrap_mode_t);
     HDR_INT_FUNC(hdr, ta_color_fmt, pvr2_hdr_color_fmt);
