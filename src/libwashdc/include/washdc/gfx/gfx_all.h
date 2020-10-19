@@ -42,7 +42,7 @@
 extern "C" {
 #endif
 
-struct rend_if {
+struct gfx_rend_if {
     void (*init)(void);
 
     void (*cleanup)(void);

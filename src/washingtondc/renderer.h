@@ -31,17 +31,38 @@
  *
  ******************************************************************************/
 
-#ifndef SOFT_GFX_H_
-#define SOFT_GFX_H_
+#ifndef RENDERER_H_
+#define RENDERER_H_
 
-#include "../renderer.h"
+#include "washdc/gfx/gfx_all.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern struct gfx_rend_if const soft_gfx_if;
-extern struct renderer const soft_gfx_renderer;
+struct renderer_callbacks {
+    // tells the window to check for events.  This is optional and can be NULL
+    void (*win_update)(void);
+
+    // tells the overlay to draw.  This is optional and can be NULL
+    void (*overlay_draw)(void);
+};
+
+struct renderer {
+    // for receiving rendering commands from washdc's gfx infrastructure
+    struct gfx_rend_if const* rend_if;
+
+    void (*set_callbacks)(struct renderer_callbacks const* callbacks);
+
+    // optional, can be NULL (but probably shouldn't)
+    void (*video_present)(void);
+
+    // optional, can be NULL
+    void (*toggle_video_filter)(void);
+
+    // optional, can be NULL if your renderer doesn't support renderdoc
+    void (*capture_renderdoc)(void);
+};
 
 #ifdef __cplusplus
 }

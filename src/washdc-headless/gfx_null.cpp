@@ -76,8 +76,8 @@ static void null_render_end_rend(struct gfx_il_inst *cmd);
 
 static void null_render_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
 
-struct rend_if const *null_rend_if_get(void) {
-    static struct rend_if null_rend_if;
+struct gfx_rend_if const *null_rend_if_get(void) {
+    static struct gfx_rend_if null_rend_if;
 
     null_rend_if.init = null_render_init;
     null_rend_if.cleanup = null_render_cleanup;

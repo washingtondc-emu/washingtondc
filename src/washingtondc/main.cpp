@@ -75,7 +75,7 @@
 #include "stdio_hostfile.hpp"
 #include "paths.hpp"
 
-static struct rend_if const *rend_if;
+struct renderer const *renderer;
 static std::string rend_string;
 
 static struct washdc_sound_intf snd_intf;
@@ -449,34 +449,27 @@ int main(int argc, char **argv) {
     settings.sndsrv = &snd_intf;
 
     if (strcmp(gfx_backend, "opengl") == 0) {
-        rend_if = &opengl_rend_if;
+        renderer = &opengl_renderer;
     } else if (strcmp(gfx_backend, "soft") == 0) {
-        rend_if = &soft_gfx_if;
+        renderer = &soft_gfx_renderer;
     } else {
         fprintf(stderr, "ERROR: unknown rendering backend \"%s\"\n", gfx_backend);
         exit(1);
     }
 
-    settings.gfx_rend_if = rend_if;
+    settings.gfx_rend_if = renderer->rend_if;
     rend_string = gfx_backend;
 
 #ifdef USE_LIBEVENT
     io::init();
 #endif
 
-    if (rend_if == &opengl_rend_if) {
-        static struct opengl_renderer_callbacks renderer_callbacks;
-        renderer_callbacks.win_update = win_glfw_update;
-        if (overlay_enabled())
-            renderer_callbacks.overlay_draw = overlay::draw;
-        else
-            renderer_callbacks.overlay_draw = nullptr;
-        opengl_renderer_set_callbacks(&renderer_callbacks);
-    } else if (rend_if == &soft_gfx_if) {
-        static struct soft_gfx_callbacks renderer_callbacks;
-        renderer_callbacks.win_update = win_glfw_update;
-        soft_gfx_set_callbacks(&renderer_callbacks);
-    }
+    static struct renderer_callbacks callbacks = { };
+
+    if (renderer == &opengl_renderer && overlay_enabled())
+        callbacks.overlay_draw = overlay::draw;
+    callbacks.win_update = win_glfw_update;
+    renderer->set_callbacks(&callbacks);
 
     console = washdc_init(&settings);
 
@@ -485,8 +478,7 @@ int main(int argc, char **argv) {
 
     washdc_run();
 
-    if (rend_if == &opengl_rend_if)
-        opengl_renderer_set_callbacks(NULL);
+    renderer->set_callbacks(NULL);
 
     if (overlay_enabled())
         overlay::cleanup();
@@ -518,5 +510,5 @@ std::string const& rend_name(void) {
 }
 
 bool overlay_enabled(void) {
-    return rend_if == &opengl_rend_if;
+    return renderer == &opengl_renderer;
 }

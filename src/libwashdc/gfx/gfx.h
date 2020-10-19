@@ -44,8 +44,8 @@ static_assert(PVR2_DEPTH_FUNC_COUNT == 8,
 
 // The purpose of the GFX layer is to handle all the OpenGL-related things.
 
-struct rend_if;
-void gfx_init(struct rend_if const * rend_if, unsigned width, unsigned height);
+struct gfx_rend_if;
+void gfx_init(struct gfx_rend_if const * rend_if, unsigned width, unsigned height);
 void gfx_cleanup(void);
 
 #endif

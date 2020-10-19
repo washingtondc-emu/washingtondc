@@ -40,6 +40,8 @@
 
 #include <GL/gl.h>
 
+#include "../renderer.h"
+
 #include "washdc/gfx/gfx_all.h"
 
 #ifdef __cplusplus
@@ -52,18 +54,18 @@ void opengl_renderer_capture_renderdoc(void);
  * functions the renderer calls to interact with stuff like the windowing
  * system and overlay.
  */
-struct opengl_renderer_callbacks {
-    // tells the window to check for events.  This is optional and can be NULL
-    void (*win_update)(void);
+/* struct opengl_renderer_callbacks { */
+/*     // tells the window to check for events.  This is optional and can be NULL */
+/*     void (*win_update)(void); */
 
-    // tells the overlay to draw using OpenGL.  This is optional and can be NULL
-    void (*overlay_draw)(void);
-};
+/*     // tells the overlay to draw using OpenGL.  This is optional and can be NULL */
+/*     void (*overlay_draw)(void); */
+/* }; */
 void
-opengl_renderer_set_callbacks(struct opengl_renderer_callbacks const
-                              *callbacks);
+opengl_renderer_set_callbacks(struct renderer_callbacks const *callbacks);
 
-extern struct rend_if const opengl_rend_if;
+extern struct gfx_rend_if const opengl_rend_if;
+extern struct renderer const opengl_renderer;
 
 GLuint opengl_renderer_tex(unsigned obj_no);
 

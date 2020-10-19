@@ -66,7 +66,7 @@ struct washdc_sound_intf;
 
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
-               struct rend_if const *gfx_if,
+               struct gfx_rend_if const *gfx_if,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,
                struct washdc_sound_intf const *snd_intf,

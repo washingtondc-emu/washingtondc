@@ -41,10 +41,10 @@
 
 #include "rend_common.h"
 
-struct rend_if const * gfx_rend_ifp;
+struct gfx_rend_if const * gfx_rend_ifp;
 
 // initialize and clean up the graphics renderer
-void rend_init(struct rend_if const *rend_if) {
+void rend_init(struct gfx_rend_if const *rend_if) {
     gfx_rend_ifp = rend_if;
     gfx_rend_ifp->init();
 }

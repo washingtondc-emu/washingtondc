@@ -46,7 +46,7 @@
 
 #include "soft_gfx.h"
 
-static struct soft_gfx_callbacks const *switch_table;
+static struct renderer_callbacks const *switch_table;
 
 static void soft_gfx_init(void);
 static void soft_gfx_cleanup(void);
@@ -60,6 +60,8 @@ static inline void
 put_pix_blended(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color);
 
 static bool user_clip_test(int x_pix, int y_pix);
+
+static void soft_gfx_set_callbacks(struct renderer_callbacks const *callbacks);
 
 #define FB_WIDTH 640
 #define FB_HEIGHT 480
@@ -149,10 +151,15 @@ static struct tex textures[GFX_TEX_CACHE_SIZE];
 
 static void rot90(float out[2], float const in[2]);
 
-struct rend_if const soft_gfx_if = {
+struct gfx_rend_if const soft_gfx_if = {
     .init = soft_gfx_init,
     .cleanup = soft_gfx_cleanup,
     .exec_gfx_il = soft_gfx_exec_gfx_il
+};
+
+struct renderer const soft_gfx_renderer = {
+    .rend_if = &soft_gfx_if,
+    .set_callbacks = soft_gfx_set_callbacks
 };
 
 static void soft_gfx_init(void) {
@@ -248,7 +255,7 @@ static void init_poly() {
     fb_poly.ebo = ebo;
 }
 
-void soft_gfx_set_callbacks(struct soft_gfx_callbacks const *callbacks) {
+static void soft_gfx_set_callbacks(struct renderer_callbacks const *callbacks) {
     switch_table = callbacks;
 }
 

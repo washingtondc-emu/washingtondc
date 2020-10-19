@@ -44,9 +44,9 @@
 #include "washdc/gfx/gfx_all.h"
 
 // initialize and clean up the graphics renderer
-void rend_init(struct rend_if const *rend_if);
+void rend_init(struct gfx_rend_if const *rend_if);
 void rend_cleanup(void);
 
-extern struct rend_if const * gfx_rend_ifp;
+extern struct gfx_rend_if const * gfx_rend_ifp;
 
 #endif

@@ -50,9 +50,9 @@
 static unsigned win_width, win_height;
 
 // Only call gfx_thread_signal and gfx_thread_wait when you hold the lock.
-static void gfx_do_init(struct rend_if const * rend_if);
+static void gfx_do_init(struct gfx_rend_if const * rend_if);
 
-void gfx_init(struct rend_if const * rend_if, unsigned width, unsigned height) {
+void gfx_init(struct gfx_rend_if const * rend_if, unsigned width, unsigned height) {
     win_width = width;
     win_height = height;
 
@@ -64,7 +64,7 @@ void gfx_cleanup(void) {
     rend_cleanup();
 }
 
-static void gfx_do_init(struct rend_if const * rend_if) {
+static void gfx_do_init(struct gfx_rend_if const * rend_if) {
     win_make_context_current();
 
     rend_init(rend_if);

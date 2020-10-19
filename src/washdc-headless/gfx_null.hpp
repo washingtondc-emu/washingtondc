@@ -36,6 +36,6 @@
 
 #include "washdc/gfx/gfx_all.h"
 
-struct rend_if const *null_rend_if_get(void);
+struct gfx_rend_if const *null_rend_if_get(void);
 
 #endif

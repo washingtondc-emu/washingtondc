@@ -39,9 +39,6 @@
 
 #include <GLFW/glfw3.h>
 
-#include "opengl/opengl_output.h"
-#include "opengl/opengl_renderer.h"
-
 #include "washdc/washdc.h"
 
 #include "washdc/config_file.h"
@@ -51,6 +48,7 @@
 #include "ui/overlay.hpp"
 #include "sound.hpp"
 #include "rend_if.hpp"
+#include "../renderer.h"
 
 static void win_glfw_init(unsigned width, unsigned height);
 static void win_glfw_cleanup();
@@ -88,9 +86,11 @@ static void
 mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y);
 static void text_input_cb(GLFWwindow* window, unsigned int codepoint);
 
+extern struct renderer const *renderer; // see main.cpp
+
 static void do_redraw(void) {
-    if (rend_name() == "opengl") {
-        opengl_video_present();
+    if (renderer->video_present) {
+        renderer->video_present();
     } else {
         std::cerr << "ERROR: no video_present implementation for renderer \"" <<
         rend_name() << "\"" << std::endl;
@@ -1165,8 +1165,8 @@ static void scan_input(void) {
     static bool filter_key_prev = false;
     bool filter_key = ctrl_get_button("toggle-filter");
     if (filter_key && !filter_key_prev) {
-        if (rend_name() == "opengl") {
-            opengl_video_toggle_filter();
+        if (renderer->toggle_video_filter) {
+            renderer->toggle_video_filter();
         }
     }
     filter_key_prev = filter_key;
@@ -1210,7 +1210,8 @@ static void scan_input(void) {
     static bool renderdoc_key_prev = false;
     bool renderdoc_key = ctrl_get_button("renderdoc-capture");
     if (renderdoc_key && !renderdoc_key_prev) {
-        opengl_renderer_capture_renderdoc();
+        if (renderer->capture_renderdoc)
+            renderer->capture_renderdoc();
     }
     renderdoc_key_prev = renderdoc_key;
 

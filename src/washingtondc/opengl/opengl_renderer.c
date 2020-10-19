@@ -76,7 +76,7 @@ static GLint trans_mat_slot = -1;
 
 static GLuint vbo, vao;
 
-static struct opengl_renderer_callbacks const *switch_table;
+static struct renderer_callbacks const *switch_table;
 
 static float clip_min, clip_max;
 static bool tex_enable;
@@ -239,10 +239,18 @@ opengl_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
 static void do_set_rend_param(struct gfx_rend_param const *param);
 static void do_draw_array(float const *verts, unsigned n_verts);
 
-struct rend_if const opengl_rend_if = {
+struct gfx_rend_if const opengl_rend_if = {
     .init = opengl_render_init,
     .cleanup = opengl_render_cleanup,
     .exec_gfx_il = opengl_renderer_exec_gfx_il
+};
+
+struct renderer const opengl_renderer = {
+    .rend_if = &opengl_rend_if,
+    .set_callbacks = opengl_renderer_set_callbacks,
+    .video_present = opengl_video_present,
+    .toggle_video_filter = opengl_video_toggle_filter,
+    .capture_renderdoc = opengl_renderer_capture_renderdoc
 };
 
 static void init_renderdoc_api(void);
@@ -510,8 +518,7 @@ static struct shader_cache_ent* fetch_shader(shader_key key) {
 }
 
 void
-opengl_renderer_set_callbacks(struct opengl_renderer_callbacks const
-                              *callbacks) {
+opengl_renderer_set_callbacks(struct renderer_callbacks const *callbacks) {
     switch_table = callbacks;
 }
 

@@ -100,7 +100,7 @@ struct washdc_launch_settings {
 
     struct washdc_sound_intf const *sndsrv;
 
-    struct rend_if const *gfx_rend_if;
+    struct gfx_rend_if const *gfx_rend_if;
 
     enum washdc_boot_mode boot_mode;
 
