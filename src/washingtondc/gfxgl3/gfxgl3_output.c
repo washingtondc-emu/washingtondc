@@ -50,8 +50,8 @@
 #include "washdc/config_file.h"
 
 #include "../gfx_obj.h"
-#include "opengl_output.h"
-#include "opengl_renderer.h"
+#include "gfxgl3_output.h"
+#include "gfxgl3_renderer.h"
 #include "../shader.h"
 
 static void init_poly();
@@ -118,12 +118,12 @@ static GLfloat bgcolor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 static void set_flip(bool flip);
 
 static void
-opengl_video_update_framebuffer(int obj_handle,
+gfxgl3_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_width,
                                 unsigned fb_read_height,
                                 bool interlace);
 
-void opengl_video_output_init(void) {
+void gfxgl3_video_output_init(void) {
     char const *filter_str;
 
     filter_str = cfg_get_node("gfx.output.filter");
@@ -184,17 +184,17 @@ void opengl_video_output_init(void) {
     init_poly();
 }
 
-void opengl_video_output_cleanup(void) {
+void gfxgl3_video_output_cleanup(void) {
     // TODO cleanup OpenGL stuff
 }
 
-void opengl_video_new_framebuffer(int obj_handle,
+void gfxgl3_video_new_framebuffer(int obj_handle,
                                   unsigned fb_new_width,
                                   unsigned fb_new_height,
                                   bool do_flip,
                                   bool interlace) {
     set_flip(do_flip);
-    opengl_video_update_framebuffer(obj_handle, fb_new_width, fb_new_height, interlace);
+    gfxgl3_video_update_framebuffer(obj_handle, fb_new_width, fb_new_height, interlace);
 }
 
 static void set_flip(bool flip) {
@@ -202,7 +202,7 @@ static void set_flip(bool flip) {
 }
 
 static void
-opengl_video_update_framebuffer(int obj_handle,
+gfxgl3_video_update_framebuffer(int obj_handle,
                                 unsigned fb_read_width,
                                 unsigned fb_read_height,
                                 bool interlace) {
@@ -210,7 +210,7 @@ opengl_video_update_framebuffer(int obj_handle,
         return;
 
     struct gfx_obj *obj = gfx_obj_get(obj_handle);
-    GLuint tex_obj = opengl_renderer_tex(obj_handle);
+    GLuint tex_obj = gfxgl3_renderer_tex(obj_handle);
 
     glBindTexture(GL_TEXTURE_2D, tex_obj);
 
@@ -228,10 +228,10 @@ opengl_video_update_framebuffer(int obj_handle,
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fb_read_width, fb_read_height, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, obj->dat);
 
-        opengl_renderer_tex_set_dims(obj_handle, fb_read_width, fb_read_height);
-        opengl_renderer_tex_set_format(obj_handle, GL_RGBA);
-        opengl_renderer_tex_set_dat_type(obj_handle, GL_UNSIGNED_BYTE);
-        opengl_renderer_tex_set_dirty(obj_handle, false);
+        gfxgl3_renderer_tex_set_dims(obj_handle, fb_read_width, fb_read_height);
+        gfxgl3_renderer_tex_set_format(obj_handle, GL_RGBA);
+        gfxgl3_renderer_tex_set_dat_type(obj_handle, GL_UNSIGNED_BYTE);
+        gfxgl3_renderer_tex_set_dirty(obj_handle, false);
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -242,7 +242,7 @@ opengl_video_update_framebuffer(int obj_handle,
     bound_obj_interlace = interlace;
 }
 
-void opengl_video_present(void) {
+void gfxgl3_video_present(void) {
     glClearColor(bgcolor[0], bgcolor[1], bgcolor[2], bgcolor[3]);
     glClear(GL_COLOR_BUFFER_BIT);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -334,7 +334,7 @@ void opengl_video_present(void) {
 
     glViewport(0, 0, xres, yres);
     glUseProgram(fb_shader.shader_prog_obj);
-    glBindTexture(GL_TEXTURE_2D, opengl_renderer_tex(bound_obj_handle));
+    glBindTexture(GL_TEXTURE_2D, gfxgl3_renderer_tex(bound_obj_handle));
     glUniform1i(glGetUniformLocation(fb_shader.shader_prog_obj, "fb_tex"), 0);
     glUniformMatrix4fv(OUTPUT_SLOT_TRANS_MAT, 1, GL_TRUE, trans_mat);
     glUniformMatrix3fv(OUTPUT_SLOT_TEX_MAT, 1, GL_TRUE, tex_mat);
@@ -378,7 +378,7 @@ static void init_poly() {
     fb_poly.ebo = ebo;
 }
 
-void opengl_video_toggle_filter(void) {
+void gfxgl3_video_toggle_filter(void) {
     if (min_filter == GL_NEAREST)
         min_filter = GL_LINEAR;
     else
@@ -390,13 +390,13 @@ void opengl_video_toggle_filter(void) {
         mag_filter = GL_NEAREST;
 }
 
-int opengl_video_get_fb(int *obj_handle_out, unsigned *width_out,
+int gfxgl3_video_get_fb(int *obj_handle_out, unsigned *width_out,
                         unsigned *height_out, bool *flip_out) {
     if (bound_obj_handle < 0)
         return -1;
     *obj_handle_out = bound_obj_handle;
-    *width_out = opengl_renderer_tex_get_width(bound_obj_handle);
-    *height_out = opengl_renderer_tex_get_height(bound_obj_handle);
+    *width_out = gfxgl3_renderer_tex_get_width(bound_obj_handle);
+    *height_out = gfxgl3_renderer_tex_get_height(bound_obj_handle);
     *flip_out = do_flip;
     return 0;
 }

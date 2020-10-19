@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2017, 2018, 2020 snickerbockers
+ * Copyright 2017-2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,34 +31,45 @@
  *
  ******************************************************************************/
 
-#ifndef GFX_TEX_CACHE_H_
-#define GFX_TEX_CACHE_H_
+#ifdef _WIN32
+#include "i_hate_windows.h"
+#endif
 
-#include <stdbool.h>
-#include <stdint.h>
+#ifndef gfxgl3_renderer_H_
+#define gfxgl3_renderer_H_
 
-#include "washdc/gfx/tex_cache.h"
+#include <GL/gl.h>
 
-struct gfx_tex {
-    int obj_handle;
-    enum gfx_tex_fmt tex_fmt;
-    unsigned width, height;
-    bool valid;
-};
+#include "../renderer.h"
 
-struct gfx_tex const* gfx_tex_cache_get(unsigned idx);
+#include "washdc/gfx/gfx_all.h"
 
-/*
- * Bind the given gfx_obj to the given texture-unit.
- */
-void tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
-                    unsigned height, enum gfx_tex_fmt tex_fmt);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-void tex_cache_unbind(unsigned tex_no);
+extern struct gfx_rend_if const gfxgl3_rend_if;
+extern struct renderer const gfxgl3_renderer;
 
-void tex_cache_evict(unsigned idx);
+GLuint gfxgl3_renderer_tex(unsigned obj_no);
 
-void tex_cache_init(void);
-void tex_cache_cleanup(void);
+unsigned gfxgl3_renderer_tex_get_width(unsigned obj_no);
+unsigned gfxgl3_renderer_tex_get_height(unsigned obj_no);
+
+void gfxgl3_renderer_tex_set_dims(unsigned obj_no,
+                                  unsigned width, unsigned height);
+void gfxgl3_renderer_tex_set_format(unsigned obj_no, GLenum fmt);
+void gfxgl3_renderer_tex_set_dat_type(unsigned obj_no, GLenum dat_tp);
+void gfxgl3_renderer_tex_set_dirty(unsigned obj_no, bool dirty);
+GLenum gfxgl3_renderer_tex_get_format(unsigned obj_no);
+GLenum gfxgl3_renderer_tex_get_dat_type(unsigned obj_no);
+bool gfxgl3_renderer_tex_get_dirty(unsigned obj_no);
+
+void gfxgl3_renderer_update_tex(unsigned tex_obj);
+void gfxgl3_renderer_release_tex(unsigned tex_obj);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

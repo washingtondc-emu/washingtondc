@@ -31,22 +31,22 @@
  *
  ******************************************************************************/
 
-#ifndef OPENGL_TARGET_H_
-#define OPENGL_TARGET_H_
+#ifndef GFXGL3_TARGET_H_
+#define GFXGL3_TARGET_H_
 
 #include "washdc/gfx/gfx_il.h"
 
 /* code for configuring opengl's rendering target (which is a texture+FBO) */
 
-void opengl_target_init(void);
+void gfxgl3_target_init(void);
 
-void opengl_target_bind_obj(struct gfx_il_inst *cmd);
-void opengl_target_unbind_obj(struct gfx_il_inst *cmd);
+void gfxgl3_target_bind_obj(struct gfx_il_inst *cmd);
+void gfxgl3_target_unbind_obj(struct gfx_il_inst *cmd);
 
 // call this before rendering to the target
-void opengl_target_begin(unsigned width, unsigned height, int tgt_handle);
+void gfxgl3_target_begin(unsigned width, unsigned height, int tgt_handle);
 
 // call this when done rendering to the target
-void opengl_target_end(int tgt_handle);
+void gfxgl3_target_end(int tgt_handle);
 
 #endif

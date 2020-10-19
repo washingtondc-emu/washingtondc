@@ -94,17 +94,16 @@ set(debug_sources "${IO_SOURCE_DIR}/washdbg_tcp.hpp"
 set(serial_sources "${IO_SOURCE_DIR}/serial_server.hpp"
                    "${IO_SOURCE_DIR}/serial_server.cpp")
 
-set(gfxgl_sources "${PROJECT_SOURCE_DIR}/opengl/shader_cache.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/shader_cache.c"
-                  "${PROJECT_SOURCE_DIR}/opengl/opengl_output.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/opengl_output.c"
-                  "${PROJECT_SOURCE_DIR}/opengl/opengl_target.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/opengl_target.c"
-                  "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/opengl_renderer.c"
-                  "${PROJECT_SOURCE_DIR}/opengl/tex_cache.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/renderdoc_app.h"
-                  "${PROJECT_SOURCE_DIR}/opengl/tex_cache.c")
+set(gfxgl3_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
+                   "${PROJECT_SOURCE_DIR}/renderdoc_app.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_output.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_output.c"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_target.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_target.c"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_renderer.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_renderer.c"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/tex_cache.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl3/tex_cache.c")
 
 set(soft_gfx_sources "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.c"
                      "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h")
@@ -125,7 +124,7 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/shader.h"
                          "${PROJECT_SOURCE_DIR}/shader.c"
                          "${PROJECT_SOURCE_DIR}/renderer.h"
-                         "${gfxgl_sources}"
+                         "${gfxgl3_sources}"
                          "${soft_gfx_sources}")
 
 if (ENABLE_TCP_SERIAL)

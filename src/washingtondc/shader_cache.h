@@ -38,6 +38,9 @@
 #include "i_hate_windows.h"
 #endif
 
+#include <string.h>
+#include <stdlib.h>
+
 #include <GL/gl.h>
 
 #include "../shader.h"
@@ -94,13 +97,47 @@ struct shader_cache {
     struct shader_cache_ent *ents;
 };
 
-void shader_cache_init(struct shader_cache *cache);
-void shader_cache_cleanup(struct shader_cache *cache);
+static void shader_cache_init(struct shader_cache *cache) {
+    memset(cache, 0, sizeof(*cache));
+}
 
-struct shader_cache_ent *shader_cache_add_ent(struct shader_cache *cache,
-                                              shader_key key);
+static void shader_cache_cleanup(struct shader_cache *cache) {
+    struct shader_cache_ent *next = cache->ents;
+    while (next) {
+        struct shader_cache_ent *ent = next;
+        next = next->next;
 
-struct shader_cache_ent *shader_cache_find(struct shader_cache *cache,
-                                           shader_key key);
+        shader_cleanup(&ent->shader);
+        free(ent);
+    }
+
+    memset(cache, 0, sizeof(*cache));
+}
+
+static struct shader_cache_ent *
+shader_cache_add_ent(struct shader_cache *cache, shader_key key) {
+    struct shader_cache_ent *ent =
+        (struct shader_cache_ent*)calloc(1, sizeof(struct shader_cache_ent));
+    ent->next = cache->ents;
+    cache->ents = ent;
+    ent->key = key;
+
+    int slot_no;
+    for (slot_no = 0; slot_no < SHADER_CACHE_SLOT_COUNT; slot_no++)
+        ent->slots[slot_no] = -1;
+
+    return ent;
+}
+
+static struct shader_cache_ent *
+shader_cache_find(struct shader_cache *cache, shader_key key) {
+    struct shader_cache_ent *next = cache->ents;
+    while (next) {
+        if (next->key == key)
+            return next;
+        next = next->next;
+    }
+    return NULL;
+}
 
 #endif

@@ -51,7 +51,7 @@
 #include "sound.hpp"
 #include "washdc/hostfile.h"
 #include "console_config.hpp"
-#include "opengl/opengl_renderer.h"
+#include "gfxgl3/gfxgl3_renderer.h"
 #include "soft_gfx/soft_gfx.h"
 #include "stdio_hostfile.hpp"
 #include "washdc_getopt.h"
@@ -449,7 +449,7 @@ int main(int argc, char **argv) {
     settings.sndsrv = &snd_intf;
 
     if (strcmp(gfx_backend, "opengl") == 0) {
-        renderer = &opengl_renderer;
+        renderer = &gfxgl3_renderer;
     } else if (strcmp(gfx_backend, "soft") == 0) {
         renderer = &soft_gfx_renderer;
     } else {
@@ -466,7 +466,7 @@ int main(int argc, char **argv) {
 
     static struct renderer_callbacks callbacks = { };
 
-    if (renderer == &opengl_renderer && overlay_enabled())
+    if (renderer == &gfxgl3_renderer && overlay_enabled())
         callbacks.overlay_draw = overlay::draw;
     callbacks.win_update = win_glfw_update;
     renderer->set_callbacks(&callbacks);
@@ -510,5 +510,5 @@ std::string const& rend_name(void) {
 }
 
 bool overlay_enabled(void) {
-    return renderer == &opengl_renderer;
+    return renderer == &gfxgl3_renderer;
 }

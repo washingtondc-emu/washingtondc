@@ -31,58 +31,55 @@
  *
  ******************************************************************************/
 
-#ifdef _WIN32
-#include "i_hate_windows.h"
-#endif
+#ifndef OPENGL_OUTPUT_H_
+#define OPENGL_OUTPUT_H_
 
-#ifndef OPENGL_RENDERER_H_
-#define OPENGL_RENDERER_H_
+/*
+ * opengl_output.h: the final stage of rendering, where the framebuffer is
+ * turned into and opengl texture that's rendered onto a quadrilateral
+ * stretched across the screen.
+ */
 
-#include <GL/gl.h>
-
-#include "../renderer.h"
-
-#include "washdc/gfx/gfx_all.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void opengl_renderer_capture_renderdoc(void);
-
 /*
- * functions the renderer calls to interact with stuff like the windowing
- * system and overlay.
+ * this gets called every time the framebuffer has a new frame to render.
+ * fb_new belongs to the caller, and its contents will be copied into a new
+ * storage area.
+ *
+ * this function is safe to call from outside of the graphics thread
+ * from outside of the graphics thread, it should only be called indirectly via
+ * gfx_thread_post_framebuffer.
  */
-/* struct opengl_renderer_callbacks { */
-/*     // tells the window to check for events.  This is optional and can be NULL */
-/*     void (*win_update)(void); */
+void gfxgl3_video_new_framebuffer(int obj_handle,
+                                  unsigned fb_new_width,
+                                  unsigned fb_new_height,
+                                  bool do_flip, bool interlace);
 
-/*     // tells the overlay to draw using OpenGL.  This is optional and can be NULL */
-/*     void (*overlay_draw)(void); */
-/* }; */
-void
-opengl_renderer_set_callbacks(struct renderer_callbacks const *callbacks);
+void gfxgl3_video_present(void);
 
-extern struct gfx_rend_if const opengl_rend_if;
-extern struct renderer const opengl_renderer;
+void gfxgl3_video_output_init(void);
+void gfxgl3_video_output_cleanup(void);
 
-GLuint opengl_renderer_tex(unsigned obj_no);
+void gfxgl3_video_toggle_filter(void);
 
-unsigned opengl_renderer_tex_get_width(unsigned obj_no);
-unsigned opengl_renderer_tex_get_height(unsigned obj_no);
+int gfxgl3_video_get_fb(int *obj_handle_out, unsigned *width_out,
+                        unsigned *height_out, bool *flip_out);
 
-void opengl_renderer_tex_set_dims(unsigned obj_no,
-                                  unsigned width, unsigned height);
-void opengl_renderer_tex_set_format(unsigned obj_no, GLenum fmt);
-void opengl_renderer_tex_set_dat_type(unsigned obj_no, GLenum dat_tp);
-void opengl_renderer_tex_set_dirty(unsigned obj_no, bool dirty);
-GLenum opengl_renderer_tex_get_format(unsigned obj_no);
-GLenum opengl_renderer_tex_get_dat_type(unsigned obj_no);
-bool opengl_renderer_tex_get_dirty(unsigned obj_no);
+// vertex position (x, y, z)
+#define OUTPUT_SLOT_VERT_POS 0
 
-void opengl_renderer_update_tex(unsigned tex_obj);
-void opengl_renderer_release_tex(unsigned tex_obj);
+// vertex texture coordinates (s, t)
+#define OUTPUT_SLOT_VERT_ST 1
+
+#define OUTPUT_SLOT_TRANS_MAT 2
+
+#define OUTPUT_SLOT_TEX_MAT 3
 
 #ifdef __cplusplus
 }

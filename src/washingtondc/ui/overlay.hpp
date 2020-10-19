@@ -37,7 +37,7 @@
 // This is a simple UI that can optionally be drawn on top of the screen.
 
 /*
- * this gets called by opengl_video_present to draw the overlay on top of the
+ * this gets called by gfxgl3_video_present to draw the overlay on top of the
  * screen.
  */
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2019 snickerbockers
+ * Copyright 2017, 2018, 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,50 +31,34 @@
  *
  ******************************************************************************/
 
-#include <string.h>
-#include <stdlib.h>
+#ifndef GFX_TEX_CACHE_H_
+#define GFX_TEX_CACHE_H_
 
-#include "shader_cache.h"
+#include <stdbool.h>
+#include <stdint.h>
 
-void shader_cache_init(struct shader_cache *cache) {
-    memset(cache, 0, sizeof(*cache));
-}
+#include "washdc/gfx/tex_cache.h"
 
-void shader_cache_cleanup(struct shader_cache *cache) {
-    struct shader_cache_ent *next = cache->ents;
-    while (next) {
-        struct shader_cache_ent *ent = next;
-        next = next->next;
+struct gfxgl3_tex {
+    int obj_handle;
+    enum gfx_tex_fmt tex_fmt;
+    unsigned width, height;
+    bool valid;
+};
 
-        shader_cleanup(&ent->shader);
-        free(ent);
-    }
+struct gfxgl3_tex const* gfx_gfxgl3_tex_cache_get(unsigned idx);
 
-    memset(cache, 0, sizeof(*cache));
-}
+/*
+ * Bind the given gfx_obj to the given texture-unit.
+ */
+void gfxgl3_tex_cache_bind(unsigned tex_no, int obj_no, unsigned width,
+                    unsigned height, enum gfx_tex_fmt tex_fmt);
 
-struct shader_cache_ent *shader_cache_add_ent(struct shader_cache *cache,
-                                              shader_key key) {
-    struct shader_cache_ent *ent =
-        (struct shader_cache_ent*)calloc(1, sizeof(struct shader_cache_ent));
-    ent->next = cache->ents;
-    cache->ents = ent;
-    ent->key = key;
+void gfxgl3_tex_cache_unbind(unsigned tex_no);
 
-    int slot_no;
-    for (slot_no = 0; slot_no < SHADER_CACHE_SLOT_COUNT; slot_no++)
-        ent->slots[slot_no] = -1;
+void gfxgl3_tex_cache_evict(unsigned idx);
 
-    return ent;
-}
+void gfxgl3_tex_cache_init(void);
+void gfxgl3_tex_cache_cleanup(void);
 
-struct shader_cache_ent *shader_cache_find(struct shader_cache *cache,
-                                           shader_key key) {
-    struct shader_cache_ent *next = cache->ents;
-    while (next) {
-        if (next->key == key)
-            return next;
-        next = next->next;
-    }
-    return NULL;
-}
+#endif
