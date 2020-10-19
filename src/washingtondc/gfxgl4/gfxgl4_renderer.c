@@ -56,11 +56,11 @@
 #include "washdc/config_file.h"
 #include "washdc/win.h"
 
-#include "gfxgl3_output.h"
-#include "gfxgl3_target.h"
+#include "gfxgl4_output.h"
+#include "gfxgl4_target.h"
 #include "../shader.h"
 #include "../shader_cache.h"
-#include "gfxgl3_renderer.h"
+#include "gfxgl4_renderer.h"
 #include "tex_cache.h"
 #include "../gfx_obj.h"
 
@@ -214,44 +214,44 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pizels);
 
 static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
-static void gfxgl3_renderer_set_blend_enable(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_set_rend_param(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_draw_array(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_clear(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_set_screen_dim(unsigned width, unsigned height);
-static void gfxgl3_renderer_set_clip_range(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_begin_sort_mode(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_end_sort_mode(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_bind_tex(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_unbind_tex(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_obj_init(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_obj_write(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_obj_read(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_obj_free(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_grab_framebuffer(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_post_framebuffer(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_begin_rend(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_end_rend(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_set_blend_enable(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_set_rend_param(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_draw_array(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_clear(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_set_screen_dim(unsigned width, unsigned height);
+static void gfxgl4_renderer_set_clip_range(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_begin_sort_mode(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_end_sort_mode(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_bind_tex(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_unbind_tex(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_obj_init(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_obj_write(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_obj_read(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_obj_free(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_grab_framebuffer(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_post_framebuffer(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_begin_rend(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_end_rend(struct gfx_il_inst *cmd);
 
 static void
-gfxgl3_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
+gfxgl4_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
 
 static void do_set_rend_param(struct gfx_rend_param const *param);
 static void do_draw_array(float const *verts, unsigned n_verts);
 
 static void set_callbacks(struct renderer_callbacks const *callbacks);
 
-struct gfx_rend_if const gfxgl3_rend_if = {
+struct gfx_rend_if const gfxgl4_rend_if = {
     .init = opengl_render_init,
     .cleanup = opengl_render_cleanup,
-    .exec_gfx_il = gfxgl3_renderer_exec_gfx_il
+    .exec_gfx_il = gfxgl4_renderer_exec_gfx_il
 };
 
-struct renderer const gfxgl3_renderer = {
-    .rend_if = &gfxgl3_rend_if,
+struct renderer const gfxgl4_renderer = {
+    .rend_if = &gfxgl4_rend_if,
     .set_callbacks = set_callbacks,
-    .video_present = gfxgl3_video_present,
-    .toggle_video_filter = gfxgl3_video_toggle_filter,
+    .video_present = gfxgl4_video_present,
+    .toggle_video_filter = gfxgl4_video_toggle_filter,
     .capture_renderdoc = capture_renderdoc
 };
 
@@ -569,14 +569,14 @@ static void opengl_render_init(void) {
 
     init_renderdoc_api();
 
-    gfxgl3_tex_cache_init();
+    gfxgl4_tex_cache_init();
 
     win_make_context_current();
     glewExperimental = GL_TRUE;
     glewInit();
 
-    gfxgl3_video_output_init();
-    gfxgl3_target_init();
+    gfxgl4_video_output_init();
+    gfxgl4_target_init();
 
     char const *oit_mode_str = cfg_get_node("gfx.rend.oit-mode");
     if (oit_mode_str) {
@@ -630,7 +630,7 @@ static void opengl_render_cleanup(void) {
     vbo = 0;
     memset(obj_tex_array, 0, sizeof(obj_tex_array));
 
-    gfxgl3_tex_cache_cleanup();
+    gfxgl4_tex_cache_cleanup();
 
     cleanup_renderdoc_api();
 
@@ -639,8 +639,8 @@ static void opengl_render_cleanup(void) {
 
 static DEF_ERROR_INT_ATTR(max_length);
 
-void gfxgl3_renderer_update_tex(unsigned tex_obj) {
-    struct gfxgl3_tex const *tex = gfx_gfxgl3_tex_cache_get(tex_obj);
+void gfxgl4_renderer_update_tex(unsigned tex_obj) {
+    struct gfxgl4_tex const *tex = gfx_gfxgl4_tex_cache_get(tex_obj);
     struct gfx_obj *obj = gfx_obj_get(tex->obj_handle);
 
     // nothing to do here
@@ -677,7 +677,7 @@ void gfxgl3_renderer_update_tex(unsigned tex_obj) {
      * TODO: ideally I wouldn't need to copy ARGB_4444 and ARGB_1555 into a
      * separate buffer to do the pixel conversion.  The reason I do this is that
      * the tex-dump command in the cmd thread also sees the texture data in the
-     * struct gfxgl3_tex, so I don't want to modify that.  Maybe someday I'll
+     * struct gfxgl4_tex, so I don't want to modify that.  Maybe someday I'll
      * change things to remove this mostly-unnecessary buffering...
      */
     if (tex->tex_fmt == GFX_TEX_FMT_ARGB_4444) {
@@ -697,11 +697,11 @@ void gfxgl3_renderer_update_tex(unsigned tex_obj) {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_fmt_to_data_type(GFX_TEX_FMT_ARGB_4444),
                      tex_dat_conv);
-        gfxgl3_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
-        gfxgl3_renderer_tex_set_format(tex->obj_handle, format);
-        gfxgl3_renderer_tex_set_dat_type(tex->obj_handle,
+        gfxgl4_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
+        gfxgl4_renderer_tex_set_format(tex->obj_handle, format);
+        gfxgl4_renderer_tex_set_dat_type(tex->obj_handle,
                                          tex_fmt_to_data_type(GFX_TEX_FMT_ARGB_4444));
-        gfxgl3_renderer_tex_set_dirty(tex->obj_handle, false);
+        gfxgl4_renderer_tex_set_dirty(tex->obj_handle, false);
         free(tex_dat_conv);
     } else if (tex->tex_fmt == GFX_TEX_FMT_ARGB_1555) {
         size_t n_bytes = tex->width * tex->height * sizeof(uint16_t);
@@ -720,11 +720,11 @@ void gfxgl3_renderer_update_tex(unsigned tex_obj) {
         glTexImage2D(GL_TEXTURE_2D, 0, format, tex_w, tex_h, 0,
                      format, tex_fmt_to_data_type(GFX_TEX_FMT_ARGB_1555),
                      tex_dat_conv);
-        gfxgl3_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
-        gfxgl3_renderer_tex_set_format(tex->obj_handle, format);
-        gfxgl3_renderer_tex_set_dat_type(tex->obj_handle,
+        gfxgl4_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
+        gfxgl4_renderer_tex_set_format(tex->obj_handle, format);
+        gfxgl4_renderer_tex_set_dat_type(tex->obj_handle,
                                          tex_fmt_to_data_type(GFX_TEX_FMT_ARGB_1555));
-        gfxgl3_renderer_tex_set_dirty(tex->obj_handle, false);
+        gfxgl4_renderer_tex_set_dirty(tex->obj_handle, false);
         free(tex_dat_conv);
     } else if (tex->tex_fmt == GFX_TEX_FMT_YUV_422) {
         uint8_t *tmp_dat =
@@ -734,25 +734,25 @@ void gfxgl3_renderer_update_tex(unsigned tex_obj) {
         washdc_conv_yuv422_rgba8888(tmp_dat, tex_dat, tex_w, tex_h);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex_w, tex_h, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, tmp_dat);
-        gfxgl3_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
-        gfxgl3_renderer_tex_set_format(tex->obj_handle, GL_RGBA);
-        gfxgl3_renderer_tex_set_dat_type(tex->obj_handle, GL_UNSIGNED_BYTE);
-        gfxgl3_renderer_tex_set_dirty(tex->obj_handle, false);
+        gfxgl4_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
+        gfxgl4_renderer_tex_set_format(tex->obj_handle, GL_RGBA);
+        gfxgl4_renderer_tex_set_dat_type(tex->obj_handle, GL_UNSIGNED_BYTE);
+        gfxgl4_renderer_tex_set_dirty(tex->obj_handle, false);
         free(tmp_dat);
     } else {
         glTexImage2D(GL_TEXTURE_2D, 0, internal_format, tex_w, tex_h, 0,
                      format, tex_fmt_to_data_type(tex->tex_fmt), tex_dat);
-        gfxgl3_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
-        gfxgl3_renderer_tex_set_format(tex->obj_handle, format);
-        gfxgl3_renderer_tex_set_dat_type(tex->obj_handle,
+        gfxgl4_renderer_tex_set_dims(tex->obj_handle, tex_w, tex_h);
+        gfxgl4_renderer_tex_set_format(tex->obj_handle, format);
+        gfxgl4_renderer_tex_set_dat_type(tex->obj_handle,
                                          tex_fmt_to_data_type(tex->tex_fmt));
-        gfxgl3_renderer_tex_set_dirty(tex->obj_handle, false);
+        gfxgl4_renderer_tex_set_dirty(tex->obj_handle, false);
     }
     obj->state |= GFX_OBJ_STATE_TEX;
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void gfxgl3_renderer_release_tex(unsigned tex_obj) {
+void gfxgl4_renderer_release_tex(unsigned tex_obj) {
     // do nothing
 }
 
@@ -780,7 +780,7 @@ static void render_conv_argb_1555(uint16_t *pixels, size_t n_pixels) {
     }
 }
 
-static void gfxgl3_renderer_set_blend_enable(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_set_blend_enable(struct gfx_il_inst *cmd) {
     bool enable = cmd->arg.set_blend_enable.do_enable;
     struct gfx_cfg rend_cfg = gfx_config_read();
 
@@ -790,7 +790,7 @@ static void gfxgl3_renderer_set_blend_enable(struct gfx_il_inst *cmd) {
         glDisable(GL_BLEND);
 }
 
-static void gfxgl3_renderer_set_rend_param(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_set_rend_param(struct gfx_il_inst *cmd) {
     struct gfx_rend_param const *param = &cmd->arg.set_rend_param.param;
     do_set_rend_param(param);
 }
@@ -832,8 +832,8 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
             break;
         }
 
-        if (gfx_gfxgl3_tex_cache_get(param->tex_idx)->valid) {
-            int obj_handle = gfx_gfxgl3_tex_cache_get(param->tex_idx)->obj_handle;
+        if (gfx_gfxgl4_tex_cache_get(param->tex_idx)->valid) {
+            int obj_handle = gfx_gfxgl4_tex_cache_get(param->tex_idx)->obj_handle;
             glBindTexture(GL_TEXTURE_2D, obj_tex_array[obj_handle]);
         } else {
             fprintf(stderr, "WARNING: attempt to bind invalid texture %u\n",
@@ -930,7 +930,7 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     tex_enable = param->tex_enable;
 }
 
-static void gfxgl3_renderer_draw_array(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_draw_array(struct gfx_il_inst *cmd) {
     unsigned n_verts = cmd->arg.draw_array.n_verts;
     float const *verts = cmd->arg.draw_array.verts;
 
@@ -1022,7 +1022,7 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-static void gfxgl3_renderer_clear(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_clear(struct gfx_il_inst *cmd) {
     float const *bgcolor = cmd->arg.clear.bgcolor;
     struct gfx_cfg rend_cfg = gfx_config_read();
 
@@ -1062,60 +1062,60 @@ static void gfxgl3_renderer_clear(struct gfx_il_inst *cmd) {
     glEnable(GL_DEPTH_CLAMP);
 }
 
-static void gfxgl3_renderer_set_screen_dim(unsigned width, unsigned height) {
+static void gfxgl4_renderer_set_screen_dim(unsigned width, unsigned height) {
     screen_width = width;
     screen_height = height;
     glViewport(0, 0, width, height);
 }
 
-static void gfxgl3_renderer_set_clip_range(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_set_clip_range(struct gfx_il_inst *cmd) {
     clip_min = cmd->arg.set_clip_range.clip_min;
     clip_max = cmd->arg.set_clip_range.clip_max;
 }
 
-GLuint gfxgl3_renderer_tex(unsigned obj_no) {
+GLuint gfxgl4_renderer_tex(unsigned obj_no) {
     return obj_tex_array[obj_no];
 }
 
-unsigned gfxgl3_renderer_tex_get_width(unsigned obj_no) {
+unsigned gfxgl4_renderer_tex_get_width(unsigned obj_no) {
     return obj_tex_meta_array[obj_no].width;
 }
 
-unsigned gfxgl3_renderer_tex_get_height(unsigned obj_no) {
+unsigned gfxgl4_renderer_tex_get_height(unsigned obj_no) {
     return obj_tex_meta_array[obj_no].height;
 }
 
-void gfxgl3_renderer_tex_set_dims(unsigned obj_no,
+void gfxgl4_renderer_tex_set_dims(unsigned obj_no,
                                   unsigned width, unsigned height) {
     obj_tex_meta_array[obj_no].width = width;
     obj_tex_meta_array[obj_no].height = height;
 }
 
-void gfxgl3_renderer_tex_set_format(unsigned obj_no, GLenum fmt) {
+void gfxgl4_renderer_tex_set_format(unsigned obj_no, GLenum fmt) {
     obj_tex_meta_array[obj_no].format = fmt;
 }
 
-void gfxgl3_renderer_tex_set_dat_type(unsigned obj_no, GLenum dat_tp) {
+void gfxgl4_renderer_tex_set_dat_type(unsigned obj_no, GLenum dat_tp) {
     obj_tex_meta_array[obj_no].dat_type = dat_tp;
 }
 
-void gfxgl3_renderer_tex_set_dirty(unsigned obj_no, bool dirty) {
+void gfxgl4_renderer_tex_set_dirty(unsigned obj_no, bool dirty) {
     obj_tex_meta_array[obj_no].dirty = dirty;
 }
 
-GLenum gfxgl3_renderer_tex_get_format(unsigned obj_no) {
+GLenum gfxgl4_renderer_tex_get_format(unsigned obj_no) {
     return obj_tex_meta_array[obj_no].format;
 }
 
-GLenum gfxgl3_renderer_tex_get_dat_type(unsigned obj_no) {
+GLenum gfxgl4_renderer_tex_get_dat_type(unsigned obj_no) {
     return obj_tex_meta_array[obj_no].dat_type;
 }
 
-bool gfxgl3_renderer_tex_get_dirty(unsigned obj_no) {
+bool gfxgl4_renderer_tex_get_dirty(unsigned obj_no) {
     return obj_tex_meta_array[obj_no].dirty;
 }
 
-static void gfxgl3_renderer_begin_sort_mode(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_begin_sort_mode(struct gfx_il_inst *cmd) {
     if (oit_state.enabled)
         RAISE_ERROR(ERROR_INTEGRITY);
 
@@ -1126,7 +1126,7 @@ static void gfxgl3_renderer_begin_sort_mode(struct gfx_il_inst *cmd) {
     }
 }
 
-static void gfxgl3_renderer_end_sort_mode(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_end_sort_mode(struct gfx_il_inst *cmd) {
     if (!gfx_config_read().depth_sort_enable)
         return;
     if (!oit_state.enabled)
@@ -1180,51 +1180,51 @@ static GLenum tex_fmt_to_data_type(enum gfx_tex_fmt gfx_fmt) {
     }
 }
 
-static void gfxgl3_renderer_bind_tex(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_bind_tex(struct gfx_il_inst *cmd) {
     unsigned tex_no = cmd->arg.bind_tex.tex_no;
     int obj_handle = cmd->arg.bind_tex.gfx_obj_handle;
     enum gfx_tex_fmt pix_fmt = cmd->arg.bind_tex.pix_fmt;
     int width = cmd->arg.bind_tex.width;
     int height = cmd->arg.bind_tex.height;
 
-    gfxgl3_tex_cache_bind(tex_no, obj_handle, width, height, pix_fmt);
+    gfxgl4_tex_cache_bind(tex_no, obj_handle, width, height, pix_fmt);
 }
 
-static void gfxgl3_renderer_unbind_tex(struct gfx_il_inst *cmd) {
-    gfxgl3_tex_cache_unbind(cmd->arg.unbind_tex.tex_no);
+static void gfxgl4_renderer_unbind_tex(struct gfx_il_inst *cmd) {
+    gfxgl4_tex_cache_unbind(cmd->arg.unbind_tex.tex_no);
 }
 
-static void gfxgl3_renderer_obj_init(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_obj_init(struct gfx_il_inst *cmd) {
     int obj_no = cmd->arg.init_obj.obj_no;
     size_t n_bytes = cmd->arg.init_obj.n_bytes;
     gfx_obj_init(obj_no, n_bytes);
 }
 
-static void gfxgl3_renderer_obj_write(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_obj_write(struct gfx_il_inst *cmd) {
     int obj_no = cmd->arg.write_obj.obj_no;
     size_t n_bytes = cmd->arg.write_obj.n_bytes;
     void const *dat = cmd->arg.write_obj.dat;
     gfx_obj_write(obj_no, dat, n_bytes);
 }
 
-static void gfxgl3_renderer_obj_read(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_obj_read(struct gfx_il_inst *cmd) {
     int obj_no = cmd->arg.read_obj.obj_no;
     size_t n_bytes = cmd->arg.read_obj.n_bytes;
     void *dat = cmd->arg.read_obj.dat;
     gfx_obj_read(obj_no, dat, n_bytes);
 }
 
-static void gfxgl3_renderer_obj_free(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_obj_free(struct gfx_il_inst *cmd) {
     int obj_no = cmd->arg.free_obj.obj_no;
     gfx_obj_free(obj_no);
 }
 
-static void gfxgl3_renderer_grab_framebuffer(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_grab_framebuffer(struct gfx_il_inst *cmd) {
     int handle;
     unsigned width, height;
     bool do_flip;
 
-    if (gfxgl3_video_get_fb(&handle, &width, &height, &do_flip) != 0) {
+    if (gfxgl4_video_get_fb(&handle, &width, &height, &do_flip) != 0) {
         cmd->arg.grab_framebuffer.fb->valid = false;
         return;
     }
@@ -1251,16 +1251,16 @@ static void gfxgl3_renderer_grab_framebuffer(struct gfx_il_inst *cmd) {
     cmd->arg.grab_framebuffer.fb->flip = do_flip;
 }
 
-static void gfxgl3_renderer_post_framebuffer(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_post_framebuffer(struct gfx_il_inst *cmd) {
     unsigned width = cmd->arg.post_framebuffer.width;
     unsigned height = cmd->arg.post_framebuffer.height;
     int obj_handle = cmd->arg.post_framebuffer.obj_handle;
     bool do_flip = cmd->arg.post_framebuffer.vert_flip;
     bool interlace = cmd->arg.post_framebuffer.interlaced;
 
-    gfxgl3_video_new_framebuffer(obj_handle, width, height,
+    gfxgl4_video_new_framebuffer(obj_handle, width, height,
                                  do_flip, interlace);
-    gfxgl3_video_present();
+    gfxgl4_video_present();
 
     if (switch_table) {
         if (switch_table->overlay_draw)
@@ -1271,7 +1271,7 @@ static void gfxgl3_renderer_post_framebuffer(struct gfx_il_inst *cmd) {
     }
 }
 
-static void gfxgl3_renderer_begin_rend(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_begin_rend(struct gfx_il_inst *cmd) {
     if (!renderdoc_capture_in_progress && renderdoc_capture_requested) {
         if (is_renderdoc_enabled()) {
             rdoc_api->StartFrameCapture(NULL, NULL);
@@ -1280,7 +1280,7 @@ static void gfxgl3_renderer_begin_rend(struct gfx_il_inst *cmd) {
         renderdoc_capture_requested = false;
     }
 
-    gfxgl3_target_begin(cmd->arg.begin_rend.screen_width,
+    gfxgl4_target_begin(cmd->arg.begin_rend.screen_width,
                         cmd->arg.begin_rend.screen_height,
                         cmd->arg.begin_rend.rend_tgt_obj);
 
@@ -1292,13 +1292,13 @@ static void gfxgl3_renderer_begin_rend(struct gfx_il_inst *cmd) {
 
     glEnable(GL_SCISSOR_TEST);
     glScissor(clip[0], clip[3], clip[2] - clip[0] + 1, clip[1] - clip[3] + 1);
-    gfxgl3_renderer_set_screen_dim(cmd->arg.begin_rend.screen_width,
+    gfxgl4_renderer_set_screen_dim(cmd->arg.begin_rend.screen_width,
                                    cmd->arg.begin_rend.screen_height);
 }
 
-static void gfxgl3_renderer_end_rend(struct gfx_il_inst *cmd) {
+static void gfxgl4_renderer_end_rend(struct gfx_il_inst *cmd) {
     glDisable(GL_SCISSOR_TEST);
-    gfxgl3_target_end(cmd->arg.end_rend.rend_tgt_obj);
+    gfxgl4_target_end(cmd->arg.end_rend.rend_tgt_obj);
 
     if (renderdoc_capture_in_progress && is_renderdoc_enabled()) {
         rdoc_api->EndFrameCapture(NULL, NULL);
@@ -1307,65 +1307,65 @@ static void gfxgl3_renderer_end_rend(struct gfx_il_inst *cmd) {
 }
 
 static void
-gfxgl3_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
+gfxgl4_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     while (n_cmd--) {
         switch (cmd->op) {
         case GFX_IL_BIND_TEX:
-            gfxgl3_renderer_bind_tex(cmd);
+            gfxgl4_renderer_bind_tex(cmd);
             break;
         case GFX_IL_UNBIND_TEX:
-            gfxgl3_renderer_unbind_tex(cmd);
+            gfxgl4_renderer_unbind_tex(cmd);
             break;
         case GFX_IL_BIND_RENDER_TARGET:
-            gfxgl3_target_bind_obj(cmd);
+            gfxgl4_target_bind_obj(cmd);
             break;
         case GFX_IL_UNBIND_RENDER_TARGET:
-            gfxgl3_target_unbind_obj(cmd);
+            gfxgl4_target_unbind_obj(cmd);
             break;
         case GFX_IL_BEGIN_REND:
-            gfxgl3_renderer_begin_rend(cmd);
+            gfxgl4_renderer_begin_rend(cmd);
             break;
         case GFX_IL_END_REND:
-            gfxgl3_renderer_end_rend(cmd);
+            gfxgl4_renderer_end_rend(cmd);
             break;
         case GFX_IL_CLEAR:
-            gfxgl3_renderer_clear(cmd);
+            gfxgl4_renderer_clear(cmd);
             break;
         case GFX_IL_SET_BLEND_ENABLE:
-            gfxgl3_renderer_set_blend_enable(cmd);
+            gfxgl4_renderer_set_blend_enable(cmd);
             break;
         case GFX_IL_SET_REND_PARAM:
-            gfxgl3_renderer_set_rend_param(cmd);
+            gfxgl4_renderer_set_rend_param(cmd);
             break;
         case GFX_IL_SET_CLIP_RANGE:
-            gfxgl3_renderer_set_clip_range(cmd);
+            gfxgl4_renderer_set_clip_range(cmd);
             break;
         case GFX_IL_DRAW_ARRAY:
-            gfxgl3_renderer_draw_array(cmd);
+            gfxgl4_renderer_draw_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
-            gfxgl3_renderer_obj_init(cmd);
+            gfxgl4_renderer_obj_init(cmd);
             break;
         case GFX_IL_WRITE_OBJ:
-             gfxgl3_renderer_obj_write(cmd);
+             gfxgl4_renderer_obj_write(cmd);
             break;
         case GFX_IL_READ_OBJ:
-            gfxgl3_renderer_obj_read(cmd);
+            gfxgl4_renderer_obj_read(cmd);
             break;
         case GFX_IL_FREE_OBJ:
-            gfxgl3_renderer_obj_free(cmd);
+            gfxgl4_renderer_obj_free(cmd);
             break;
         case GFX_IL_POST_FRAMEBUFFER:
-            gfxgl3_renderer_post_framebuffer(cmd);
+            gfxgl4_renderer_post_framebuffer(cmd);
             break;
         case GFX_IL_GRAB_FRAMEBUFFER:
-            gfxgl3_renderer_grab_framebuffer(cmd);
+            gfxgl4_renderer_grab_framebuffer(cmd);
             break;
         case GFX_IL_BEGIN_DEPTH_SORT:
-            gfxgl3_renderer_begin_sort_mode(cmd);
+            gfxgl4_renderer_begin_sort_mode(cmd);
             break;
         case GFX_IL_END_DEPTH_SORT:
-            gfxgl3_renderer_end_sort_mode(cmd);
+            gfxgl4_renderer_end_sort_mode(cmd);
             break;
         case GFX_IL_SET_USER_CLIP:
             user_clip[0] = cmd->arg.set_user_clip.x_min;

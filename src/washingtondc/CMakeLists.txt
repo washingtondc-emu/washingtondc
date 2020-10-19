@@ -105,6 +105,17 @@ set(gfxgl3_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "${PROJECT_SOURCE_DIR}/gfxgl3/tex_cache.h"
                    "${PROJECT_SOURCE_DIR}/gfxgl3/tex_cache.c")
 
+set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
+                   "${PROJECT_SOURCE_DIR}/renderdoc_app.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_output.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_output.c"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_target.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_target.c"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_renderer.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_renderer.c"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/tex_cache.h"
+                   "${PROJECT_SOURCE_DIR}/gfxgl4/tex_cache.c")
+
 set(soft_gfx_sources "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.c"
                      "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h")
 
@@ -125,6 +136,7 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/shader.c"
                          "${PROJECT_SOURCE_DIR}/renderer.h"
                          "${gfxgl3_sources}"
+                         "${gfxgl4_sources}"
                          "${soft_gfx_sources}")
 
 if (ENABLE_TCP_SERIAL)
