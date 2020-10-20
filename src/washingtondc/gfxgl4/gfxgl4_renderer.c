@@ -53,7 +53,6 @@
 #include "washdc/gfx/def.h"
 #include "washdc/gfx/obj.h"
 #include "washdc/pix_conv.h"
-#include "washdc/config_file.h"
 #include "washdc/win.h"
 
 #include "gfxgl4_output.h"
@@ -63,6 +62,7 @@
 #include "gfxgl4_renderer.h"
 #include "tex_cache.h"
 #include "../gfx_obj.h"
+#include "../config_file.h"
 
 #include "../renderdoc_app.h"
 

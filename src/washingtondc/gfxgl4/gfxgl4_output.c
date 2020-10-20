@@ -47,8 +47,8 @@
 #include <GL/gl.h>
 
 #include "washdc/win.h"
-#include "washdc/config_file.h"
 
+#include "../config_file.h"
 #include "../gfx_obj.h"
 #include "gfxgl4_output.h"
 #include "gfxgl4_renderer.h"

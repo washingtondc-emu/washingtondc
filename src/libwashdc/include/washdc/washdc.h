@@ -80,6 +80,9 @@ enum washdc_boot_mode {
 
 struct win_intf;
 
+#define WASHDC_CONTROLLER_PORTS 4
+#define WASHDC_CONTROLLER_UNITS 3
+
 struct washdc_launch_settings {
     char const *path_ip_bin;
     char const *path_1st_read_bin;
@@ -120,6 +123,10 @@ struct washdc_launch_settings {
 
     // if true, the flash image will be written out at the end
     bool write_to_flash;
+
+    bool dump_mem_on_error;
+
+    char const *controllers[WASHDC_CONTROLLER_PORTS][WASHDC_CONTROLLER_UNITS];
 };
 
 int washdc_save_screenshot(char const *path);
@@ -218,14 +225,6 @@ washdc_keyboard_release_special(unsigned port_no,
 
 // 0 = min, 255 = max, 128 = half
 void washdc_controller_set_axis(unsigned port_no, unsigned axis, unsigned val);
-
-enum washdc_controller_tp {
-    WASHDC_CONTROLLER_TP_NONE,
-    WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER,
-    WASHDC_CONTROLLER_TP_DREAMCAST_KEYBOARD
-};
-
-enum washdc_controller_tp washdc_controller_type(unsigned port_no);
 
 enum washdc_pvr2_poly_group {
     WASHDC_PVR2_POLY_GROUP_OPAQUE,

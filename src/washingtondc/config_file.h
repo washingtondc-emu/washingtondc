@@ -1,6 +1,6 @@
 /*******************************************************************************
  *
- * Copyright 2019 snickerbockers
+ * Copyright 2020 snickerbockers
  * snickerbockers@washemu.org
  *
  * Redistribution and use in source and binary forms, with or without
@@ -34,6 +34,8 @@
 #ifndef CONFIG_FILE_H_
 #define CONFIG_FILE_H_
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,8 +48,10 @@ extern "C" {
  * config file.
  */
 
-void cfg_init(void);
+void cfg_init(FILE *cfg_file);
 void cfg_cleanup(void);
+
+void cfg_create_default_config(FILE *cfg_file);
 
 void cfg_put_char(char ch);
 
@@ -58,10 +62,6 @@ int cfg_get_bool(char const *key, bool *outp);
 int cfg_get_rgb(char const *key, int *red, int *green, int *blue);
 
 int cfg_get_int(char const *key, int *val);
-
-char const *cfg_get_default_dir(void);
-
-char const *cfg_get_default_file(void);
 
 #ifdef __cplusplus
 }

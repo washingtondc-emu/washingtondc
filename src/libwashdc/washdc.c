@@ -47,7 +47,6 @@
 #include "washdc/win.h"
 #include "hw/pvr2/pvr2.h"
 #include "log.h"
-#include "washdc/config_file.h"
 
 static struct washdc_hostfile_api const *hostfile_api;
 
@@ -84,6 +83,7 @@ washdc_init(struct washdc_launch_settings const *settings) {
     config_set_dc_flash_path(settings->path_dc_flash);
     config_set_ser_srv_enable(settings->enable_serial);
     config_set_dc_path_rtc(settings->path_rtc);
+    config_set_dump_mem_on_error(settings->dump_mem_on_error);
 
     win_set_intf(settings->win_intf);
 
@@ -93,7 +93,8 @@ washdc_init(struct washdc_launch_settings const *settings) {
                           settings->gfx_rend_if,
                           settings->dbg_intf,
                           settings->sersrv, settings->sndsrv,
-                          settings->write_to_flash);
+                          settings->write_to_flash,
+                          settings->controllers);
 }
 
 void washdc_cleanup() {
@@ -296,20 +297,6 @@ washdc_hostfile washdc_hostfile_open_screenshot(char const *name,
 
 char washdc_hostfile_pathsep(void) {
     return hostfile_api->pathsep;
-}
-
-enum washdc_controller_tp washdc_controller_type(unsigned port_no) {
-    char tmp[32];
-    snprintf(tmp, sizeof(tmp), "wash.dc.port.%u.0", port_no);
-    tmp[sizeof(tmp) - 1] = '\0';
-    char const *tpstr = cfg_get_node(tmp);
-    if (tpstr) {
-        if (strcmp(tpstr, "dreamcast_controller") == 0)
-            return WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER;
-        else if (strcmp(tpstr, "dreamcast_keyboard_us") == 0)
-            return WASHDC_CONTROLLER_TP_DREAMCAST_KEYBOARD;
-    }
-    return WASHDC_CONTROLLER_TP_NONE;
 }
 
 double washdc_get_fps(void) {

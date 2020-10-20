@@ -87,7 +87,6 @@
 #include "hw/boot_rom.h"
 #include "hw/arm7/arm7.h"
 #include "title.h"
-#include "washdc/config_file.h"
 #include "mount.h"
 #include "gdi.h"
 #include "cdi.h"
@@ -508,8 +507,8 @@ dreamcast_init(char const *gdi_path,
                struct debug_frontend const *dbg_frontend,
                struct serial_server_intf const *ser_intf,
                struct washdc_sound_intf const *snd_intf,
-               bool flash_mem_writeable) {
-    int win_width, win_height;
+               bool flash_mem_writeable,
+               char const *controllers[4][3]) {
 
     frame_count = 0;
 
@@ -556,19 +555,17 @@ dreamcast_init(char const *gdi_path,
 
     title_set_content(title_content);
 
-    cfg_init();
-
     washdc_atomic_int_init(&signal_exit_threads, 0);
     washdc_atomic_int_init(&is_running, 1);
 
-    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
-        win_width = 640;
-    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
-        win_height = 480;
+    /* if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0) */
+    /*     win_width = 640; */
+    /* if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0) */
+    /*     win_height = 480; */
 
     // initialize host windowing, graphics and sound systems
-    win_init(win_width, win_height);
-    gfx_init(gfx_if, win_width, win_height);
+    /* win_init(win_width, win_height); */
+    gfx_init(gfx_if);
     dc_sound_init(snd_intf);
 
     memory_init(&dc_mem);
@@ -652,47 +649,15 @@ dreamcast_init(char const *gdi_path,
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&maple, &sh4_clock);
 
-    char const *ctrl_0 = cfg_get_node("wash.dc.port.0.0");
-    char const *ctrl_1 = cfg_get_node("wash.dc.port.1.0");
-    char const *ctrl_2 = cfg_get_node("wash.dc.port.2.0");
-    char const *ctrl_3 = cfg_get_node("wash.dc.port.3.0");
-
-    if (ctrl_0) {
-        if (strcmp(ctrl_0, "dreamcast_controller") == 0) {
-            maple_device_init(&maple, maple_addr_pack(0, 0),
+    unsigned port;
+    for (port = 0; port < 4; port++)
+        if (strcmp(controllers[port][0], "dreamcast_controller") == 0) {
+            maple_device_init(&maple, maple_addr_pack(port, 0),
                               MAPLE_DEVICE_CONTROLLER);
-        } else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0) {
-            maple_device_init(&maple, maple_addr_pack(0, 0),
+        } else if (strcmp(controllers[port][0], "dreamcast_keyboard_us") == 0) {
+            maple_device_init(&maple, maple_addr_pack(port, 0),
                               MAPLE_DEVICE_KEYBOARD);
         }
-    }
-    if (ctrl_1) {
-        if (strcmp(ctrl_1, "dreamcast_controller") == 0) {
-            maple_device_init(&maple, maple_addr_pack(1, 0),
-                              MAPLE_DEVICE_CONTROLLER);
-        } else if (strcmp(ctrl_1, "dreamcast_keyboard_us") == 0) {
-            maple_device_init(&maple, maple_addr_pack(1, 0),
-                              MAPLE_DEVICE_KEYBOARD);
-        }
-    }
-    if (ctrl_2) {
-        if (strcmp(ctrl_2, "dreamcast_controller") == 0) {
-            maple_device_init(&maple, maple_addr_pack(2, 0),
-                              MAPLE_DEVICE_CONTROLLER);
-        } else if (strcmp(ctrl_0, "dreamcast_keyboard_us") == 0) {
-            maple_device_init(&maple, maple_addr_pack(2, 0),
-                              MAPLE_DEVICE_KEYBOARD);
-        }
-    }
-    if (ctrl_3) {
-        if (strcmp(ctrl_3, "dreamcast_controller") == 0) {
-            maple_device_init(&maple, maple_addr_pack(3, 0),
-                              MAPLE_DEVICE_CONTROLLER);
-        } else if (strcmp(ctrl_3, "dreamcast_keyboard_us") == 0) {
-            maple_device_init(&maple, maple_addr_pack(3, 0),
-                              MAPLE_DEVICE_KEYBOARD);
-        }
-    }
 
     // hook up the irl line
     sh4_register_irl_line(&cpu, holly_intc_irl_line_fn, NULL);
@@ -817,9 +782,7 @@ void dreamcast_cleanup() {
 
     dc_sound_cleanup();
     gfx_cleanup();
-    win_cleanup();
-
-    cfg_cleanup();
+    /* win_cleanup(); */
 
     if (mount_check())
         mount_eject();

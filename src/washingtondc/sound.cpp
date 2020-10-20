@@ -41,7 +41,7 @@
 
 #include "washdc/error.h"
 #include "sound.hpp"
-#include "washdc/config_file.h"
+#include "config_file.h"
 #include "threading.h"
 #include "intmath.h"
 

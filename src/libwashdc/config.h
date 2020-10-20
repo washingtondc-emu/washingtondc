@@ -115,4 +115,6 @@ CONFIG_DECL_BOOL(inline_mem);
 CONFIG_DECL_BOOL(log_stdout);
 CONFIG_DECL_BOOL(log_verbose);
 
+CONFIG_DECL_BOOL(dump_mem_on_error);
+
 #endif

@@ -41,7 +41,7 @@
 
 #include "washdc/washdc.h"
 
-#include "washdc/config_file.h"
+#include "config_file.h"
 
 #include "control_bind.hpp"
 #include "window.hpp"
@@ -50,8 +50,6 @@
 #include "rend_if.hpp"
 #include "../renderer.h"
 
-static void win_glfw_init(unsigned width, unsigned height);
-static void win_glfw_cleanup();
 static void win_glfw_check_events(void);
 static void win_glfw_run_once_on_suspend(void);
 static void win_glfw_make_context_current(void);
@@ -88,6 +86,14 @@ static void text_input_cb(GLFWwindow* window, unsigned int codepoint);
 
 extern struct renderer const *renderer; // see main.cpp
 
+enum controller_tp {
+    CONTROLLER_TP_NONE,
+    CONTROLLER_TP_DREAMCAST_CONTROLLER,
+    CONTROLLER_TP_DREAMCAST_KEYBOARD
+};
+
+static enum controller_tp controller_type(unsigned port_no);
+
 static void do_redraw(void) {
     if (renderer->video_present) {
         renderer->video_present();
@@ -103,8 +109,6 @@ static void do_redraw(void) {
 struct win_intf const* get_win_intf_glfw(void) {
     static struct win_intf win_intf_glfw = { };
 
-    win_intf_glfw.init = win_glfw_init;
-    win_intf_glfw.cleanup = win_glfw_cleanup;
     win_intf_glfw.check_events = win_glfw_check_events;
     win_intf_glfw.run_once_on_suspend = win_glfw_run_once_on_suspend;
     win_intf_glfw.update = win_glfw_update;
@@ -156,7 +160,7 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     }
 }
 
-static void win_glfw_init(unsigned width, unsigned height) {
+void win_glfw_init(unsigned width, unsigned height) {
     res_x = width;
     res_y = height;
 
@@ -640,7 +644,7 @@ static void win_glfw_init(unsigned width, unsigned height) {
     glfwSetCharCallback(win, text_input_cb);
 }
 
-static void win_glfw_cleanup() {
+void win_glfw_cleanup() {
     ctrl_bind_cleanup();
 
     glfwTerminate();
@@ -701,8 +705,8 @@ static char const *bind_name(unsigned ctrlr, char const *bind) {
 
 static void scan_input_for_controller(unsigned which) {
     if (which >= 4 ||
-        (washdc_controller_type(which) !=
-         WASHDC_CONTROLLER_TP_DREAMCAST_CONTROLLER)) {
+        (controller_type(which) !=
+         CONTROLLER_TP_DREAMCAST_CONTROLLER)) {
         return;
     }
 
@@ -864,8 +868,8 @@ static void scan_input_for_controller(unsigned which) {
 
 static void scan_input_for_keyboard(unsigned which) {
     if (which >= 4 ||
-        (washdc_controller_type(which) !=
-         WASHDC_CONTROLLER_TP_DREAMCAST_KEYBOARD)) {
+        (controller_type(which) !=
+         CONTROLLER_TP_DREAMCAST_KEYBOARD)) {
         return;
     }
 
@@ -1308,4 +1312,18 @@ mouse_scroll_cb(GLFWwindow *win, double scroll_x, double scroll_y) {
 static void text_input_cb(GLFWwindow* window, unsigned int codepoint) {
     if (overlay_enabled())
         overlay::input_text(codepoint);
+}
+
+static enum controller_tp controller_type(unsigned port_no) {
+    char tmp[32];
+    snprintf(tmp, sizeof(tmp), "wash.dc.port.%u.0", port_no);
+    tmp[sizeof(tmp) - 1] = '\0';
+    char const *tpstr = cfg_get_node(tmp);
+    if (tpstr) {
+        if (strcmp(tpstr, "dreamcast_controller") == 0)
+            return CONTROLLER_TP_DREAMCAST_CONTROLLER;
+        else if (strcmp(tpstr, "dreamcast_keyboard_us") == 0)
+            return CONTROLLER_TP_DREAMCAST_KEYBOARD;
+    }
+    return CONTROLLER_TP_NONE;
 }

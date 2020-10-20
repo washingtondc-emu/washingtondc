@@ -48,4 +48,7 @@ void win_glfw_get_mouse_scroll(double *mouse_x, double *mouse_y);
 
 void win_glfw_update(void);
 
+void win_glfw_init(unsigned width, unsigned height);
+void win_glfw_cleanup();
+
 #endif

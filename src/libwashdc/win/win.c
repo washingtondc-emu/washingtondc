@@ -39,13 +39,13 @@ void win_set_intf(struct win_intf const *intf) {
     win_intf = intf;
 }
 
-void win_init(unsigned width, unsigned height) {
-    win_intf->init(width, height);
-}
+/* void win_init(unsigned width, unsigned height) { */
+/*     win_intf->init(width, height); */
+/* } */
 
-void win_cleanup() {
-    win_intf->cleanup();
-}
+/* void win_cleanup() { */
+/*     win_intf->cleanup(); */
+/* } */
 
 void win_check_events(void) {
     win_intf->check_events();

@@ -77,7 +77,6 @@ static struct win_intf null_win_intf;
 struct washdc_gameconsole const *console;
 
 static void null_win_init(unsigned width, unsigned height);
-static void null_win_cleanup();
 static void null_win_check_events(void);
 static void null_win_run_once_on_suspend(void);
 static void null_win_update(void);
@@ -332,8 +331,6 @@ int main(int argc, char **argv) {
     settings.enable_serial = enable_serial;
     settings.path_gdi = path_gdi;
 
-    null_win_intf.init = null_win_init;
-    null_win_intf.cleanup = null_win_cleanup;
     null_win_intf.check_events = null_win_check_events;
     null_win_intf.run_once_on_suspend = null_win_run_once_on_suspend;
     null_win_intf.update = null_win_update;
@@ -359,6 +356,8 @@ int main(int argc, char **argv) {
 #ifdef USE_LIBEVENT
     io::init();
 #endif
+
+    null_win_init(640, 480); // made up fictional resolution
 
     console = washdc_init(&settings);
 
@@ -489,9 +488,6 @@ static int null_win_width, null_win_height;
 static void null_win_init(unsigned width, unsigned height) {
     null_win_width = width;
     null_win_height = height;
-}
-
-static void null_win_cleanup() {
 }
 
 static void null_win_check_events(void) {

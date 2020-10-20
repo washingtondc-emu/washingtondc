@@ -38,7 +38,6 @@
 #include "washdc/fifo.h"
 #include "dreamcast.h"
 #include "log.h"
-#include "washdc/config_file.h"
 
 #include "washdc/error.h"
 
@@ -70,7 +69,7 @@ WASHDC_NORETURN void error_raise(enum error_type tp) {
     error_print();
 
     bool dump_mem;
-    if (cfg_get_bool("wash.dbg.dump_mem_on_error", &dump_mem) == 0 && dump_mem)
+    if (config_get_dump_mem_on_error())
         washdc_dump_main_memory("washdc_error_dump.bin");
 
     fflush(stdout);

@@ -135,6 +135,8 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/shader.h"
                          "${PROJECT_SOURCE_DIR}/shader.c"
                          "${PROJECT_SOURCE_DIR}/renderer.h"
+                         "${PROJECT_SOURCE_DIR}/config_file.h"
+                         "${PROJECT_SOURCE_DIR}/config_file.c"
                          "${gfxgl3_sources}"
                          "${gfxgl4_sources}"
                          "${soft_gfx_sources}")

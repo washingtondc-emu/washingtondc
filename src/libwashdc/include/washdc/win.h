@@ -39,8 +39,6 @@ extern "C" {
 #endif
 
 struct win_intf {
-    void (*init)(unsigned width, unsigned height);
-    void (*cleanup)(void);
     void (*check_events)(void);
     void (*run_once_on_suspend)(void);
     void (*update)(void);
@@ -52,8 +50,6 @@ struct win_intf {
 
 void win_set_intf(struct win_intf const *intf);
 
-void win_init(unsigned width, unsigned height);
-void win_cleanup();
 void win_check_events(void);
 void win_run_once_on_suspend(void);
 void win_update(void);

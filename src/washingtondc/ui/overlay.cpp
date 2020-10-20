@@ -51,12 +51,12 @@
 #include "washdc/washdc.h"
 #include "washdc/gameconsole.h"
 #include "washdc/pix_conv.h"
-#include "washdc/config_file.h"
 #include "imgui.h"
 #include "renderer.hpp"
 #include "../window.hpp"
 #include "../sound.hpp"
 #include "../washingtondc.hpp"
+#include "../config_file.h"
 
 #ifndef DISABLE_MEM_DUMP_UI
 #include "imfilebrowser.h"

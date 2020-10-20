@@ -56,6 +56,7 @@
 #include "stdio_hostfile.hpp"
 #include "washdc_getopt.h"
 #include "rend_if.hpp"
+#include "config_file.h"
 
 #ifdef USE_LIBEVENT
 #include "frontend_io/io_thread.hpp"
@@ -325,6 +326,31 @@ int main(int argc, char **argv) {
     hostfile_api.pathsep = '/';
 #endif
 
+    // INIT CONFIGURATION SYSTEM
+    path_string the_cfg_file(cfg_file());
+    FILE *cfg_file = fopen(the_cfg_file.c_str(), "r");
+    if (!cfg_file) {
+        cfg_file = fopen(the_cfg_file.c_str(), "w");
+        cfg_create_default_config(cfg_file);
+        fclose(cfg_file);
+
+        cfg_file = fopen(the_cfg_file.c_str(), "r");
+    }
+    if (cfg_file) {
+        cfg_init(cfg_file);
+    } else {
+        fprintf(stderr, "Unable to open wash.cfg; does it even exist?\n");
+        exit(1);
+    }
+    fclose(cfg_file);
+
+    // configure controllers
+    settings.controllers[0][0] = cfg_get_node("wash.dc.port.0.0");
+    settings.controllers[1][0] = cfg_get_node("wash.dc.port.1.0");
+    settings.controllers[2][0] = cfg_get_node("wash.dc.port.2.0");
+    settings.controllers[3][0] = cfg_get_node("wash.dc.port.3.0");
+
+    cfg_get_bool("wash.dbg.dump_mem_on_error", &settings.dump_mem_on_error);
 
     if (enable_debugger && enable_washdbg) {
         fprintf(stderr, "You can't enable WashDbg and GDB at the same time\n");
@@ -471,6 +497,13 @@ int main(int argc, char **argv) {
     callbacks.win_update = win_glfw_update;
     renderer->set_callbacks(&callbacks);
 
+    int win_width, win_height;
+    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
+        win_width = 640;
+    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
+        win_height = 480;
+    win_glfw_init(win_width, win_height);
+
     console = washdc_init(&settings);
 
     if (overlay_enabled())
@@ -489,6 +522,10 @@ int main(int argc, char **argv) {
 #endif
 
     washdc_cleanup();
+
+    win_glfw_cleanup();
+
+    cfg_cleanup();
 
     exit(0);
 }

@@ -39,11 +39,9 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-#include "log.h"
 #include "washdc/fifo.h"
-#include "washdc/hostfile.h"
 
-#include "washdc/config_file.h"
+#include "config_file.h"
 
 #define CFG_NODE_KEY_LEN 256
 #define CFG_NODE_VAL_LEN 256
@@ -77,7 +75,7 @@ static void cfg_add_entry(void);
 static void cfg_handle_newline(void);
 static int cfg_parse_bool(char const *val, bool *outp);
 
-static void cfg_create_default_config(void) {
+void cfg_create_default_config(FILE *cfg_file) {
     static char const *cfg_default =
         ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
         ";;;;;;;;;;\n"
@@ -427,51 +425,24 @@ static void cfg_create_default_config(void) {
         "dc.ctrl.p1_1.kbd-us.s2 kbd.rsuper\n"
         ;
 
-    washdc_hostfile cfg_file =
-        washdc_hostfile_open_cfg_file(WASHDC_HOSTFILE_WRITE |
-                                      WASHDC_HOSTFILE_TEXT);
-    if (cfg_file == WASHDC_HOSTFILE_INVALID) {
-        LOG_ERROR("unable to open cfg file\n");
-        return;
-    }
-
-    if (washdc_hostfile_puts(cfg_file, cfg_default) == WASHDC_HOSTFILE_EOF) {
-        LOG_ERROR("Unable to write default config to cfg file\n");
-    }
-
-    washdc_hostfile_close(cfg_file);
+    fputs(cfg_default, cfg_file);
 }
 
-void cfg_init(void) {
+void cfg_init(FILE *cfg_file) {
     memset(&cfg_state, 0, sizeof(cfg_state));
     cfg_state.state = CFG_PARSE_PRE_KEY;
 
     fifo_init(&cfg_state.cfg_nodes);
 
-    washdc_hostfile cfg_file =
-        washdc_hostfile_open_cfg_file(WASHDC_HOSTFILE_READ |
-                                      WASHDC_HOSTFILE_TEXT);
-
-    if (cfg_file == WASHDC_HOSTFILE_INVALID) {
-        cfg_create_default_config();
-        cfg_file =
-            washdc_hostfile_open_cfg_file(WASHDC_HOSTFILE_READ |
-                                          WASHDC_HOSTFILE_TEXT);
+    printf("Parsing wash.cfg\n");
+    for (;;) {
+        int ch = fgetc(cfg_file);
+        if (ch == EOF)
+            break;
+        cfg_put_char(ch);
     }
-
-    if (cfg_file != WASHDC_HOSTFILE_INVALID) {
-        LOG_INFO("Parsing wash.cfg\n");
-        for (;;) {
-            int ch = washdc_hostfile_getc(cfg_file);
-            if (ch == WASHDC_HOSTFILE_EOF)
-                break;
-            cfg_put_char(ch);
-        }
-        cfg_put_char('\n'); // in case the last line doesn't end with newline
-        washdc_hostfile_close(cfg_file);
-    } else {
-        LOG_INFO("Unable to open wash.cfg; does it even exist?\n");
-    }
+    cfg_put_char('\n'); // in case the last line doesn't end with newline
+    fclose(cfg_file);
 }
 
 void cfg_cleanup(void) {
@@ -516,7 +487,7 @@ void cfg_put_char(char ch) {
         break;
     case CFG_PARSE_KEY:
         if (ch == '\n') {
-            LOG_ERROR("*** CFG ERROR INCOMPLETE LINE %u ***\n", cfg_state.line_count);
+            fprintf(stderr, "*** CFG ERROR INCOMPLETE LINE %u ***\n", cfg_state.line_count);
             cfg_handle_newline();
         } else if (isspace(ch)) {
             cfg_state.state = CFG_PARSE_PRE_VAL;
@@ -524,14 +495,14 @@ void cfg_put_char(char ch) {
         } else if (cfg_state.key_len < CFG_NODE_KEY_LEN - 1) {
             cfg_state.key[cfg_state.key_len++] = ch;
         } else {
-            LOG_WARN("CFG file dropped char from line %u; key length is "
-                     "limited to %u characters\n",
-                     cfg_state.line_count, CFG_NODE_KEY_LEN - 1);
+            printf("CFG file dropped char from line %u; key length is "
+                   "limited to %u characters\n",
+                   cfg_state.line_count, CFG_NODE_KEY_LEN - 1);
         }
         break;
     case CFG_PARSE_PRE_VAL:
         if (ch == '\n') {
-            LOG_ERROR("*** CFG ERROR INCOMPLETE LINE %u ***\n", cfg_state.line_count);
+            fprintf(stderr, "*** CFG ERROR INCOMPLETE LINE %u ***\n", cfg_state.line_count);
             cfg_handle_newline();
         } else if (!isspace(ch)) {
             cfg_state.state = CFG_PARSE_VAL;
@@ -550,9 +521,9 @@ void cfg_put_char(char ch) {
         } else if (cfg_state.val_len < CFG_NODE_VAL_LEN - 1) {
             cfg_state.val[cfg_state.val_len++] = ch;
         } else {
-            LOG_WARN("CFG file dropped char from line %u; value length is "
-                     "limited to %u characters\n",
-                     cfg_state.line_count, CFG_NODE_VAL_LEN - 1);
+            printf("CFG file dropped char from line %u; value length is "
+                   "limited to %u characters\n",
+                   cfg_state.line_count, CFG_NODE_VAL_LEN - 1);
         }
         break;
     case CFG_PARSE_POST_VAL:
@@ -561,7 +532,7 @@ void cfg_put_char(char ch) {
             cfg_handle_newline();
         } else if (!isspace(ch)) {
             cfg_state.state = CFG_PARSE_ERROR;
-            LOG_ERROR("*** CFG ERROR INVALID DATA LINE %u ***\n", cfg_state.line_count);
+            fprintf(stderr, "*** CFG ERROR INVALID DATA LINE %u ***\n", cfg_state.line_count);
         }
         break;
     default:
@@ -585,10 +556,10 @@ static void cfg_add_entry(void) {
     }
 
     if (dst_node) {
-        LOG_INFO("CFG overwriting existing config key \"%s\" at line %u\n",
+        printf("CFG overwriting existing config key \"%s\" at line %u\n",
                  cfg_state.key, cfg_state.line_count);
     } else {
-        LOG_INFO("CFG allocating new config key \"%s\" at line %u\n",
+        printf("CFG allocating new config key \"%s\" at line %u\n",
                  cfg_state.key, cfg_state.line_count);
         dst_node = (struct cfg_node*)malloc(sizeof(struct cfg_node));
         memcpy(dst_node->key, cfg_state.key, sizeof(dst_node->key));
@@ -598,7 +569,7 @@ static void cfg_add_entry(void) {
     if (dst_node)
         memcpy(dst_node->val, cfg_state.val, sizeof(dst_node->val));
     else
-        LOG_ERROR("CFG file dropped line %u due to failed node allocation\n", cfg_state.line_count);
+        fprintf(stderr, "CFG file dropped line %u due to failed node allocation\n", cfg_state.line_count);
 }
 
 static void cfg_handle_newline(void) {
@@ -636,7 +607,7 @@ int cfg_get_bool(char const *key, bool *outp) {
     if (nodestr) {
         int success = cfg_parse_bool(nodestr, outp);
         if (success != 0)
-            LOG_ERROR("error parsing config node \"%s\"\n", key);
+            fprintf(stderr, "error parsing config node \"%s\"\n", key);
         return success;
     }
     return -1;
@@ -661,7 +632,7 @@ static int cfg_parse_rgb(char const *valstr, int *red, int *green, int *blue) {
         } else if (ch >= 'A' && ch <= 'F') {
             digits[idx] = ch - 'A' + 10;
         } else {
-            LOG_ERROR("Bad color syntax \"%s\"\n", valstr);
+            fprintf(stderr, "Bad color syntax \"%s\"\n", valstr);
             return -1;
         }
     }
@@ -710,7 +681,7 @@ int cfg_get_rgb(char const *key, int *red, int *green, int *blue) {
     if (nodestr) {
         int success = cfg_parse_rgb(nodestr, red, green, blue);
         if (success != 0)
-            LOG_ERROR("error parsing config node \"%s\"\n", key);
+            fprintf(stderr, "error parsing config node \"%s\"\n", key);
         return success;
     }
     return -1;
@@ -722,7 +693,7 @@ int cfg_get_int(char const *key, int *val) {
     if (nodestr) {
         int success = cfg_parse_decimal_int(nodestr, val);
         if (success != 0)
-            LOG_ERROR("error parsing config node \"%s\"\n", key);
+            fprintf(stderr, "error parsing config node \"%s\"\n", key);
         return success;
     }
     return -1;
