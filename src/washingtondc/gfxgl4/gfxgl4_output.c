@@ -166,8 +166,7 @@ void gfxgl4_video_output_init(void) {
         "uniform sampler2D fb_tex;\n"
 
         "void main() {\n"
-        "    vec4 sample = texture(fb_tex, st);\n"
-        "    color = sample;\n"
+        "    color = texture(fb_tex, st);\n"
         "}\n";
 
     int rgb[3];

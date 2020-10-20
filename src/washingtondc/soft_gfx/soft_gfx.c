@@ -210,8 +210,7 @@ static void soft_gfx_init(void) {
         "uniform sampler2D fb_tex;\n"
 
         "void main() {\n"
-        "    vec4 sample = texture(fb_tex, st);\n"
-        "    color = sample;\n"
+        "    color = texture(fb_tex, st);\n"
         "}\n";
 
     shader_load_vert(&fb_shader, SHADER_VER_330, final_vert_glsl);

@@ -85,6 +85,55 @@ static enum gfx_user_clip_mode user_clip_mode;
 static GLfloat user_clip[4];
 static GLint user_clip_slot = -1;
 
+enum {
+      /*
+       * OpenGL buffer that holds the atomic_uint used to
+       * count how many nodes there are for per-pixel OIT
+       */
+      OIT_BUFFER_NODE_COUNT,
+
+      /*
+       * OpenGL buffer that stores the SSBO that backs the oit_nodes array in
+       * the fragment shaders
+       */
+      OIT_BUFFER_NODES_SSBO,
+
+      N_OIT_BUFFERS
+};
+
+static GLuint oit_buffers[N_OIT_BUFFERS];
+
+static GLuint oit_heads_tex;
+
+static GLuint oit_color_tex;
+
+static struct shader oit_sort_shader;
+static GLint oit_sort_shader_color_accum_slot;
+
+/*
+ * just a quad covering the entire screen-space that we need for the OIT sort
+ * shader execution.
+ */
+static GLuint oit_quad_vao, oit_quad_vbo;
+
+// size of each struct oit_node in the GLSL fragment shader
+#define OIT_NODE_SIZE (4 * sizeof(GLfloat) + sizeof(GLfloat) + sizeof(GLuint))
+
+/*
+ * arbitrary limit - here we set it to 32 * typical screen dims
+ *
+ * TODO: when we finally implement high-resolution rendering, will probably want
+ * to scale this with the screen resolution.  otherwise we'll be more likely to
+ * run out of oit nodes in higher resolutions
+ */
+#define MAX_OIT_NODES (640 * 480 * 32)
+
+#define OIT_NODE_COUNT_BINDING 0
+
+#define OIT_BUFFER_NODES_BINDING 0
+
+#define OIT_HEADS_BINDING 0
+
 /*******************************************************************************
  *
  * RENDERDOC API SUPPORT
@@ -183,8 +232,6 @@ static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
     [PVR2_DEPTH_ALWAYS]              = GL_ALWAYS
 };
 
-#define OIT_MAX_GROUPS (4*1024)
-
 struct oit_group {
     float const *verts;
     unsigned n_verts;
@@ -197,13 +244,7 @@ struct oit_group {
 };
 
 static struct oit_state {
-    unsigned tri_count;
-    unsigned group_count;
     bool enabled;
-
-    struct oit_group groups[OIT_MAX_GROUPS];
-
-    struct gfx_rend_param cur_rend_param;
 } oit_state;
 
 // converts pixels from ARGB 4444 to RGBA 4444
@@ -338,6 +379,25 @@ static char const * const pvr2_ta_vert_glsl =
     "    tex_transform();\n"
     "}\n";
 
+#define OIT_NODE_GLSL_DEF                                               \
+    "#define OIT_NODE_INVALID 0xffffffff\n"                             \
+                                                                        \
+    "struct oit_pixel {\n"                                              \
+    "    vec4 color;\n"                                                 \
+    "    float depth;\n"                                                \
+    "    unsigned int src_blend_factor, dst_blend_factor;\n"            \
+    "};\n"                                                              \
+                                                                        \
+    "struct oit_node {\n"                                               \
+    "    struct oit_pixel pix;\n"                                       \
+    "    unsigned int next_node;\n"                                     \
+    "};\n"                                                              \
+                                                                        \
+    "layout (binding = 0) uniform atomic_uint node_count;\n"            \
+    "layout(std430, binding = 0) coherent buffer oit_shared_data {\n"   \
+    "    oit_node oit_nodes[];\n"                                       \
+    "};\n"
+
 static char const * const pvr2_ta_frag_glsl =
     "#define TEX_INST_DECAL 0\n"
     "#define TEX_INST_MOD 1\n"
@@ -346,6 +406,22 @@ static char const * const pvr2_ta_frag_glsl =
 
     "in vec4 vert_base_color, vert_offs_color;\n"
     "out vec4 out_color;\n"
+
+    "#ifdef OIT_ENABLE\n"
+
+    "layout(early_fragment_tests) in;\n"
+    "uniform int MAX_OIT_NODES;\n"
+    "uniform int src_blend_factor, dst_blend_factor;\n"
+
+    OIT_NODE_GLSL_DEF
+
+    /*
+     * each pixel in oit_heads >= 0 points to an index in oit_node that is the
+     * beginning of that pixel's linked-list.
+     */
+    "layout(r32ui, binding = 0) uniform coherent uimage2D oit_heads;\n"
+
+    "#endif\n"
 
     "#ifdef TEX_ENABLE\n"
     "in vec2 st;\n"
@@ -423,12 +499,145 @@ static char const * const pvr2_ta_frag_glsl =
     "    color = vert_base_color;\n"
     "#endif\n"
 
+    /*
+     * adding the vertex offset color can cause color to become out-of-bounds
+     * we need to correct it here so it's right later on when we blend the
+     * pixels together during the sorting pass.
+     */
+    "color = clamp(color, 0.0, 1.0);\n"
+
     "#ifdef PUNCH_THROUGH_ENABLE\n"
     "    punch_through_test(color.a);\n"
     "#endif\n"
 
+    "#ifdef OIT_ENABLE\n"
+    "    unsigned int node_idx = atomicCounterIncrement(node_count);\n"
+    "    if (node_idx < MAX_OIT_NODES) {\n"
+    "        oit_nodes[node_idx].pix.color = color;\n"
+    "        oit_nodes[node_idx].pix.depth = gl_FragCoord.z;\n"
+    "        oit_nodes[node_idx].pix.src_blend_factor = src_blend_factor;\n"
+    "        oit_nodes[node_idx].pix.dst_blend_factor = dst_blend_factor;\n"
+
+    "        oit_nodes[node_idx].next_node =\n"
+    "            imageAtomicExchange(oit_heads, ivec2(gl_FragCoord.xy), node_idx);\n"
+    "    }\n"
+    "#endif\n"
+
+    "    // when OIT_ENABLE is true, color and depth writes\n"
+    "    // are both masked so this does nothing.\n"
     "    out_color = color;\n"
     "}\n";
+
+static char const * const oit_sort_vert_shader =
+    "#extension GL_ARB_explicit_uniform_location : enable\n"
+    "layout (location = 0) in vec4 vert_pos;\n"
+    "void main() { gl_Position = vert_pos; }\n";
+
+static char const * const oit_sort_frag_shader =
+    OIT_NODE_GLSL_DEF
+
+    "out vec4 out_color;\n"
+
+    "layout(r32ui, binding = 0) uniform coherent uimage2D oit_heads;\n"
+    "uniform sampler2D color_accum;\n"
+
+    "vec4 eval_src_blend_factor(unsigned int factor, vec4 src, vec4 dst) {\n"
+    "    switch (factor) {\n"
+    "    default:\n"
+    "    case 0:\n"
+    "        return vec4(0, 0, 0, 0);\n"
+    "    case 1:\n"
+    "        return vec4(1, 1, 1, 1);\n"
+    "    case 2:\n"
+    "        return dst;\n"
+    "    case 3:\n"
+    "        return vec4(1.0 - dst.r, 1.0 - dst.g, 1.0 - dst.b, 1.0 - dst.a);\n"
+    "    case 4:\n"
+    "        return vec4(src.a, src.a, src.a, src.a);\n"
+    "    case 5:\n"
+    "        return vec4(1.0 - src.a, 1.0 - src.a, 1.0 - src.a, 1.0 - src.a);\n"
+    "    case 6:\n"
+    "        return vec4(dst.a, dst.a, dst.a, dst.a);\n"
+    "    case 7:\n"
+    "        return vec4(1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a);\n"
+    "    }\n"
+    "}\n"
+
+    "vec4 eval_dst_blend_factor(unsigned int factor, vec4 src, vec4 dst) {\n"
+    "    switch (factor) {\n"
+    "    default:\n"
+    "    case 0:\n"
+    "        return vec4(0, 0, 0, 0);\n"
+    "    case 1:\n"
+    "        return vec4(1, 1, 1, 1);\n"
+    "    case 2:\n"
+    "        return src;\n"
+    "    case 3:\n"
+    "        return vec4(1.0 - src.r, 1.0 - src.g, 1.0 - src.b, 1.0 - src.a);\n"
+    "    case 4:\n"
+    "        return vec4(src.a, src.a, src.a, src.a);\n"
+    "    case 5:\n"
+    "        return vec4(1.0 - src.a, 1.0 - src.a, 1.0 - src.a, 1.0 - src.a);\n"
+    "    case 6:\n"
+    "        return vec4(dst.a, dst.a, dst.a, dst.a);\n"
+    "    case 7:\n"
+    "        return vec4(1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a);\n"
+    "    }\n"
+    "}\n"
+
+    "void swap_oit_nodes(uint node1, uint node2) {\n"
+    "    oit_pixel pix_tmp = oit_nodes[node1].pix;\n"
+    "    oit_nodes[node1].pix = oit_nodes[node2].pix;\n"
+    "    oit_nodes[node2].pix = pix_tmp;\n"
+    "}\n"
+
+
+    "// it's my favorite algorithm, the insertion sort!\n"
+    "void sort_list(unsigned int index) {\n"
+    "    unsigned int src_idx = index;"
+    "    while (src_idx != OIT_NODE_INVALID) {\n"
+    "        unsigned int cmp_idx = oit_nodes[src_idx].next_node;\n"
+    "        while (cmp_idx != OIT_NODE_INVALID) {\n"
+    "            if (oit_nodes[cmp_idx].pix.depth >= oit_nodes[src_idx].pix.depth)\n"
+    "                swap_oit_nodes(src_idx, cmp_idx);\n"
+    "            cmp_idx = oit_nodes[cmp_idx].next_node;\n"
+    "        }\n"
+    "        src_idx = oit_nodes[src_idx].next_node;\n"
+    "    }\n"
+    "}\n"
+
+    "void main() {\n"
+    "    unsigned int head = imageLoad(oit_heads, ivec2(gl_FragCoord.xy))[0];\n"
+    "    sort_list(head);\n"
+
+    "    unsigned int cur_node = head;\n"
+    "    vec4 color = texture(color_accum, gl_FragCoord.xy / textureSize(color_accum, 0));\n"
+
+    /*
+     * XXX this is actually wrong because gl_FragCoord.z samples from  the
+     * fullscreen quad, *not* the original fragment value.  The reason why that
+     * doesn't matter is because we discard when there are no transparent pixels
+     * to render, which will preserve the original depth value.
+     */
+    "    float depth = gl_FragCoord.z;\n"
+
+    "    // skip fragments that have no transparent pixels to render\n"
+    "    if (cur_node == OIT_NODE_INVALID)\n"
+    "        discard;\n"
+
+    "    while (cur_node != OIT_NODE_INVALID) {\n"
+    "        oit_pixel pix_in = oit_nodes[cur_node].pix;\n"
+    "        vec4 color_in = pix_in.color;\n"
+    "        vec4 src_factor = eval_src_blend_factor(pix_in.src_blend_factor, color_in, color);\n"
+    "        vec4 dst_factor = eval_dst_blend_factor(pix_in.dst_blend_factor, color_in, color);\n"
+    "        color = clamp(src_factor * color_in + dst_factor * color, 0, 1);\n"
+    "        depth = oit_nodes[cur_node].pix.depth;\n"
+    "        cur_node = oit_nodes[cur_node].next_node;\n"
+    "    }\n"
+    "    gl_FragDepth = depth;\n"
+    "    out_color = color;\n"
+    "}"
+    ;
 
 static struct shader_cache_ent* create_shader(shader_key key) {
     #define PREAMBLE_LEN 256
@@ -439,6 +648,7 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     int tex_inst = key & SHADER_KEY_TEX_INST_MASK;
     bool user_clip_en = key & SHADER_KEY_USER_CLIP_ENABLE_BIT;
     bool user_clip_invert = key & SHADER_KEY_USER_CLIP_INVERT_BIT;
+    bool oit_en = key & SHADER_KEY_OIT_BIT;
 
     char const *tex_inst_str = "";
     if (tex_en) {
@@ -465,12 +675,13 @@ static struct shader_cache_ent* create_shader(shader_key key) {
         }
     }
 
-    snprintf(preamble, PREAMBLE_LEN, "%s%s%s%s%s%s",
+    snprintf(preamble, PREAMBLE_LEN, "%s%s%s%s%s%s%s",
              tex_en ? "#define TEX_ENABLE\n" : "",
              color_en ? "#define COLOR_ENABLE\n" : "",
              punchthrough ? "#define PUNCH_THROUGH_ENABLE\n" : "",
              user_clip_en ? "#define USER_CLIP_ENABLE\n" : "",
              user_clip_invert ? "#define USER_CLIP_INVERT\n" : "",
+             oit_en ? "#define OIT_ENABLE\n" : "",
              tex_inst_str);
     preamble[PREAMBLE_LEN - 1] = '\0';
 
@@ -502,6 +713,12 @@ static struct shader_cache_ent* create_shader(shader_key key) {
         glGetUniformLocation(ent->shader.shader_prog_obj, "trans_mat");
     ent->slots[SHADER_CACHE_SLOT_USER_CLIP] =
         glGetUniformLocation(ent->shader.shader_prog_obj, "user_clip");
+    ent->slots[SHADER_CACHE_SLOT_MAX_OIT_NODES] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "MAX_OIT_NODES");
+    ent->slots[SHADER_CACHE_SLOT_SRC_BLEND_FACTOR] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "src_blend_factor");
+    ent->slots[SHADER_CACHE_SLOT_DST_BLEND_FACTOR] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "dst_blend_factor");
 
     return ent;
 }
@@ -580,17 +797,7 @@ static void opengl_render_init(void) {
     gfxgl4_video_output_init();
     gfxgl4_target_init();
 
-    char const *oit_mode_str = cfg_get_node("gfx.rend.oit-mode");
-    if (oit_mode_str) {
-        if (strcmp(oit_mode_str, "per-group") == 0)
-            gfx_config_oit_enable();
-        else if (strcmp(oit_mode_str, "disabled") == 0)
-            gfx_config_oit_disable();
-        else
-            gfx_config_oit_disable();
-    } else {
-        gfx_config_oit_enable();
-    }
+    gfx_config_oit_enable();
 
     shader_cache_init(&shader_cache);
 
@@ -619,9 +826,55 @@ static void opengl_render_init(void) {
     }
 
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // initialize oit-related things
+    glGenBuffers(N_OIT_BUFFERS, oit_buffers);
+
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, oit_buffers[OIT_BUFFER_NODE_COUNT]);
+    glBufferData(GL_ATOMIC_COUNTER_BUFFER, sizeof(GLuint),
+                 NULL, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, oit_buffers[OIT_BUFFER_NODES_SSBO]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, OIT_NODE_SIZE * MAX_OIT_NODES,
+                 NULL, GL_DYNAMIC_DRAW);
+
+    glGenTextures(1, &oit_heads_tex);
+    glGenTextures(1, &oit_color_tex);
+
+    shader_load_vert(&oit_sort_shader, SHADER_VER_430, oit_sort_vert_shader);
+    shader_load_frag(&oit_sort_shader, SHADER_VER_430, oit_sort_frag_shader);
+    shader_link(&oit_sort_shader);
+    oit_sort_shader_color_accum_slot =
+        glGetUniformLocation(oit_sort_shader.shader_prog_obj, "color_accum");
+
+    GLfloat quad_dat[16] = {
+        -1.0f, -1.0f, 0.0f, 1.0f,
+        1.0f, -1.0f, 0.0f, 1.0f,
+        -1.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, 1.0f, 0.0f, 1.0f
+    };
+    glGenVertexArrays(1, &oit_quad_vao);
+    glGenBuffers(1, &oit_quad_vbo);
+    glBindVertexArray(oit_quad_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, oit_quad_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quad_dat), quad_dat, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+    glBindVertexArray(0);
 }
 
 static void opengl_render_cleanup(void) {
+    glDeleteVertexArrays(1, &oit_quad_vao);
+    glDeleteBuffers(1, &oit_quad_vbo);
+
+    shader_cleanup(&oit_sort_shader);
+
+    glDeleteTextures(1, &oit_color_tex);
+    glDeleteTextures(1, &oit_heads_tex);
+
+    glDeleteBuffers(N_OIT_BUFFERS, oit_buffers);
+    memset(oit_buffers, 0, sizeof(oit_buffers));
+
     glDeleteTextures(GFX_OBJ_COUNT, obj_tex_array);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
@@ -798,16 +1051,6 @@ static void gfxgl4_renderer_set_rend_param(struct gfx_il_inst *cmd) {
 }
 
 static void do_set_rend_param(struct gfx_rend_param const *param) {
-    if (oit_state.enabled) {
-        /*
-         * This gets flipped around to GL_LEQUAL when we set the actual OpenGL
-         * depth function
-         */
-        oit_state.cur_rend_param.depth_func = PVR2_DEPTH_GREATER;
-        oit_state.cur_rend_param = *param;
-        return;
-    }
-
     struct gfx_cfg rend_cfg = gfx_config_read();
 
     /*
@@ -908,6 +1151,9 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
             SHADER_KEY_USER_CLIP_INVERT_BIT;
     }
 
+    if (oit_state.enabled)
+        shader_cache_key |= SHADER_KEY_OIT_BIT;
+
     struct shader_cache_ent *shader_ent = fetch_shader(shader_cache_key);
     if (!shader_ent) {
         fprintf(stderr, "%s Failure to set render parameter: unable to find "
@@ -922,12 +1168,43 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     user_clip_slot = shader_ent->slots[SHADER_CACHE_SLOT_USER_CLIP];
     glUniform4f(user_clip_slot, user_clip[0], user_clip[1],
                 user_clip[2], user_clip[3]);
+    glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_MAX_OIT_NODES],
+                MAX_OIT_NODES);
 
-    glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],
-                dst_blend_factors[(unsigned)param->dst_blend_factor]);
+    enum Pvr2BlendFactor cur_src_blend_factor = param->src_blend_factor;
+    enum Pvr2BlendFactor cur_dst_blend_factor = param->dst_blend_factor;
+    glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_SRC_BLEND_FACTOR],
+                cur_src_blend_factor);
+    glUniform1i(shader_ent->slots[SHADER_CACHE_SLOT_DST_BLEND_FACTOR],
+                cur_dst_blend_factor);
 
-    glDepthMask(param->enable_depth_writes ? GL_TRUE : GL_FALSE);
-    glDepthFunc(depth_funcs[param->depth_func]);
+    if (oit_state.enabled) {
+        glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER,
+                         OIT_NODE_COUNT_BINDING,
+                         oit_buffers[OIT_BUFFER_NODE_COUNT]);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                         OIT_BUFFER_NODES_BINDING,
+                         oit_buffers[OIT_BUFFER_NODES_SSBO]);
+        glBindImageTexture(OIT_HEADS_BINDING, oit_heads_tex, 0,
+                           GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+    }
+
+    glBlendFunc(src_blend_factors[(unsigned)cur_src_blend_factor],
+                dst_blend_factors[(unsigned)cur_dst_blend_factor]);
+
+    /*
+     * TODO: is it correct to unconditionally disable depth writes whenever oit
+     * is being used?  Maybe need to preserve the value of enable_depth_writes
+     * for the sort shader somehow.  This can effect the punch-throughs since
+     * they get drawn last
+     */
+    glDepthMask(param->enable_depth_writes && !oit_state.enabled ?
+                GL_TRUE : GL_FALSE);
+
+    if (oit_state.enabled)
+        glDepthFunc(depth_funcs[PVR2_DEPTH_GREATER]);
+    else
+        glDepthFunc(depth_funcs[param->depth_func]);
 
     tex_enable = param->tex_enable;
 }
@@ -950,30 +1227,6 @@ static void gfxgl4_renderer_draw_array(struct gfx_il_inst *cmd) {
 static void do_draw_array(float const *verts, unsigned n_verts) {
     if (!n_verts)
         return;
-
-    if (oit_state.enabled) {
-        oit_state.tri_count += n_verts / 3;
-
-        if (oit_state.group_count < OIT_MAX_GROUPS) {
-            struct oit_group *grp = oit_state.groups + oit_state.group_count++;
-            grp->rend_param = oit_state.cur_rend_param;
-            grp->verts = verts;
-            grp->n_verts = n_verts;
-
-            float avg_depth = 0.0f;
-            unsigned vert_no;
-            for (vert_no = 0; vert_no < n_verts; vert_no++)
-                avg_depth += verts[vert_no * GFX_VERT_LEN + 2];
-            avg_depth /= n_verts;
-
-            grp->avg_depth = avg_depth;
-
-            memcpy(grp->user_clip, user_clip, sizeof(grp->user_clip));
-        } else {
-            fprintf(stderr, "OPENGL GFX: OIT BUFFER OVERFLOW!!!\n");
-        }
-        return;
-    }
 
     float clip_min_actual = clip_min * 1.01f;
     float clip_max_actual = clip_max * 1.01f;
@@ -1118,52 +1371,95 @@ bool gfxgl4_renderer_tex_get_dirty(unsigned obj_no) {
 }
 
 static void gfxgl4_renderer_begin_sort_mode(struct gfx_il_inst *cmd) {
+    if (gfx_config_read().wireframe)
+        return;
+
     if (oit_state.enabled)
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    if (gfx_config_read().depth_sort_enable) {
-        oit_state.enabled = true;
-        oit_state.tri_count = 0;
-        oit_state.group_count = 0;
-    }
+    oit_state.enabled = true;
+
+    // per-pixel oit
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, oit_buffers[OIT_BUFFER_NODE_COUNT]);
+    GLuint new_val = 0;
+    glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(new_val), &new_val);
+    glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+
+    /*
+     * reset the oit_heads texture to all -1
+     *
+     * TODO: there has got to be a better way to do this than the way I'm doing
+     * it now.
+     */
+    size_t oit_heads_len = screen_width * screen_height * sizeof(GLint);
+    void *oit_reset_data = malloc(oit_heads_len);
+    if (!oit_reset_data)
+        abort();
+    memset(oit_reset_data, 0xff, oit_heads_len);
+    glBindTexture(GL_TEXTURE_2D, oit_heads_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI,
+                 screen_width, screen_height, 0,
+                 GL_RED_INTEGER, GL_UNSIGNED_INT, oit_reset_data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    free(oit_reset_data);
+
+    glBindTexture(GL_TEXTURE_2D, oit_color_tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                 screen_width, screen_height, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDepthMask(GL_FALSE);
 }
 
 static void gfxgl4_renderer_end_sort_mode(struct gfx_il_inst *cmd) {
-    if (!gfx_config_read().depth_sort_enable)
+    if (gfx_config_read().wireframe)
         return;
+
+    glNamedFramebufferReadBuffer(gfxgl4_tgt_fbo, GL_COLOR_ATTACHMENT0);
+    glBindTexture(GL_TEXTURE_2D, oit_color_tex);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, screen_width, screen_height, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     if (!oit_state.enabled)
         RAISE_ERROR(ERROR_INTEGRITY);
 
     oit_state.enabled = false;
 
-    // do an insertion sort because i'm a pleb
-    unsigned src_idx, dst_idx;
-    unsigned grp_cnt = oit_state.group_count;
-    if (grp_cnt) {
-        struct oit_group tmp;
-        for (src_idx = 0; src_idx < grp_cnt - 1; src_idx++) {
-            struct oit_group *grp_src = oit_state.groups + src_idx;
-            for (dst_idx = src_idx + 1; dst_idx < grp_cnt; dst_idx++) {
-                struct oit_group *grp_dst = oit_state.groups + dst_idx;
-                if (grp_dst->avg_depth >= grp_src->avg_depth) {
-                    tmp = *grp_src;
-                    *grp_src = *grp_dst;
-                    *grp_dst = tmp;
-                }
-            }
-        }
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_ALWAYS);
 
-        for (src_idx = 0; src_idx < grp_cnt; src_idx++) {
-            struct oit_group *grp_src = oit_state.groups + src_idx;
-            do_set_rend_param(&grp_src->rend_param);
-            if (grp_src->rend_param.user_clip_mode != GFX_USER_CLIP_DISABLE) {
-                glUniform4f(user_clip_slot,
-                            grp_src->user_clip[0], grp_src->user_clip[1],
-                            grp_src->user_clip[2], grp_src->user_clip[3]);
-            }
-            do_draw_array(grp_src->verts, grp_src->n_verts);
-        }
-    }
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT |
+                    GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    glUseProgram(oit_sort_shader.shader_prog_obj);
+    glBindVertexArray(oit_quad_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, oit_quad_vbo);
+    glEnableVertexAttribArray(0);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                     OIT_BUFFER_NODES_BINDING,
+                     oit_buffers[OIT_BUFFER_NODES_SSBO]);
+    glBindImageTexture(OIT_HEADS_BINDING, oit_heads_tex, 0,
+                       GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
+
+    glBindTexture(GL_TEXTURE_2D, oit_color_tex);
+    glUniform1i(oit_sort_shader_color_accum_slot, 0);
+    glActiveTexture(GL_TEXTURE0);
+
+    /*
+     * disale  blending.  the fragment shader we just loaded will be doing
+     * blending itself so we don't want OpenGL to also be blending.
+     */
+    glDisable(GL_BLEND);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 static GLenum tex_fmt_to_data_type(enum gfx_tex_fmt gfx_fmt) {

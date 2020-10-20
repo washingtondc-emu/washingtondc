@@ -49,7 +49,7 @@
 #include "gfxgl4_renderer.h"
 #include "gfxgl4_target.h"
 
-static GLuint fbo;
+GLuint gfxgl4_tgt_fbo;
 static GLuint depth_buf_tex;
 static GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
 static unsigned fbo_width, fbo_height;
@@ -62,7 +62,7 @@ void gfxgl4_target_init(void) {
     fbo_width = 0;
     fbo_height = 0;
 
-    glGenFramebuffers(1, &fbo);
+    glGenFramebuffers(1, &gfxgl4_tgt_fbo);
     glGenTextures(1, &depth_buf_tex);
 }
 
@@ -72,7 +72,7 @@ void gfxgl4_target_begin(unsigned width, unsigned height, int tgt_handle) {
         return;
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, gfxgl4_tgt_fbo);
 
     GLuint color_buf_tex = gfxgl4_renderer_tex(tgt_handle);
 

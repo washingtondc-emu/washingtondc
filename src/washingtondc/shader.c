@@ -93,7 +93,7 @@ void shader_load_vert_with_preamble(struct shader *out,
 
         glDeleteShader(vert_shader);
 
-        fprintf(stderr, "Error compiling shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling vertex shader: %s\n", shader_log);
         exit(1);
     }
 
@@ -127,7 +127,7 @@ void shader_load_frag_with_preamble(struct shader *out,
     if (!shader_success) {
         glGetShaderInfoLog(frag_shader, LOG_LEN_GLSL, NULL, shader_log);
 
-        fprintf(stderr, "Error compiling shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling fragment shader: %s\n", shader_log);
         exit(1);
     }
 

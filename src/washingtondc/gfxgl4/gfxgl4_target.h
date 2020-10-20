@@ -49,4 +49,7 @@ void gfxgl4_target_begin(unsigned width, unsigned height, int tgt_handle);
 // call this when done rendering to the target
 void gfxgl4_target_end(int tgt_handle);
 
+// this is the FBO that we render to
+extern GLuint gfxgl4_tgt_fbo;
+
 #endif
