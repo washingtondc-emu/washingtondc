@@ -160,7 +160,8 @@ static int bind_ctrl_from_cfg(char const *name, char const *cfg_node) {
     }
 }
 
-void win_glfw_init(unsigned width, unsigned height) {
+int win_glfw_init(unsigned width, unsigned height,
+                  int version_opengl_major, int version_opengl_minor) {
     res_x = width;
     res_y = height;
 
@@ -171,15 +172,14 @@ void win_glfw_init(unsigned width, unsigned height) {
     mouse_scroll_x = mouse_scroll_y = 0.0;
 
     if (!glfwInit()) {
-        fprintf(stderr, "unable to initialized glfw.\n");
-        exit(1);
+        return -1;
     }
 
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *vidmode = glfwGetVideoMode(monitor);
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, version_opengl_major);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, version_opengl_minor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
@@ -216,8 +216,7 @@ void win_glfw_init(unsigned width, unsigned height) {
     }
 
     if (!win) {
-        fprintf(stderr, "unable to create window\n");
-        exit(1);
+        return -1;
     }
 
     glfwSetWindowRefreshCallback(win, expose_callback);
@@ -642,6 +641,8 @@ void win_glfw_init(unsigned width, unsigned height) {
 
     glfwSetMouseButtonCallback(win, mouse_btn_cb);
     glfwSetCharCallback(win, text_input_cb);
+
+    return 0;
 }
 
 void win_glfw_cleanup() {

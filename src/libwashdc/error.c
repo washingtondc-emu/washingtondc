@@ -38,6 +38,7 @@
 #include "washdc/fifo.h"
 #include "dreamcast.h"
 #include "log.h"
+#include "config.h"
 
 #include "washdc/error.h"
 

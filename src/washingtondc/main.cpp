@@ -52,6 +52,7 @@
 #include "washdc/hostfile.h"
 #include "console_config.hpp"
 #include "gfxgl3/gfxgl3_renderer.h"
+#include "gfxgl4/gfxgl4_renderer.h"
 #include "soft_gfx/soft_gfx.h"
 #include "stdio_hostfile.hpp"
 #include "washdc_getopt.h"
@@ -474,17 +475,72 @@ int main(int argc, char **argv) {
 
     settings.sndsrv = &snd_intf;
 
-    if (strcmp(gfx_backend, "opengl") == 0) {
-        renderer = &gfxgl3_renderer;
-    } else if (strcmp(gfx_backend, "soft") == 0) {
+    /***************************************************************************
+     *
+     * CREATE WINDOW
+     *
+     **************************************************************************/
+    int win_width, win_height;
+    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
+        win_width = 640;
+    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
+        win_height = 480;
+
+    if (strcmp(gfx_backend, "soft") == 0) {
+        // create OpenGL 3.3 context for soft_gfx
+        if (win_glfw_init(win_width, win_height, 3, 3) != 0) {
+            fprintf(stderr, "ERROR: unable to create OpenGL 3.3 "
+                    "window/context\n");
+            exit(1);
+        }
         renderer = &soft_gfx_renderer;
+    } else if (strcmp(gfx_backend, "gl4") == 0) {
+        // create OpenGL 4.5 context for gfxgl4
+        if (win_glfw_init(win_width, win_height, 4, 5) != 0) {
+            fprintf(stderr, "ERROR: unable to create OpenGL 4.5 "
+                    "window/context\n");
+            exit(1);
+        }
+        renderer = &gfxgl4_renderer;
+    } else if (strcmp(gfx_backend, "gl3") == 0) {
+        // create OpenGL 3.3 context for gfxgl3
+        if (win_glfw_init(win_width, win_height, 3, 3) != 0) {
+            fprintf(stderr, "ERROR: unable to create OpenGL 3.3 "
+                    "window/context\n");
+            exit(1);
+        }
+        renderer = &gfxgl3_renderer;
+    } else if (strcmp(gfx_backend, "opengl") == 0) {
+        /*
+         * try to create a gl4.5 backend for gfxgl4, and if that
+         * fails we'll settle for a gl3.3 backend for gfxgl3
+         */
+        if (win_glfw_init(win_width, win_height, 4, 5) == 0) {
+            renderer = &gfxgl4_renderer;
+        } else if (win_glfw_init(win_width, win_height, 3, 3) == 0) {
+            renderer = &gfxgl3_renderer;
+        } else {
+            fprintf(stderr, "ERROR: unable to create OpenGL 3.3 "
+                    "window/context\n");
+            exit(1);
+        }
     } else {
         fprintf(stderr, "ERROR: unknown rendering backend \"%s\"\n", gfx_backend);
         exit(1);
     }
 
     settings.gfx_rend_if = renderer->rend_if;
-    rend_string = gfx_backend;
+
+    if (renderer == &gfxgl4_renderer)
+        rend_string = "gfxgl4";
+    else if (renderer == &gfxgl3_renderer)
+        rend_string = "gfxgl3";
+    else if (renderer == &soft_gfx_renderer)
+        rend_string = "soft_gfx";
+    else
+        rend_string = gfx_backend;
+
+    printf("\"%s\" renderer selected\n", rend_string.c_str());
 
 #ifdef USE_LIBEVENT
     io::init();
@@ -496,13 +552,6 @@ int main(int argc, char **argv) {
         callbacks.overlay_draw = overlay::draw;
     callbacks.win_update = win_glfw_update;
     renderer->set_callbacks(&callbacks);
-
-    int win_width, win_height;
-    if (cfg_get_int("win.external-res.x", &win_width) != 0 || win_width <= 0)
-        win_width = 640;
-    if (cfg_get_int("win.external-res.y", &win_height) != 0 || win_height <= 0)
-        win_height = 480;
-    win_glfw_init(win_width, win_height);
 
     console = washdc_init(&settings);
 

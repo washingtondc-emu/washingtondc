@@ -48,7 +48,17 @@ void win_glfw_get_mouse_scroll(double *mouse_x, double *mouse_y);
 
 void win_glfw_update(void);
 
-void win_glfw_init(unsigned width, unsigned height);
+/*
+ * init window system.
+ *
+ * version_opengl_major/version_opengl_minor are major/minor OpenGL core spec
+ * versions.
+ *
+ * return 0 on success, -1 on failure
+ */
+int win_glfw_init(unsigned width, unsigned height,
+                  int version_opengl_major, int version_opengl_minor);
+
 void win_glfw_cleanup();
 
 #endif
