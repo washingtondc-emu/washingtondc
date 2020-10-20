@@ -482,8 +482,10 @@ static struct shader_cache_ent* create_shader(shader_key key) {
         return NULL;
     }
 
-    shader_load_vert_with_preamble(&ent->shader, pvr2_ta_vert_glsl, preamble);
-    shader_load_frag_with_preamble(&ent->shader, pvr2_ta_frag_glsl, preamble);
+    shader_load_vert_with_preamble(&ent->shader, SHADER_VER_430,
+                                   pvr2_ta_vert_glsl, preamble);
+    shader_load_frag_with_preamble(&ent->shader, SHADER_VER_430,
+                                   pvr2_ta_frag_glsl, preamble);
     shader_link(&ent->shader);
 
     /*

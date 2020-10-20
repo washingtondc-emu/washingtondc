@@ -49,6 +49,9 @@ struct shader {
     GLuint shader_prog_obj;
 };
 
+#define SHADER_VER_330 "#version 330\n"
+#define SHADER_VER_430 "#version 430\n"
+
 /*
  * the preamble is a string that will get prepended to the beginning of the
  * shader.  The intended purpose of this is to define preprocessor macros.
@@ -56,9 +59,11 @@ struct shader {
  * it is safe to send NULL if no preamble is needed.
  */
 void shader_load_vert_with_preamble(struct shader *out,
+                                    char const *verstr,
                                     char const *vert_shader_src,
                                     char const *preamble);
 void shader_load_frag_with_preamble(struct shader *out,
+                                    char const *verstr,
                                     char const *frag_shader_src,
                                     char const *preamble);
 
@@ -67,9 +72,11 @@ void shader_load_frag_with_preamble(struct shader *out,
  * a file.
  */
 void shader_load_vert_from_file_with_preamble(struct shader *out,
+                                              char const *verstr,
                                               char const *vert_shader_path,
                                               char const *preamble);
 void shader_load_frag_from_file_with_preamble(struct shader *out,
+                                              char const *verstr,
                                               char const *frag_shader_path,
                                               char const *preamble);
 
@@ -77,10 +84,12 @@ void shader_load_frag_from_file_with_preamble(struct shader *out,
  * these functions are equivalent to calling the _with_preamble versions with
  * a NULL preamble (ie no preamble).
  */
-void shader_load_vert_from_file(struct shader *out, char const *vert_shader_path);
-void shader_load_frag_from_file(struct shader *out, char const *frag_shader_path);
-void shader_load_vert(struct shader *out, char const *vert_shader_src);
-void shader_load_frag(struct shader *out, char const *frag_shader_src);
+void shader_load_vert_from_file(struct shader *out, char const *verstr,
+                                char const *vert_shader_path);
+void shader_load_frag_from_file(struct shader *out, char const *verstr,
+                                char const *frag_shader_path);
+void shader_load_vert(struct shader *out, char const *verstr, char const *vert_shader_src);
+void shader_load_frag(struct shader *out, char const *verstr, char const *frag_shader_src);
 
 void shader_link(struct shader *out);
 

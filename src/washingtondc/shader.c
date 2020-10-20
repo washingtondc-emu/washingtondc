@@ -51,27 +51,32 @@ static char *read_txt(char const *path);
 #define LOG_LEN_GLSL 1024
 GLchar shader_log[LOG_LEN_GLSL];
 
-void shader_load_vert(struct shader *out, char const *vert_shader_src) {
-    shader_load_vert_with_preamble(out, vert_shader_src, NULL);
+void
+shader_load_vert(struct shader *out, char const *verstr,
+                 char const *vert_shader_src) {
+    shader_load_vert_with_preamble(out, verstr, vert_shader_src, NULL);
 }
 
-void shader_load_frag(struct shader *out, char const *frag_shader_src) {
-    shader_load_frag_with_preamble(out, frag_shader_src, NULL);
+void
+shader_load_frag(struct shader *out, char const *verstr,
+                 char const *frag_shader_src) {
+    shader_load_frag_with_preamble(out, verstr, frag_shader_src, NULL);
 }
 
 void shader_load_vert_with_preamble(struct shader *out,
+                                    char const *verstr,
                                     char const *vert_shader_src,
                                     char const *preamble) {
     int n_shader_strings;
     char const *shader_strings[3];
 
     if (preamble) {
-        shader_strings[0] = "#version 330 core\n";
+        shader_strings[0] = verstr;
         shader_strings[1] = preamble;
         shader_strings[2] = vert_shader_src;
         n_shader_strings = 3;
     } else {
-        shader_strings[0] = "#version 330 core\n";
+        shader_strings[0] = verstr;
         shader_strings[1] = vert_shader_src;
         shader_strings[2] = NULL;
         n_shader_strings = 2;
@@ -96,18 +101,19 @@ void shader_load_vert_with_preamble(struct shader *out,
 }
 
 void shader_load_frag_with_preamble(struct shader *out,
+                                    char const *verstr,
                                     char const *frag_shader_src,
                                     char const *preamble) {
     int n_shader_strings;
     char const *shader_strings[3];
 
     if (preamble) {
-        shader_strings[0] = "#version 330 core\n";
+        shader_strings[0] = verstr;
         shader_strings[1] = preamble;
         shader_strings[2] = frag_shader_src;
         n_shader_strings = 3;
     } else {
-        shader_strings[0] = "#version 330 core\n";
+        shader_strings[0] = verstr;
         shader_strings[1] = frag_shader_src;
         n_shader_strings = 2;
     }
@@ -129,35 +135,39 @@ void shader_load_frag_with_preamble(struct shader *out,
 }
 
 void shader_load_vert_from_file_with_preamble(struct shader *out,
+                                              char const *verstr,
                                               char const *vert_shader_path,
                                               char const *preamble) {
     char *vert_shader_src;
 
     vert_shader_src = read_txt(vert_shader_path);
 
-    shader_load_vert_with_preamble(out, vert_shader_src, preamble);
+    shader_load_vert_with_preamble(out, verstr, vert_shader_src, preamble);
 
     free(vert_shader_src);
 }
 
 void shader_load_frag_from_file_with_preamble(struct shader *out,
+                                              char const *verstr,
                                               char const *frag_shader_path,
                                               char const *preamble) {
     char *frag_shader_src;
 
     frag_shader_src = read_txt(frag_shader_path);
 
-    shader_load_frag_with_preamble(out, frag_shader_src, preamble);
+    shader_load_frag_with_preamble(out, verstr, frag_shader_src, preamble);
 
     free(frag_shader_src);
 }
 
-void shader_load_vert_from_file(struct shader *out, char const *vert_shader_path) {
-    shader_load_vert_from_file_with_preamble(out, vert_shader_path, NULL);
+void shader_load_vert_from_file(struct shader *out, char const *verstr,
+                                char const *vert_shader_path) {
+    shader_load_vert_from_file_with_preamble(out, verstr, vert_shader_path, NULL);
 }
 
-void shader_load_frag_from_file(struct shader *out, char const *frag_shader_path) {
-    shader_load_frag_from_file_with_preamble(out, frag_shader_path, NULL);
+void shader_load_frag_from_file(struct shader *out, char const *verstr,
+                                char const *frag_shader_path) {
+    shader_load_frag_from_file_with_preamble(out, verstr, frag_shader_path, NULL);
 }
 
 void shader_link(struct shader *out) {

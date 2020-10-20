@@ -192,8 +192,8 @@ static void soft_gfx_init(void) {
         "    color = sample;\n"
         "}\n";
 
-    shader_load_vert(&fb_shader, final_vert_glsl);
-    shader_load_frag(&fb_shader, final_frag_glsl);
+    shader_load_vert(&fb_shader, SHADER_VER_330, final_vert_glsl);
+    shader_load_frag(&fb_shader, SHADER_VER_330, final_frag_glsl);
     shader_link(&fb_shader);
 
     glGenTextures(1, &fb_tex);
