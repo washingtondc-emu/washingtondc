@@ -137,8 +137,8 @@ static void render_frame_init(struct pvr2 *pvr2) {
     // free up gfx_il commands
     pvr2->core.gfx_il_inst_buf_count = 0;
 
-    core->clip_min = -1.0f;
-    core->clip_max = 1.0f;
+    core->clip_min = 0.0f;
+    core->clip_max = 0.0f;
 
     memset(&pvr2->stat.per_frame_counters, 0,
            sizeof(pvr2->stat.per_frame_counters));
