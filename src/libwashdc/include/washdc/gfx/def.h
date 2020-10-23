@@ -46,16 +46,16 @@ extern "C" {
  * these are in terms of sizeof(float)
  */
 #define GFX_VERT_POS_OFFSET 0
-#define GFX_VERT_BASE_COLOR_OFFSET 3
-#define GFX_VERT_OFFS_COLOR_OFFSET 7
-#define GFX_VERT_TEX_COORD_OFFSET 11
+#define GFX_VERT_BASE_COLOR_OFFSET 4
+#define GFX_VERT_OFFS_COLOR_OFFSET 8
+#define GFX_VERT_TEX_COORD_OFFSET 12
 
 /*
  * the number of elements per vertex.  Currently this means 3 floats for the
  * coordinates, 4 floats for the base color, 4 floats for the offset color and
  * two floats for the texture coordinates
  */
-#define GFX_VERT_LEN 13
+#define GFX_VERT_LEN 14
 
 /*
  * how to combine a polygon's vertex color with a texture

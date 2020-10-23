@@ -723,6 +723,7 @@ static inline void pvr2_core_push_vert(struct pvr2 *pvr2, struct pvr2_core_vert 
     outp[GFX_VERT_POS_OFFSET + 0] = vert.pos[0];
     outp[GFX_VERT_POS_OFFSET + 1] = vert.pos[1];
     outp[GFX_VERT_POS_OFFSET + 2] = vert.pos[2];
+    outp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
     outp[GFX_VERT_BASE_COLOR_OFFSET + 0] = vert.base_color[0];
     outp[GFX_VERT_BASE_COLOR_OFFSET + 1] = vert.base_color[1];
     outp[GFX_VERT_BASE_COLOR_OFFSET + 2] = vert.base_color[2];

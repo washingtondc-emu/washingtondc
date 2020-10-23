@@ -260,7 +260,7 @@ static void cleanup_renderdoc_api(void);
 static bool is_renderdoc_enabled(void);
 
 static char const * const pvr2_ta_vert_glsl =
-    "layout (location = 0) in vec3 vert_pos;\n"
+    "layout (location = 0) in vec4 vert_pos;\n"
     "layout (location = 1) in vec4 base_color;\n"
     "layout (location = 2) in vec4 offs_color;\n"
 
@@ -318,7 +318,7 @@ static char const * const pvr2_ta_vert_glsl =
      * perspective-divide will divide all components by w (which is actually z),
      * I have to multiply all of them by z.
      */
-    "    vec4 pos = trans_mat * vec4(vert_pos, 1.0);\n"
+    "    vec4 pos = trans_mat * vert_pos;\n"
     "    gl_Position = vec4(pos.x * pos.w, pos.y * pos.w, pos.z * pos.w, pos.w);\n"
     "}\n"
 
@@ -1002,7 +1002,7 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
     glEnableVertexAttribArray(POSITION_SLOT);
     glEnableVertexAttribArray(BASE_COLOR_SLOT);
     glEnableVertexAttribArray(OFFS_COLOR_SLOT);
-    glVertexAttribPointer(POSITION_SLOT, 3, GL_FLOAT, GL_FALSE,
+    glVertexAttribPointer(POSITION_SLOT, 4, GL_FLOAT, GL_FALSE,
                           GFX_VERT_LEN * sizeof(float),
                           (GLvoid*)(GFX_VERT_POS_OFFSET * sizeof(float)));
     glVertexAttribPointer(BASE_COLOR_SLOT, 4, GL_FLOAT, GL_FALSE,
