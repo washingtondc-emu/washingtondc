@@ -198,7 +198,7 @@ union gfx_il_arg {
          * implementation; contents after drawing are undefined.
          */
         unsigned n_verts;
-        float *verts;
+        float const *verts;
     } draw_array;
 
     struct {

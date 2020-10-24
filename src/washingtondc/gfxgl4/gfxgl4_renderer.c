@@ -359,7 +359,7 @@ static char const * const pvr2_ta_vert_glsl =
      * perspective-divide will divide all components by w (which is actually z),
      * I have to multiply all of them by z.
      */
-    "    vec4 pos = trans_mat * vert_pos;\n"
+    "    vec4 pos = trans_mat * vec4(vert_pos.xy, 1.0 / vert_pos.z, vert_pos.w);\n"
     "    gl_Position = vec4(pos.x * pos.w, pos.y * pos.w, pos.z * pos.w, pos.w);\n"
     "}\n"
 
@@ -1212,14 +1212,6 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
 static void gfxgl4_renderer_draw_array(struct gfx_il_inst *cmd) {
     unsigned n_verts = cmd->arg.draw_array.n_verts;
     float const *verts = cmd->arg.draw_array.verts;
-
-    unsigned vert_no;
-    float *cur_vert = verts;
-    for (vert_no = 0; vert_no < n_verts; vert_no++) {
-        cur_vert[GFX_VERT_POS_OFFSET + 2] =
-            1.0f / cur_vert[GFX_VERT_POS_OFFSET + 2];
-        cur_vert += GFX_VERT_LEN;
-    }
 
     do_draw_array(verts, n_verts);
 }
