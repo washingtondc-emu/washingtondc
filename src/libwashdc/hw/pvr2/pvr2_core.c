@@ -500,11 +500,10 @@ display_list_exec_vertex(struct pvr2 *pvr2,
      * TODO: there are FPU instructions on x86 that can do this without
      * branching
      */
-    float z_recip = 1.0 / cmd_vtx->pos[2];
-    if (z_recip < core->clip_min)
-        core->clip_min = z_recip;
-    if (z_recip > core->clip_max)
-        core->clip_max = z_recip;
+    if (cmd_vtx->pos[2] < core->clip_min)
+        core->clip_min = cmd_vtx->pos[2];
+    if (cmd_vtx->pos[2] > core->clip_max)
+        core->clip_max = cmd_vtx->pos[2];
 
     struct pvr2_core_vert vert;
 

@@ -223,12 +223,12 @@ static const GLenum dst_blend_factors[PVR2_BLEND_FACTOR_COUNT] = {
  */
 static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
     [PVR2_DEPTH_NEVER]               = GL_NEVER,
-    [PVR2_DEPTH_LESS]                = GL_GEQUAL,
+    [PVR2_DEPTH_LESS]                = GL_LESS,
     [PVR2_DEPTH_EQUAL]               = GL_EQUAL,
-    [PVR2_DEPTH_LEQUAL]              = GL_GREATER,
-    [PVR2_DEPTH_GREATER]             = GL_LEQUAL,
+    [PVR2_DEPTH_LEQUAL]              = GL_LEQUAL,
+    [PVR2_DEPTH_GREATER]             = GL_GREATER,
     [PVR2_DEPTH_NOTEQUAL]            = GL_NOTEQUAL,
-    [PVR2_DEPTH_GEQUAL]              = GL_LESS,
+    [PVR2_DEPTH_GEQUAL]              = GL_GEQUAL,
     [PVR2_DEPTH_ALWAYS]              = GL_ALWAYS
 };
 
@@ -311,6 +311,8 @@ static char const * const pvr2_ta_vert_glsl =
 
     "uniform mat4 trans_mat;\n"
 
+    "out float w_coord;\n"
+
     "out vec4 vert_base_color, vert_offs_color;\n"
     "#ifdef TEX_ENABLE\n"
     "out vec2 st;\n"
@@ -322,7 +324,7 @@ static char const * const pvr2_ta_vert_glsl =
      */
     "void tex_transform() {\n"
     "#ifdef TEX_ENABLE\n"
-    "    st = tex_coord_in;\n"
+    "    st = tex_coord_in * vert_pos.z;\n"
     "#endif\n"
     "}\n"
     "\n"
@@ -333,43 +335,22 @@ static char const * const pvr2_ta_vert_glsl =
      * coordinate being at (-1.0, 1.0)\n"
      */
     "void modelview_project_transform() {\n"
-    /*
-     * Given that Dreamcast does all its vertex transformations in software on
-     * the SH-4, you might think that it's alright to disregard the perspective
-     * divide and just pass through 1.0 for the w coordinate...and you'd be
-     * wrong for thinking that.
-     *
-     * OpenGL doesn't just use the w-coordinate for perspective divide, it also
-     * uses it for perspect-correct texture-mapping later in the fragment stage.
-     * If the w-coordinate for all vertices in a polygon is the same, then what
-     * you get is effictively the same as affine texture-mapping.  Affine
-     * texture mapping linearly-interpolates the u and v coordinates, and it
-     * looks distorted for polygons where the orthonormal vector doesn't align
-     * with the camera direction because it doesn't take the third-dimension
-     * into account.  This is because fragments closer to the viewer should
-     * sample texels that are closer together to each other than fragments
-     * farther away will (i think), and the affine/linear transformation forces
-     * them all to linearly sample texels that are the same distance from texels
-     * sampled by adjacent fragments.
-     *
-     * ANYWAYS, perspective-correct texture mapping fixes this by taking the
-     * depth-component into account, and it gets that from the w coordinate,
-     * which is the value you divide by for perspective-divide; ergo I must use
-     * the actual depth coordinate for the perspective divide.  Since the
-     * perspective-divide will divide all components by w (which is actually z),
-     * I have to multiply all of them by z.
-     */
-    "    vec4 pos = trans_mat * vec4(vert_pos.xy, 1.0 / vert_pos.z, vert_pos.w);\n"
-    "    gl_Position = vec4(pos.x * pos.w, pos.y * pos.w, pos.z * pos.w, pos.w);\n"
+    "    /*\n"
+    "     * trans_mat is an orthographic transformation, so the z-coordinate\n"
+    "     * passed through to the fragment shader is the original 1/z value\n"
+    "     * from the Dreamcast game.\n"
+    "     */\n"
+    "    w_coord = vert_pos.z;\n"
+    "    gl_Position = trans_mat * vert_pos;\n"
     "}\n"
 
     "void color_transform() {\n"
     "#ifdef COLOR_ENABLE\n"
-    "    vert_base_color = base_color;\n"
-    "    vert_offs_color = offs_color;\n"
+    "    vert_base_color = base_color * vert_pos.z;\n"
+    "    vert_offs_color = offs_color * vert_pos.z;\n"
     "#else\n"
-    "    vert_base_color = vec4(1.0, 1.0, 1.0, 1.0);\n"
-    "    vert_offs_color = vec4(0.0, 0.0, 0.0, 0.0);\n"
+    "    vert_base_color = vec4(vert_pos.z);\n"
+    "    vert_offs_color = vec4(0.0);\n"
     "#endif\n"
     "}\n"
 
@@ -406,6 +387,8 @@ static char const * const pvr2_ta_frag_glsl =
 
     "in vec4 vert_base_color, vert_offs_color;\n"
     "out vec4 out_color;\n"
+
+    "in float w_coord;\n"
 
     "#ifdef OIT_ENABLE\n"
 
@@ -463,22 +446,28 @@ static char const * const pvr2_ta_frag_glsl =
 
     "#ifdef TEX_ENABLE\n"
     "vec4 eval_tex_inst() {\n"
-    "    vec4 tex_color = texture(bound_tex, st);\n"
+    "    /*\n"
+    "     * division by w_coord makes it perspective-correct when combined\n"
+    "     * with multiplication by vert_pos.z in the vertex shader.\n"
+    "     */\n"
+    "    vec4 base_color = vert_base_color / w_coord;\n"
+    "    vec4 offs_color = vert_offs_color / w_coord;\n"
+    "    vec4 tex_color = texture(bound_tex, st / w_coord);\n"
     "    vec4 color;\n"
     // TODO: is the offset alpha color supposed to be used for anything?
     "#if TEX_INST == TEX_INST_DECAL\n"
-    "        color.rgb = tex_color.rgb + vert_offs_color.rgb;\n"
+    "        color.rgb = tex_color.rgb + offs_color.rgb;\n"
     "        color.a = tex_color.a;\n"
     "#elif TEX_INST == TEX_INST_MOD\n"
-    "        color.rgb = tex_color.rgb * vert_base_color.rgb + vert_offs_color.rgb;\n"
+    "        color.rgb = tex_color.rgb * base_color.rgb + offs_color.rgb;\n"
     "        color.a = tex_color.a;\n"
     "#elif TEX_INST == TEX_INST_DECAL_ALPHA\n"
     "        color.rgb = tex_color.rgb * tex_color.a +\n"
-    "            vert_base_color.rgb * (1.0 - tex_color.a) + vert_offs_color.rgb;\n"
-    "        color.a = vert_base_color.a;\n"
+    "            base_color.rgb * (1.0 - tex_color.a) + offs_color.rgb;\n"
+    "        color.a = base_color.a;\n"
     "#elif TEX_INST == TEX_INST_MOD_ALPHA\n"
-    "        color.rgb = tex_color.rgb * vert_base_color.rgb + vert_offs_color.rgb;\n"
-    "        color.a = tex_color.a * vert_base_color.a;\n"
+    "        color.rgb = tex_color.rgb * base_color.rgb + offs_color.rgb;\n"
+    "        color.a = tex_color.a * base_color.a;\n"
     "#else\n"
     "#error unknown TEX_INST\n"
     "#endif\n"
@@ -496,7 +485,8 @@ static char const * const pvr2_ta_frag_glsl =
     "#ifdef TEX_ENABLE\n"
     "    color = eval_tex_inst();\n"
     "#else\n"
-    "    color = vert_base_color;\n"
+    "    // divide by w_coord for perspective correction\n"
+    "    color = vert_base_color / w_coord;\n"
     "#endif\n"
 
     /*
@@ -598,7 +588,7 @@ static char const * const oit_sort_frag_shader =
     "    while (src_idx != OIT_NODE_INVALID) {\n"
     "        unsigned int cmp_idx = oit_nodes[src_idx].next_node;\n"
     "        while (cmp_idx != OIT_NODE_INVALID) {\n"
-    "            if (oit_nodes[cmp_idx].pix.depth >= oit_nodes[src_idx].pix.depth)\n"
+    "            if (oit_nodes[cmp_idx].pix.depth <= oit_nodes[src_idx].pix.depth)\n"
     "                swap_oit_nodes(src_idx, cmp_idx);\n"
     "            cmp_idx = oit_nodes[cmp_idx].next_node;\n"
     "        }\n"
@@ -1233,7 +1223,7 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
         1.0 / half_screen_dims[0], 0, 0, -1,
         0, -1.0 / half_screen_dims[1], 0, 1,
         0, 0, 2.0 / clip_delta, -2.0 * clip_min_actual / clip_delta - 1,
-        0, 0, 1, 0
+        0, 0, 0, 1
     };
 
     glUniformMatrix4fv(trans_mat_slot, 1, GL_TRUE, trans_mat);
@@ -1291,6 +1281,7 @@ static void gfxgl4_renderer_clear(struct gfx_il_inst *cmd) {
     } else {
         glClearColor(0.0, 0.0, 0.0, 1.0);
     }
+    glClearDepth(0.0f);
     glDepthMask(GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
