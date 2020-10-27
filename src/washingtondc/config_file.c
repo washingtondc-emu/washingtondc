@@ -442,7 +442,6 @@ void cfg_init(FILE *cfg_file) {
         cfg_put_char(ch);
     }
     cfg_put_char('\n'); // in case the last line doesn't end with newline
-    fclose(cfg_file);
 }
 
 void cfg_cleanup(void) {
