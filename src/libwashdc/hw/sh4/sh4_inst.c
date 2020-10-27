@@ -6034,17 +6034,25 @@ void sh4_inst_unary_fsqrt_fr(void *cpu, cpu_inst_param inst) {
 
     int fr_reg = (inst >> 8) & 0xf;
 
-    float in;
+    float in, out;
     memcpy(&in, sh4->reg + SH4_REG_FR0 + fr_reg, sizeof(in));
 
     if (in < 0.0f) {
-        LOG_ERROR("value is %f\n", (double)in);
-        error_set_feature("whatever happens when the game tries to do an "
-                          "FSQRT of a negative number");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+        // SoulCalibur does this at PC=8C0107F4, see issue #89 on github,
+        LOG_DBG("PC=%08X: FSQRT negative value\n",
+                (unsigned)sh4->reg[SH4_REG_PC]);
 
-    float out = sqrt(in);
+        sh4->reg[SH4_REG_FPSCR] |= (1 << 6) | (1 << 16); // V flag
+        if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_ENABLE_V_MASK) {
+            RAISE_ERROR(ERROR_UNIMPLEMENTED); // TOOD: raise CPU exception here
+        } else {
+            // NaN
+            uint32_t val = 0x7fbfffff;
+            memcpy(&out, &val, sizeof(out));
+        }
+    } else {
+        out = sqrt(in);
+    }
 
     memcpy(sh4->reg + SH4_REG_FR0 + fr_reg, &out, sizeof(out));
 }
@@ -6478,16 +6486,29 @@ void sh4_inst_unary_fsqrt_dr(void *cpu, cpu_inst_param inst) {
 
     int dr_reg = (inst >> 9) & 0x7;
 
-    double in = sh4_read_double(sh4, dr_reg * 2);
+    double in = sh4_read_double(sh4, dr_reg * 2), out;
 
     if (in < 0.0) {
-        LOG_ERROR("value is %f\n", in);
-        error_set_feature("whatever happens when the game tries to do an "
-                          "FSQRT of a negative number");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-    }
+        /*
+         * SoulCalibur does this (for 32-bit FSQRT) at PC=8C0107F4, see
+         * issue #89 on github
+         */
+        LOG_DBG("PC=%08X: FSQRT negative value\n",
+                (unsigned)sh4->reg[SH4_REG_PC]);
 
-    double out = sqrt(in);
+        sh4->reg[SH4_REG_FPSCR] |= (1 << 6) | (1 << 16); // V flag
+        if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_ENABLE_V_MASK) {
+            RAISE_ERROR(ERROR_UNIMPLEMENTED); // TOOD: raise CPU exception here
+        } else {
+            // NaN
+            uint32_t val[2] = { 0x7ff7ffff, 0xffffffff };
+            memcpy(sh4->reg + SH4_REG_DR0 + dr_reg * 2, val, sizeof(val[0]));
+            memcpy(sh4->reg + SH4_REG_DR0 + dr_reg * 2 + 1, val + 1, sizeof(val[1]));
+            return;
+        }
+    } else {
+        out = sqrt(in);
+    }
     sh4_write_double(sh4, dr_reg * 2, out);
 }
 
