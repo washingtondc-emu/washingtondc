@@ -27,3 +27,18 @@ Street Fighter Alpha 3:
     * It briefly displays an "ERROR: load failed" message onscreen between the
       two CAPCOM logos despite successfully loading.  This is actually something
       that happens on real hardware and not an emulation bug.
+
+Sonic Adventure 2:
+    * renders vertices with infinite 1/z.  This corresponds to a depth of 0, ie at
+      the near plane.  This means that it's impossible to linearly map the depth
+      values of every single vertex on-screen to a fixed range (-1..1 for OpenGL or
+      0..1 for Direct X) because every other vertex is infinitely far away from the
+      vertices with infinite 1/z.  Ignoring the infinite 1/z vertices works well
+      enough even if it's not strictly accurate.
+
+SoulCalibur:
+    * This game has a similar problem to Sonic Adventure 2: it renders vertices
+      with extremely large 1/z value, although not literally infinity like it
+      is in SA2.  The workaround is exactly the same, as the massive 1/z values
+      are extreme outliers and every other vertex has a much more reasonable
+      1/z.
