@@ -1289,15 +1289,6 @@ static void gfxgl4_renderer_clear(struct gfx_il_inst *cmd) {
         glEnable(GL_DEPTH_TEST);
     else
         glDisable(GL_DEPTH_TEST);
-
-    /*
-     * Strictly speaking, this isn't needed since we transform the
-     * depth-component such that geo->clip_max maps to +1 and geo->clip_min
-     * maps to -1, but we enable it just in case there are any floating-point
-     * precision errors that push something to be greater than +1 or less
-     * than -1.
-     */
-    glEnable(GL_DEPTH_CLAMP);
 }
 
 static void gfxgl4_renderer_set_screen_dim(unsigned width, unsigned height) {
@@ -1570,6 +1561,19 @@ static void gfxgl4_renderer_begin_rend(struct gfx_il_inst *cmd) {
     // flip y-coordinates of clip rectangle
     clip[1] = screen_height - 1 - clip[1];
     clip[3] = screen_height - 1 - clip[3];
+
+    /*
+     * the vertex shader will transform depth values such that 1/z=clip_max
+     * becomes 1 and 1/z=clip_min becomes -1.  clip_min and clip_max don't
+     * necessarily include the full range of depth values because I had to
+     * filter out some extreme outliers with infinite or near-infinite depth
+     * values.  enabling GL_DEPTH_CLAMP will allow those extreme outliers to
+     * still be rendered.
+     *
+     * note that this could theoretically cause z-fighting at the near plane,
+     * but so far I've never actually seen that happen.
+     */
+    glEnable(GL_DEPTH_CLAMP);
 
     glEnable(GL_SCISSOR_TEST);
     glScissor(clip[0], clip[3], clip[2] - clip[0] + 1, clip[1] - clip[3] + 1);
