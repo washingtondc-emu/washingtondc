@@ -548,7 +548,7 @@ int main(int argc, char **argv) {
 
     static struct renderer_callbacks callbacks = { };
 
-    if (renderer == &gfxgl3_renderer && overlay_enabled())
+    if (overlay_enabled())
         callbacks.overlay_draw = overlay::draw;
     callbacks.win_update = win_glfw_update;
     renderer->set_callbacks(&callbacks);
@@ -596,5 +596,6 @@ std::string const& rend_name(void) {
 }
 
 bool overlay_enabled(void) {
-    return renderer == &gfxgl3_renderer;
+    return renderer == &gfxgl3_renderer ||
+        renderer == &gfxgl4_renderer;
 }
