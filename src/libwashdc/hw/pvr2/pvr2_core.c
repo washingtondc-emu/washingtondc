@@ -647,28 +647,28 @@ display_list_exec_quad(struct pvr2 *pvr2,
     float const *p4 = cmd_quad->vert_pos[3];
 
     struct pvr2_core_vert vert1 = {
-        .pos = { p1[0], p1[1], 1.0f / p1[2] },
+        .pos = { p1[0], p1[1], cmd_quad->vert_recip_z[0] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
         .tex_coord = { vert_tex_coords[0][0], vert_tex_coords[0][1] }
     };
 
     struct pvr2_core_vert vert2 = {
-        .pos = { p2[0], p2[1], 1.0f / p2[2] },
+        .pos = { p2[0], p2[1], cmd_quad->vert_recip_z[1] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
         .tex_coord = { vert_tex_coords[1][0], vert_tex_coords[1][1] }
     };
 
     struct pvr2_core_vert vert3 = {
-        .pos = { p3[0], p3[1], 1.0f / p3[2] },
+        .pos = { p3[0], p3[1], cmd_quad->vert_recip_z[2] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
         .tex_coord = { vert_tex_coords[2][0], vert_tex_coords[2][1] }
     };
 
     struct pvr2_core_vert vert4 = {
-        .pos = { p4[0], p4[1], 1.0f / p4[2] },
+        .pos = { p4[0], p4[1], cmd_quad->vert_recip_z[3] },
         .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
         .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
         .tex_coord = { vert_tex_coords[3][0], vert_tex_coords[3][1] }
@@ -682,25 +682,37 @@ display_list_exec_quad(struct pvr2 *pvr2,
     pvr2_core_push_vert(pvr2, vert3);
     pvr2_core_push_vert(pvr2, vert4);
 
-    if (p1[2] < core->clip_min)
-        core->clip_min = p1[2];
-    if (p1[2] > core->clip_max)
-        core->clip_max = p1[2];
+    if (!isinf(vert1.pos[2]) && !isnan(vert1.pos[2]) &&
+        fabsf(vert1.pos[2]) < 1024 * 1024) {
+        if (vert1.pos[2] < core->clip_min)
+            core->clip_min = vert1.pos[2];
+        if (vert1.pos[2] > core->clip_max)
+            core->clip_max = vert1.pos[2];
+    }
 
-    if (p2[2] < core->clip_min)
-        core->clip_min = p2[2];
-    if (p2[2] > core->clip_max)
-        core->clip_max = p2[2];
+    if (!isinf(vert2.pos[2]) && !isnan(vert2.pos[2]) &&
+        fabsf(vert2.pos[2]) < 1024 * 1024) {
+        if (vert2.pos[2] < core->clip_min)
+            core->clip_min = vert2.pos[2];
+        if (vert2.pos[2] > core->clip_max)
+            core->clip_max = vert2.pos[2];
+    }
 
-    if (p3[2] < core->clip_min)
-        core->clip_min = p3[2];
-    if (p3[2] > core->clip_max)
-        core->clip_max = p3[2];
+    if (!isinf(vert3.pos[2]) && !isnan(vert3.pos[2]) &&
+        fabsf(vert3.pos[2]) < 1024 * 1024) {
+        if (vert3.pos[2] < core->clip_min)
+            core->clip_min = vert3.pos[2];
+        if (vert3.pos[2] > core->clip_max)
+            core->clip_max = vert3.pos[2];
+    }
 
-    if (p4[2] < core->clip_min)
-        core->clip_min = p4[2];
-    if (p4[2] > core->clip_max)
-        core->clip_max = p4[2];
+    if (!isinf(vert4.pos[2]) && !isnan(vert4.pos[2]) &&
+        fabsf(vert4.pos[2]) < 1024 * 1024) {
+        if (vert4.pos[2] < core->clip_min)
+            core->clip_min = vert4.pos[2];
+        if (vert4.pos[2] > core->clip_max)
+            core->clip_max = vert4.pos[2];
+    }
 
     pvr2->stat.per_frame_counters.vert_count[pvr2->core.cur_poly_group]++;
 }

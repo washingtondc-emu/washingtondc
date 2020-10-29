@@ -535,6 +535,8 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
            ta->fifo_state.sprite_base_color_rgba, sizeof(dl_quad->base_color));
     memcpy(dl_quad->offs_color,
            ta->fifo_state.sprite_offs_color_rgba, sizeof(dl_quad->offs_color));
+    memcpy(dl_quad->vert_recip_z,
+           quad->vert_recip_z, sizeof(dl_quad->vert_recip_z));
     dl_quad->degenerate = quad->degenerate;
 }
 
@@ -729,16 +731,19 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     p1[0] = ta_fifo_float[1];
     p1[1] = ta_fifo_float[2];
     p1[2] = 1.0 / ta_fifo_float[3];
+    quad->vert_recip_z[0] = ta_fifo_float[3];
 
     float *p2 = quad->vert_pos[1];
     p2[0] = ta_fifo_float[4];
     p2[1] = ta_fifo_float[5];
     p2[2] = 1.0 / ta_fifo_float[6];
+    quad->vert_recip_z[1] = ta_fifo_float[6];
 
     float *p3 = quad->vert_pos[2];
     p3[0] = ta_fifo_float[7];
     p3[1] = ta_fifo_float[8];
     p3[2] = 1.0 / ta_fifo_float[9];
+    quad->vert_recip_z[2] = ta_fifo_float[9];
 
     float *p4 = quad->vert_pos[3];
     p4[0] = ta_fifo_float[10];
@@ -814,6 +819,7 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     float dist = -norm[0] * p1[0] - norm[1] * p1[1] - norm[2] * p1[2];
 
     p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
+    quad->vert_recip_z[3] = 1.0f / p4[2];
 
     return 0;
 }
