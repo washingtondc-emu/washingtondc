@@ -99,8 +99,15 @@ void gfxgl4_target_begin(unsigned width, unsigned height, int tgt_handle) {
         fbo_width = width;
         fbo_height = height;
 
+        /*
+         * Notice that we're using 32-bit floating point depth textures here.
+         *
+         * if we ever have to move to an API that doesn't mandate all implementations
+         * support this (like Vulkan or GLES) then we need a better approach to depth
+         * buffer precision
+         */
         glBindTexture(GL_TEXTURE_2D, depth_buf_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0,
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0,
                      GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

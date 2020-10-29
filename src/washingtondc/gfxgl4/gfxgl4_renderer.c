@@ -1210,8 +1210,8 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
     if (!n_verts)
         return;
 
-    float clip_min_actual = clip_min * 1.01f;
-    float clip_max_actual = clip_max * 1.01f;
+    float clip_min_actual = clip_min;
+    float clip_max_actual = clip_max;
 
     GLfloat half_screen_dims[2] = {
         (GLfloat)(screen_width * 0.5),
@@ -1222,9 +1222,23 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
     GLfloat trans_mat[16] = {
         1.0 / half_screen_dims[0], 0, 0, -1,
         0, -1.0 / half_screen_dims[1], 0, 1,
-        0, 0, 2.0 / clip_delta, -2.0 * clip_min_actual / clip_delta - 1,
+        0, 0, 1.0 / clip_delta, -clip_min_actual / clip_delta,
         0, 0, 0, 1
     };
+
+    /*
+     * somehow using this in conjunction with the 32-bit floating point depth
+     * format (see gfxgl_target.c) gives us enough precision to correctly
+     * render tough scenes with razor-thin 1/z margins like the menus in
+     * Sonic Adventure.
+     *
+     * unfortunately glClipControl is not available in OpenGL versions older
+     * than 4.5, or any version of GLES even though all it does is expose
+     * functionality that the hardware has always had for DirectX anyways.  So
+     * gfxgl3 as well as anny hypothetical GLES renderer I may make someday will
+     * need a better approach to depth buffer precision.
+     */
+    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
     glUniformMatrix4fv(trans_mat_slot, 1, GL_TRUE, trans_mat);
 
