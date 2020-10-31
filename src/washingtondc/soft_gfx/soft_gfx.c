@@ -916,11 +916,19 @@ static void line_coeff(float coeff[3], float const p1[2], float const p2[2]) {
     coeff[2] = -(coeff[0] * p1[0] + coeff[1] * p1[1]);
 }
 
-static float tri_area(float const v1[2], float const v2[2], float const v3[2]) {
+/*
+ * returns 2 * triangle's area
+ *
+ * it's alright for it to return it multiplied by 2 because the division
+ * works out so that it doesn't actually matter since the *2 part ends up
+ * in both the dividend and the divisor.
+ */
+static float
+tri_area2(float const v1[2], float const v2[2], float const v3[2]) {
     float vec1[2] = { v2[0] - v1[0], v2[1] - v1[1] };
     float vec2[2] = { v3[0] - v1[0], v3[1] - v1[1] };
 
-    return 0.5f * fabsf(ortho_dot(vec1, vec2));
+    return fabsf(ortho_dot(vec1, vec2));
 }
 
 static bool depth_test(int x_pos, int y_pos, float w_coord) {
@@ -1247,7 +1255,7 @@ draw_tri(struct gfx_obj *obj, float const *p1,
     line_coeff(e2, p2, p3);
     line_coeff(e3, p3, p1);
 
-    float area = tri_area(p1, p2, p3);
+    float area = tri_area2(p1, p2, p3);
 
     // perspective-correct base color
     float p1_base_col[4] = {
@@ -1335,9 +1343,9 @@ draw_tri(struct gfx_obj *obj, float const *p1,
 
                 // bary_area = barycentric coordinates * area.
                 float bary_area[3] = {
-                    tri_area(p2, p3, pos),
-                    tri_area(p3, p1, pos),
-                    tri_area(p1, p2, pos)
+                    tri_area2(p2, p3, pos),
+                    tri_area2(p3, p1, pos),
+                    tri_area2(p1, p2, pos)
                 };
 
                 // reciprocal depth
