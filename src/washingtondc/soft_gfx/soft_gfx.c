@@ -1197,6 +1197,386 @@ tex_sample(struct tex const *texp, float rgba[4], int const texcoord[2]) {
     }
 }
 
+static void
+draw_tri(struct gfx_obj *obj, float const *p1,
+         float const *p2, float const *p3) {
+    float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
+    float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2] };
+
+    /*
+     * positive is counter-clockwise and negative is clockwise
+     *
+     * except the y-coordinate is inverted so really it's the other way
+     * around.
+     */
+    int sign = ortho_dot(v1, v2) < 0.0f ? -1 : 1;
+
+    float bbox_float[4];
+    tri_bbox(bbox_float, p1, p2, p3);
+
+    int bbox[4] = { bbox_float[0], bbox_float[1],
+                    bbox_float[2], bbox_float[3] };
+
+    if (bbox[0] < 0)
+        bbox[0] = 0;
+    else if (bbox[0] >= screen_width)
+        return;
+    if (bbox[1] < 0)
+        bbox[1] = 0;
+    else if (bbox[1] >= screen_height)
+        return;
+    if (bbox[2] >= screen_width)
+        bbox[2] = screen_width - 1;
+    else if (bbox[2] < 0)
+        return;
+    if (bbox[3] >= screen_height)
+        bbox[3] = screen_height - 1;
+    else if (bbox[3] < 0)
+        return;
+
+    /*
+     * edge line coefficients
+     * ax + by + c == 0
+     *
+     * index 0 - a
+     * index 1 - b
+     * index 2 - c
+     */
+    float e1[3], e2[3], e3[3];
+    line_coeff(e1, p1, p2);
+    line_coeff(e2, p2, p3);
+    line_coeff(e3, p3, p1);
+
+    float area = tri_area(p1, p2, p3);
+    float area_recip = 1.0f / area;
+
+    // perspective-correct base color
+    float p1_base_col[4] = {
+        p1[GFX_VERT_BASE_COLOR_OFFSET] * p1[2],
+        p1[GFX_VERT_BASE_COLOR_OFFSET + 1] * p1[2],
+        p1[GFX_VERT_BASE_COLOR_OFFSET + 2] * p1[2],
+        p1[GFX_VERT_BASE_COLOR_OFFSET + 3] * p1[2]
+    };
+    float p2_base_col[4] = {
+        p2[GFX_VERT_BASE_COLOR_OFFSET] * p2[2],
+        p2[GFX_VERT_BASE_COLOR_OFFSET + 1] * p2[2],
+        p2[GFX_VERT_BASE_COLOR_OFFSET + 2] * p2[2],
+        p2[GFX_VERT_BASE_COLOR_OFFSET + 3] * p2[2]
+    };
+    float p3_base_col[4] = {
+        p3[GFX_VERT_BASE_COLOR_OFFSET] * p3[2],
+        p3[GFX_VERT_BASE_COLOR_OFFSET + 1] * p3[2],
+        p3[GFX_VERT_BASE_COLOR_OFFSET + 2] * p3[2],
+        p3[GFX_VERT_BASE_COLOR_OFFSET + 3] * p3[2]
+    };
+
+    // perspective-correct offset color
+    float p1_offs_col[4] = {
+        p1[GFX_VERT_OFFS_COLOR_OFFSET] * p1[2],
+        p1[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p1[2],
+        p1[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p1[2],
+        p1[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p1[2]
+    };
+    float p2_offs_col[4] = {
+        p2[GFX_VERT_OFFS_COLOR_OFFSET] * p2[2],
+        p2[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p2[2],
+        p2[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p2[2],
+        p2[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p2[2]
+    };
+    float p3_offs_col[4] = {
+        p3[GFX_VERT_OFFS_COLOR_OFFSET] * p3[2],
+        p3[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p3[2],
+        p3[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p3[2],
+        p3[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p3[2]
+    };
+
+    // perspective-correct texture coordinates
+    float p1_texcoord[2] = {
+        p1[GFX_VERT_TEX_COORD_OFFSET] * p1[2],
+        p1[GFX_VERT_TEX_COORD_OFFSET + 1] * p1[2]
+    };
+    float p2_texcoord[2] = {
+        p2[GFX_VERT_TEX_COORD_OFFSET] * p2[2],
+        p2[GFX_VERT_TEX_COORD_OFFSET + 1] * p2[2]
+    };
+    float p3_texcoord[2] = {
+        p3[GFX_VERT_TEX_COORD_OFFSET] * p3[2],
+        p3[GFX_VERT_TEX_COORD_OFFSET + 1] * p3[2]
+    };
+
+    struct tex *texp = NULL;
+    if (rend_param.tex_enable) {
+        if (rend_param.tex_idx < GFX_TEX_CACHE_SIZE) {
+            if (textures[rend_param.tex_idx].obj_no >= 0 &&
+                textures[rend_param.tex_idx].obj_no < GFX_OBJ_COUNT)
+                texp = textures + rend_param.tex_idx;
+            else
+                fprintf(stderr, "%s - texture %d not bound to object\n",
+                        __func__, rend_param.tex_idx);
+        } else {
+            fprintf(stderr, "%s - invalid tex_idx %u\n",
+                    __func__, rend_param.tex_idx);
+        }
+    }
+
+    int x_pos, y_pos;
+    for (y_pos = bbox[1]; y_pos <= bbox[3]; y_pos++) {
+        for (x_pos = bbox[0]; x_pos <= bbox[2]; x_pos++) {
+            float pos[2] = { x_pos, y_pos };
+            float dist[3] = {
+                e1[0] * pos[0] + e1[1] * pos[1] + e1[2],
+                e2[0] * pos[0] + e2[1] * pos[1] + e2[2],
+                e3[0] * pos[0] + e3[1] * pos[1] + e3[2]
+            };
+
+            if ((sign == -1 && dist[0] <= 0.0f &&
+                 dist[1] <= 0.0f && dist[2] <= 0.0f) ||
+                (sign == 1 && dist[0] >= 0.0f &&
+                 dist[1] >= 0.0f && dist[2] >= 0.0f)) {
+
+                // barycentric coordinates
+                float bary[3] = {
+                    tri_area(p2, p3, pos) / area,
+                    tri_area(p3, p1, pos) / area,
+                    tri_area(p1, p2, pos) / area
+                };
+
+                // reciprocal depth
+                float w_coord =
+                    p1[2] * bary[0] + p2[2] * bary[1] + p3[2] * bary[2];
+
+                if ((!sort_mode_enable &&
+                     !depth_test(x_pos, y_pos, w_coord)) ||
+                    !user_clip_test(x_pos, y_pos) ||
+                    !clip_test(x_pos, y_pos))
+                    continue;
+
+                if (rend_param.enable_depth_writes && !sort_mode_enable)
+                    w_buffer[y_pos * screen_width + x_pos] = w_coord;
+
+                float base_col[4] = {
+                    (p1_base_col[0] * bary[0] + p2_base_col[0] * bary[1] +
+                     p3_base_col[0] * bary[2]) / w_coord,
+
+                    (p1_base_col[1] * bary[0] + p2_base_col[1] * bary[1] +
+                     p3_base_col[1] * bary[2]) / w_coord,
+
+                    (p1_base_col[2] * bary[0] + p2_base_col[2] * bary[1] +
+                     p3_base_col[2] * bary[2]) / w_coord,
+
+                    (p1_base_col[3] * bary[0] + p2_base_col[3] * bary[1] +
+                     p3_base_col[3] * bary[2]) / w_coord
+                };
+
+                float offs_col[4] = {
+                    (p1_offs_col[0] * bary[0] + p2_offs_col[0] * bary[1] +
+                     p3_offs_col[0] * bary[2]) / w_coord,
+
+                    (p1_offs_col[1] * bary[0] + p2_offs_col[1] * bary[1] +
+                     p3_offs_col[1] * bary[2]) / w_coord,
+
+                    (p1_offs_col[2] * bary[0] + p2_offs_col[2] * bary[1] +
+                     p3_offs_col[2] * bary[2]) / w_coord,
+
+                    (p1_offs_col[3] * bary[0] + p2_offs_col[3] * bary[1] +
+                     p3_offs_col[3] * bary[2]) / w_coord
+                };
+
+                float pix_color[4];
+
+                if (texp) {
+                    float texcoord[2] = {
+                        (p1_texcoord[0] * bary[0] +
+                         p2_texcoord[0] * bary[1] +
+                         p3_texcoord[0] * bary[2]) / w_coord,
+
+                        (p1_texcoord[1] * bary[0] +
+                         p2_texcoord[1] * bary[1] +
+                         p3_texcoord[1] * bary[2]) / w_coord,
+                    };
+
+                    float sample[4];
+                    switch (rend_param.tex_filter) {
+                    case TEX_FILTER_TRILINEAR_A:
+                    case TEX_FILTER_TRILINEAR_B:
+                        // TODO: TRILINEAR FILTERING
+                    case TEX_FILTER_BILINEAR:
+                        /*
+                         * TODO: this bilinear texture filtering code
+                         * doesn't entirely work right and I don't have
+                         * time to fix it right now so I'm just going to
+                         * comment it out.  Need to come back and fix it
+                         * later.
+                         *
+                         * I think the problem is that I'm not
+                         * implementing minification correctly.  This
+                         * is the case where each pixel in the output
+                         * image samples multiple pixels from the
+                         * source texture.
+                         *
+                         * Look at the skybox texture in Crazy Taxi for
+                         * an example of something that looks wrong with
+                         * this filtering code, althought there are
+                         * doubtless many others.
+                         */
+#if 0
+                        {
+                            int texcoord_raw[4][2] = {
+                                {
+                                    texcoord[0] * texp->width,
+                                    texcoord[1] * texp->height
+                                },
+                                {
+                                    (int)(texcoord[0] * texp->width) + 1,
+                                    texcoord[1] * texp->height
+                                },
+                                {
+                                    (int)(texcoord[0] * texp->width) + 1,
+                                    (int)(texcoord[1] * texp->height) + 1
+                                },
+                                {
+                                    texcoord[0] * texp->width,
+                                    (int)(texcoord[1] * texp->height) + 1
+                                }
+                            };
+
+                            float sample_raw[4][4];
+                            tex_sample(texp, sample_raw[0], texcoord_raw[0]);
+                            tex_sample(texp, sample_raw[1], texcoord_raw[1]);
+                            tex_sample(texp, sample_raw[2], texcoord_raw[2]);
+                            tex_sample(texp, sample_raw[3], texcoord_raw[3]);
+
+                            float texel_dims[2] = { 1.0f / texp->width,
+                                                    1.0f / texp->height };
+                            float texel_area = texel_dims[0] * texel_dims[1];
+
+                            float min[2] = { texcoord_raw[0][0] * texel_dims[0],
+                                             texcoord_raw[0][1] * texel_dims[1] };
+                            float max[2] = { texcoord_raw[2][0] * texel_dims[0],
+                                             texcoord_raw[2][1] * texel_dims[1] };
+
+                            float texel_bary[4] = {
+                                (max[0] - texcoord[0]) * (max[1] - texcoord[1]) / texel_area,
+                                (texcoord[0] - min[0]) * (max[1] - texcoord[1]) / texel_area,
+                                (texcoord[0] - min[0]) * (texcoord[1] - min[1]) / texel_area,
+                                (max[0] - texcoord[0]) * (texcoord[1] - min[1]) / texel_area,
+                            };
+
+                            sample[0] = sample_raw[0][0] * texel_bary[0] +
+                                sample_raw[1][0] * texel_bary[1] +
+                                sample_raw[2][0] * texel_bary[2] +
+                                sample_raw[3][0] * texel_bary[3];
+                            sample[1] = sample_raw[0][1] * texel_bary[0] +
+                                sample_raw[1][1] * texel_bary[1] +
+                                sample_raw[2][1] * texel_bary[2] +
+                                sample_raw[3][1] * texel_bary[3];
+                            sample[2] = sample_raw[0][2] * texel_bary[0] +
+                                sample_raw[1][2] * texel_bary[1] +
+                                sample_raw[2][2] * texel_bary[2] +
+                                sample_raw[3][2] * texel_bary[3];
+                            sample[3] = sample_raw[0][3] * texel_bary[0] +
+                                sample_raw[1][3] * texel_bary[1] +
+                                sample_raw[2][3] * texel_bary[2] +
+                                sample_raw[3][3] * texel_bary[3];
+                        }
+                        break;
+#endif
+                    case TEX_FILTER_NEAREST:
+                        {
+                            int texcoord_pix[2] = {
+                                texcoord[0] * (texp->width - 1),
+                                texcoord[1] * (texp->height - 1)
+                            };
+
+                            tex_sample(texp, sample, texcoord_pix);
+                        }
+                        break;
+                    default:
+                        fprintf(stderr, "%s - invalid texture filter %d\n",
+                                __func__, (int)rend_param.tex_filter);
+                        abort();
+                    }
+
+                    switch (rend_param.tex_inst) {
+                    case TEX_INST_DECAL:
+                        pix_color[0] = sample[0] + offs_col[0];
+                        pix_color[1] = sample[1] + offs_col[1];
+                        pix_color[2] = sample[2] + offs_col[2];
+                        pix_color[3] = sample[3];
+                        break;
+                    case TEX_INST_MOD:
+                        pix_color[0] = sample[0] * base_col[0] + offs_col[0];
+                        pix_color[1] = sample[1] * base_col[1] + offs_col[1];
+                        pix_color[2] = sample[2] * base_col[2] + offs_col[2];
+                        pix_color[3] = sample[3];
+                        break;
+                    case TEXT_INST_DECAL_ALPHA:
+                        pix_color[0] = sample[0] * sample[3] +
+                            base_col[0] * (1.0f - sample[3]) + offs_col[0];
+                        pix_color[1] = sample[1] * sample[3] +
+                            base_col[1] * (1.0f - sample[3]) + offs_col[1];
+                        pix_color[2] = sample[2] * sample[3] +
+                            base_col[2] * (1.0f - sample[3]) + offs_col[2];
+                        pix_color[3] = base_col[3];
+                        break;
+                    case TEX_INST_MOD_ALPHA:
+                        pix_color[0] = sample[0] * base_col[0] + offs_col[0];
+                        pix_color[1] = sample[1] * base_col[1] + offs_col[1];
+                        pix_color[2] = sample[2] * base_col[2] + offs_col[2];
+                        pix_color[3] = sample[3] * base_col[3];
+                        break;
+                    default:
+                        fprintf(stderr, "unknown texture inst %d\n",
+                                (int)rend_param.tex_inst);
+                        pix_color[0] = 1.0f;
+                        pix_color[1] = 1.0f;
+                        pix_color[2] = 1.0f;
+                        pix_color[3] = 1.0f;
+                    }
+                } else {
+                    memcpy(pix_color, base_col, sizeof(pix_color));
+                }
+
+                int rgba[4] = {
+                    clamp_int(pix_color[0] * 255, 0, 255),
+                    clamp_int(pix_color[1] * 255, 0, 255),
+                    clamp_int(pix_color[2] * 255, 0, 255),
+                    clamp_int(pix_color[3] * 255, 0, 255)
+                };
+
+                if (sort_mode_enable) {
+                    if (x_pos < 0 || x_pos >= FB_WIDTH ||
+                        y_pos < 0 || y_pos >= FB_HEIGHT ||
+                        n_oit_pixels >= MAX_OIT_PIXELS)
+                        continue;
+                    unsigned oit_node_idx = n_oit_pixels++;
+                    struct oit_pixel *pix = oit_pixels + oit_node_idx;
+                    memcpy(pix->rgba, rgba, sizeof(pix->rgba));
+                    pix->w_coord = w_coord;
+                    pix->src_blend_factor = rend_param.src_blend_factor;
+                    pix->dst_blend_factor = rend_param.dst_blend_factor;
+                    pix->next_pix_idx = oit_buf[y_pos * FB_WIDTH + x_pos];
+                    oit_buf[y_pos * FB_WIDTH + x_pos] = oit_node_idx;
+                } else if (blend_enable) {
+                    put_pix_blended(obj, x_pos, y_pos,
+                                    rgba[0]          |
+                                    (rgba[1] << 8)   |
+                                    (rgba[2] << 16)  |
+                                    (rgba[3] << 24),
+                                    rend_param.src_blend_factor,
+                                    rend_param.dst_blend_factor);
+                } else {
+                    put_pix(obj, x_pos, y_pos,
+                            rgba[0]          |
+                            (rgba[1] << 8)   |
+                            (rgba[2] << 16)  |
+                            (rgba[3] << 24));
+                }
+            }
+        }
+    }
+}
+
 static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
     if (render_tgt < 0) {
         fprintf(stderr, "%s - no render target bound!\n", __func__);
@@ -1229,381 +1609,7 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
             float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
             float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
 
-            float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
-            float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2] };
-
-            /*
-             * positive is counter-clockwise and negative is clockwise
-             *
-             * except the y-coordinate is inverted so really it's the other way
-             * around.
-             */
-            int sign = ortho_dot(v1, v2) < 0.0f ? -1 : 1;
-
-            float bbox_float[4];
-            tri_bbox(bbox_float, p1, p2, p3);
-
-            int bbox[4] = { bbox_float[0], bbox_float[1],
-                            bbox_float[2], bbox_float[3] };
-
-            if (bbox[0] < 0)
-                bbox[0] = 0;
-            else if (bbox[0] >= screen_width)
-                continue;
-            if (bbox[1] < 0)
-                bbox[1] = 0;
-            else if (bbox[1] >= screen_height)
-                continue;
-            if (bbox[2] >= screen_width)
-                bbox[2] = screen_width - 1;
-            else if (bbox[2] < 0)
-                continue;
-            if (bbox[3] >= screen_height)
-                bbox[3] = screen_height - 1;
-            else if (bbox[3] < 0)
-                continue;
-
-            /*
-             * edge line coefficients
-             * ax + by + c == 0
-             *
-             * index 0 - a
-             * index 1 - b
-             * index 2 - c
-             */
-            float e1[3], e2[3], e3[3];
-            line_coeff(e1, p1, p2);
-            line_coeff(e2, p2, p3);
-            line_coeff(e3, p3, p1);
-
-            float area = tri_area(p1, p2, p3);
-            float area_recip = 1.0f / area;
-
-            // perspective-correct base color
-            float p1_base_col[4] = {
-                p1[GFX_VERT_BASE_COLOR_OFFSET] * p1[2],
-                p1[GFX_VERT_BASE_COLOR_OFFSET + 1] * p1[2],
-                p1[GFX_VERT_BASE_COLOR_OFFSET + 2] * p1[2],
-                p1[GFX_VERT_BASE_COLOR_OFFSET + 3] * p1[2]
-            };
-            float p2_base_col[4] = {
-                p2[GFX_VERT_BASE_COLOR_OFFSET] * p2[2],
-                p2[GFX_VERT_BASE_COLOR_OFFSET + 1] * p2[2],
-                p2[GFX_VERT_BASE_COLOR_OFFSET + 2] * p2[2],
-                p2[GFX_VERT_BASE_COLOR_OFFSET + 3] * p2[2]
-            };
-            float p3_base_col[4] = {
-                p3[GFX_VERT_BASE_COLOR_OFFSET] * p3[2],
-                p3[GFX_VERT_BASE_COLOR_OFFSET + 1] * p3[2],
-                p3[GFX_VERT_BASE_COLOR_OFFSET + 2] * p3[2],
-                p3[GFX_VERT_BASE_COLOR_OFFSET + 3] * p3[2]
-            };
-
-            // perspective-correct offset color
-            float p1_offs_col[4] = {
-                p1[GFX_VERT_OFFS_COLOR_OFFSET] * p1[2],
-                p1[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p1[2],
-                p1[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p1[2],
-                p1[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p1[2]
-            };
-            float p2_offs_col[4] = {
-                p2[GFX_VERT_OFFS_COLOR_OFFSET] * p2[2],
-                p2[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p2[2],
-                p2[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p2[2],
-                p2[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p2[2]
-            };
-            float p3_offs_col[4] = {
-                p3[GFX_VERT_OFFS_COLOR_OFFSET] * p3[2],
-                p3[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p3[2],
-                p3[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p3[2],
-                p3[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p3[2]
-            };
-
-            // perspective-correct texture coordinates
-            float p1_texcoord[2] = {
-                p1[GFX_VERT_TEX_COORD_OFFSET] * p1[2],
-                p1[GFX_VERT_TEX_COORD_OFFSET + 1] * p1[2]
-            };
-            float p2_texcoord[2] = {
-                p2[GFX_VERT_TEX_COORD_OFFSET] * p2[2],
-                p2[GFX_VERT_TEX_COORD_OFFSET + 1] * p2[2]
-            };
-            float p3_texcoord[2] = {
-                p3[GFX_VERT_TEX_COORD_OFFSET] * p3[2],
-                p3[GFX_VERT_TEX_COORD_OFFSET + 1] * p3[2]
-            };
-
-            struct tex *texp = NULL;
-            if (rend_param.tex_enable) {
-                if (rend_param.tex_idx < GFX_TEX_CACHE_SIZE) {
-                    if (textures[rend_param.tex_idx].obj_no >= 0 &&
-                        textures[rend_param.tex_idx].obj_no < GFX_OBJ_COUNT)
-                        texp = textures + rend_param.tex_idx;
-                    else
-                        fprintf(stderr, "%s - texture %d not bound to object\n",
-                                __func__, rend_param.tex_idx);
-                } else {
-                    fprintf(stderr, "%s - invalid tex_idx %u\n",
-                            __func__, rend_param.tex_idx);
-                }
-            }
-
-            int x_pos, y_pos;
-            for (y_pos = bbox[1]; y_pos <= bbox[3]; y_pos++) {
-                for (x_pos = bbox[0]; x_pos <= bbox[2]; x_pos++) {
-                    float pos[2] = { x_pos, y_pos };
-                    float dist[3] = {
-                        e1[0] * pos[0] + e1[1] * pos[1] + e1[2],
-                        e2[0] * pos[0] + e2[1] * pos[1] + e2[2],
-                        e3[0] * pos[0] + e3[1] * pos[1] + e3[2]
-                    };
-
-                    if ((sign == -1 && dist[0] <= 0.0f &&
-                         dist[1] <= 0.0f && dist[2] <= 0.0f) ||
-                        (sign == 1 && dist[0] >= 0.0f &&
-                         dist[1] >= 0.0f && dist[2] >= 0.0f)) {
-
-                        // barycentric coordinates
-                        float bary[3] = {
-                            tri_area(p2, p3, pos) / area,
-                            tri_area(p3, p1, pos) / area,
-                            tri_area(p1, p2, pos) / area
-                        };
-
-                        // reciprocal depth
-                        float w_coord =
-                            p1[2] * bary[0] + p2[2] * bary[1] + p3[2] * bary[2];
-
-                        if ((!sort_mode_enable &&
-                             !depth_test(x_pos, y_pos, w_coord)) ||
-                            !user_clip_test(x_pos, y_pos) ||
-                            !clip_test(x_pos, y_pos))
-                            continue;
-
-                        if (rend_param.enable_depth_writes && !sort_mode_enable)
-                            w_buffer[y_pos * screen_width + x_pos] = w_coord;
-
-                        float base_col[4] = {
-                            (p1_base_col[0] * bary[0] + p2_base_col[0] * bary[1] +
-                             p3_base_col[0] * bary[2]) / w_coord,
-
-                            (p1_base_col[1] * bary[0] + p2_base_col[1] * bary[1] +
-                             p3_base_col[1] * bary[2]) / w_coord,
-
-                            (p1_base_col[2] * bary[0] + p2_base_col[2] * bary[1] +
-                             p3_base_col[2] * bary[2]) / w_coord,
-
-                            (p1_base_col[3] * bary[0] + p2_base_col[3] * bary[1] +
-                             p3_base_col[3] * bary[2]) / w_coord
-                        };
-
-                        float offs_col[4] = {
-                            (p1_offs_col[0] * bary[0] + p2_offs_col[0] * bary[1] +
-                             p3_offs_col[0] * bary[2]) / w_coord,
-
-                            (p1_offs_col[1] * bary[0] + p2_offs_col[1] * bary[1] +
-                             p3_offs_col[1] * bary[2]) / w_coord,
-
-                            (p1_offs_col[2] * bary[0] + p2_offs_col[2] * bary[1] +
-                             p3_offs_col[2] * bary[2]) / w_coord,
-
-                            (p1_offs_col[3] * bary[0] + p2_offs_col[3] * bary[1] +
-                             p3_offs_col[3] * bary[2]) / w_coord
-                        };
-
-                        float pix_color[4];
-
-                        if (texp) {
-                            float texcoord[2] = {
-                                (p1_texcoord[0] * bary[0] +
-                                 p2_texcoord[0] * bary[1] +
-                                 p3_texcoord[0] * bary[2]) / w_coord,
-
-                                (p1_texcoord[1] * bary[0] +
-                                 p2_texcoord[1] * bary[1] +
-                                 p3_texcoord[1] * bary[2]) / w_coord,
-                            };
-
-                            float sample[4];
-                            switch (rend_param.tex_filter) {
-                            case TEX_FILTER_TRILINEAR_A:
-                            case TEX_FILTER_TRILINEAR_B:
-                                // TODO: TRILINEAR FILTERING
-                            case TEX_FILTER_BILINEAR:
-                                /*
-                                 * TODO: this bilinear texture filtering code
-                                 * doesn't entirely work right and I don't have
-                                 * time to fix it right now so I'm just going to
-                                 * comment it out.  Need to come back and fix it
-                                 * later.
-                                 *
-                                 * I think the problem is that I'm not
-                                 * implementing minification correctly.  This
-                                 * is the case where each pixel in the output
-                                 * image samples multiple pixels from the
-                                 * source texture.
-                                 *
-                                 * Look at the skybox texture in Crazy Taxi for
-                                 * an example of something that looks wrong with
-                                 * this filtering code, althought there are
-                                 * doubtless many others.
-                                 */
-#if 0
-                                {
-                                    int texcoord_raw[4][2] = {
-                                        {
-                                            texcoord[0] * texp->width,
-                                            texcoord[1] * texp->height
-                                        },
-                                        {
-                                            (int)(texcoord[0] * texp->width) + 1,
-                                            texcoord[1] * texp->height
-                                        },
-                                        {
-                                            (int)(texcoord[0] * texp->width) + 1,
-                                            (int)(texcoord[1] * texp->height) + 1
-                                        },
-                                        {
-                                            texcoord[0] * texp->width,
-                                            (int)(texcoord[1] * texp->height) + 1
-                                        }
-                                    };
-
-                                    float sample_raw[4][4];
-                                    tex_sample(texp, sample_raw[0], texcoord_raw[0]);
-                                    tex_sample(texp, sample_raw[1], texcoord_raw[1]);
-                                    tex_sample(texp, sample_raw[2], texcoord_raw[2]);
-                                    tex_sample(texp, sample_raw[3], texcoord_raw[3]);
-
-                                    float texel_dims[2] = { 1.0f / texp->width,
-                                                            1.0f / texp->height };
-                                    float texel_area = texel_dims[0] * texel_dims[1];
-
-                                    float min[2] = { texcoord_raw[0][0] * texel_dims[0],
-                                                     texcoord_raw[0][1] * texel_dims[1] };
-                                    float max[2] = { texcoord_raw[2][0] * texel_dims[0],
-                                                     texcoord_raw[2][1] * texel_dims[1] };
-
-                                    float texel_bary[4] = {
-                                        (max[0] - texcoord[0]) * (max[1] - texcoord[1]) / texel_area,
-                                        (texcoord[0] - min[0]) * (max[1] - texcoord[1]) / texel_area,
-                                        (texcoord[0] - min[0]) * (texcoord[1] - min[1]) / texel_area,
-                                        (max[0] - texcoord[0]) * (texcoord[1] - min[1]) / texel_area,
-                                    };
-
-                                    sample[0] = sample_raw[0][0] * texel_bary[0] +
-                                        sample_raw[1][0] * texel_bary[1] +
-                                        sample_raw[2][0] * texel_bary[2] +
-                                        sample_raw[3][0] * texel_bary[3];
-                                    sample[1] = sample_raw[0][1] * texel_bary[0] +
-                                        sample_raw[1][1] * texel_bary[1] +
-                                        sample_raw[2][1] * texel_bary[2] +
-                                        sample_raw[3][1] * texel_bary[3];
-                                    sample[2] = sample_raw[0][2] * texel_bary[0] +
-                                        sample_raw[1][2] * texel_bary[1] +
-                                        sample_raw[2][2] * texel_bary[2] +
-                                        sample_raw[3][2] * texel_bary[3];
-                                    sample[3] = sample_raw[0][3] * texel_bary[0] +
-                                        sample_raw[1][3] * texel_bary[1] +
-                                        sample_raw[2][3] * texel_bary[2] +
-                                        sample_raw[3][3] * texel_bary[3];
-                                }
-                                break;
-#endif
-                            case TEX_FILTER_NEAREST:
-                                {
-                                    int texcoord_pix[2] = {
-                                        texcoord[0] * (texp->width - 1),
-                                        texcoord[1] * (texp->height - 1)
-                                    };
-
-                                    tex_sample(texp, sample, texcoord_pix);
-                                }
-                                break;
-                            default:
-                                fprintf(stderr, "%s - invalid texture filter %d\n",
-                                        __func__, (int)rend_param.tex_filter);
-                                abort();
-                            }
-
-                            switch (rend_param.tex_inst) {
-                            case TEX_INST_DECAL:
-                                pix_color[0] = sample[0] + offs_col[0];
-                                pix_color[1] = sample[1] + offs_col[1];
-                                pix_color[2] = sample[2] + offs_col[2];
-                                pix_color[3] = sample[3];
-                                break;
-                            case TEX_INST_MOD:
-                                pix_color[0] = sample[0] * base_col[0] + offs_col[0];
-                                pix_color[1] = sample[1] * base_col[1] + offs_col[1];
-                                pix_color[2] = sample[2] * base_col[2] + offs_col[2];
-                                pix_color[3] = sample[3];
-                                break;
-                            case TEXT_INST_DECAL_ALPHA:
-                                pix_color[0] = sample[0] * sample[3] +
-                                    base_col[0] * (1.0f - sample[3]) + offs_col[0];
-                                pix_color[1] = sample[1] * sample[3] +
-                                    base_col[1] * (1.0f - sample[3]) + offs_col[1];
-                                pix_color[2] = sample[2] * sample[3] +
-                                    base_col[2] * (1.0f - sample[3]) + offs_col[2];
-                                pix_color[3] = base_col[3];
-                                break;
-                            case TEX_INST_MOD_ALPHA:
-                                pix_color[0] = sample[0] * base_col[0] + offs_col[0];
-                                pix_color[1] = sample[1] * base_col[1] + offs_col[1];
-                                pix_color[2] = sample[2] * base_col[2] + offs_col[2];
-                                pix_color[3] = sample[3] * base_col[3];
-                                break;
-                            default:
-                                fprintf(stderr, "unknown texture inst %d\n",
-                                        (int)rend_param.tex_inst);
-                                pix_color[0] = 1.0f;
-                                pix_color[1] = 1.0f;
-                                pix_color[2] = 1.0f;
-                                pix_color[3] = 1.0f;
-                            }
-                        } else {
-                            memcpy(pix_color, base_col, sizeof(pix_color));
-                        }
-
-                        int rgba[4] = {
-                            clamp_int(pix_color[0] * 255, 0, 255),
-                            clamp_int(pix_color[1] * 255, 0, 255),
-                            clamp_int(pix_color[2] * 255, 0, 255),
-                            clamp_int(pix_color[3] * 255, 0, 255)
-                        };
-
-                        if (sort_mode_enable) {
-                            if (x_pos < 0 || x_pos >= FB_WIDTH ||
-                                y_pos < 0 || y_pos >= FB_HEIGHT ||
-                                n_oit_pixels >= MAX_OIT_PIXELS)
-                                continue;
-                            unsigned oit_node_idx = n_oit_pixels++;
-                            struct oit_pixel *pix = oit_pixels + oit_node_idx;
-                            memcpy(pix->rgba, rgba, sizeof(pix->rgba));
-                            pix->w_coord = w_coord;
-                            pix->src_blend_factor = rend_param.src_blend_factor;
-                            pix->dst_blend_factor = rend_param.dst_blend_factor;
-                            pix->next_pix_idx = oit_buf[y_pos * FB_WIDTH + x_pos];
-                            oit_buf[y_pos * FB_WIDTH + x_pos] = oit_node_idx;
-                        } else if (blend_enable) {
-                            put_pix_blended(obj, x_pos, y_pos,
-                                            rgba[0]          |
-                                            (rgba[1] << 8)   |
-                                            (rgba[2] << 16)  |
-                                            (rgba[3] << 24),
-                                            rend_param.src_blend_factor,
-                                            rend_param.dst_blend_factor);
-                        } else {
-                            put_pix(obj, x_pos, y_pos,
-                                    rgba[0]          |
-                                    (rgba[1] << 8)   |
-                                    (rgba[2] << 16)  |
-                                    (rgba[3] << 24));
-                        }
-                    }
-                }
-            }
+            draw_tri(obj, p1, p2, p3);
         }
     }
 }
