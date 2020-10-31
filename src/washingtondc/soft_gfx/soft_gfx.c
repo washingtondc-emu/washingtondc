@@ -1248,7 +1248,6 @@ draw_tri(struct gfx_obj *obj, float const *p1,
     line_coeff(e3, p3, p1);
 
     float area = tri_area(p1, p2, p3);
-    float area_recip = 1.0f / area;
 
     // perspective-correct base color
     float p1_base_col[4] = {
@@ -1334,16 +1333,19 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                 (sign == 1 && dist[0] >= 0.0f &&
                  dist[1] >= 0.0f && dist[2] >= 0.0f)) {
 
-                // barycentric coordinates
-                float bary[3] = {
-                    tri_area(p2, p3, pos) / area,
-                    tri_area(p3, p1, pos) / area,
-                    tri_area(p1, p2, pos) / area
+                // bary_area = barycentric coordinates * area.
+                float bary_area[3] = {
+                    tri_area(p2, p3, pos),
+                    tri_area(p3, p1, pos),
+                    tri_area(p1, p2, pos)
                 };
 
                 // reciprocal depth
-                float w_coord =
-                    p1[2] * bary[0] + p2[2] * bary[1] + p3[2] * bary[2];
+                float w_coord_area =
+                    p1[2] * bary_area[0] +
+                    p2[2] * bary_area[1] +
+                    p3[2] * bary_area[2];
+                float w_coord = w_coord_area / area;
 
                 if ((!sort_mode_enable &&
                      !depth_test(x_pos, y_pos, w_coord)) ||
@@ -1355,44 +1357,60 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                     w_buffer[y_pos * screen_width + x_pos] = w_coord;
 
                 float base_col[4] = {
-                    (p1_base_col[0] * bary[0] + p2_base_col[0] * bary[1] +
-                     p3_base_col[0] * bary[2]) / w_coord,
+                    (p1_base_col[0] * bary_area[0] +
+                     p2_base_col[0] * bary_area[1] +
+                     p3_base_col[0] * bary_area[2]) /
+                    w_coord_area,
 
-                    (p1_base_col[1] * bary[0] + p2_base_col[1] * bary[1] +
-                     p3_base_col[1] * bary[2]) / w_coord,
+                    (p1_base_col[1] * bary_area[0] +
+                     p2_base_col[1] * bary_area[1] +
+                     p3_base_col[1] * bary_area[2]) /
+                    w_coord_area,
 
-                    (p1_base_col[2] * bary[0] + p2_base_col[2] * bary[1] +
-                     p3_base_col[2] * bary[2]) / w_coord,
+                    (p1_base_col[2] * bary_area[0] +
+                     p2_base_col[2] * bary_area[1] +
+                     p3_base_col[2] * bary_area[2]) /
+                    w_coord_area,
 
-                    (p1_base_col[3] * bary[0] + p2_base_col[3] * bary[1] +
-                     p3_base_col[3] * bary[2]) / w_coord
+                    (p1_base_col[3] * bary_area[0] +
+                     p2_base_col[3] * bary_area[1] +
+                     p3_base_col[3] * bary_area[2]) /
+                    w_coord_area
                 };
 
                 float offs_col[4] = {
-                    (p1_offs_col[0] * bary[0] + p2_offs_col[0] * bary[1] +
-                     p3_offs_col[0] * bary[2]) / w_coord,
+                    (p1_offs_col[0] * bary_area[0] +
+                     p2_offs_col[0] * bary_area[1] +
+                     p3_offs_col[0] * bary_area[2]) /
+                    w_coord_area,
 
-                    (p1_offs_col[1] * bary[0] + p2_offs_col[1] * bary[1] +
-                     p3_offs_col[1] * bary[2]) / w_coord,
+                    (p1_offs_col[1] * bary_area[0] +
+                     p2_offs_col[1] * bary_area[1] +
+                     p3_offs_col[1] * bary_area[2]) /
+                    w_coord_area,
 
-                    (p1_offs_col[2] * bary[0] + p2_offs_col[2] * bary[1] +
-                     p3_offs_col[2] * bary[2]) / w_coord,
+                    (p1_offs_col[2] * bary_area[0] +
+                     p2_offs_col[2] * bary_area[1] +
+                     p3_offs_col[2] * bary_area[2]) /
+                    w_coord_area,
 
-                    (p1_offs_col[3] * bary[0] + p2_offs_col[3] * bary[1] +
-                     p3_offs_col[3] * bary[2]) / w_coord
+                    (p1_offs_col[3] * bary_area[0] +
+                     p2_offs_col[3] * bary_area[1] +
+                     p3_offs_col[3] * bary_area[2]) /
+                    w_coord_area
                 };
 
                 float pix_color[4];
 
                 if (texp) {
                     float texcoord[2] = {
-                        (p1_texcoord[0] * bary[0] +
-                         p2_texcoord[0] * bary[1] +
-                         p3_texcoord[0] * bary[2]) / w_coord,
+                        (p1_texcoord[0] * bary_area[0] +
+                         p2_texcoord[0] * bary_area[1] +
+                         p3_texcoord[0] * bary_area[2]) / w_coord_area,
 
-                        (p1_texcoord[1] * bary[0] +
-                         p2_texcoord[1] * bary[1] +
-                         p3_texcoord[1] * bary[2]) / w_coord,
+                        (p1_texcoord[1] * bary_area[0] +
+                         p2_texcoord[1] * bary_area[1] +
+                         p3_texcoord[1] * bary_area[2]) / w_coord_area,
                     };
 
                     float sample[4];
