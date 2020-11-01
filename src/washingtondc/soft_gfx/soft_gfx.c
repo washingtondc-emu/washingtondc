@@ -530,8 +530,9 @@ put_pix(struct gfx_obj *obj, int x_pix, int y_pix, uint32_t color) {
     unsigned byte_offs = (y_pix * screen_width + x_pix) * sizeof(uint32_t);
 
     if (x_pix < 0 || y_pix < 0 ||
-        x_pix >= screen_width || y_pix >= screen_height ||
-        byte_offs + (sizeof(uint32_t) - 1) >= obj->dat_len) {
+        x_pix >= screen_width || y_pix >= screen_height) {
+        return;
+    } else if (byte_offs + (sizeof(uint32_t) - 1) >= obj->dat_len) {
         fprintf(stderr, "%s - ERROR out of bounds (%d, %d)\n",
                 __func__, x_pix, y_pix);
         fflush(stdout);
@@ -717,12 +718,6 @@ draw_line(struct gfx_obj *obj, int x1, int y1, int x2, int y2, uint32_t color) {
         (y1 >= screen_height && y2 >= screen_height)) {
         return;
     }
-
-    x1 = clamp_int(x1, 0, screen_width - 1);
-    x2 = clamp_int(x2, 0, screen_width - 1);
-    y1 = clamp_int(y1, 0, screen_height - 1);
-    y2 = clamp_int(y2, 0, screen_height - 1);
-
 
     int delta_y = y2 - y1;
     int delta_x = x2 - x1;
