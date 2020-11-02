@@ -876,20 +876,6 @@ static void rot90(float out[2], float const in[2]) {
     out[1] = new_y;
 }
 
-/* static float dot(float const v1[2], float const v2[2]) { */
-/*     return v1[0] * v2[0] + v1[1] * v2[1]; */
-/* } */
-
-/*
- * dot product of v1 rotated by 90 degrees and v2
- *
- * this is a scalar with the magnitude and sign of the three-dimensional cross
- * product, ie |v1| * |v2| * sin(angle_between_v1_and_v2)
- */
-static float ortho_dot(float const v1[2], float const v2[2]) {
-    return -v1[1] * v2[0] + v1[0] * v2[1];
-}
-
 /*
  * return 2-dimensional bounding-box of given triangle
  * bounds[0] is x_min
@@ -924,11 +910,11 @@ static void line_coeff(float coeff[3], float const p1[2], float const p2[2]) {
  * in both the dividend and the divisor.
  */
 static float
-tri_area2(float const v1[2], float const v2[2], float const v3[2]) {
+tri_area2_signed(float const v1[2], float const v2[2], float const v3[2]) {
     float vec1[2] = { v2[0] - v1[0], v2[1] - v1[1] };
     float vec2[2] = { v3[0] - v1[0], v3[1] - v1[1] };
 
-    return fabsf(ortho_dot(vec1, vec2));
+    return -vec1[1] * vec2[0] + vec1[0] * vec2[1];
 }
 
 static bool depth_test(int x_pos, int y_pos, float w_coord) {
@@ -1208,17 +1194,6 @@ tex_sample(struct tex const *texp, float rgba[4], int const texcoord[2]) {
 static void
 draw_tri(struct gfx_obj *obj, float const *p1,
          float const *p2, float const *p3) {
-    float v1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
-    float v2[3] = { p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2] };
-
-    /*
-     * positive is counter-clockwise and negative is clockwise
-     *
-     * except the y-coordinate is inverted so really it's the other way
-     * around.
-     */
-    int sign = ortho_dot(v1, v2) < 0.0f ? -1 : 1;
-
     float bbox_float[4];
     tri_bbox(bbox_float, p1, p2, p3);
 
@@ -1243,6 +1218,20 @@ draw_tri(struct gfx_obj *obj, float const *p1,
         return;
 
     /*
+     * positive is counter-clockwise and negative is clockwise
+     *
+     * except the y-coordinate is inverted so really it's the other way
+     * around.
+     */
+    float area = tri_area2_signed(p1, p2, p3);
+    if (area < 0.0f) {
+        float const *tmp = p3;
+        p3 = p2;
+        p2 = tmp;
+        area = -area;
+    }
+
+    /*
      * edge line coefficients
      * ax + by + c == 0
      *
@@ -1254,8 +1243,6 @@ draw_tri(struct gfx_obj *obj, float const *p1,
     line_coeff(e1, p1, p2);
     line_coeff(e2, p2, p3);
     line_coeff(e3, p3, p1);
-
-    float area = tri_area2(p1, p2, p3);
 
     // perspective-correct base color
     float p1_base_col[4] = {
@@ -1326,34 +1313,242 @@ draw_tri(struct gfx_obj *obj, float const *p1,
         }
     }
 
+    float dist_xstep[3] = { e1[0], e2[0], e3[0] };
+    float dist_ystep[3] = { e1[1], e2[1], e3[1] };
+    float dist_rowinit[3] = {
+        e1[0] * bbox[0] + e1[1] * bbox[1] + e1[2],
+        e2[0] * bbox[0] + e2[1] * bbox[1] + e2[2],
+        e3[0] * bbox[0] + e3[1] * bbox[1] + e3[2]
+    };
+
+    float bary_area_xstep[3] = {
+        p2[1] - p3[1],
+        p3[1] - p1[1],
+        p1[1] - p2[1]
+    };
+    float bary_area_ystep[3] = {
+        p3[0] - p2[0],
+        p1[0] - p3[0],
+        p2[0] - p1[0]
+    };
+    float bary_area_rowinit[3] = {
+        (bbox[0] - p2[0]) * bary_area_xstep[0] + (bbox[1] - p2[1]) * bary_area_ystep[0],
+        (bbox[0] - p3[0]) * bary_area_xstep[1] + (bbox[1] - p3[1]) * bary_area_ystep[1],
+        (bbox[0] - p1[0]) * bary_area_xstep[2] + (bbox[1] - p1[1]) * bary_area_ystep[2]
+    };
+
+    float w_coord_area_xstep =
+        bary_area_xstep[0] * p1[2] +
+        bary_area_xstep[1] * p2[2] +
+        bary_area_xstep[2] * p3[2];
+    float w_coord_area_ystep =
+        bary_area_ystep[0] * p1[2] +
+        bary_area_ystep[1] * p2[2] +
+        bary_area_ystep[2] * p3[2];
+    float w_coord_area_rowinit =
+        bary_area_rowinit[0] * p1[2] +
+        bary_area_rowinit[1] * p2[2] +
+        bary_area_rowinit[2] * p3[2];
+
+    float w_coord_xstep =
+        bary_area_xstep[0] * (p1[2] / area) +
+        bary_area_xstep[1] * (p2[2] / area) +
+        bary_area_xstep[2] * (p3[2] / area);
+    float w_coord_ystep =
+        bary_area_ystep[0] * (p1[2] / area) +
+        bary_area_ystep[1] * (p2[2] / area) +
+        bary_area_ystep[2] * (p3[2] / area);
+    float w_coord_rowinit =
+        bary_area_rowinit[0] * (p1[2] / area) +
+        bary_area_rowinit[1] * (p2[2] / area) +
+        bary_area_rowinit[2] * (p3[2] / area);
+
+    float texcoord_xstep[2] = {
+        bary_area_xstep[0] * p1_texcoord[0] +
+        bary_area_xstep[1] * p2_texcoord[0] +
+        bary_area_xstep[2] * p3_texcoord[0],
+
+        bary_area_xstep[0] * p1_texcoord[1] +
+        bary_area_xstep[1] * p2_texcoord[1] +
+        bary_area_xstep[2] * p3_texcoord[1],
+    };
+    float texcoord_ystep[2] = {
+        bary_area_ystep[0] * p1_texcoord[0] +
+        bary_area_ystep[1] * p2_texcoord[0] +
+        bary_area_ystep[2] * p3_texcoord[0],
+
+        bary_area_ystep[0] * p1_texcoord[1] +
+        bary_area_ystep[1] * p2_texcoord[1] +
+        bary_area_ystep[2] * p3_texcoord[1]
+    };
+    float texcoord_rowinit[2] = {
+        bary_area_rowinit[0] * p1_texcoord[0] +
+        bary_area_rowinit[1] * p2_texcoord[0] +
+        bary_area_rowinit[2] * p3_texcoord[0],
+
+        bary_area_rowinit[0] * p1_texcoord[1] +
+        bary_area_rowinit[1] * p2_texcoord[1] +
+        bary_area_rowinit[2] * p3_texcoord[1]
+    };
+
+    float base_col_xstep[4] = {
+        bary_area_xstep[0] * p1_base_col[0] +
+        bary_area_xstep[1] * p2_base_col[0] +
+        bary_area_xstep[2] * p3_base_col[0],
+
+        bary_area_xstep[0] * p1_base_col[1] +
+        bary_area_xstep[1] * p2_base_col[1] +
+        bary_area_xstep[2] * p3_base_col[1],
+
+        bary_area_xstep[0] * p1_base_col[2] +
+        bary_area_xstep[1] * p2_base_col[2] +
+        bary_area_xstep[2] * p3_base_col[2],
+
+        bary_area_xstep[0] * p1_base_col[3] +
+        bary_area_xstep[1] * p2_base_col[3] +
+        bary_area_xstep[2] * p3_base_col[3],
+    };
+    float base_col_ystep[4] = {
+        bary_area_ystep[0] * p1_base_col[0] +
+        bary_area_ystep[1] * p2_base_col[0] +
+        bary_area_ystep[2] * p3_base_col[0],
+
+        bary_area_ystep[0] * p1_base_col[1] +
+        bary_area_ystep[1] * p2_base_col[1] +
+        bary_area_ystep[2] * p3_base_col[1],
+
+        bary_area_ystep[0] * p1_base_col[2] +
+        bary_area_ystep[1] * p2_base_col[2] +
+        bary_area_ystep[2] * p3_base_col[2],
+
+        bary_area_ystep[0] * p1_base_col[3] +
+        bary_area_ystep[1] * p2_base_col[3] +
+        bary_area_ystep[2] * p3_base_col[3],
+    };
+    float base_col_rowinit[4] = {
+        bary_area_rowinit[0] * p1_base_col[0] +
+        bary_area_rowinit[1] * p2_base_col[0] +
+        bary_area_rowinit[2] * p3_base_col[0],
+
+        bary_area_rowinit[0] * p1_base_col[1] +
+        bary_area_rowinit[1] * p2_base_col[1] +
+        bary_area_rowinit[2] * p3_base_col[1],
+
+        bary_area_rowinit[0] * p1_base_col[2] +
+        bary_area_rowinit[1] * p2_base_col[2] +
+        bary_area_rowinit[2] * p3_base_col[2],
+
+        bary_area_rowinit[0] * p1_base_col[3] +
+        bary_area_rowinit[1] * p2_base_col[3] +
+        bary_area_rowinit[2] * p3_base_col[3],
+    };
+
+    float offs_col_xstep[4] = {
+        bary_area_xstep[0] * p1_offs_col[0] +
+        bary_area_xstep[1] * p2_offs_col[0] +
+        bary_area_xstep[2] * p3_offs_col[0],
+
+        bary_area_xstep[0] * p1_offs_col[1] +
+        bary_area_xstep[1] * p2_offs_col[1] +
+        bary_area_xstep[2] * p3_offs_col[1],
+
+        bary_area_xstep[0] * p1_offs_col[2] +
+        bary_area_xstep[1] * p2_offs_col[2] +
+        bary_area_xstep[2] * p3_offs_col[2],
+
+        bary_area_xstep[0] * p1_offs_col[3] +
+        bary_area_xstep[1] * p2_offs_col[3] +
+        bary_area_xstep[2] * p3_offs_col[3],
+    };
+    float offs_col_ystep[4] = {
+        bary_area_ystep[0] * p1_offs_col[0] +
+        bary_area_ystep[1] * p2_offs_col[0] +
+        bary_area_ystep[2] * p3_offs_col[0],
+
+        bary_area_ystep[0] * p1_offs_col[1] +
+        bary_area_ystep[1] * p2_offs_col[1] +
+        bary_area_ystep[2] * p3_offs_col[1],
+
+        bary_area_ystep[0] * p1_offs_col[2] +
+        bary_area_ystep[1] * p2_offs_col[2] +
+        bary_area_ystep[2] * p3_offs_col[2],
+
+        bary_area_ystep[0] * p1_offs_col[3] +
+        bary_area_ystep[1] * p2_offs_col[3] +
+        bary_area_ystep[2] * p3_offs_col[3],
+    };
+    float offs_col_rowinit[4] = {
+        bary_area_rowinit[0] * p1_offs_col[0] +
+        bary_area_rowinit[1] * p2_offs_col[0] +
+        bary_area_rowinit[2] * p3_offs_col[0],
+
+        bary_area_rowinit[0] * p1_offs_col[1] +
+        bary_area_rowinit[1] * p2_offs_col[1] +
+        bary_area_rowinit[2] * p3_offs_col[1],
+
+        bary_area_rowinit[0] * p1_offs_col[2] +
+        bary_area_rowinit[1] * p2_offs_col[2] +
+        bary_area_rowinit[2] * p3_offs_col[2],
+
+        bary_area_rowinit[0] * p1_offs_col[3] +
+        bary_area_rowinit[1] * p2_offs_col[3] +
+        bary_area_rowinit[2] * p3_offs_col[3],
+    };
+
     int x_pos, y_pos;
     for (y_pos = bbox[1]; y_pos <= bbox[3]; y_pos++) {
+        float dist_init[3] = {
+            dist_rowinit[0] + (y_pos - bbox[1]) * dist_ystep[0],
+            dist_rowinit[1] + (y_pos - bbox[1]) * dist_ystep[1],
+            dist_rowinit[2] + (y_pos - bbox[1]) * dist_ystep[2]
+        };
+        float bary_area_init[3] = {
+            bary_area_rowinit[0] + (y_pos - bbox[1]) * bary_area_ystep[0],
+            bary_area_rowinit[1] + (y_pos - bbox[1]) * bary_area_ystep[1],
+            bary_area_rowinit[2] + (y_pos - bbox[1]) * bary_area_ystep[2]
+        };
+        float w_coord_area_init =
+            w_coord_area_rowinit + (y_pos - bbox[1]) * w_coord_area_ystep;
+        float w_coord_init =
+            w_coord_rowinit + (y_pos - bbox[1]) * w_coord_ystep;
+        float texcoord_init[2] = {
+            texcoord_rowinit[0] + (y_pos - bbox[1]) * texcoord_ystep[0],
+            texcoord_rowinit[1] + (y_pos - bbox[1]) * texcoord_ystep[1]
+        };
+        float base_col_init[4] = {
+            base_col_rowinit[0] + (y_pos - bbox[1]) * base_col_ystep[0],
+            base_col_rowinit[1] + (y_pos - bbox[1]) * base_col_ystep[1],
+            base_col_rowinit[2] + (y_pos - bbox[1]) * base_col_ystep[2],
+            base_col_rowinit[3] + (y_pos - bbox[1]) * base_col_ystep[3]
+        };
+        float offs_col_init[4] = {
+            offs_col_rowinit[0] + (y_pos - bbox[1]) * offs_col_ystep[0],
+            offs_col_rowinit[1] + (y_pos - bbox[1]) * offs_col_ystep[1],
+            offs_col_rowinit[2] + (y_pos - bbox[1]) * offs_col_ystep[2],
+            offs_col_rowinit[3] + (y_pos - bbox[1]) * offs_col_ystep[3]
+        };
         for (x_pos = bbox[0]; x_pos <= bbox[2]; x_pos++) {
-            float pos[2] = { x_pos, y_pos };
             float dist[3] = {
-                e1[0] * pos[0] + e1[1] * pos[1] + e1[2],
-                e2[0] * pos[0] + e2[1] * pos[1] + e2[2],
-                e3[0] * pos[0] + e3[1] * pos[1] + e3[2]
+                (x_pos - bbox[0]) * dist_xstep[0],
+                (x_pos - bbox[0]) * dist_xstep[1],
+                (x_pos - bbox[0]) * dist_xstep[2],
             };
 
-            if ((sign == -1 && dist[0] <= 0.0f &&
-                 dist[1] <= 0.0f && dist[2] <= 0.0f) ||
-                (sign == 1 && dist[0] >= 0.0f &&
-                 dist[1] >= 0.0f && dist[2] >= 0.0f)) {
+            if (dist[0] >= -dist_init[0] &&
+                dist[1] >= -dist_init[1] &&
+                dist[2] >= -dist_init[2]) {
 
                 // bary_area = barycentric coordinates * area.
                 float bary_area[3] = {
-                    tri_area2(p2, p3, pos),
-                    tri_area2(p3, p1, pos),
-                    tri_area2(p1, p2, pos)
+                    bary_area_init[0] + (x_pos - bbox[0]) * bary_area_xstep[0],
+                    bary_area_init[1] + (x_pos - bbox[0]) * bary_area_xstep[1],
+                    bary_area_init[2] + (x_pos - bbox[0]) * bary_area_xstep[2]
                 };
 
                 // reciprocal depth
                 float w_coord_area =
-                    p1[2] * bary_area[0] +
-                    p2[2] * bary_area[1] +
-                    p3[2] * bary_area[2];
-                float w_coord = w_coord_area / area;
+                    w_coord_area_init + (x_pos - bbox[0]) * w_coord_area_xstep;
+                float w_coord = w_coord_init + (x_pos - bbox[0]) * w_coord_xstep;
 
                 if ((!sort_mode_enable &&
                      !depth_test(x_pos, y_pos, w_coord)) ||
@@ -1365,61 +1560,39 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                     w_buffer[y_pos * screen_width + x_pos] = w_coord;
 
                 float base_col[4] = {
-                    (p1_base_col[0] * bary_area[0] +
-                     p2_base_col[0] * bary_area[1] +
-                     p3_base_col[0] * bary_area[2]) /
-                    w_coord_area,
-
-                    (p1_base_col[1] * bary_area[0] +
-                     p2_base_col[1] * bary_area[1] +
-                     p3_base_col[1] * bary_area[2]) /
-                    w_coord_area,
-
-                    (p1_base_col[2] * bary_area[0] +
-                     p2_base_col[2] * bary_area[1] +
-                     p3_base_col[2] * bary_area[2]) /
-                    w_coord_area,
-
-                    (p1_base_col[3] * bary_area[0] +
-                     p2_base_col[3] * bary_area[1] +
-                     p3_base_col[3] * bary_area[2]) /
-                    w_coord_area
+                    base_col_init[0] + (x_pos - bbox[0]) * base_col_xstep[0],
+                    base_col_init[1] + (x_pos - bbox[0]) * base_col_xstep[1],
+                    base_col_init[2] + (x_pos - bbox[0]) * base_col_xstep[2],
+                    base_col_init[3] + (x_pos - bbox[0]) * base_col_xstep[3]
                 };
+
+                base_col[0] /= w_coord_area;
+                base_col[1] /= w_coord_area;
+                base_col[2] /= w_coord_area;
+                base_col[3] /= w_coord_area;
 
                 float offs_col[4] = {
-                    (p1_offs_col[0] * bary_area[0] +
-                     p2_offs_col[0] * bary_area[1] +
-                     p3_offs_col[0] * bary_area[2]) /
-                    w_coord_area,
-
-                    (p1_offs_col[1] * bary_area[0] +
-                     p2_offs_col[1] * bary_area[1] +
-                     p3_offs_col[1] * bary_area[2]) /
-                    w_coord_area,
-
-                    (p1_offs_col[2] * bary_area[0] +
-                     p2_offs_col[2] * bary_area[1] +
-                     p3_offs_col[2] * bary_area[2]) /
-                    w_coord_area,
-
-                    (p1_offs_col[3] * bary_area[0] +
-                     p2_offs_col[3] * bary_area[1] +
-                     p3_offs_col[3] * bary_area[2]) /
-                    w_coord_area
+                    offs_col_init[0] + (x_pos - bbox[0]) * offs_col_xstep[0],
+                    offs_col_init[1] + (x_pos - bbox[0]) * offs_col_xstep[1],
+                    offs_col_init[2] + (x_pos - bbox[0]) * offs_col_xstep[2],
+                    offs_col_init[3] + (x_pos - bbox[0]) * offs_col_xstep[3]
                 };
+
+                offs_col[0] /= w_coord_area;
+                offs_col[1] /= w_coord_area;
+                offs_col[2] /= w_coord_area;
+                offs_col[3] /= w_coord_area;
 
                 float pix_color[4];
 
                 if (texp) {
                     float texcoord[2] = {
-                        (p1_texcoord[0] * bary_area[0] +
-                         p2_texcoord[0] * bary_area[1] +
-                         p3_texcoord[0] * bary_area[2]) / w_coord_area,
-
-                        (p1_texcoord[1] * bary_area[0] +
-                         p2_texcoord[1] * bary_area[1] +
-                         p3_texcoord[1] * bary_area[2]) / w_coord_area,
+                        texcoord_init[0] + texcoord_xstep[0] * (x_pos - bbox[0]),
+                        texcoord_init[1] + texcoord_xstep[1] * (x_pos - bbox[0])
                     };
+
+                    texcoord[0] /= w_coord_area;
+                    texcoord[1] /= w_coord_area;
 
                     float sample[4];
                     switch (rend_param.tex_filter) {
