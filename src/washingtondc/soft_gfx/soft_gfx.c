@@ -1632,8 +1632,8 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                     case TEX_FILTER_NEAREST:
                         {
                             int texcoord_pix[2] = {
-                                texcoord[0] * (texp->width - 1),
-                                texcoord[1] * (texp->height - 1)
+                                texcoord[0] * texp->width,
+                                texcoord[1] * texp->height
                             };
 
                             tex_sample(texp, sample, texcoord_pix);
