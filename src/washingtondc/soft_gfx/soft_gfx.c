@@ -1191,12 +1191,20 @@ tex_sample(struct tex const *texp, float rgba[4], int const texcoord[2]) {
     }
 }
 
-// per-vertex attribute interpolated across a triangle
+/*
+ * per-vertex attribute interpolated across a triangle
+ *
+ * TODO: find a way to use float here and in draw_tri instead
+ * of double without causing a bunch of really obnoxious texture
+ * sampling artifacts.  float's lack of precision has noticeable
+ * effects here.  Daytona USA 2001 is a good test-case
+ * (look closely at menus and dev logos).
+ */
 struct vert_attr {
-    float init, ystep, xstep;
+    double init, ystep, xstep;
 };
 
-static float vert_attr_val(struct vert_attr const *attr, int y_pos, int x_pos) {
+static double vert_attr_val(struct vert_attr const *attr, int y_pos, int x_pos) {
     return attr->init + y_pos * attr->ystep + x_pos * attr->xstep;
 }
 
@@ -1254,19 +1262,19 @@ draw_tri(struct gfx_obj *obj, float const *p1,
     line_coeff(e3, p3, p1);
 
     // perspective-correct base color
-    float p1_base_col[4] = {
+    double p1_base_col[4] = {
         p1[GFX_VERT_BASE_COLOR_OFFSET] * p1[2],
         p1[GFX_VERT_BASE_COLOR_OFFSET + 1] * p1[2],
         p1[GFX_VERT_BASE_COLOR_OFFSET + 2] * p1[2],
         p1[GFX_VERT_BASE_COLOR_OFFSET + 3] * p1[2]
     };
-    float p2_base_col[4] = {
+    double p2_base_col[4] = {
         p2[GFX_VERT_BASE_COLOR_OFFSET] * p2[2],
         p2[GFX_VERT_BASE_COLOR_OFFSET + 1] * p2[2],
         p2[GFX_VERT_BASE_COLOR_OFFSET + 2] * p2[2],
         p2[GFX_VERT_BASE_COLOR_OFFSET + 3] * p2[2]
     };
-    float p3_base_col[4] = {
+    double p3_base_col[4] = {
         p3[GFX_VERT_BASE_COLOR_OFFSET] * p3[2],
         p3[GFX_VERT_BASE_COLOR_OFFSET + 1] * p3[2],
         p3[GFX_VERT_BASE_COLOR_OFFSET + 2] * p3[2],
@@ -1274,19 +1282,19 @@ draw_tri(struct gfx_obj *obj, float const *p1,
     };
 
     // perspective-correct offset color
-    float p1_offs_col[4] = {
+    double p1_offs_col[4] = {
         p1[GFX_VERT_OFFS_COLOR_OFFSET] * p1[2],
         p1[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p1[2],
         p1[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p1[2],
         p1[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p1[2]
     };
-    float p2_offs_col[4] = {
+    double p2_offs_col[4] = {
         p2[GFX_VERT_OFFS_COLOR_OFFSET] * p2[2],
         p2[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p2[2],
         p2[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p2[2],
         p2[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p2[2]
     };
-    float p3_offs_col[4] = {
+    double p3_offs_col[4] = {
         p3[GFX_VERT_OFFS_COLOR_OFFSET] * p3[2],
         p3[GFX_VERT_OFFS_COLOR_OFFSET + 1] * p3[2],
         p3[GFX_VERT_OFFS_COLOR_OFFSET + 2] * p3[2],
@@ -1294,15 +1302,15 @@ draw_tri(struct gfx_obj *obj, float const *p1,
     };
 
     // perspective-correct texture coordinates
-    float p1_texcoord[2] = {
+    double p1_texcoord[2] = {
         p1[GFX_VERT_TEX_COORD_OFFSET] * p1[2],
         p1[GFX_VERT_TEX_COORD_OFFSET + 1] * p1[2]
     };
-    float p2_texcoord[2] = {
+    double p2_texcoord[2] = {
         p2[GFX_VERT_TEX_COORD_OFFSET] * p2[2],
         p2[GFX_VERT_TEX_COORD_OFFSET + 1] * p2[2]
     };
-    float p3_texcoord[2] = {
+    double p3_texcoord[2] = {
         p3[GFX_VERT_TEX_COORD_OFFSET] * p3[2],
         p3[GFX_VERT_TEX_COORD_OFFSET + 1] * p3[2]
     };
@@ -1336,17 +1344,17 @@ draw_tri(struct gfx_obj *obj, float const *p1,
      * this is basically a pseudo-attribute, we don't need it for anything
      * but it's a compoment in several other variables.
      */
-    float bary_area_xstep[3] = {
+    double bary_area_xstep[3] = {
         p2[1] - p3[1],
         p3[1] - p1[1],
         p1[1] - p2[1]
     };
-    float bary_area_ystep[3] = {
+    double bary_area_ystep[3] = {
         p3[0] - p2[0],
         p1[0] - p3[0],
         p2[0] - p1[0]
     };
-    float bary_area_init[3] = {
+    double bary_area_init[3] = {
         (bbox[0] - p2[0]) * bary_area_xstep[0] +
         (bbox[1] - p2[1]) * bary_area_ystep[0],
         (bbox[0] - p3[0]) * bary_area_xstep[1] +
@@ -1355,15 +1363,15 @@ draw_tri(struct gfx_obj *obj, float const *p1,
         (bbox[1] - p1[1]) * bary_area_ystep[2]
     };
 
-    float w_coord_xstep =
+    double w_coord_xstep =
         bary_area_xstep[0] * (p1[2] / area) +
         bary_area_xstep[1] * (p2[2] / area) +
         bary_area_xstep[2] * (p3[2] / area);
-    float w_coord_ystep =
+    double w_coord_ystep =
         bary_area_ystep[0] * (p1[2] / area) +
         bary_area_ystep[1] * (p2[2] / area) +
         bary_area_ystep[2] * (p3[2] / area);
-    float w_coord_init =
+    double w_coord_init =
         bary_area_init[0] * (p1[2] / area) +
         bary_area_init[1] * (p2[2] / area) +
         bary_area_init[2] * (p3[2] / area);
@@ -1570,7 +1578,7 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                 x_offs * dist_xstep[2] >= -dist_row_val[2]) {
 
                 // reciprocal depth * area
-                float w_coord_area =
+                double w_coord_area =
                     vert_attr_val(&w_coord_area_attr, y_offs, x_offs);
 
                 // reciprocal depth
@@ -1587,7 +1595,7 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                 if (rend_param.enable_depth_writes && !sort_mode_enable)
                     w_buffer[y_pos * screen_width + x_pos] = w_coord;
 
-                float base_col[4] = {
+                double base_col[4] = {
                     vert_attr_val(base_col_attr + 0, y_offs, x_offs),
                     vert_attr_val(base_col_attr + 1, y_offs, x_offs),
                     vert_attr_val(base_col_attr + 2, y_offs, x_offs),
@@ -1599,7 +1607,7 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                 base_col[2] /= w_coord_area;
                 base_col[3] /= w_coord_area;
 
-                float offs_col[4] = {
+                double offs_col[4] = {
                     vert_attr_val(offs_col_attr + 0, y_offs, x_offs),
                     vert_attr_val(offs_col_attr + 1, y_offs, x_offs),
                     vert_attr_val(offs_col_attr + 2, y_offs, x_offs),
@@ -1611,10 +1619,10 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                 offs_col[2] /= w_coord_area;
                 offs_col[3] /= w_coord_area;
 
-                float pix_color[4];
+                double pix_color[4];
 
                 if (texp) {
-                    float texcoord[2] = {
+                    double texcoord[2] = {
                         vert_attr_val(texcoord_attr + 0, y_offs, x_offs),
                         vert_attr_val(texcoord_attr + 1, y_offs, x_offs),
                     };
@@ -1660,11 +1668,11 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                         break;
                     case TEXT_INST_DECAL_ALPHA:
                         pix_color[0] = sample[0] * sample[3] +
-                            base_col[0] * (1.0f - sample[3]) + offs_col[0];
+                            base_col[0] * (1.0 - sample[3]) + offs_col[0];
                         pix_color[1] = sample[1] * sample[3] +
-                            base_col[1] * (1.0f - sample[3]) + offs_col[1];
+                            base_col[1] * (1.0 - sample[3]) + offs_col[1];
                         pix_color[2] = sample[2] * sample[3] +
-                            base_col[2] * (1.0f - sample[3]) + offs_col[2];
+                            base_col[2] * (1.0 - sample[3]) + offs_col[2];
                         pix_color[3] = base_col[3];
                         break;
                     case TEX_INST_MOD_ALPHA:
@@ -1676,10 +1684,10 @@ draw_tri(struct gfx_obj *obj, float const *p1,
                     default:
                         fprintf(stderr, "unknown texture inst %d\n",
                                 (int)rend_param.tex_inst);
-                        pix_color[0] = 1.0f;
-                        pix_color[1] = 1.0f;
-                        pix_color[2] = 1.0f;
-                        pix_color[3] = 1.0f;
+                        pix_color[0] = 1.0;
+                        pix_color[1] = 1.0;
+                        pix_color[2] = 1.0;
+                        pix_color[3] = 1.0;
                     }
                 } else {
                     memcpy(pix_color, base_col, sizeof(pix_color));
