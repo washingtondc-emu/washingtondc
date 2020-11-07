@@ -67,6 +67,9 @@ int maple_device_init(struct maple *maple, unsigned maple_addr,
     case MAPLE_DEVICE_KEYBOARD:
         dev->sw = &maple_keyboard_switch_table;
         break;
+    case MAPLE_DEVICE_PURUPURU:
+        dev->sw = &maple_purupuru_switch_table;
+        break;
     default:
         RAISE_ERROR(ERROR_INTEGRITY);
     }
@@ -93,8 +96,8 @@ void maple_device_info(struct maple_device *dev,
     if (dev->sw->dev_info) {
         dev->sw->dev_info(dev, devinfo);
     } else {
-        MAPLE_TRACE("no dev_info implementation for %s!?\n",
-                    dev->sw->device_type);
+        LOG_ERROR("no dev_info implementation for %s!?\n",
+                  dev->sw->device_type);
         memset(devinfo, 0, sizeof(*devinfo));
     }
 }
@@ -103,9 +106,26 @@ void maple_device_cond(struct maple_device *dev, struct maple_cond *cond) {
     if (dev->sw->dev_get_cond) {
         dev->sw->dev_get_cond(dev, cond);
     } else {
-        MAPLE_TRACE("no get_cond implementation for %s!?\n",
-                    dev->sw->device_type);
+        LOG_ERROR("no get_cond implementation for %s!?\n",
+                  dev->sw->device_type);
         memset(cond, 0, sizeof(*cond));
+    }
+}
+
+void maple_device_bwrite(struct maple_device *dev, struct maple_bwrite *bwrite) {
+    if (dev->sw->dev_bwrite) {
+        dev->sw->dev_bwrite(dev, bwrite);
+    } else {
+        LOG_ERROR("no bwrite implementation for %s!?\n", dev->sw->device_type);
+    }
+}
+
+void maple_device_setcond(struct maple_device *dev, struct maple_setcond *cond) {
+    if (dev->sw->dev_set_cond) {
+        dev->sw->dev_set_cond(dev, cond);
+    } else {
+        LOG_ERROR("no set_cond implementation for %s!?\n",
+                  dev->sw->device_type);
     }
 }
 

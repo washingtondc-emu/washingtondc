@@ -95,9 +95,15 @@ static void maple_dma_complete(struct maple *ctxt);
 
 static void maple_handle_devinfo(struct maple *ctxt, struct maple_frame *frame);
 static void maple_handle_getcond(struct maple *ctxt, struct maple_frame *frame);
+static void maple_handle_bwrite(struct maple *ctxt, struct maple_frame *frame);
+static void maple_handle_setcond(struct maple *ctxt, struct maple_frame *frame);
 
 static void maple_decode_frame(struct maple_frame *frame_out,
                                uint32_t const dat[3]);
+
+static void
+maple_write_frame_resp(struct maple *ctxt,
+                       struct maple_frame *frame, unsigned resp_code);
 
 static DEF_ERROR_INT_ATTR(maple_command);
 
@@ -133,7 +139,13 @@ static void maple_handle_frame(struct maple *ctxt, struct maple_frame *frame) {
     case MAPLE_CMD_GETCOND:
         maple_handle_getcond(ctxt, frame);
         break;
-    /* case MAPLE_CMD_NOP: */
+    case MAPLE_CMD_BWRITE:
+        maple_handle_bwrite(ctxt, frame);
+        break;
+    case MAPLE_CMD_SETCOND:
+        maple_handle_setcond(ctxt, frame);
+        break;
+        /* case MAPLE_CMD_NOP: */
     /*     frame->output_len = 0; */
     /*     maple_write_frame_resp(frame, MAPLE_RESP_NONE); */
     /*     break; */
@@ -155,13 +167,14 @@ maple_handle_devinfo(struct maple *ctxt, struct maple_frame *frame) {
     if (dev->enable) {
         struct maple_devinfo devinfo;
         maple_device_info(dev, &devinfo);
+
         maple_compile_devinfo(&devinfo, frame->output_data);
         frame->output_len = MAPLE_DEVINFO_SIZE;
-        maple_write_frame_resp(frame, MAPLE_RESP_DEVINFO);
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DEVINFO);
     } else {
         // this port/unit combo is not plugged in
         frame->output_len = 0;
-        maple_write_frame_resp(frame, MAPLE_RESP_NONE);
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_NONE);
     }
 
     maple_dma_complete(ctxt);
@@ -186,7 +199,7 @@ maple_handle_getcond(struct maple *ctxt, struct maple_frame *frame) {
             frame->output_len = MAPLE_KEYBOARD_COND_SIZE;
             break;
         }
-        maple_write_frame_resp(frame, MAPLE_RESP_DATATRF);
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
     } else {
         error_set_feature("proper response for when the guest tries to send "
                           "the GETCOND command to an empty maple port");
@@ -196,11 +209,114 @@ maple_handle_getcond(struct maple *ctxt, struct maple_frame *frame) {
     maple_dma_complete(ctxt);
 }
 
-void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code) {
+/*
+ * Write data to a maple device
+ *
+ * PuruPuru uses this, VMU apparently does too
+ *
+ * First DWORD should be the function of the device that receives the command
+ * (like PuruPuru, LCD, memory, etc).
+ *
+ * Other data appears to be specific to each function, although the second
+ * DWORD is always 0?
+ */
+static void maple_handle_bwrite(struct maple *ctxt, struct maple_frame *frame) {
+    MAPLE_TRACE("BWRITE maplebus frame received\n");
+
+    struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
+
+    if (dev->enable) {
+        struct maple_bwrite bwrite;
+
+        bwrite.n_dwords = frame->input_len / sizeof(uint32_t);
+        size_t n_bytes = sizeof(uint32_t) * bwrite.n_dwords;
+        if (n_bytes > MAPLE_FRAME_INPUT_DATA_LEN) {
+            /*
+             * too much data, don't want to over-read the buffer in struct
+             * maple_frame!
+             */
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        bwrite.dat = malloc(n_bytes);
+        if (!bwrite.dat)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        memcpy(bwrite.dat, frame->input_data, n_bytes);
+
+        maple_device_bwrite(dev, &bwrite);
+
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
+
+        free(bwrite.dat);
+    } else {
+        error_set_feature("proper response for when the guest tries to send "
+                          "the BWRITE command to an empty maple port");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    maple_dma_complete(ctxt);
+}
+
+/*
+ * AFAIK VMU uses this to beep and PuruPuru uses this to vibrate.
+ *
+ * TBH i feel like this and bwrite are redundandt but that's the way things are.
+ */
+static void
+maple_handle_setcond(struct maple *ctxt, struct maple_frame *frame) {
+    MAPLE_TRACE("SETCOND maplebus frame received\n");
+
+    struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
+
+    if (dev->enable) {
+        struct maple_setcond setcond;
+
+        setcond.n_dwords = frame->input_len / sizeof(uint32_t);
+        size_t n_bytes = sizeof(uint32_t) * setcond.n_dwords;
+        if (n_bytes > MAPLE_FRAME_INPUT_DATA_LEN) {
+            /*
+             * too much data, don't want to over-read the buffer in struct
+             * maple_frame!
+             */
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        setcond.dat = malloc(n_bytes);
+        if (!setcond.dat)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        memcpy(setcond.dat, frame->input_data, n_bytes);
+
+        maple_device_setcond(dev, &setcond);
+
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
+
+        free(setcond.dat);
+    } else {
+        error_set_feature("proper response for when the guest tries to send "
+                          "the BWRITE command to an empty maple port");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    maple_dma_complete(ctxt);
+}
+
+static void maple_write_frame_resp(struct maple *ctxt,
+                            struct maple_frame *frame, unsigned resp_code) {
+    unsigned subdevs = 0;
+    unsigned port, unit;
+    maple_addr_unpack(frame->maple_addr, &port, &unit);
+    if (unit == 0) {
+        if (ctxt->devs[port][1].enable)
+            subdevs |= 1;
+        if (ctxt->devs[port][2].enable)
+            subdevs |= 2;
+    }
+
     unsigned len = frame->output_len / 4;
     uint32_t pkt_hdr = ((resp_code << MAPLE_CMD_SHIFT) & MAPLE_CMD_MASK) |
         ((frame->maple_addr << MAPLE_ADDR_SHIFT) & MAPLE_ADDR_MASK) |
-        ((len << MAPLE_PACK_LEN_SHIFT) & MAPLE_PACK_LEN_MASK);
+        ((len << MAPLE_PACK_LEN_SHIFT) & MAPLE_PACK_LEN_MASK) |
+        (subdevs << MAPLE_PORT_SHIFT);
 
     sh4_dmac_transfer_to_mem(dreamcast_get_cpu(), frame->recv_addr,
                              sizeof(pkt_hdr), 1, &pkt_hdr);

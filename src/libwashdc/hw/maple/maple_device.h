@@ -39,12 +39,14 @@
 
 #include "maple_controller.h"
 #include "maple_keyboard.h"
+#include "maple_purupuru.h"
 
 struct maple_device;
 struct maple;
 
 #define MAPLE_FUNC_CONTROLLER 0x01000000
 #define MAPLE_FUNC_KEYBOARD   0x40000000
+#define MAPLE_FUNC_PURUPURU   0x00010000
 
 #define MAPLE_DEV_NAME_LEN 30
 #define MAPLE_DEV_LICENSE_LEN 60
@@ -115,6 +117,16 @@ enum MAPLE_COND_TYPE {
     MAPLE_COND_TYPE_KEYBOARD
 };
 
+struct maple_bwrite {
+    unsigned n_dwords;
+    uint32_t *dat;
+};
+
+struct maple_setcond {
+    unsigned n_dwords;
+    uint32_t *dat;
+};
+
 // controller state (response to MAPLE_CMD_GETCOND)
 struct maple_cond {
     enum MAPLE_COND_TYPE tp;
@@ -138,16 +150,22 @@ struct maple_switch_table {
     void (*dev_info)(struct maple_device*, struct maple_devinfo*);
 
     void (*dev_get_cond)(struct maple_device*, struct maple_cond*);
+
+    void (*dev_bwrite)(struct maple_device*, struct maple_bwrite*);
+
+    void (*dev_set_cond)(struct maple_device*, struct maple_setcond*);
 };
 
 enum maple_device_type {
     MAPLE_DEVICE_CONTROLLER,
-    MAPLE_DEVICE_KEYBOARD
+    MAPLE_DEVICE_KEYBOARD,
+    MAPLE_DEVICE_PURUPURU
 };
 
 union maple_device_ctxt {
     struct maple_controller cont;
     struct maple_keyboard kbd;
+    struct maple_purupuru purupuru;
 };
 
 struct maple_device {
@@ -170,6 +188,10 @@ void maple_device_cleanup(struct maple *maple, unsigned addr);
 void maple_device_info(struct maple_device *dev, struct maple_devinfo *devinfo);
 
 void maple_device_cond(struct maple_device *dev, struct maple_cond *cond);
+
+void maple_device_bwrite(struct maple_device *dev, struct maple_bwrite *bwrite);
+
+void maple_device_setcond(struct maple_device *dev, struct maple_setcond *cond);
 
 extern struct maple_switch_table maple_controller_switch_table;
 

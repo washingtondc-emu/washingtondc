@@ -57,7 +57,9 @@ enum maple_cmd {
     MAPLE_CMD_FUCK = 0,
     MAPLE_CMD_DEVINFO = 1,
     MAPLE_CMD_NOP = 7,
-    MAPLE_CMD_GETCOND = 9
+    MAPLE_CMD_GETCOND = 9,
+    MAPLE_CMD_BWRITE = 12,
+    MAPLE_CMD_SETCOND = 14
 };
 
 #define MAPLE_FRAME_OUTPUT_DATA_LEN 1024
@@ -108,8 +110,6 @@ struct maple {
     uint8_t reg_backing[N_MAPLE_REGS];
     uint32_t reg_msys;
 };
-
-void maple_write_frame_resp(struct maple_frame *frame, unsigned resp_code);
 
 #define MAPLE_TRACE(msg, ...) LOG_DBG("MAPLE: "msg, ##__VA_ARGS__)
 

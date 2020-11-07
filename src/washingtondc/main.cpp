@@ -347,9 +347,17 @@ int main(int argc, char **argv) {
 
     // configure controllers
     settings.controllers[0][0] = cfg_get_node("wash.dc.port.0.0");
+    settings.controllers[0][1] = cfg_get_node("wash.dc.port.0.1");
+    settings.controllers[0][2] = cfg_get_node("wash.dc.port.0.2");
     settings.controllers[1][0] = cfg_get_node("wash.dc.port.1.0");
+    settings.controllers[1][1] = cfg_get_node("wash.dc.port.1.1");
+    settings.controllers[1][2] = cfg_get_node("wash.dc.port.1.2");
     settings.controllers[2][0] = cfg_get_node("wash.dc.port.2.0");
+    settings.controllers[2][1] = cfg_get_node("wash.dc.port.2.1");
+    settings.controllers[2][2] = cfg_get_node("wash.dc.port.2.2");
     settings.controllers[3][0] = cfg_get_node("wash.dc.port.3.0");
+    settings.controllers[3][1] = cfg_get_node("wash.dc.port.3.1");
+    settings.controllers[3][2] = cfg_get_node("wash.dc.port.3.2");
 
     cfg_get_bool("wash.dbg.dump_mem_on_error", &settings.dump_mem_on_error);
 

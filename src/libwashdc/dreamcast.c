@@ -650,14 +650,32 @@ dreamcast_init(char const *gdi_path,
     maple_init(&maple, &sh4_clock);
 
     unsigned port;
-    for (port = 0; port < 4; port++)
-        if (strcmp(controllers[port][0], "dreamcast_controller") == 0) {
-            maple_device_init(&maple, maple_addr_pack(port, 0),
-                              MAPLE_DEVICE_CONTROLLER);
-        } else if (strcmp(controllers[port][0], "dreamcast_keyboard_us") == 0) {
-            maple_device_init(&maple, maple_addr_pack(port, 0),
-                              MAPLE_DEVICE_KEYBOARD);
+    for (port = 0; port < 4; port++) {
+        char const *unit0 = controllers[port][0];
+        if (unit0) {
+            if (strcmp(unit0, "dreamcast_controller") == 0) {
+                maple_device_init(&maple, maple_addr_pack(port, 0),
+                                  MAPLE_DEVICE_CONTROLLER);
+            } else if (strcmp(unit0, "dreamcast_keyboard_us") == 0) {
+                maple_device_init(&maple, maple_addr_pack(port, 0),
+                                  MAPLE_DEVICE_KEYBOARD);
+            }
         }
+
+        /*
+         * it is theoretically possible to have a VMU, PuruPuru, etc plugged
+         * into unit 0, but there is no way to do that without hacking up your
+         * own custom hardware so it's not allowed in this emulator.
+         */
+        unsigned unit;
+        for (unit = 1; unit <= 2; unit++) {
+            if (controllers[port][unit] &&
+                strcmp(controllers[port][unit], "purupuru") == 0) {
+                maple_device_init(&maple, maple_addr_pack(port, unit),
+                                  MAPLE_DEVICE_PURUPURU);
+            }
+        }
+    }
 
     // hook up the irl line
     sh4_register_irl_line(&cpu, holly_intc_irl_line_fn, NULL);
