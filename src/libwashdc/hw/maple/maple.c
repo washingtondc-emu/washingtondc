@@ -245,6 +245,7 @@ static void maple_handle_bwrite(struct maple *ctxt, struct maple_frame *frame) {
 
         maple_device_bwrite(dev, &bwrite);
 
+        frame->output_len = 0;
         maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
 
         free(bwrite.dat);
@@ -288,6 +289,7 @@ maple_handle_setcond(struct maple *ctxt, struct maple_frame *frame) {
 
         maple_device_setcond(dev, &setcond);
 
+        frame->output_len = 0;
         maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
 
         free(setcond.dat);
