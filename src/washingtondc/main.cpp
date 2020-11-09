@@ -188,6 +188,54 @@ static void wizard(path_string console_name, path_string dc_bios_path,
         ;
 }
 
+static struct washdc_controller_dev parse_controller(char const *dev) {
+    char const *first_space = strpbrk(dev, " \t\n");
+    size_t n_chars;
+    if (first_space)
+        n_chars = first_space - dev;
+    else
+        n_chars = strlen(dev);
+
+    struct washdc_controller_dev ret;
+
+    if (strncmp(dev, "vmu", n_chars) == 0) {
+        ret.tp = WASHDC_CONTROLLER_TP_VMU;
+
+        memset(ret.image_path, 0, sizeof(ret.image_path));
+        if (first_space && *first_space) {
+            while (isspace(*first_space))
+                first_space++;
+
+            if (strncmp(first_space, "file=", 5) == 0) {
+                path_string path(path_append(vmu_dir(), first_space + 5));
+
+                strncpy(ret.image_path, path.c_str(),
+                        sizeof(ret.image_path));
+                ret.image_path[sizeof(ret.image_path) - 1] = '\0';
+            }
+        }
+    } else if (strncmp(dev, "purupuru", n_chars) == 0)
+        ret.tp = WASHDC_CONTROLLER_TP_PURUPURU;
+    else if (strncmp(dev, "dreamcast_controller", n_chars) == 0)
+        ret.tp = WASHDC_CONTROLLER_TP_CONTROLLER;
+    else if (strncmp(dev, "dreamcast_keyboard_us", n_chars) == 0)
+        ret.tp = WASHDC_CONTROLLER_TP_KEYBOARD_US;
+    else
+        ret.tp = WASHDC_CONTROLLER_TP_INVALID;
+
+    return ret;
+}
+
+static struct washdc_controller_dev get_cfg_controller(char const *node) {
+    char const *val = cfg_get_node(node);
+    if (val) {
+        return parse_controller(val);
+    } else {
+        struct washdc_controller_dev ret = { WASHDC_CONTROLLER_TP_INVALID };
+        return ret;
+    }
+}
+
 // for washdc_getopt
 char* washdc_optarg;
 int washdc_optind = 1, washdc_opterr, washdc_optopt;
@@ -215,6 +263,7 @@ int main(int argc, char **argv) {
     create_cfg_dir();
     create_data_dir();
     create_screenshot_dir();
+    create_vmu_dir();
 
     while ((opt = washdc_getopt(argc, argv, "w:b:f:c:s:m:d:u:g:r:htjxpnlv")) != -1) {
         switch (opt) {
@@ -346,18 +395,18 @@ int main(int argc, char **argv) {
     fclose(cfg_file);
 
     // configure controllers
-    settings.controllers[0][0] = cfg_get_node("wash.dc.port.0.0");
-    settings.controllers[0][1] = cfg_get_node("wash.dc.port.0.1");
-    settings.controllers[0][2] = cfg_get_node("wash.dc.port.0.2");
-    settings.controllers[1][0] = cfg_get_node("wash.dc.port.1.0");
-    settings.controllers[1][1] = cfg_get_node("wash.dc.port.1.1");
-    settings.controllers[1][2] = cfg_get_node("wash.dc.port.1.2");
-    settings.controllers[2][0] = cfg_get_node("wash.dc.port.2.0");
-    settings.controllers[2][1] = cfg_get_node("wash.dc.port.2.1");
-    settings.controllers[2][2] = cfg_get_node("wash.dc.port.2.2");
-    settings.controllers[3][0] = cfg_get_node("wash.dc.port.3.0");
-    settings.controllers[3][1] = cfg_get_node("wash.dc.port.3.1");
-    settings.controllers[3][2] = cfg_get_node("wash.dc.port.3.2");
+    settings.controllers[0][0] = get_cfg_controller("wash.dc.port.0.0");
+    settings.controllers[0][1] = get_cfg_controller("wash.dc.port.0.1");
+    settings.controllers[0][2] = get_cfg_controller("wash.dc.port.0.2");
+    settings.controllers[1][0] = get_cfg_controller("wash.dc.port.1.0");
+    settings.controllers[1][1] = get_cfg_controller("wash.dc.port.1.1");
+    settings.controllers[1][2] = get_cfg_controller("wash.dc.port.1.2");
+    settings.controllers[2][0] = get_cfg_controller("wash.dc.port.2.0");
+    settings.controllers[2][1] = get_cfg_controller("wash.dc.port.2.1");
+    settings.controllers[2][2] = get_cfg_controller("wash.dc.port.2.2");
+    settings.controllers[3][0] = get_cfg_controller("wash.dc.port.3.0");
+    settings.controllers[3][1] = get_cfg_controller("wash.dc.port.3.1");
+    settings.controllers[3][2] = get_cfg_controller("wash.dc.port.3.2");
 
     cfg_get_bool("wash.dbg.dump_mem_on_error", &settings.dump_mem_on_error);
 

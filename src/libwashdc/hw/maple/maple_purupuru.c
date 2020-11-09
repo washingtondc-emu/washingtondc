@@ -45,7 +45,7 @@
  * homebrew community calls it.  That's probably what it's called in Japanese.
  */
 
-static int purupuru_dev_init(struct maple_device *dev);
+int maple_purupuru_init(struct maple_device *dev);
 static void purupuru_dev_cleanup(struct maple_device *dev);
 static void purupuru_dev_info(struct maple_device *dev,
                               struct maple_devinfo *output);
@@ -71,7 +71,6 @@ purupuru_dev_bwrite(struct maple_device *dev, struct maple_bwrite *bwrite);
 
 struct maple_switch_table maple_purupuru_switch_table = {
     .device_type = "purupuru",
-    .dev_init = purupuru_dev_init,
     .dev_cleanup = purupuru_dev_cleanup,
     .dev_info = purupuru_dev_info,
     .dev_get_cond = purupuru_dev_get_cond,
@@ -79,7 +78,7 @@ struct maple_switch_table maple_purupuru_switch_table = {
     .dev_set_cond = purupuru_dev_set_cond
 };
 
-static int purupuru_dev_init(struct maple_device *dev) {
+int maple_purupuru_init(struct maple_device *dev) {
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_PURUPURU)))
         RAISE_ERROR(ERROR_INTEGRITY);
 

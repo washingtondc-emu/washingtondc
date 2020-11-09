@@ -155,8 +155,17 @@ static path_string screenshot_dir(void) {
     return path_append(data_dir(), "screenshots");
 }
 
+static path_string vmu_dir(void) {
+    return path_append(data_dir(), "vmu");
+}
+
 static void create_data_dir(void) {
     create_directory(data_dir());
+}
+
+static void create_vmu_dir(void) {
+    create_data_dir();
+    create_directory(vmu_dir());
 }
 
 static void create_screenshot_dir(void) {

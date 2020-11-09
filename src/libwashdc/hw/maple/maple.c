@@ -96,7 +96,10 @@ static void maple_dma_complete(struct maple *ctxt);
 static void maple_handle_devinfo(struct maple *ctxt, struct maple_frame *frame);
 static void maple_handle_getcond(struct maple *ctxt, struct maple_frame *frame);
 static void maple_handle_bwrite(struct maple *ctxt, struct maple_frame *frame);
+static void maple_handle_bread(struct maple *ctxt, struct maple_frame *frame);
 static void maple_handle_setcond(struct maple *ctxt, struct maple_frame *frame);
+static void maple_handle_meminfo(struct maple *ctxt, struct maple_frame *frame);
+static void maple_handle_bsync(struct maple *ctxt, struct maple_frame *frame);
 
 static void maple_decode_frame(struct maple_frame *frame_out,
                                uint32_t const dat[3]);
@@ -108,13 +111,16 @@ maple_write_frame_resp(struct maple *ctxt,
 static DEF_ERROR_INT_ATTR(maple_command);
 
 static void maple_handle_frame(struct maple *ctxt, struct maple_frame *frame) {
+    unsigned unit, port;
+    maple_addr_unpack(frame->maple_addr, &port, &unit);
+
     MAPLE_TRACE("frame received!\n");
     MAPLE_TRACE("\tlength: %u\n", frame->input_len);
     MAPLE_TRACE("\tport: %u\n", frame->port);
     MAPLE_TRACE("\tpattern: %u\n", frame->ptrn);
     MAPLE_TRACE("\treceive address: 0x%08x\n", (unsigned)frame->recv_addr);
     MAPLE_TRACE("\tcommand: %02x\n", (unsigned)frame->cmd);
-    MAPLE_TRACE("\tmaple address: %02x\n", frame->maple_addr);
+    MAPLE_TRACE("\tmaple address: %02x (%u.%u)\n", frame->maple_addr, port, unit);
     MAPLE_TRACE("\tpacket length: %u\n", frame->pack_len);
 
     if (frame->last_frame)
@@ -139,11 +145,20 @@ static void maple_handle_frame(struct maple *ctxt, struct maple_frame *frame) {
     case MAPLE_CMD_GETCOND:
         maple_handle_getcond(ctxt, frame);
         break;
+    case MAPLE_CMD_BREAD:
+        maple_handle_bread(ctxt, frame);
+        break;
     case MAPLE_CMD_BWRITE:
         maple_handle_bwrite(ctxt, frame);
         break;
     case MAPLE_CMD_SETCOND:
         maple_handle_setcond(ctxt, frame);
+        break;
+    case MAPLE_CMD_MEMINFO:
+        maple_handle_meminfo(ctxt, frame);
+        break;
+    case MAPLE_CMD_BSYNC:
+        maple_handle_bsync(ctxt, frame);
         break;
         /* case MAPLE_CMD_NOP: */
     /*     frame->output_len = 0; */
@@ -210,6 +225,60 @@ maple_handle_getcond(struct maple *ctxt, struct maple_frame *frame) {
 }
 
 /*
+ * read data from a maple device
+ *
+ * VMU uses this
+ */
+static void maple_handle_bread(struct maple *ctxt, struct maple_frame *frame) {
+    MAPLE_TRACE("BREAD maplebus frame received\n");
+
+    struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
+
+    if (dev->enable) {
+        struct maple_bread bread;
+
+        bread.n_dwords_in = frame->input_len / sizeof(uint32_t);
+        size_t n_bytes = sizeof(uint32_t) * bread.n_dwords_in;
+        if (n_bytes > MAPLE_FRAME_INPUT_DATA_LEN) {
+            /*
+             * too much data, don't want to over-read the buffer in struct
+             * maple_frame!
+             */
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        bread.dat_in = malloc(n_bytes);
+        if (!bread.dat_in)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        memcpy(bread.dat_in, frame->input_data, n_bytes);
+
+        maple_device_bread(dev, &bread);
+
+        if (bread.n_dwords_out > MAPLE_BLOCK_N_DWORDS) {
+            RAISE_ERROR(ERROR_INTEGRITY);
+        }
+
+        size_t n_bytes_out = (bread.n_dwords_out + 2) * sizeof(uint32_t);
+        frame->output_len = n_bytes_out;
+        memcpy(frame->output_data, &bread.func_out, sizeof(uint32_t));
+        memcpy(frame->output_data + sizeof(uint32_t),
+               &bread.block_out, sizeof(uint32_t));
+        memcpy(frame->output_data + 2 * sizeof(uint32_t), bread.dat_out,
+               n_bytes_out - 2 * sizeof(uint32_t));
+
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
+
+        free(bread.dat_in);
+    } else {
+        error_set_feature("proper response for when the guest tries to send "
+                          "the BREAD command to an empty maple port");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    maple_dma_complete(ctxt);
+}
+
+/*
  * Write data to a maple device
  *
  * PuruPuru uses this, VMU apparently does too
@@ -246,7 +315,7 @@ static void maple_handle_bwrite(struct maple *ctxt, struct maple_frame *frame) {
         maple_device_bwrite(dev, &bwrite);
 
         frame->output_len = 0;
-        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_OK);
 
         free(bwrite.dat);
     } else {
@@ -300,6 +369,79 @@ maple_handle_setcond(struct maple *ctxt, struct maple_frame *frame) {
     }
 
     maple_dma_complete(ctxt);
+}
+
+static void maple_handle_meminfo(struct maple *ctxt, struct maple_frame *frame) {
+    MAPLE_TRACE("MEMINFO maplebus frame received\n");
+
+    struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
+
+    if (dev->enable) {
+        struct maple_meminfo meminfo;
+
+        maple_device_meminfo(dev, &meminfo);
+
+        uint16_t rawdat[12] = {
+            meminfo.blkmax,
+            meminfo.blkmin,
+            meminfo.infpos,
+            meminfo.fatpos,
+            meminfo.fatsz,
+            meminfo.dirpos,
+            meminfo.dirsz,
+            meminfo.icon,
+            meminfo.datasz,
+            0,
+            0,
+            0
+        };
+
+        frame->output_len = sizeof(rawdat) + sizeof(uint32_t);
+        uint32_t func = meminfo.func;
+        memcpy(frame->output_data, &func, sizeof(func));
+        memcpy(frame->output_data + sizeof(uint32_t)/sizeof(uint8_t), rawdat, sizeof(rawdat));
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_DATATRF);
+    } else {
+        error_set_feature("proper response for when the guest tries to send "
+                          "the MEMINFO command to an empty maple port");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+}
+
+static void maple_handle_bsync(struct maple *ctxt, struct maple_frame *frame) {
+    MAPLE_TRACE("BSYNC maplebus frame received\n");
+
+    struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
+
+    if (dev->enable) {
+        struct maple_bsync bsync;
+
+        bsync.n_dwords = frame->input_len / sizeof(uint32_t);
+        size_t n_bytes = sizeof(uint32_t) * bsync.n_dwords;
+        if (n_bytes > MAPLE_FRAME_INPUT_DATA_LEN) {
+            /*
+             * too much data, don't want to over-read the buffer in struct
+             * maple_frame!
+             */
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+
+        bsync.dat = malloc(n_bytes);
+        if (!bsync.dat)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+        memcpy(bsync.dat, frame->input_data, n_bytes);
+
+        maple_device_bsync(dev, &bsync);
+
+        frame->output_len = 0;
+        maple_write_frame_resp(ctxt, frame, MAPLE_RESP_OK);
+
+        free(bsync.dat);
+    } else {
+        error_set_feature("proper response for when the guest tries to send "
+                          "the MEMINFO command to an empty maple port");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 static void maple_write_frame_resp(struct maple *ctxt,

@@ -508,7 +508,7 @@ dreamcast_init(char const *gdi_path,
                struct serial_server_intf const *ser_intf,
                struct washdc_sound_intf const *snd_intf,
                bool flash_mem_writeable,
-               char const *controllers[4][3]) {
+               struct washdc_controller_dev const controllers[4][3]) {
 
     frame_count = 0;
 
@@ -651,15 +651,11 @@ dreamcast_init(char const *gdi_path,
 
     unsigned port;
     for (port = 0; port < 4; port++) {
-        char const *unit0 = controllers[port][0];
-        if (unit0) {
-            if (strcmp(unit0, "dreamcast_controller") == 0) {
-                maple_device_init(&maple, maple_addr_pack(port, 0),
-                                  MAPLE_DEVICE_CONTROLLER);
-            } else if (strcmp(unit0, "dreamcast_keyboard_us") == 0) {
-                maple_device_init(&maple, maple_addr_pack(port, 0),
-                                  MAPLE_DEVICE_KEYBOARD);
-            }
+        struct washdc_controller_dev unit0 = controllers[port][0];
+        if (unit0.tp == WASHDC_CONTROLLER_TP_CONTROLLER) {
+            maple_device_init_controller(&maple, maple_addr_pack(port, 0));
+        } else if (unit0.tp == WASHDC_CONTROLLER_TP_KEYBOARD_US) {
+            maple_device_init_keyboard_us(&maple, maple_addr_pack(port, 0));
         }
 
         /*
@@ -669,10 +665,11 @@ dreamcast_init(char const *gdi_path,
          */
         unsigned unit;
         for (unit = 1; unit <= 2; unit++) {
-            if (controllers[port][unit] &&
-                strcmp(controllers[port][unit], "purupuru") == 0) {
-                maple_device_init(&maple, maple_addr_pack(port, unit),
-                                  MAPLE_DEVICE_PURUPURU);
+            if (controllers[port][unit].tp == WASHDC_CONTROLLER_TP_PURUPURU) {
+                maple_device_init_purupuru(&maple, maple_addr_pack(port, unit));
+            } else if (controllers[port][unit].tp == WASHDC_CONTROLLER_TP_VMU) {
+                maple_device_init_vmu(&maple, maple_addr_pack(port, unit),
+                                      controllers[port][unit].image_path);
             }
         }
     }

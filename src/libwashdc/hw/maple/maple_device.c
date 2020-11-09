@@ -51,8 +51,7 @@ struct maple_device *maple_device_get(struct maple *maple, unsigned addr) {
     return &maple->devs[port][unit];
 }
 
-int maple_device_init(struct maple *maple, unsigned maple_addr,
-                      enum maple_device_type tp) {
+int maple_device_init_controller(struct maple *maple, unsigned maple_addr) {
     unsigned port, unit;
     maple_addr_unpack(maple_addr, &port, &unit);
     struct maple_device *dev = &maple->devs[port][unit];
@@ -60,25 +59,57 @@ int maple_device_init(struct maple *maple, unsigned maple_addr,
     if (dev->enable)
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    switch (tp) {
-    case MAPLE_DEVICE_CONTROLLER:
-        dev->sw = &maple_controller_switch_table;
-        break;
-    case MAPLE_DEVICE_KEYBOARD:
-        dev->sw = &maple_keyboard_switch_table;
-        break;
-    case MAPLE_DEVICE_PURUPURU:
-        dev->sw = &maple_purupuru_switch_table;
-        break;
-    default:
-        RAISE_ERROR(ERROR_INTEGRITY);
-    }
+    dev->sw = &maple_controller_switch_table;
 
     dev->enable = true;
-    dev->tp = tp;
-    if (dev->sw->dev_init)
-        return dev->sw->dev_init(dev);
-    return 0;
+    dev->tp = MAPLE_DEVICE_CONTROLLER;
+    return maple_controller_init(dev);
+}
+
+int maple_device_init_keyboard_us(struct maple *maple, unsigned maple_addr) {
+    unsigned port, unit;
+    maple_addr_unpack(maple_addr, &port, &unit);
+    struct maple_device *dev = &maple->devs[port][unit];
+
+    if (dev->enable)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    dev->sw = &maple_keyboard_switch_table;
+
+    dev->enable = true;
+    dev->tp = MAPLE_DEVICE_KEYBOARD;
+    return maple_keyboard_init(dev);
+}
+
+int maple_device_init_purupuru(struct maple *maple, unsigned maple_addr) {
+    unsigned port, unit;
+    maple_addr_unpack(maple_addr, &port, &unit);
+    struct maple_device *dev = &maple->devs[port][unit];
+
+    if (dev->enable)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    dev->sw = &maple_purupuru_switch_table;
+
+    dev->enable = true;
+    dev->tp = MAPLE_DEVICE_PURUPURU;
+    return maple_purupuru_init(dev);
+}
+
+int maple_device_init_vmu(struct maple *maple, unsigned maple_addr,
+                          char const *image_path) {
+    unsigned port, unit;
+    maple_addr_unpack(maple_addr, &port, &unit);
+    struct maple_device *dev = &maple->devs[port][unit];
+
+    if (dev->enable)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    dev->sw = &maple_vmu_switch_table;
+
+    dev->enable = true;
+    dev->tp = MAPLE_DEVICE_VMU;
+    return maple_vmu_init(dev, image_path);
 }
 
 void maple_device_cleanup(struct maple *maple, unsigned addr) {
@@ -112,6 +143,14 @@ void maple_device_cond(struct maple_device *dev, struct maple_cond *cond) {
     }
 }
 
+void maple_device_bread(struct maple_device *dev, struct maple_bread *bread) {
+    if (dev->sw->dev_bread) {
+        dev->sw->dev_bread(dev, bread);
+    } else {
+        LOG_ERROR("no bread implementation for %s!?\n", dev->sw->device_type);
+    }
+}
+
 void maple_device_bwrite(struct maple_device *dev, struct maple_bwrite *bwrite) {
     if (dev->sw->dev_bwrite) {
         dev->sw->dev_bwrite(dev, bwrite);
@@ -120,11 +159,28 @@ void maple_device_bwrite(struct maple_device *dev, struct maple_bwrite *bwrite) 
     }
 }
 
+void maple_device_bsync(struct maple_device *dev, struct maple_bsync *bsync) {
+    if (dev->sw->dev_bsync) {
+        dev->sw->dev_bsync(dev, bsync);
+    } else {
+        LOG_ERROR("no bsync implementation for %s!?\n", dev->sw->device_type);
+    }
+}
+
 void maple_device_setcond(struct maple_device *dev, struct maple_setcond *cond) {
     if (dev->sw->dev_set_cond) {
         dev->sw->dev_set_cond(dev, cond);
     } else {
         LOG_ERROR("no set_cond implementation for %s!?\n",
+                  dev->sw->device_type);
+    }
+}
+
+void maple_device_meminfo(struct maple_device *dev, struct maple_meminfo *meminfo) {
+    if (dev->sw->dev_meminfo) {
+        dev->sw->dev_meminfo(dev, meminfo);
+    } else {
+        LOG_ERROR("no meminfo implementation for %s!?\n",
                   dev->sw->device_type);
     }
 }

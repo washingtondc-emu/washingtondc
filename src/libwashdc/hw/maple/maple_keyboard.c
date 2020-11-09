@@ -44,7 +44,6 @@
 #define MAPLE_KEYBOARD_LICENSE                                      \
     "Produced By or Under License From SEGA ENTERPRISES,LTD.     "
 
-static int keyboard_dev_init(struct maple_device *dev);
 static void keyboard_dev_cleanup(struct maple_device *dev);
 static void keyboard_dev_info(struct maple_device *dev,
                               struct maple_devinfo *output);
@@ -53,13 +52,12 @@ static void keyboard_dev_get_cond(struct maple_device *dev,
 
 struct maple_switch_table maple_keyboard_switch_table = {
     .device_type = "keyboard",
-    .dev_init = keyboard_dev_init,
     .dev_cleanup = keyboard_dev_cleanup,
     .dev_info = keyboard_dev_info,
     .dev_get_cond = keyboard_dev_get_cond
 };
 
-static int keyboard_dev_init(struct maple_device *dev) {
+int maple_keyboard_init(struct maple_device *dev) {
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_KEYBOARD)))
         RAISE_ERROR(ERROR_INTEGRITY);
 

@@ -57,7 +57,6 @@ enum cfg_parse_state {
     CFG_PARSE_KEY,
     CFG_PARSE_PRE_VAL,
     CFG_PARSE_VAL,
-    CFG_PARSE_POST_VAL,
     CFG_PARSE_ERROR
 };
 
@@ -137,6 +136,14 @@ void cfg_create_default_config(FILE *cfg_file) {
         "wash.dc.port.1.0 dreamcast_controller\n"
         "wash.dc.port.2.0 dreamcast_controller\n"
         "wash.dc.port.3.0 dreamcast_controller\n"
+        "\n"
+        "; VMUs.  file is the name of the image.  These are located in\n"
+        "; $HOME/.local/share/washdc/vmu_images.  If the image file does not\n"
+        "; exist then WashingtonDC will create one.\n"
+        "wash.dc.port.0.1 vmu file=vmu_0_1.bin\n"
+        "wash.dc.port.1.1 vmu file=vmu_1_1.bin\n"
+        "wash.dc.port.2.1 vmu file=vmu_2_1.bin\n"
+        "wash.dc.port.3.1 vmu file=vmu_3_1.bin\n"
         "\n"
         "; uncomment the below for purupuru (vibration pack) emulation\n"
         "; this is experimental and unfinished.  all it will do is printf\n"
@@ -524,24 +531,12 @@ void cfg_put_char(char ch) {
             cfg_state.val[cfg_state.val_len] = '\0';
             cfg_add_entry();
             cfg_handle_newline();
-        } else if (isspace(ch)) {
-            cfg_state.state = CFG_PARSE_POST_VAL;
-            cfg_state.val[cfg_state.val_len] = '\0';
         } else if (cfg_state.val_len < CFG_NODE_VAL_LEN - 1) {
             cfg_state.val[cfg_state.val_len++] = ch;
         } else {
             printf("CFG file dropped char from line %u; value length is "
                    "limited to %u characters\n",
                    cfg_state.line_count, CFG_NODE_VAL_LEN - 1);
-        }
-        break;
-    case CFG_PARSE_POST_VAL:
-        if (ch == '\n') {
-            cfg_add_entry();
-            cfg_handle_newline();
-        } else if (!isspace(ch)) {
-            cfg_state.state = CFG_PARSE_ERROR;
-            fprintf(stderr, "*** CFG ERROR INVALID DATA LINE %u ***\n", cfg_state.line_count);
         }
         break;
     default:

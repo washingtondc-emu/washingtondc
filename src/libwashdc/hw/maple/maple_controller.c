@@ -52,7 +52,6 @@
  * for multiple controllers.
  */
 
-static int controller_dev_init(struct maple_device *dev);
 static void controller_dev_cleanup(struct maple_device *dev);
 static void controller_dev_info(struct maple_device *dev,
                                 struct maple_devinfo *output);
@@ -61,13 +60,12 @@ static void controller_dev_get_cond(struct maple_device *dev,
 
 struct maple_switch_table maple_controller_switch_table = {
     .device_type = "controller",
-    .dev_init = controller_dev_init,
     .dev_cleanup = controller_dev_cleanup,
     .dev_info = controller_dev_info,
     .dev_get_cond = controller_dev_get_cond
 };
 
-static int controller_dev_init(struct maple_device *dev) {
+int maple_controller_init(struct maple_device *dev) {
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_CONTROLLER)))
         RAISE_ERROR(ERROR_INTEGRITY);
 

@@ -40,4 +40,7 @@ struct maple_purupuru {
     // this page left intentionally blank
 };
 
+struct maple_device;
+int maple_purupuru_init(struct maple_device *dev);
+
 #endif

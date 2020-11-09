@@ -51,6 +51,7 @@ enum maple_cmd {
     // maplebus response codes
     MAPLE_RESP_NONE = -1,
     MAPLE_RESP_DEVINFO = 5,
+    MAPLE_RESP_OK = 7,
     MAPLE_RESP_DATATRF = 8,
 
     // maplebus command codes
@@ -58,7 +59,10 @@ enum maple_cmd {
     MAPLE_CMD_DEVINFO = 1,
     MAPLE_CMD_NOP = 7,
     MAPLE_CMD_GETCOND = 9,
+    MAPLE_CMD_MEMINFO = 10,
+    MAPLE_CMD_BREAD = 11,
     MAPLE_CMD_BWRITE = 12,
+    MAPLE_CMD_BSYNC = 13,
     MAPLE_CMD_SETCOND = 14
 };
 
@@ -130,5 +134,23 @@ void maple_process_dma(struct maple *ctxt, uint32_t src_addr);
  * time for that.
  */
 void maple_notify_pre_vblank(struct maple *ctxt);
+
+static inline uint32_t maple_convert_endian(uint32_t val) {
+    /*
+     * I've been working on this emulator for more than four years now
+     * and this is the first time I've ever written something that won't
+     * break on big-endian platforms.
+     *
+     * If I'm ever able to fulfill my dreams of porting WashingtonDC to
+     * the Nintendo Wii U then I will probably regret ignoring
+     * endian-ness for so long.
+     */
+    uint8_t rawdat[4];
+    memcpy(rawdat, &val, sizeof(rawdat));
+    return ((uint32_t)rawdat[0] << 24) |
+        ((uint32_t)rawdat[1] << 16) |
+        ((uint32_t)rawdat[2] << 8) |
+        (uint32_t)rawdat[3];
+}
 
 #endif

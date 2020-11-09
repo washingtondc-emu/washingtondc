@@ -40,13 +40,17 @@
 #include "maple_controller.h"
 #include "maple_keyboard.h"
 #include "maple_purupuru.h"
+#include "maple_vmu.h"
 
 struct maple_device;
 struct maple;
 
-#define MAPLE_FUNC_CONTROLLER 0x01000000
-#define MAPLE_FUNC_KEYBOARD   0x40000000
 #define MAPLE_FUNC_PURUPURU   0x00010000
+#define MAPLE_FUNC_CONTROLLER 0x01000000
+#define MAPLE_FUNC_MEMCARD    0x02000000
+#define MAPLE_FUNC_LCD        0x04000000
+#define MAPLE_FUNC_CLOCK      0x08000000
+#define MAPLE_FUNC_KEYBOARD   0x40000000
 
 #define MAPLE_DEV_NAME_LEN 30
 #define MAPLE_DEV_LICENSE_LEN 60
@@ -117,6 +121,17 @@ enum MAPLE_COND_TYPE {
     MAPLE_COND_TYPE_KEYBOARD
 };
 
+#define MAPLE_BLOCK_N_DWORDS (512/sizeof(uint32_t))
+
+struct maple_bread {
+    unsigned n_dwords_in;
+    uint32_t *dat_in;
+
+    uint32_t func_out, block_out;
+    unsigned n_dwords_out;
+    uint32_t dat_out[MAPLE_BLOCK_N_DWORDS];
+};
+
 struct maple_bwrite {
     unsigned n_dwords;
     uint32_t *dat;
@@ -125,6 +140,28 @@ struct maple_bwrite {
 struct maple_setcond {
     unsigned n_dwords;
     uint32_t *dat;
+};
+
+struct maple_bsync {
+    unsigned n_dwords;
+    uint32_t *dat;
+};
+
+struct maple_meminfo {
+    /*
+     * in actual hardware these are all 16-bits (except for func, which is 32),
+     * plus there's another 48 bits of padding after the end
+     */
+    unsigned func,
+        blkmax,
+        blkmin,
+        infpos,
+        fatpos,
+        fatsz,
+        dirpos,
+        dirsz,
+        icon,
+        datasz;
 };
 
 // controller state (response to MAPLE_CMD_GETCOND)
@@ -140,9 +177,6 @@ struct maple_switch_table {
     // used solely for logging within WashingtonDC
     char const *device_type;
 
-    // initialize newly-created maple_device
-    int (*dev_init)(struct maple_device*);
-
     // cleanup maple-device
     void (*dev_cleanup)(struct maple_device*);
 
@@ -151,21 +185,29 @@ struct maple_switch_table {
 
     void (*dev_get_cond)(struct maple_device*, struct maple_cond*);
 
+    void (*dev_bread)(struct maple_device*, struct maple_bread*);
+
     void (*dev_bwrite)(struct maple_device*, struct maple_bwrite*);
 
+    void (*dev_bsync)(struct maple_device*, struct maple_bsync*);
+
     void (*dev_set_cond)(struct maple_device*, struct maple_setcond*);
+
+    void (*dev_meminfo)(struct maple_device*, struct maple_meminfo*);
 };
 
 enum maple_device_type {
     MAPLE_DEVICE_CONTROLLER,
     MAPLE_DEVICE_KEYBOARD,
-    MAPLE_DEVICE_PURUPURU
+    MAPLE_DEVICE_PURUPURU,
+    MAPLE_DEVICE_VMU
 };
 
 union maple_device_ctxt {
     struct maple_controller cont;
     struct maple_keyboard kbd;
     struct maple_purupuru purupuru;
+    struct maple_vmu vmu;
 };
 
 struct maple_device {
@@ -180,18 +222,21 @@ struct maple_device {
     union maple_device_ctxt ctxt;
 };
 
-int maple_device_init(struct maple *maple, unsigned maple_addr,
-                      enum maple_device_type tp);
+int maple_device_init_controller(struct maple *maple, unsigned maple_addr);
+int maple_device_init_keyboard_us(struct maple *maple, unsigned maple_addr);
+int maple_device_init_purupuru(struct maple *maple, unsigned maple_addr);
+int maple_device_init_vmu(struct maple *maple, unsigned maple_addr,
+                          char const *image_path);
 
 void maple_device_cleanup(struct maple *maple, unsigned addr);
 
 void maple_device_info(struct maple_device *dev, struct maple_devinfo *devinfo);
-
 void maple_device_cond(struct maple_device *dev, struct maple_cond *cond);
-
+void maple_device_bread(struct maple_device *dev, struct maple_bread *bread);
 void maple_device_bwrite(struct maple_device *dev, struct maple_bwrite *bwrite);
-
+void maple_device_bsync(struct maple_device *dev, struct maple_bsync *bsync);
 void maple_device_setcond(struct maple_device *dev, struct maple_setcond *cond);
+void maple_device_meminfo(struct maple_device *dev, struct maple_meminfo *meminfo);
 
 extern struct maple_switch_table maple_controller_switch_table;
 

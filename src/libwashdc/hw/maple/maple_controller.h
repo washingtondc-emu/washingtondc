@@ -118,4 +118,8 @@ void maple_controller_release_btns(struct maple *maple, unsigned port_no,
 void maple_controller_set_axis(struct maple *maple, unsigned port_no,
                                unsigned axis, unsigned val);
 
+struct maple_device;
+
+int maple_controller_init(struct maple_device *dev);
+
 #endif

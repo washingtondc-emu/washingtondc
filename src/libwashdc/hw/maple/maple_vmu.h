@@ -31,58 +31,23 @@
  *
  ******************************************************************************/
 
-#ifndef WASHDC_MAPLE_KEYBOARD_H_
-#define WASHDC_MAPLE_KEYBOARD_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef MAPLE_VMU_H_
+#define MAPLE_VMU_H_
 
 #include <stdint.h>
-#include <stdbool.h>
 
-#define MAPLE_KEYBOARD_KEY_COUNT 256
+extern struct maple_switch_table maple_vmu_switch_table;
 
-#define MAPLE_KEYBOARD_ROLLOVER 6
+#define MAPLE_VMU_BLOCK_SZ 512
+#define MAPLE_VMU_N_BLOCKS 256
+#define MAPLE_VMU_DAT_LEN (MAPLE_VMU_BLOCK_SZ * MAPLE_VMU_N_BLOCKS)
 
-enum maple_keyboard_special_keys {
-    MAPLE_KEYBOARD_NONE = 0,
-
-    MAPLE_KEYBOARD_LEFT_CTRL = 1,
-    MAPLE_KEYBOARD_LEFT_SHIFT = 2,
-    MAPLE_KEYBOARD_LEFT_ALT = 4,
-    MAPLE_KEYBOARD_S1 = 8,
-    MAPLE_KEYBOARD_RIGHT_CTRL = 16,
-    MAPLE_KEYBOARD_RIGHT_SHIFT = 32,
-    MAPLE_KEYBOARD_RIGHT_ALT = 64,
-    MAPLE_KEYBOARD_S2 = 128
+struct maple_vmu {
+    unsigned char *datp;
+    char *backing_path;
 };
-
-struct maple_keyboard {
-    uint8_t key_states[MAPLE_KEYBOARD_ROLLOVER];
-    enum maple_keyboard_special_keys special_keys;
-    bool num_lock_led;
-    bool caps_lock_led;
-    bool scroll_lock_led;
-};
-
-extern struct maple_switch_table maple_keyboard_switch_table;
-
-void
-maple_keyboard_press_special(struct maple *maple, unsigned port_no,
-                             enum maple_keyboard_special_keys which);
-void
-maple_keyboard_release_special(struct maple *maple, unsigned port_no,
-                               enum maple_keyboard_special_keys which);
-void
-maple_keyboard_press_key(struct maple *maple, unsigned port_no,
-                         unsigned which_key, bool is_pressed);
 
 struct maple_device;
-int maple_keyboard_init(struct maple_device *dev);
-
-#ifdef __cplusplus
-}
-#endif
+int maple_vmu_init(struct maple_device *dev, char const *backing_path);
 
 #endif

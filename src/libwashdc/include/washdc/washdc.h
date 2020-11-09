@@ -83,6 +83,21 @@ struct win_intf;
 #define WASHDC_CONTROLLER_PORTS 4
 #define WASHDC_CONTROLLER_UNITS 3
 
+enum washdc_controller_tp {
+    WASHDC_CONTROLLER_TP_INVALID,
+    WASHDC_CONTROLLER_TP_CONTROLLER,
+    WASHDC_CONTROLLER_TP_KEYBOARD_US,
+    WASHDC_CONTROLLER_TP_PURUPURU,
+    WASHDC_CONTROLLER_TP_VMU
+};
+
+struct washdc_controller_dev {
+    enum washdc_controller_tp tp;
+
+    // path to the VMU image; only valid when tp == WASHDC_CONTROLLER_TP_VMU
+    char image_path[WASHDC_PATH_LEN];
+};
+
 struct washdc_launch_settings {
     char const *path_ip_bin;
     char const *path_1st_read_bin;
@@ -126,7 +141,7 @@ struct washdc_launch_settings {
 
     bool dump_mem_on_error;
 
-    char const *controllers[WASHDC_CONTROLLER_PORTS][WASHDC_CONTROLLER_UNITS];
+    struct washdc_controller_dev controllers[WASHDC_CONTROLLER_PORTS][WASHDC_CONTROLLER_UNITS];
 };
 
 int washdc_save_screenshot(char const *path);
