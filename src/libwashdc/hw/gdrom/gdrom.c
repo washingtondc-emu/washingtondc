@@ -306,6 +306,7 @@ struct gdrom_bufq_node {
 #define GDROM_CMD_NOP      0x00
 #define GDROM_CMD_PKT      0xa0
 #define GDROM_CMD_IDENTIFY 0xa1
+#define GDROM_CMD_ATA_IDENTIFY 0xec
 #define GDROM_CMD_SET_FEAT 0xef
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1442,6 +1443,16 @@ void gdrom_input_cmd(struct gdrom_ctxt *gdrom, unsigned cmd) {
     case GDROM_CMD_IDENTIFY:
         gdrom_cmd_identify(gdrom);
         break;
+    case GDROM_CMD_ATA_IDENTIFY:
+        /*
+         * DreamShell uses this to probe if there's an HDD modded into this
+         * Dreamcast.  AFAIK, ATAPI CD-ROM devs are supposed to set the check
+         * bit in the status register so that's what we do here.  This behavior
+         * has *not* been verified on real hardware.
+         */
+        LOG_ERROR("GD-ROM DRIVE RECEIVED ATA IDENTIFY COMMAND.  SETTING "
+                  "CHECK BIT.\n");
+        // intentional fall-through
     case GDROM_CMD_NOP:
         if (gdrom->gdrom_int_scheduled) {
             error_set_feature("using GDROM_CMD_NOP to abort during an interrupt");
