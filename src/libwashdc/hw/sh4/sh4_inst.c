@@ -575,6 +575,18 @@ static struct InstOpcode opcode_list[] = {
     { &sh4_inst_nop, sh4_jit_nop, false,
       SH4_GROUP_MT, 1, 0xffff, 0x0009 },
 
+    /*
+     * NOP (undocumented)
+     *
+     * I've verified on real hardware that this is a real opcode that does not
+     * raise any exceptions.  Not 100% sure it should be NOP but I can't see any
+     * side-effects.
+     *
+     * Samba De Amigo ver 2000 does this in a delay slot.
+     */
+    { &sh4_inst_nop, sh4_jit_nop, false,
+      SH4_GROUP_MT, 1, 0xffff, 0x0000 },
+
     // RTE
     { &sh4_inst_rte, sh4_jit_rte, true, SH4_GROUP_CO, 5, 0xffff, 0x002b },
 
