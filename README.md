@@ -113,8 +113,8 @@ direct-boot a homebrew program (requires a system call table dump):
 src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -u 1st_read.bin
 ```
 ## LICENSE
-WashingtonDC is licensed under the terms of the 3-clause BSD license.  The
-terms of this license can be found in LICENSE.
+WashingtonDC is licensed under the terms of the GNU GPLv3.  The
+terms of this license can be found in COPYING.
 
 WashingtonDC also makes use of several third-party libraries available under
 various different licenses.
@@ -152,9 +152,9 @@ submodule.  The license for this software can be found at
 external/imgui/LICENSE.txt.
 
 Some code from MAME was used to implement Yamaha's ADPCM format. This code is
-licensed under the terms of a 3-clause BSD license, just like the rest of
-WashingtonDC.  The MAME code along with its original copyright statement and
-list of copyright holders can be found at src/libwashdc/hw/aica/adpcm.h
+licensed under the terms of a 3-clause BSD license.  The MAME code along with
+its original copyright statement and list of copyright holders can be found at
+src/libwashdc/hw/aica/adpcm.h
 
 ## CONTACT
 You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
