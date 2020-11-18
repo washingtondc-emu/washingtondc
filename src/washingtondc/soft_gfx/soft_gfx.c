@@ -1728,33 +1728,55 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
         return;
     }
 
+    unsigned vert_no;
     struct gfx_obj *obj = gfx_obj_get(render_tgt);
     unsigned n_verts = cmd->arg.draw_array.n_verts;
     float const *verts = cmd->arg.draw_array.verts;
+
+    float const *tri_buf[2];
+    unsigned tri_buf_len = 0;
 
     if (wireframe_mode) {
         /*
          * draw triangles as white lines with no depth testing or
          * per-vertex attributes
          */
-        unsigned vert_no;
-        for (vert_no = 0; vert_no < n_verts; vert_no += 3) {
-            float const *p1 = verts + (vert_no + 0) * GFX_VERT_LEN;
-            float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
-            float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
+        for (vert_no = 0; vert_no < n_verts; vert_no++) {
+            if (tri_buf_len == 2) {
+                float const *newvert = verts + vert_no * GFX_VERT_LEN;
 
-            draw_line(obj, p1[0], p1[1], p2[0], p2[1], 0xffffffff);
-            draw_line(obj, p2[0], p2[1], p3[0], p3[1], 0xffffffff);
-            draw_line(obj, p3[0], p3[1], p1[0], p1[1], 0xffffffff);
+                draw_line(obj, tri_buf[0][0], tri_buf[0][1], tri_buf[1][0], tri_buf[1][1], 0xffffffff);
+                draw_line(obj, tri_buf[1][0], tri_buf[1][1], newvert[0], newvert[1], 0xffffffff);
+                draw_line(obj, newvert[0], newvert[1], tri_buf[0][0], tri_buf[0][1], 0xffffffff);
+
+                tri_buf[0] = tri_buf[1];
+                tri_buf[1] = newvert;
+            } else {
+                tri_buf[tri_buf_len++] = verts + vert_no * GFX_VERT_LEN;
+            }
         }
     } else {
-        unsigned vert_no;
-        for (vert_no = 0; vert_no < n_verts; vert_no += 3) {
-            float const *p1 = verts + (vert_no + 0) * GFX_VERT_LEN;
-            float const *p2 = verts + (vert_no + 1) * GFX_VERT_LEN;
-            float const *p3 = verts + (vert_no + 2) * GFX_VERT_LEN;
+        for (vert_no = 0; vert_no < n_verts; vert_no++) {
+            if (tri_buf_len == 2) {
+                /*
+                 * reverse winding order on every other triangle so that they all
+                 * have the same winding order.
+                 *
+                 * This is not strictly necessary since draw_tri can handle either
+                 * winding order but I want to keep things consistent for when I
+                 * eventually implement culling.
+                 */
+                float const *newvert = verts + vert_no * GFX_VERT_LEN;
+                if (vert_no % 2)
+                    draw_tri(obj, tri_buf[1], tri_buf[0], newvert);
+                else
+                    draw_tri(obj, tri_buf[0], tri_buf[1], newvert);
 
-            draw_tri(obj, p1, p2, p3);
+                tri_buf[0] = tri_buf[1];
+                tri_buf[1] = newvert;
+            } else {
+                tri_buf[tri_buf_len++] = verts + vert_no * GFX_VERT_LEN;
+            }
         }
     }
 }

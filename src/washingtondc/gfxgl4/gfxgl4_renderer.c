@@ -1255,11 +1255,9 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
                               GFX_VERT_LEN * sizeof(float),
                               (GLvoid*)(GFX_VERT_TEX_COORD_OFFSET * sizeof(float)));
     }
-    glDrawArrays(GL_TRIANGLES, 0, n_verts);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, n_verts);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 static void gfxgl4_renderer_clear(struct gfx_il_inst *cmd) {

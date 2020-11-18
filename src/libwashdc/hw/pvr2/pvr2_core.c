@@ -82,6 +82,8 @@ pvr2_core_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst);
 
 static void render_frame_init(struct pvr2 *pvr2);
 
+static void end_triangle_strip(struct pvr2 *pvr2);
+
 void pvr2_core_init(struct pvr2 *pvr2) {
     struct pvr2_core *core = &pvr2->core;
 
@@ -319,16 +321,8 @@ display_list_exec_header(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
 #endif
 
-    if (core->pvr2_core_vert_buf_count != core->pvr2_core_vert_buf_start) {
-        unsigned n_verts =
-            core->pvr2_core_vert_buf_count - core->pvr2_core_vert_buf_start;
-        gfx_cmd.op = GFX_IL_DRAW_ARRAY;
-        gfx_cmd.arg.draw_array.n_verts = n_verts;
-        gfx_cmd.arg.draw_array.verts = core->pvr2_core_vert_buf + core->pvr2_core_vert_buf_start * GFX_VERT_LEN;
-        pvr2_core_push_gfx_il(pvr2, gfx_cmd);
-
-        core->pvr2_core_vert_buf_start = core->pvr2_core_vert_buf_count;
-    }
+    if (core->pvr2_core_vert_buf_count != core->pvr2_core_vert_buf_start)
+        end_triangle_strip(pvr2);
 
     if (cmd_hdr->tex_enable) {
         PVR2_TRACE("texture enabled\n");
@@ -463,29 +457,6 @@ display_list_exec_vertex(struct pvr2 *pvr2,
     struct pvr2_display_list_vertex const *cmd_vtx = &cmd->vtx;
 
     /*
-     * un-strip triangle strips by duplicating the previous two vertices.
-     *
-     * TODO: obviously it would be best to preserve the triangle strips and
-     * send them to OpenGL via GL_TRIANGLE_STRIP in the rendering backend, but
-     * then I need to come up with some way to signal the renderer to stop and
-     * re-start strips.  It might also be possible to stitch separate strips
-     * together with degenerate triangles...
-     */
-    if (core->strip_len >= 3) {
-        /*
-         * reverse winding order on every other triangle so that they all have
-         * the same winding order
-         */
-        if (core->strip_len % 2) {
-            pvr2_core_push_vert(pvr2, core->strip_vert_2);
-            pvr2_core_push_vert(pvr2, core->strip_vert_1);
-        } else {
-            pvr2_core_push_vert(pvr2, core->strip_vert_1);
-            pvr2_core_push_vert(pvr2, core->strip_vert_2);
-        }
-    }
-
-    /*
      * update the clipping planes.
      *
      * some games will submit vertices with infinite or near-infinite 1/z
@@ -555,15 +526,7 @@ display_list_exec_vertex(struct pvr2 *pvr2,
          * TODO: handle degenerate cases where the user sends an
          * end-of-strip on the first or second vertex
          */
-        core->strip_len = 0;
-    } else {
-        /*
-         * shift the new vert into strip_vert2 and
-         * shift strip_vert2 into strip_vert1
-         */
-        core->strip_vert_1 = core->strip_vert_2;
-        core->strip_vert_2 = vert;
-        core->strip_len++;
+        end_triangle_strip(pvr2);
     }
 
     pvr2->stat.per_frame_counters.vert_count[pvr2->core.cur_poly_group]++;
@@ -663,12 +626,9 @@ display_list_exec_quad(struct pvr2 *pvr2,
         .tex_coord = { vert_tex_coords[3][0], vert_tex_coords[3][1] }
     };
 
-    pvr2_core_push_vert(pvr2, vert1);
     pvr2_core_push_vert(pvr2, vert2);
     pvr2_core_push_vert(pvr2, vert3);
-
     pvr2_core_push_vert(pvr2, vert1);
-    pvr2_core_push_vert(pvr2, vert3);
     pvr2_core_push_vert(pvr2, vert4);
 
     if (!isinf(vert1.pos[2]) && !isnan(vert1.pos[2]) &&
@@ -703,12 +663,12 @@ display_list_exec_quad(struct pvr2 *pvr2,
             core->clip_max = vert4.pos[2];
     }
 
+    end_triangle_strip(pvr2);
+
     pvr2->stat.per_frame_counters.vert_count[pvr2->core.cur_poly_group]++;
 }
 
-static void
-display_list_exec_end_of_group(struct pvr2 *pvr2,
-                               struct pvr2_display_list_command const *cmd) {
+static void end_triangle_strip(struct pvr2 *pvr2) {
     struct gfx_il_inst gfx_cmd;
     struct pvr2_core *core = &pvr2->core;
     unsigned n_verts = core->pvr2_core_vert_buf_count - core->pvr2_core_vert_buf_start;
@@ -725,6 +685,12 @@ display_list_exec_end_of_group(struct pvr2 *pvr2,
         pvr2_core_push_gfx_il(pvr2, gfx_cmd);
         core->pvr2_core_vert_buf_start = core->pvr2_core_vert_buf_count;
     }
+}
+
+static void
+display_list_exec_end_of_group(struct pvr2 *pvr2,
+                               struct pvr2_display_list_command const *cmd) {
+    end_triangle_strip(pvr2);
 }
 
 static void

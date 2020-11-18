@@ -186,7 +186,6 @@ struct oit_group {
 };
 
 static struct oit_state {
-    unsigned tri_count;
     unsigned group_count;
     bool enabled;
 
@@ -923,8 +922,6 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
         return;
 
     if (oit_state.enabled) {
-        oit_state.tri_count += n_verts / 3;
-
         if (oit_state.group_count < OIT_MAX_GROUPS) {
             struct oit_group *grp = oit_state.groups + oit_state.group_count++;
             grp->rend_param = oit_state.cur_rend_param;
@@ -988,11 +985,9 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
                               GFX_VERT_LEN * sizeof(float),
                               (GLvoid*)(GFX_VERT_TEX_COORD_OFFSET * sizeof(float)));
     }
-    glDrawArrays(GL_TRIANGLES, 0, n_verts);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, n_verts);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 static void gfxgl3_renderer_clear(struct gfx_il_inst *cmd) {
@@ -1086,7 +1081,6 @@ static void gfxgl3_renderer_begin_sort_mode(struct gfx_il_inst *cmd) {
 
     if (gfx_config_read().depth_sort_enable) {
         oit_state.enabled = true;
-        oit_state.tri_count = 0;
         oit_state.group_count = 0;
     }
 }
