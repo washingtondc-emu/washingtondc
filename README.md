@@ -156,6 +156,9 @@ licensed under the terms of a 3-clause BSD license.  The MAME code along with
 its original copyright statement and list of copyright holders can be found at
 src/libwashdc/hw/aica/adpcm.h
 
+WashingtonDC uses a processed version of the SDL gamecontrollerdb; the license
+for this can be found in its source at src/washingtondc/sdl_gamecontrollerdb.h.
+
 ## CONTACT
 You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
 
