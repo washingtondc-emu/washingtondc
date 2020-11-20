@@ -184,13 +184,6 @@ struct pvr2_display_list {
 
 #define PVR2_MAX_FRAMES_IN_FLIGHT 4
 
-struct pvr2_core_vert {
-    float pos[3];
-    float base_color[4];
-    float offs_color[4];
-    float tex_coord[2];
-};
-
 struct pvr2_core {
     // textures - this will change throught display list execution
     bool stride_sel;
@@ -202,14 +195,6 @@ struct pvr2_core {
      * clip coordinates
      */
     float clip_min, clip_max;
-
-    /*
-     * used to store the previous two verts when we're
-     * rendering a triangle strip
-     */
-    struct pvr2_core_vert strip_vert_1;
-    struct pvr2_core_vert strip_vert_2;
-    unsigned strip_len; // number of verts in the current triangle strip
 
     // the 4-component color that gets sent to glClearColor
     float pvr2_bgcolor[4];

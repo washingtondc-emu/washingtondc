@@ -75,8 +75,8 @@ static void
 display_list_exec_user_clip(struct pvr2 *pvr2,
                             struct pvr2_display_list_command const *cmd);
 
-static inline void pvr2_core_push_vert(struct pvr2 *pvr2,
-                                       struct pvr2_core_vert vert);
+static inline float *pvr2_core_alloc_verts(struct pvr2 *pvr2, unsigned n_verts);
+
 static inline void
 pvr2_core_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst);
 
@@ -444,7 +444,6 @@ display_list_exec_header(struct pvr2 *pvr2,
     gfx_cmd.arg.set_blend_enable.do_enable = blend_enable;
     pvr2_core_push_gfx_il(pvr2, gfx_cmd);
 
-    core->strip_len = 0;
     pvr2->core.stride_sel = cmd_hdr->stride_sel;
     pvr2->core.tex_width_shift = cmd_hdr->tex_width_shift;
     pvr2->core.tex_height_shift = cmd_hdr->tex_height_shift;
@@ -455,6 +454,10 @@ display_list_exec_vertex(struct pvr2 *pvr2,
                          struct pvr2_display_list_command const *cmd) {
     struct pvr2_core *core = &pvr2->core;
     struct pvr2_display_list_vertex const *cmd_vtx = &cmd->vtx;
+    float *vert_out = pvr2_core_alloc_verts(pvr2, 1);
+
+    if (!vert_out)
+        return;
 
     /*
      * update the clipping planes.
@@ -496,30 +499,29 @@ display_list_exec_vertex(struct pvr2 *pvr2,
             core->clip_max = cmd_vtx->pos[2];
     }
 
-    struct pvr2_core_vert vert;
+    vert_out[GFX_VERT_POS_OFFSET + 0] = cmd_vtx->pos[0];
+    vert_out[GFX_VERT_POS_OFFSET + 1] = cmd_vtx->pos[1];
+    vert_out[GFX_VERT_POS_OFFSET + 2] = cmd_vtx->pos[2];
+    vert_out[GFX_VERT_POS_OFFSET + 3] = 1.0f;
 
-    vert.pos[0] = cmd_vtx->pos[0];
-    vert.pos[1] = cmd_vtx->pos[1];
-    vert.pos[2] = cmd_vtx->pos[2];
+    PVR2_TRACE("(%f, %f, %f)\n", cmd_vtx->pos[0], cmd_vtx->pos[1], cmd_vtx->pos[2]);
 
-    PVR2_TRACE("(%f, %f, %f)\n", vert.pos[0], vert.pos[1], vert.pos[2]);
-
-    memcpy(vert.base_color, cmd_vtx->base_color, sizeof(cmd_vtx->base_color));
-    memcpy(vert.offs_color, cmd_vtx->offs_color, sizeof(cmd_vtx->offs_color));
+    memcpy(vert_out + GFX_VERT_BASE_COLOR_OFFSET, cmd_vtx->base_color,
+           4 * sizeof(float));
+    memcpy(vert_out + GFX_VERT_OFFS_COLOR_OFFSET, cmd_vtx->offs_color,
+           4 * sizeof(float));
 
     if (pvr2->core.stride_sel) {
         unsigned linestride =
             32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
-        vert.tex_coord[0] =
+        vert_out[GFX_VERT_TEX_COORD_OFFSET + 0] =
             cmd_vtx->tex_coord[0] * ((float)(1 << pvr2->core.tex_width_shift) /
                           (float)linestride);
-        vert.tex_coord[1] = cmd_vtx->tex_coord[1];
+        vert_out[GFX_VERT_TEX_COORD_OFFSET + 1] = cmd_vtx->tex_coord[1];
     } else {
-        vert.tex_coord[0] = cmd_vtx->tex_coord[0];
-        vert.tex_coord[1] = cmd_vtx->tex_coord[1];
+        vert_out[GFX_VERT_TEX_COORD_OFFSET + 0] = cmd_vtx->tex_coord[0];
+        vert_out[GFX_VERT_TEX_COORD_OFFSET + 1] = cmd_vtx->tex_coord[1];
     }
-
-    pvr2_core_push_vert(pvr2, vert);
 
     if (cmd_vtx->end_of_strip) {
         /*
@@ -598,69 +600,84 @@ display_list_exec_quad(struct pvr2 *pvr2,
     float const *p3 = cmd_quad->vert_pos[2];
     float const *p4 = cmd_quad->vert_pos[3];
 
-    struct pvr2_core_vert vert1 = {
-        .pos = { p1[0], p1[1], cmd_quad->vert_recip_z[0] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { vert_tex_coords[0][0], vert_tex_coords[0][1] }
-    };
+    float* verts = pvr2_core_alloc_verts(pvr2, 4);
+    float *vp = verts;
 
-    struct pvr2_core_vert vert2 = {
-        .pos = { p2[0], p2[1], cmd_quad->vert_recip_z[1] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { vert_tex_coords[1][0], vert_tex_coords[1][1] }
-    };
+    float const *vert_recip_z = cmd_quad->vert_recip_z;
 
-    struct pvr2_core_vert vert3 = {
-        .pos = { p3[0], p3[1], cmd_quad->vert_recip_z[2] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { vert_tex_coords[2][0], vert_tex_coords[2][1] }
-    };
+    vp[GFX_VERT_POS_OFFSET + 0] = p2[0];
+    vp[GFX_VERT_POS_OFFSET + 1] = p2[1];
+    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[1];
+    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
+           vert_tex_coords[1], 2 * sizeof(float));
+    vp += GFX_VERT_LEN;
 
-    struct pvr2_core_vert vert4 = {
-        .pos = { p4[0], p4[1], cmd_quad->vert_recip_z[3] },
-        .base_color = { base_col[0], base_col[1], base_col[2], base_col[3] },
-        .offs_color = { offs_col[0], offs_col[1], offs_col[2], offs_col[3] },
-        .tex_coord = { vert_tex_coords[3][0], vert_tex_coords[3][1] }
-    };
+    vp[GFX_VERT_POS_OFFSET + 0] = p3[0];
+    vp[GFX_VERT_POS_OFFSET + 1] = p3[1];
+    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[2];
+    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
+           vert_tex_coords[2], 2 * sizeof(float));
+    vp += GFX_VERT_LEN;
 
-    pvr2_core_push_vert(pvr2, vert2);
-    pvr2_core_push_vert(pvr2, vert3);
-    pvr2_core_push_vert(pvr2, vert1);
-    pvr2_core_push_vert(pvr2, vert4);
+    vp[GFX_VERT_POS_OFFSET + 0] = p1[0];
+    vp[GFX_VERT_POS_OFFSET + 1] = p1[1];
+    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[0];
+    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
+           vert_tex_coords[0], 2 * sizeof(float));
+    vp += GFX_VERT_LEN;
 
-    if (!isinf(vert1.pos[2]) && !isnan(vert1.pos[2]) &&
-        fabsf(vert1.pos[2]) < 1024 * 1024) {
-        if (vert1.pos[2] < core->clip_min)
-            core->clip_min = vert1.pos[2];
-        if (vert1.pos[2] > core->clip_max)
-            core->clip_max = vert1.pos[2];
+    vp[GFX_VERT_POS_OFFSET + 0] = p4[0];
+    vp[GFX_VERT_POS_OFFSET + 1] = p4[1];
+    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[3];
+    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
+    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
+           vert_tex_coords[3], 2 * sizeof(float));
+
+    if (!isinf(vert_recip_z[0]) &&
+        !isnan(vert_recip_z[0]) &&
+        fabsf(vert_recip_z[0]) < 1024 * 1024) {
+        if (vert_recip_z[0] < core->clip_min)
+            core->clip_min = vert_recip_z[0];
+        if (vert_recip_z[0] > core->clip_max)
+            core->clip_max = vert_recip_z[0];
     }
 
-    if (!isinf(vert2.pos[2]) && !isnan(vert2.pos[2]) &&
-        fabsf(vert2.pos[2]) < 1024 * 1024) {
-        if (vert2.pos[2] < core->clip_min)
-            core->clip_min = vert2.pos[2];
-        if (vert2.pos[2] > core->clip_max)
-            core->clip_max = vert2.pos[2];
+    if (!isinf(vert_recip_z[1]) &&
+        !isnan(vert_recip_z[1]) &&
+        fabsf(vert_recip_z[1]) < 1024 * 1024) {
+        if (vert_recip_z[1] < core->clip_min)
+            core->clip_min = vert_recip_z[1];
+        if (vert_recip_z[1] > core->clip_max)
+            core->clip_max = vert_recip_z[1];
     }
 
-    if (!isinf(vert3.pos[2]) && !isnan(vert3.pos[2]) &&
-        fabsf(vert3.pos[2]) < 1024 * 1024) {
-        if (vert3.pos[2] < core->clip_min)
-            core->clip_min = vert3.pos[2];
-        if (vert3.pos[2] > core->clip_max)
-            core->clip_max = vert3.pos[2];
+    if (!isinf(vert_recip_z[2]) &&
+        !isnan(vert_recip_z[2]) &&
+        fabsf(vert_recip_z[2]) < 1024 * 1024) {
+        if (vert_recip_z[2] < core->clip_min)
+            core->clip_min = vert_recip_z[2];
+        if (vert_recip_z[2] > core->clip_max)
+            core->clip_max = vert_recip_z[2];
     }
 
-    if (!isinf(vert4.pos[2]) && !isnan(vert4.pos[2]) &&
-        fabsf(vert4.pos[2]) < 1024 * 1024) {
-        if (vert4.pos[2] < core->clip_min)
-            core->clip_min = vert4.pos[2];
-        if (vert4.pos[2] > core->clip_max)
-            core->clip_max = vert4.pos[2];
+    if (!isinf(vert_recip_z[3]) &&
+        !isnan(vert_recip_z[3]) &&
+        fabsf(vert_recip_z[3]) < 1024 * 1024) {
+        if (vert_recip_z[3] < core->clip_min)
+            core->clip_min = vert_recip_z[3];
+        if (vert_recip_z[3] > core->clip_max)
+            core->clip_max = vert_recip_z[3];
     }
 
     end_triangle_strip(pvr2);
@@ -707,30 +724,19 @@ display_list_exec_user_clip(struct pvr2 *pvr2,
     pvr2_core_push_gfx_il(pvr2, gfx_cmd);
 }
 
-static inline void pvr2_core_push_vert(struct pvr2 *pvr2, struct pvr2_core_vert vert) {
+static inline float *
+pvr2_core_alloc_verts(struct pvr2 *pvr2, unsigned n_verts) {
     struct pvr2_core *core = &pvr2->core;
-    if (core->pvr2_core_vert_buf_count >= PVR2_CORE_VERT_BUF_LEN) {
-        LOG_WARN("PVR2 CORE vertex buffer overflow\n");
-        return;
+    if (core->pvr2_core_vert_buf_count + n_verts > PVR2_CORE_VERT_BUF_LEN) {
+        LOG_ERROR("PVR2 CORE vertex buffer overflow\n");
+        return NULL;
     }
 
     float *outp = core->pvr2_core_vert_buf +
-        GFX_VERT_LEN * core->pvr2_core_vert_buf_count++;
+        GFX_VERT_LEN * core->pvr2_core_vert_buf_count;
+    core->pvr2_core_vert_buf_count += n_verts;
     PVR2_TRACE("vert_buf_count is now %u\n", core->pvr2_core_vert_buf_count);
-    outp[GFX_VERT_POS_OFFSET + 0] = vert.pos[0];
-    outp[GFX_VERT_POS_OFFSET + 1] = vert.pos[1];
-    outp[GFX_VERT_POS_OFFSET + 2] = vert.pos[2];
-    outp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
-    outp[GFX_VERT_BASE_COLOR_OFFSET + 0] = vert.base_color[0];
-    outp[GFX_VERT_BASE_COLOR_OFFSET + 1] = vert.base_color[1];
-    outp[GFX_VERT_BASE_COLOR_OFFSET + 2] = vert.base_color[2];
-    outp[GFX_VERT_BASE_COLOR_OFFSET + 3] = vert.base_color[3];
-    outp[GFX_VERT_OFFS_COLOR_OFFSET + 0] = vert.offs_color[0];
-    outp[GFX_VERT_OFFS_COLOR_OFFSET + 1] = vert.offs_color[1];
-    outp[GFX_VERT_OFFS_COLOR_OFFSET + 2] = vert.offs_color[2];
-    outp[GFX_VERT_OFFS_COLOR_OFFSET + 3] = vert.offs_color[3];
-    outp[GFX_VERT_TEX_COORD_OFFSET + 0] = vert.tex_coord[0];
-    outp[GFX_VERT_TEX_COORD_OFFSET + 1] = vert.tex_coord[1];
+    return outp;
 }
 
 static inline void
