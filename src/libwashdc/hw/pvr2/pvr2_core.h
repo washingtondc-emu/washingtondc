@@ -171,7 +171,7 @@ struct pvr2_display_list_group {
     unsigned n_cmds;
 
 #define PVR2_DISPLAY_LIST_MAX_LEN (128*1024) // TODO: made up bullshit limit
-    struct pvr2_display_list_command cmds[PVR2_DISPLAY_LIST_MAX_LEN];
+    struct pvr2_display_list_command *cmds;
 };
 
 typedef uint32_t pvr2_display_list_key;

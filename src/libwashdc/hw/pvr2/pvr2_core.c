@@ -92,8 +92,16 @@ void pvr2_core_init(struct pvr2 *pvr2) {
     core->pvr2_render_complete_int_event.arg_ptr = pvr2;
 
     int list_idx;
-    for (list_idx = 0; list_idx < PVR2_MAX_FRAMES_IN_FLIGHT; list_idx++)
-        pvr2_display_list_init(core->disp_lists + list_idx);
+    for (list_idx = 0; list_idx < PVR2_MAX_FRAMES_IN_FLIGHT; list_idx++) {
+        struct pvr2_display_list *disp_list = core->disp_lists + list_idx;
+        int group_idx;
+        for (group_idx = 0; group_idx < PVR2_POLY_TYPE_COUNT; group_idx++) {
+            disp_list->poly_groups[group_idx].cmds =
+                malloc(sizeof(struct pvr2_display_list_command) *
+                       PVR2_DISPLAY_LIST_MAX_LEN);
+        }
+        pvr2_display_list_init(disp_list);
+    }
 
     core->disp_list_counter = 0;
 
@@ -121,6 +129,14 @@ void pvr2_core_cleanup(struct pvr2 *pvr2) {
 
     free(core->pvr2_core_vert_buf);
     core->pvr2_core_vert_buf = NULL;
+
+    int list_idx;
+    for (list_idx = 0; list_idx < PVR2_MAX_FRAMES_IN_FLIGHT; list_idx++) {
+        struct pvr2_display_list *disp_list = core->disp_lists + list_idx;
+        int group_idx;
+        for (group_idx = 0; group_idx < PVR2_POLY_TYPE_COUNT; group_idx++)
+            free(disp_list->poly_groups[group_idx].cmds);
+    }
 }
 
 static void render_frame_init(struct pvr2 *pvr2) {
