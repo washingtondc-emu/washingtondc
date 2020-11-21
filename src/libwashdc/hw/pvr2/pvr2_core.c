@@ -712,9 +712,9 @@ static void end_triangle_strip(struct pvr2 *pvr2) {
 #endif
 
     if (n_verts) {
-        gfx_cmd.op = GFX_IL_DRAW_ARRAY;
-        gfx_cmd.arg.draw_array.n_verts = n_verts;
-        gfx_cmd.arg.draw_array.verts = core->pvr2_core_vert_buf + core->pvr2_core_vert_buf_start * GFX_VERT_LEN;
+        gfx_cmd.op = GFX_IL_DRAW_VERT_ARRAY;
+        gfx_cmd.arg.draw_vert_array.first_idx = core->pvr2_core_vert_buf_start;
+        gfx_cmd.arg.draw_vert_array.n_verts = n_verts;
         pvr2_core_push_gfx_il(pvr2, gfx_cmd);
         core->pvr2_core_vert_buf_start = core->pvr2_core_vert_buf_count;
     }
@@ -956,6 +956,12 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     cmd.arg.clear.bgcolor[1] = core->pvr2_bgcolor[1];
     cmd.arg.clear.bgcolor[2] = core->pvr2_bgcolor[2];
     cmd.arg.clear.bgcolor[3] = core->pvr2_bgcolor[3];
+    rend_exec_il(&cmd, 1);
+
+    // load vertex data
+    cmd.op = GFX_IL_SET_VERT_ARRAY;
+    cmd.arg.set_vert_array.n_verts = core->pvr2_core_vert_buf_count;
+    cmd.arg.set_vert_array.verts = core->pvr2_core_vert_buf;
     rend_exec_il(&cmd, 1);
 
     // execute queued gfx_il commands

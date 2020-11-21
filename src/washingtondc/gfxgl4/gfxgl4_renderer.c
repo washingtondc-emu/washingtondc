@@ -246,7 +246,7 @@ static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
 static void gfxgl4_renderer_set_blend_enable(struct gfx_il_inst *cmd);
 static void gfxgl4_renderer_set_rend_param(struct gfx_il_inst *cmd);
-static void gfxgl4_renderer_draw_array(struct gfx_il_inst *cmd);
+static void gfxgl4_renderer_set_vert_array(struct gfx_il_inst *cmd);
 static void gfxgl4_renderer_clear(struct gfx_il_inst *cmd);
 static void gfxgl4_renderer_set_screen_dim(unsigned width, unsigned height);
 static void gfxgl4_renderer_set_clip_range(struct gfx_il_inst *cmd);
@@ -267,7 +267,8 @@ static void
 gfxgl4_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
 
 static void do_set_rend_param(struct gfx_rend_param const *param);
-static void do_draw_array(float const *verts, unsigned n_verts);
+static void
+gfxgl4_renderer_draw_vert_array(struct gfx_il_inst *cmd);
 
 static void set_callbacks(struct renderer_callbacks const *callbacks);
 
@@ -1188,14 +1189,21 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     tex_enable = param->tex_enable;
 }
 
-static void gfxgl4_renderer_draw_array(struct gfx_il_inst *cmd) {
-    unsigned n_verts = cmd->arg.draw_array.n_verts;
-    float const *verts = cmd->arg.draw_array.verts;
+static void gfxgl4_renderer_set_vert_array(struct gfx_il_inst *cmd) {
+    unsigned n_verts = cmd->arg.set_vert_array.n_verts;
+    float const *verts = cmd->arg.set_vert_array.verts;
 
-    do_draw_array(verts, n_verts);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * n_verts * GFX_VERT_LEN,
+                 verts, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-static void do_draw_array(float const *verts, unsigned n_verts) {
+static void
+gfxgl4_renderer_draw_vert_array(struct gfx_il_inst *cmd) {
+    GLsizei n_verts = cmd->arg.draw_vert_array.n_verts;
+    GLint first_idx = cmd->arg.draw_vert_array.first_idx;
+
     if (!n_verts)
         return;
 
@@ -1234,9 +1242,6 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
     // now draw the geometry itself
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(float) * n_verts * GFX_VERT_LEN,
-                 verts, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(POSITION_SLOT);
     glEnableVertexAttribArray(BASE_COLOR_SLOT);
     glEnableVertexAttribArray(OFFS_COLOR_SLOT);
@@ -1255,7 +1260,7 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
                               GFX_VERT_LEN * sizeof(float),
                               (GLvoid*)(GFX_VERT_TEX_COORD_OFFSET * sizeof(float)));
     }
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, n_verts);
+    glDrawArrays(GL_TRIANGLE_STRIP, first_idx, n_verts);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
@@ -1626,8 +1631,11 @@ gfxgl4_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
         case GFX_IL_SET_CLIP_RANGE:
             gfxgl4_renderer_set_clip_range(cmd);
             break;
-        case GFX_IL_DRAW_ARRAY:
-            gfxgl4_renderer_draw_array(cmd);
+        case GFX_IL_SET_VERT_ARRAY:
+            gfxgl4_renderer_set_vert_array(cmd);
+            break;
+        case GFX_IL_DRAW_VERT_ARRAY:
+            gfxgl4_renderer_draw_vert_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
             gfxgl4_renderer_obj_init(cmd);

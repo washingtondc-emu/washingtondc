@@ -300,10 +300,15 @@ static void gfx_log_il_cmd(struct gfx_il_inst const *cmd) {
         LOG_DBG(GFX_IL_TAG "\tclip_max %f\n",
                 cmd->arg.set_clip_range.clip_max);
         break;
-    case GFX_IL_DRAW_ARRAY:
-        LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_DRAW_ARRAY\n");
-        LOG_DBG(GFX_IL_TAG "\tn_verts %u\n", cmd->arg.draw_array.n_verts);
-        LOG_DBG(GFX_IL_TAG "\tverts %p\n", cmd->arg.draw_array.verts);
+    case GFX_IL_SET_VERT_ARRAY:
+        LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_SET_VERT_ARRAY\n");
+        LOG_DBG(GFX_IL_TAG "\tn_verts %u\n", cmd->arg.set_vert_array.n_verts);
+        LOG_DBG(GFX_IL_TAG "\tverts %p\n", cmd->arg.set_vert_array.verts);
+        break;
+    case GFX_IL_DRAW_VERT_ARRAY:
+        LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_DRAW_VERT_ARRAY\n");
+        LOG_DBG(GFX_IL_TAG "\tfirst_idx %u\n", cmd->arg.draw_vert_array.first_idx);
+        LOG_DBG(GFX_IL_TAG "\tn_verts %u\n", cmd->arg.draw_vert_array.n_verts);
         break;
     case GFX_IL_INIT_OBJ:
         LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_INIT_OBJ\n");

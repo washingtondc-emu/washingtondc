@@ -152,6 +152,9 @@ static unsigned clip[4];
  */
 static unsigned user_clip[4];
 
+static float *vert_array;
+unsigned vert_array_len;
+
 struct tex {
     int obj_no;
     unsigned width, height;
@@ -223,6 +226,8 @@ static void soft_gfx_init(void) {
     screen_width = 0;
     screen_height = 0;
     w_buffer = NULL;
+    vert_array = NULL;
+    vert_array_len = 0;
 
     n_oit_pixels = 0;
     for (idx = 0; idx < FB_WIDTH * FB_HEIGHT; idx++)
@@ -236,6 +241,10 @@ static void soft_gfx_cleanup(void) {
 
     free(w_buffer);
     w_buffer = NULL;
+
+    free(vert_array);
+    vert_array = NULL;
+    vert_array_len = 0;
 }
 
 static void init_poly() {
@@ -1722,17 +1731,52 @@ draw_tri(struct gfx_obj *obj, float const *p1,
     }
 }
 
-static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
+static void soft_gfx_set_vert_array(struct gfx_il_inst *cmd) {
     if (render_tgt < 0) {
         fprintf(stderr, "%s - no render target bound!\n", __func__);
         return;
     }
 
-    unsigned vert_no;
-    struct gfx_obj *obj = gfx_obj_get(render_tgt);
-    unsigned n_verts = cmd->arg.draw_array.n_verts;
-    float const *verts = cmd->arg.draw_array.verts;
+    unsigned n_verts = cmd->arg.set_vert_array.n_verts;
+    float const *verts = cmd->arg.set_vert_array.verts;
 
+    if (!n_verts) {
+        free(vert_array);
+        vert_array = NULL;
+        vert_array_len = 0;
+        return;
+    }
+    size_t bytes_per_vert = sizeof(float) * (size_t)GFX_VERT_LEN;
+    if (SIZE_MAX / n_verts < bytes_per_vert) {
+        // overflow
+        free(vert_array);
+        vert_array = NULL;
+        vert_array_len = 0;
+        return;
+    }
+    float *new_vert_array = realloc(vert_array, bytes_per_vert * n_verts);
+    if (!new_vert_array) {
+        // failed alloc
+        vert_array_len = 0;
+        free(vert_array);
+        vert_array = NULL;
+        return;
+    }
+    vert_array = new_vert_array;
+    memcpy(vert_array, verts, bytes_per_vert * n_verts);
+    vert_array_len = n_verts;
+}
+
+static void soft_gfx_draw_vert_array(struct gfx_il_inst *cmd) {
+    unsigned n_verts = cmd->arg.draw_vert_array.n_verts;
+    unsigned first_idx = cmd->arg.draw_vert_array.first_idx;
+    unsigned last_idx = first_idx + (n_verts - 1);
+
+    if (!n_verts || !vert_array || last_idx >= vert_array_len)
+        return;
+
+    struct gfx_obj *obj = gfx_obj_get(render_tgt);
+    unsigned cur_idx;
     float const *tri_buf[2];
     unsigned tri_buf_len = 0;
 
@@ -1741,9 +1785,9 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
          * draw triangles as white lines with no depth testing or
          * per-vertex attributes
          */
-        for (vert_no = 0; vert_no < n_verts; vert_no++) {
+        for (cur_idx = first_idx; cur_idx <= last_idx; cur_idx++) {
             if (tri_buf_len == 2) {
-                float const *newvert = verts + vert_no * GFX_VERT_LEN;
+                float const *newvert = vert_array + cur_idx * GFX_VERT_LEN;
 
                 draw_line(obj, tri_buf[0][0], tri_buf[0][1], tri_buf[1][0], tri_buf[1][1], 0xffffffff);
                 draw_line(obj, tri_buf[1][0], tri_buf[1][1], newvert[0], newvert[1], 0xffffffff);
@@ -1752,11 +1796,12 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                 tri_buf[0] = tri_buf[1];
                 tri_buf[1] = newvert;
             } else {
-                tri_buf[tri_buf_len++] = verts + vert_no * GFX_VERT_LEN;
+                tri_buf[tri_buf_len++] = vert_array + cur_idx * GFX_VERT_LEN;
             }
         }
     } else {
-        for (vert_no = 0; vert_no < n_verts; vert_no++) {
+        bool odd = false;
+        for (cur_idx = first_idx; cur_idx <= last_idx; cur_idx++) {
             if (tri_buf_len == 2) {
                 /*
                  * reverse winding order on every other triangle so that they all
@@ -1766,16 +1811,17 @@ static void soft_gfx_draw_array(struct gfx_il_inst *cmd) {
                  * winding order but I want to keep things consistent for when I
                  * eventually implement culling.
                  */
-                float const *newvert = verts + vert_no * GFX_VERT_LEN;
-                if (vert_no % 2)
+                float const *newvert = vert_array + cur_idx * GFX_VERT_LEN;
+                if (odd)
                     draw_tri(obj, tri_buf[1], tri_buf[0], newvert);
                 else
                     draw_tri(obj, tri_buf[0], tri_buf[1], newvert);
+                odd = !odd;
 
                 tri_buf[0] = tri_buf[1];
                 tri_buf[1] = newvert;
             } else {
-                tri_buf[tri_buf_len++] = verts + vert_no * GFX_VERT_LEN;
+                tri_buf[tri_buf_len++] = vert_array + cur_idx * GFX_VERT_LEN;
             }
         }
     }
@@ -1872,8 +1918,11 @@ static void soft_gfx_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
             break;
         case GFX_IL_SET_CLIP_RANGE:
             break;
-        case GFX_IL_DRAW_ARRAY:
-            soft_gfx_draw_array(cmd);
+        case GFX_IL_SET_VERT_ARRAY:
+            soft_gfx_set_vert_array(cmd);
+            break;
+        case GFX_IL_DRAW_VERT_ARRAY:
+            soft_gfx_draw_vert_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
             soft_gfx_obj_init(cmd);

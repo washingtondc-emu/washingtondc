@@ -38,7 +38,8 @@ static void null_render_bind_tex(struct gfx_il_inst *cmd);
 static void null_render_unbind_tex(struct gfx_il_inst *cmd);
 static void null_render_set_blend_enable(struct gfx_il_inst *cmd);
 static void null_render_set_rend_param(struct gfx_il_inst *cmd);
-static void null_render_draw_array(struct gfx_il_inst *cmd);
+static void null_render_set_vert_array(struct gfx_il_inst *cmd);
+static void null_render_draw_vert_array(struct gfx_il_inst *cmd);
 static void null_render_clear(struct gfx_il_inst *cmd);
 static void null_render_set_clip_range(struct gfx_il_inst *cmd);
 static void null_render_begin_sort_mode(struct gfx_il_inst *cmd);
@@ -97,7 +98,10 @@ static void null_render_set_blend_enable(struct gfx_il_inst *cmd) {
 static void null_render_set_rend_param(struct gfx_il_inst *cmd) {
 }
 
-static void null_render_draw_array(struct gfx_il_inst *cmd) {
+static void null_render_set_vert_array(struct gfx_il_inst *cmd) {
+}
+
+static void null_render_draw_vert_array(struct gfx_il_inst *cmd) {
 }
 
 static void null_render_clear(struct gfx_il_inst *cmd) {
@@ -262,8 +266,11 @@ static void null_render_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
         case GFX_IL_SET_CLIP_RANGE:
             null_render_set_clip_range(cmd);
             break;
-        case GFX_IL_DRAW_ARRAY:
-            null_render_draw_array(cmd);
+        case GFX_IL_SET_VERT_ARRAY:
+            null_render_set_vert_array(cmd);
+            break;
+        case GFX_IL_DRAW_VERT_ARRAY:
+            null_render_draw_vert_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
             null_render_obj_init(cmd);

@@ -175,8 +175,9 @@ static const GLenum depth_funcs[PVR2_DEPTH_FUNC_COUNT] = {
 #define OIT_MAX_GROUPS (4*1024)
 
 struct oit_group {
-    float const *verts;
-    unsigned n_verts;
+    // index and count into the vertex array
+    GLint first;
+    GLsizei count;
 
     float avg_depth;
 
@@ -192,6 +193,9 @@ static struct oit_state {
     struct oit_group groups[OIT_MAX_GROUPS];
 
     struct gfx_rend_param cur_rend_param;
+
+    float *vert_array;
+    unsigned vert_array_len;
 } oit_state;
 
 // converts pixels from ARGB 4444 to RGBA 4444
@@ -204,7 +208,7 @@ static void opengl_render_init(void);
 static void opengl_render_cleanup(void);
 static void gfxgl3_renderer_set_blend_enable(struct gfx_il_inst *cmd);
 static void gfxgl3_renderer_set_rend_param(struct gfx_il_inst *cmd);
-static void gfxgl3_renderer_draw_array(struct gfx_il_inst *cmd);
+static void gfxgl3_renderer_set_vert_array(struct gfx_il_inst *cmd);
 static void gfxgl3_renderer_clear(struct gfx_il_inst *cmd);
 static void gfxgl3_renderer_set_screen_dim(unsigned width, unsigned height);
 static void gfxgl3_renderer_set_clip_range(struct gfx_il_inst *cmd);
@@ -225,7 +229,7 @@ static void
 gfxgl3_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd);
 
 static void do_set_rend_param(struct gfx_rend_param const *param);
-static void do_draw_array(float const *verts, unsigned n_verts);
+static void do_draw_array(GLint first_idx, GLsizei n_verts);
 
 static void set_callbacks(struct renderer_callbacks const *callbacks);
 
@@ -547,6 +551,11 @@ static bool is_renderdoc_enabled(void) {
 static void opengl_render_init(void) {
     user_clip_slot = -1;
 
+    oit_state.enabled = 0;
+    oit_state.group_count = 0;
+    oit_state.vert_array = NULL;
+    oit_state.vert_array_len = 0;
+
     init_renderdoc_api();
 
     gfxgl3_tex_cache_init();
@@ -615,6 +624,10 @@ static void opengl_render_cleanup(void) {
     cleanup_renderdoc_api();
 
     user_clip_slot = -1;
+
+    free(oit_state.vert_array);
+    oit_state.vert_array = NULL;
+    oit_state.vert_array_len = 0;
 }
 
 static DEF_ERROR_INT_ATTR(max_length);
@@ -910,14 +923,58 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     tex_enable = param->tex_enable;
 }
 
-static void gfxgl3_renderer_draw_array(struct gfx_il_inst *cmd) {
-    unsigned n_verts = cmd->arg.draw_array.n_verts;
-    float const *verts = cmd->arg.draw_array.verts;
+static void gfxgl3_renderer_set_vert_array(struct gfx_il_inst *cmd) {
+    unsigned n_verts = cmd->arg.set_vert_array.n_verts;
+    float const *verts = cmd->arg.set_vert_array.verts;
 
-    do_draw_array(verts, n_verts);
+    size_t bytes_per_vert = sizeof(float) * (size_t)GFX_VERT_LEN;
+    if (gfx_config_read().depth_sort_enable &&
+        SIZE_MAX / bytes_per_vert >= n_verts) {
+        if (n_verts) {
+            float *vert_array = realloc(oit_state.vert_array,
+                                        bytes_per_vert * n_verts);
+            if (vert_array) {
+                oit_state.vert_array = vert_array;
+                oit_state.vert_array_len = n_verts;
+                memcpy(vert_array, verts, bytes_per_vert * n_verts);
+            } else {
+                /*
+                 * oit_state will not be enabled if the vertex array length is 0,
+                 * so we can fail silently here.
+                 */
+                free(oit_state.vert_array);
+                oit_state.vert_array = NULL;
+                oit_state.vert_array_len = 0;
+            }
+        } else {
+            /*
+             * We're here either because n_verts was 0, or because there was an
+             * overflow detected.
+             *
+             * oit_state will not be enabled if the vertex array length is 0,
+             * so we can fail silently here.
+             */
+            free(oit_state.vert_array);
+            oit_state.vert_array = NULL;
+            oit_state.vert_array_len = 0;
+        }
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, bytes_per_vert * n_verts,
+                 verts, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-static void do_draw_array(float const *verts, unsigned n_verts) {
+static void
+gfxgl3_renderer_draw_vert_array(struct gfx_il_inst *cmd) {
+    unsigned n_verts = cmd->arg.draw_vert_array.n_verts;
+    unsigned first_idx = cmd->arg.draw_vert_array.first_idx;
+
+    do_draw_array(first_idx, n_verts);
+}
+
+static void do_draw_array(GLint first_idx, GLsizei n_verts) {
     if (!n_verts)
         return;
 
@@ -925,13 +982,16 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
         if (oit_state.group_count < OIT_MAX_GROUPS) {
             struct oit_group *grp = oit_state.groups + oit_state.group_count++;
             grp->rend_param = oit_state.cur_rend_param;
-            grp->verts = verts;
-            grp->n_verts = n_verts;
+            grp->first = first_idx;
+            grp->count = n_verts;
 
             float avg_depth = 0.0f;
             unsigned vert_no;
-            for (vert_no = 0; vert_no < n_verts; vert_no++)
-                avg_depth += 1.0f / verts[vert_no * GFX_VERT_LEN + 2];
+            unsigned last_idx = first_idx + (n_verts - 1);
+            for (vert_no = first_idx; vert_no <= last_idx; vert_no++) {
+                avg_depth +=
+                    1.0f / oit_state.vert_array[vert_no * GFX_VERT_LEN + 2];
+            }
             avg_depth /= n_verts;
 
             grp->avg_depth = avg_depth;
@@ -964,9 +1024,6 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
     // now draw the geometry itself
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(float) * n_verts * GFX_VERT_LEN,
-                 verts, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(POSITION_SLOT);
     glEnableVertexAttribArray(BASE_COLOR_SLOT);
     glEnableVertexAttribArray(OFFS_COLOR_SLOT);
@@ -985,7 +1042,7 @@ static void do_draw_array(float const *verts, unsigned n_verts) {
                               GFX_VERT_LEN * sizeof(float),
                               (GLvoid*)(GFX_VERT_TEX_COORD_OFFSET * sizeof(float)));
     }
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, n_verts);
+    glDrawArrays(GL_TRIANGLE_STRIP, first_idx, n_verts);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
@@ -1079,14 +1136,14 @@ static void gfxgl3_renderer_begin_sort_mode(struct gfx_il_inst *cmd) {
     if (oit_state.enabled)
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    if (gfx_config_read().depth_sort_enable) {
+    if (gfx_config_read().depth_sort_enable && oit_state.vert_array_len) {
         oit_state.enabled = true;
         oit_state.group_count = 0;
     }
 }
 
 static void gfxgl3_renderer_end_sort_mode(struct gfx_il_inst *cmd) {
-    if (!gfx_config_read().depth_sort_enable)
+    if (!gfx_config_read().depth_sort_enable || !oit_state.vert_array_len)
         return;
     if (!oit_state.enabled)
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -1118,7 +1175,7 @@ static void gfxgl3_renderer_end_sort_mode(struct gfx_il_inst *cmd) {
                             grp_src->user_clip[0], grp_src->user_clip[1],
                             grp_src->user_clip[2], grp_src->user_clip[3]);
             }
-            do_draw_array(grp_src->verts, grp_src->n_verts);
+            do_draw_array(grp_src->first, grp_src->count);
         }
     }
 }
@@ -1312,8 +1369,11 @@ gfxgl3_renderer_exec_gfx_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
         case GFX_IL_SET_CLIP_RANGE:
             gfxgl3_renderer_set_clip_range(cmd);
             break;
-        case GFX_IL_DRAW_ARRAY:
-            gfxgl3_renderer_draw_array(cmd);
+        case GFX_IL_SET_VERT_ARRAY:
+            gfxgl3_renderer_set_vert_array(cmd);
+            break;
+        case GFX_IL_DRAW_VERT_ARRAY:
+            gfxgl3_renderer_draw_vert_array(cmd);
             break;
         case GFX_IL_INIT_OBJ:
             gfxgl3_renderer_obj_init(cmd);

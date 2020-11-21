@@ -80,8 +80,11 @@ enum gfx_il {
 
     GFX_IL_SET_USER_CLIP,
 
-    // use this to render a group of polygons
-    GFX_IL_DRAW_ARRAY,
+    // use this to upload vertex data
+    GFX_IL_SET_VERT_ARRAY,
+
+    // use this to render a subset of vertex data previously uploaded
+    GFX_IL_DRAW_VERT_ARRAY,
 
     GFX_IL_INIT_OBJ,
 
@@ -188,7 +191,12 @@ union gfx_il_arg {
          */
         unsigned n_verts;
         float const *verts;
-    } draw_array;
+    } set_vert_array;
+
+    struct {
+        unsigned first_idx;
+        unsigned n_verts;
+    } draw_vert_array;
 
     struct {
         int obj_no;
