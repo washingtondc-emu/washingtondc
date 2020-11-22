@@ -1260,6 +1260,10 @@ gfxgl4_renderer_draw_vert_array(struct gfx_il_inst *cmd) {
                               GFX_VERT_LEN * sizeof(float),
                               (GLvoid*)(GFX_VERT_TEX_COORD_OFFSET * sizeof(float)));
     }
+    if (oit_state.enabled) {
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT |
+                        GL_ATOMIC_COUNTER_BARRIER_BIT);
+    }
     glDrawArrays(GL_TRIANGLE_STRIP, first_idx, n_verts);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
