@@ -258,6 +258,7 @@ static char const * const pvr2_ta_vert_glsl =
 
     "#ifdef TEX_ENABLE\n"
     "layout (location = 3) in vec2 tex_coord_in;\n"
+    "uniform mat2 tex_matrix;\n"
     "#endif\n"
 
     "uniform mat4 trans_mat;\n"
@@ -275,7 +276,7 @@ static char const * const pvr2_ta_vert_glsl =
      */
     "void tex_transform() {\n"
     "#ifdef TEX_ENABLE\n"
-    "    st = tex_coord_in * vert_pos.z;\n"
+    "    st = tex_matrix * tex_coord_in * vert_pos.z;\n"
     "#endif\n"
     "}\n"
     "\n"
@@ -478,6 +479,8 @@ static struct shader_cache_ent* create_shader(shader_key key) {
      */
     ent->slots[SHADER_CACHE_SLOT_BOUND_TEX] =
         glGetUniformLocation(ent->shader.shader_prog_obj, "bound_tex");
+    ent->slots[SHADER_CACHE_SLOT_TEX_TRANSFORM] =
+        glGetUniformLocation(ent->shader.shader_prog_obj, "tex_matrix");
     ent->slots[SHADER_CACHE_SLOT_PT_ALPHA_REF] =
         glGetUniformLocation(ent->shader.shader_prog_obj, "pt_alpha_ref");
     ent->slots[SHADER_CACHE_SLOT_TRANS_MAT] =
@@ -913,6 +916,15 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     user_clip_slot = shader_ent->slots[SHADER_CACHE_SLOT_USER_CLIP];
     glUniform4f(user_clip_slot, user_clip[0], user_clip[1],
                 user_clip[2], user_clip[3]);
+
+    GLfloat tex_transform[4] = {
+        param->tex_transform[0],
+        param->tex_transform[1],
+        param->tex_transform[2],
+        param->tex_transform[3],
+    };
+    glUniformMatrix2fv(shader_ent->slots[SHADER_CACHE_SLOT_TEX_TRANSFORM],
+                       1, GL_TRUE, tex_transform);
 
     glBlendFunc(src_blend_factors[(unsigned)param->src_blend_factor],
                 dst_blend_factors[(unsigned)param->dst_blend_factor]);

@@ -131,6 +131,9 @@ struct gfx_rend_param {
     // punch-through polygon mode
     bool pt_mode;
     unsigned pt_ref; // 0-255
+
+    // 2x2 texture matrix, row-major
+    float tex_transform[4];
 };
 
 #ifdef __cplusplus

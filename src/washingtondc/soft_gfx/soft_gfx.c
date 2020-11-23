@@ -1299,18 +1299,34 @@ draw_tri(struct gfx_obj *obj, float const *p1,
         p3[GFX_VERT_OFFS_COLOR_OFFSET + 3] * p3[2]
     };
 
+    double texmat[4] = {
+        rend_param.tex_transform[0],
+        rend_param.tex_transform[1],
+        rend_param.tex_transform[2],
+        rend_param.tex_transform[3]
+    };
+
     // perspective-correct texture coordinates
     double p1_texcoord[2] = {
-        p1[GFX_VERT_TEX_COORD_OFFSET] * p1[2],
-        p1[GFX_VERT_TEX_COORD_OFFSET + 1] * p1[2]
+        (p1[GFX_VERT_TEX_COORD_OFFSET] * texmat[0] +
+         p1[GFX_VERT_TEX_COORD_OFFSET + 1] * texmat[1]) * p1[2],
+
+        (p1[GFX_VERT_TEX_COORD_OFFSET] * texmat[2] +
+         p1[GFX_VERT_TEX_COORD_OFFSET + 1] * texmat[3]) * p1[2]
     };
     double p2_texcoord[2] = {
-        p2[GFX_VERT_TEX_COORD_OFFSET] * p2[2],
-        p2[GFX_VERT_TEX_COORD_OFFSET + 1] * p2[2]
+        (p2[GFX_VERT_TEX_COORD_OFFSET] * texmat[0] +
+         p2[GFX_VERT_TEX_COORD_OFFSET + 1] * texmat[1]) * p2[2],
+
+        (p2[GFX_VERT_TEX_COORD_OFFSET] * texmat[2] +
+         p2[GFX_VERT_TEX_COORD_OFFSET + 1] * texmat[3]) * p2[2],
     };
     double p3_texcoord[2] = {
-        p3[GFX_VERT_TEX_COORD_OFFSET] * p3[2],
-        p3[GFX_VERT_TEX_COORD_OFFSET + 1] * p3[2]
+        (p3[GFX_VERT_TEX_COORD_OFFSET] * texmat[0] +
+         p3[GFX_VERT_TEX_COORD_OFFSET + 1] * texmat[1]) * p3[2],
+
+        (p3[GFX_VERT_TEX_COORD_OFFSET] * texmat[2] +
+         p3[GFX_VERT_TEX_COORD_OFFSET + 1] * texmat[3]) * p3[2],
     };
 
     struct tex *texp = NULL;

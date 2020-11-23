@@ -450,6 +450,19 @@ display_list_exec_header(struct pvr2 *pvr2,
     gfx_cmd.arg.set_rend_param.param.pt_mode = punch_through;
     gfx_cmd.arg.set_rend_param.param.pt_ref = core->pt_alpha_ref & 0xff;
 
+    float *tex_transform = gfx_cmd.arg.set_rend_param.param.tex_transform;
+    if (cmd_hdr->stride_sel) {
+        unsigned linestride =
+            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
+        tex_transform[0] = (float)(1 << cmd_hdr->tex_width_shift) /
+            (float)linestride;
+    } else {
+        tex_transform[0] = 1.0f;
+    }
+    tex_transform[1] = 0.0f;
+    tex_transform[2] = 0.0f;
+    tex_transform[3] = 1.0f;
+
     // enqueue the configuration command
     pvr2_core_push_gfx_il(pvr2, gfx_cmd);
 
@@ -478,14 +491,6 @@ display_list_exec_vertex(struct pvr2 *pvr2,
                cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]);
 
     memcpy(vert_out, cmd_vtx->vtx, sizeof(float) * GFX_VERT_LEN);
-
-    if (pvr2->core.stride_sel) {
-        unsigned linestride =
-            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
-        vert_out[GFX_VERT_TEX_COORD_OFFSET + 0] =
-            cmd_vtx->vtx[GFX_VERT_TEX_COORD_OFFSET + 0] * ((float)(1 << pvr2->core.tex_width_shift) /
-                          (float)linestride);
-    }
 
     if (cmd_vtx->end_of_strip) {
         /*
@@ -532,17 +537,6 @@ display_list_exec_quad(struct pvr2 *pvr2,
         vert_tex_coords[1][0] + uv_vec[0][0] + uv_vec[1][0];
     vert_tex_coords[3][1] =
         vert_tex_coords[1][1] + uv_vec[0][1] + uv_vec[1][1];
-
-    if (pvr2->core.stride_sel) {
-        // non-power-of-two texture
-        unsigned linestride =
-            32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
-        int idx;
-        for (idx = 0; idx < 3; idx++) {
-            vert_tex_coords[idx][0] *=
-                ((float)linestride) / ((float)(1 << pvr2->core.tex_width_shift));
-        }
-    }
 
     float const base_col[] = {
         cmd_quad->base_color[0],

@@ -66,6 +66,9 @@ enum {
     // only valid if SHADER_KEY_TEX_ENABLE_BIT is set
     SHADER_CACHE_SLOT_BOUND_TEX,
 
+    // only valid if SHADER_KEY_TEX_ENABLE_BIT is set
+    SHADER_CACHE_SLOT_TEX_TRANSFORM,
+
     // only valid if SHADER_KEY_PUNCH_THROUGH_BIT is set
     SHADER_CACHE_SLOT_PT_ALPHA_REF,
 
