@@ -127,10 +127,7 @@ struct pvr2_display_list_end_of_group {
 };
 
 struct pvr2_display_list_vertex {
-    float pos[3];
-    float tex_coord[2];
-    float base_color[4];
-    float offs_color[4];
+    float vtx[GFX_VERT_LEN];
     bool end_of_strip;
 };
 

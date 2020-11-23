@@ -590,10 +590,12 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 
         cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX;
         struct pvr2_display_list_vertex *dl_vtx = &cmd->vtx;
-        memcpy(dl_vtx->pos, vtx->pos, sizeof(dl_vtx->pos));
-        memcpy(dl_vtx->tex_coord, vtx->uv, sizeof(dl_vtx->tex_coord));
-        memcpy(dl_vtx->base_color, vtx->base_color, sizeof(dl_vtx->base_color));
-        memcpy(dl_vtx->offs_color, vtx->offs_color, sizeof(dl_vtx->offs_color));
+        memcpy(dl_vtx->vtx + GFX_VERT_POS_OFFSET, vtx->pos, sizeof(float) * 3);
+        dl_vtx->vtx[GFX_VERT_POS_OFFSET + 3] = 1.0f;
+        memcpy(dl_vtx->vtx + GFX_VERT_BASE_COLOR_OFFSET, vtx->base_color, sizeof(float) * 4);
+        memcpy(dl_vtx->vtx + GFX_VERT_OFFS_COLOR_OFFSET, vtx->offs_color, sizeof(float) * 4);
+        memcpy(dl_vtx->vtx + GFX_VERT_TEX_COORD_OFFSET, vtx->uv, sizeof(float) * 2);
+
         dl_vtx->end_of_strip = vtx->end_of_strip;
     }
 }

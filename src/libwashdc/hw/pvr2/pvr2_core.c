@@ -507,36 +507,28 @@ display_list_exec_vertex(struct pvr2 *pvr2,
      * actually be a situation with an unreasonably large depth range so we'd
      * ideally want to let that through.
      */
-    if (!isinf(cmd_vtx->pos[2]) && !isnan(cmd_vtx->pos[2]) &&
-        fabsf(cmd_vtx->pos[2]) < 1024 * 1024) {
-        if (cmd_vtx->pos[2] < core->clip_min)
-            core->clip_min = cmd_vtx->pos[2];
-        if (cmd_vtx->pos[2] > core->clip_max)
-            core->clip_max = cmd_vtx->pos[2];
+    if (!isinf(cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]) &&
+        !isnan(cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]) &&
+        fabsf(cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]) < 1024 * 1024) {
+        if (cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2] < core->clip_min)
+            core->clip_min = cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2];
+        if (cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2] > core->clip_max)
+            core->clip_max = cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2];
     }
 
-    vert_out[GFX_VERT_POS_OFFSET + 0] = cmd_vtx->pos[0];
-    vert_out[GFX_VERT_POS_OFFSET + 1] = cmd_vtx->pos[1];
-    vert_out[GFX_VERT_POS_OFFSET + 2] = cmd_vtx->pos[2];
-    vert_out[GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    PVR2_TRACE("(%f, %f, %f)\n",
+               cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 0],
+               cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 1],
+               cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]);
 
-    PVR2_TRACE("(%f, %f, %f)\n", cmd_vtx->pos[0], cmd_vtx->pos[1], cmd_vtx->pos[2]);
-
-    memcpy(vert_out + GFX_VERT_BASE_COLOR_OFFSET, cmd_vtx->base_color,
-           4 * sizeof(float));
-    memcpy(vert_out + GFX_VERT_OFFS_COLOR_OFFSET, cmd_vtx->offs_color,
-           4 * sizeof(float));
+    memcpy(vert_out, cmd_vtx->vtx, sizeof(float) * GFX_VERT_LEN);
 
     if (pvr2->core.stride_sel) {
         unsigned linestride =
             32 * (pvr2->reg_backing[PVR2_TEXT_CONTROL] & BIT_RANGE(0, 4));
         vert_out[GFX_VERT_TEX_COORD_OFFSET + 0] =
-            cmd_vtx->tex_coord[0] * ((float)(1 << pvr2->core.tex_width_shift) /
+            cmd_vtx->vtx[GFX_VERT_TEX_COORD_OFFSET + 0] * ((float)(1 << pvr2->core.tex_width_shift) /
                           (float)linestride);
-        vert_out[GFX_VERT_TEX_COORD_OFFSET + 1] = cmd_vtx->tex_coord[1];
-    } else {
-        vert_out[GFX_VERT_TEX_COORD_OFFSET + 0] = cmd_vtx->tex_coord[0];
-        vert_out[GFX_VERT_TEX_COORD_OFFSET + 1] = cmd_vtx->tex_coord[1];
     }
 
     if (cmd_vtx->end_of_strip) {

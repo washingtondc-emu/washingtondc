@@ -81,10 +81,10 @@ enum pvr2_pkt_tp {
 };
 
 struct pvr2_pkt_vtx {
+    float pos[3];
     float base_color[4];
     float offs_color[4];
     float uv[2];
-    float pos[3];
 
     bool end_of_strip;
 };
