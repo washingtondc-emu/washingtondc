@@ -26,6 +26,7 @@
  * doesn't really even do tile rendering like it should.
  */
 
+#include <math.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
@@ -560,6 +561,40 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     memcpy(dl_quad->vert_recip_z,
            quad->vert_recip_z, sizeof(dl_quad->vert_recip_z));
     dl_quad->degenerate = quad->degenerate;
+
+    // update display list depth clipping
+    if (!isinf(quad->vert_recip_z[0]) &&
+        !isnan(quad->vert_recip_z[0]) &&
+        fabsf(quad->vert_recip_z[0]) < 1024 * 1024) {
+        if (quad->vert_recip_z[0] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_recip_z[0];
+        if (quad->vert_recip_z[0] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_recip_z[0];
+    }
+    if (!isinf(quad->vert_recip_z[1]) &&
+        !isnan(quad->vert_recip_z[1]) &&
+        fabsf(quad->vert_recip_z[1]) < 1024 * 1024) {
+        if (quad->vert_recip_z[1] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_recip_z[1];
+        if (quad->vert_recip_z[1] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_recip_z[1];
+    }
+    if (!isinf(quad->vert_recip_z[2]) &&
+        !isnan(quad->vert_recip_z[2]) &&
+        fabsf(quad->vert_recip_z[2]) < 1024 * 1024) {
+        if (quad->vert_recip_z[2] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_recip_z[2];
+        if (quad->vert_recip_z[2] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_recip_z[2];
+    }
+    if (!isinf(quad->vert_recip_z[3]) &&
+        !isnan(quad->vert_recip_z[3]) &&
+        fabsf(quad->vert_recip_z[3]) < 1024 * 1024) {
+        if (quad->vert_recip_z[3] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_recip_z[3];
+        if (quad->vert_recip_z[3] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_recip_z[3];
+    }
 }
 
 static void
@@ -586,6 +621,46 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         if (!cmd) {
             LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
             return;
+        }
+
+        /*
+         * update the clipping planes.
+         *
+         * some games will submit vertices with infinite or near-infinite 1/z
+         * values.  This represents a vertex which is very close to the projection
+         * surface, with an approximate distance of 0.
+         *
+         * This causes the linear interpolation between clip_min and clip_max to
+         * push everything else to the far-plane (1/z = clip_min), so we exclude it
+         * from the clip_min and clip_max calculations.  The gfxgl implementation
+         * will have enabled GL_DEPTH_CLAMP, so the polygon will still get
+         * rasterized but this may in theory cause z-fighting at the near-plane.  In
+         * practice I've never seen this cause any z-fighting; I think the infinite
+         * 1/z polygons are all extreme outliers.
+         *
+         * This hack is unfortunate but it will always be necessary as long as
+         * graphics APIs force us to map our depth values from an unbounded range to
+         * a limited range as both OpenGL and Direct X do.  soft_gfx actually does
+         * not have this problem at all since it is able to ignore clip_min and
+         * clip_max and use the raw 1/z values for its depth testing.
+         *
+         * Note that the cutoff value of 1024*1024 below is abritrary and can be
+         * changed.
+         *
+         * SoulCalibur and Sonic Adventure 2 both do this.
+         *
+         * TODO: should take the range into account as well as the absolute value.
+         * eg current implementation would break if the game submitted polygons
+         * with 1/z values between 1024*1024 and 1024*1024+1, but that wouldn't
+         * actually be a situation with an unreasonably large depth range so we'd
+         * ideally want to let that through.
+         */
+        float depth = vtx->pos[2];
+        if (!isinf(depth) && !isnan(depth) && fabsf(depth) < 1024 * 1024) {
+            if (depth < cur_list->clip_min)
+                cur_list->clip_min = depth;
+            if (depth > cur_list->clip_max)
+                cur_list->clip_max = depth;
         }
 
         cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX;

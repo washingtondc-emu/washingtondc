@@ -140,13 +140,8 @@ void pvr2_core_cleanup(struct pvr2 *pvr2) {
 }
 
 static void render_frame_init(struct pvr2 *pvr2) {
-    struct pvr2_core *core = &pvr2->core;
-
     // free up gfx_il commands
     pvr2->core.gfx_il_inst_buf_count = 0;
-
-    core->clip_min = 0.0f;
-    core->clip_max = 0.0f;
 
     memset(&pvr2->stat.per_frame_counters, 0,
            sizeof(pvr2->stat.per_frame_counters));
@@ -160,6 +155,9 @@ void pvr2_display_list_init(struct pvr2_display_list *list) {
         group->valid = false;
         group->n_cmds = 0;
     }
+
+    list->clip_min = 0.0f;
+    list->clip_max = 0.0f;
 }
 
 struct pvr2_display_list_command *
@@ -468,53 +466,11 @@ display_list_exec_header(struct pvr2 *pvr2,
 static void
 display_list_exec_vertex(struct pvr2 *pvr2,
                          struct pvr2_display_list_command const *cmd) {
-    struct pvr2_core *core = &pvr2->core;
     struct pvr2_display_list_vertex const *cmd_vtx = &cmd->vtx;
     float *vert_out = pvr2_core_alloc_verts(pvr2, 1);
 
     if (!vert_out)
         return;
-
-    /*
-     * update the clipping planes.
-     *
-     * some games will submit vertices with infinite or near-infinite 1/z
-     * values.  This represents a vertex which is very close to the projection
-     * surface, with an approximate distance of 0.
-     *
-     * This causes the linear interpolation between clip_min and clip_max to
-     * push everything else to the far-plane (1/z = clip_min), so we exclude it
-     * from the clip_min and clip_max calculations.  The gfxgl implementation
-     * will have enabled GL_DEPTH_CLAMP, so the polygon will still get
-     * rasterized but this may in theory cause z-fighting at the near-plane.  In
-     * practice I've never seen this cause any z-fighting; I think the infinite
-     * 1/z polygons are all extreme outliers.
-     *
-     * This hack is unfortunate but it will always be necessary as long as
-     * graphics APIs force us to map our depth values from an unbounded range to
-     * a limited range as both OpenGL and Direct X do.  soft_gfx actually does
-     * not have this problem at all since it is able to ignore clip_min and
-     * clip_max and use the raw 1/z values for its depth testing.
-     *
-     * Note that the cutoff value of 1024*1024 below is abritrary and can be
-     * changed.
-     *
-     * SoulCalibur and Sonic Adventure 2 both do this.
-     *
-     * TODO: should take the range into account as well as the absolute value.
-     * eg current implementation would break if the game submitted polygons
-     * with 1/z values between 1024*1024 and 1024*1024+1, but that wouldn't
-     * actually be a situation with an unreasonably large depth range so we'd
-     * ideally want to let that through.
-     */
-    if (!isinf(cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]) &&
-        !isnan(cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]) &&
-        fabsf(cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]) < 1024 * 1024) {
-        if (cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2] < core->clip_min)
-            core->clip_min = cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2];
-        if (cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2] > core->clip_max)
-            core->clip_max = cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2];
-    }
 
     PVR2_TRACE("(%f, %f, %f)\n",
                cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 0],
@@ -545,7 +501,6 @@ display_list_exec_vertex(struct pvr2 *pvr2,
 static void
 display_list_exec_quad(struct pvr2 *pvr2,
                        struct pvr2_display_list_command const *cmd) {
-    struct pvr2_core *core = &pvr2->core;
     struct pvr2_display_list_quad const *cmd_quad = &cmd->quad;
 
     if (cmd_quad->degenerate)
@@ -651,42 +606,6 @@ display_list_exec_quad(struct pvr2 *pvr2,
     memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
     memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
            vert_tex_coords[3], 2 * sizeof(float));
-
-    if (!isinf(vert_recip_z[0]) &&
-        !isnan(vert_recip_z[0]) &&
-        fabsf(vert_recip_z[0]) < 1024 * 1024) {
-        if (vert_recip_z[0] < core->clip_min)
-            core->clip_min = vert_recip_z[0];
-        if (vert_recip_z[0] > core->clip_max)
-            core->clip_max = vert_recip_z[0];
-    }
-
-    if (!isinf(vert_recip_z[1]) &&
-        !isnan(vert_recip_z[1]) &&
-        fabsf(vert_recip_z[1]) < 1024 * 1024) {
-        if (vert_recip_z[1] < core->clip_min)
-            core->clip_min = vert_recip_z[1];
-        if (vert_recip_z[1] > core->clip_max)
-            core->clip_max = vert_recip_z[1];
-    }
-
-    if (!isinf(vert_recip_z[2]) &&
-        !isnan(vert_recip_z[2]) &&
-        fabsf(vert_recip_z[2]) < 1024 * 1024) {
-        if (vert_recip_z[2] < core->clip_min)
-            core->clip_min = vert_recip_z[2];
-        if (vert_recip_z[2] > core->clip_max)
-            core->clip_max = vert_recip_z[2];
-    }
-
-    if (!isinf(vert_recip_z[3]) &&
-        !isnan(vert_recip_z[3]) &&
-        fabsf(vert_recip_z[3]) < 1024 * 1024) {
-        if (vert_recip_z[3] < core->clip_min)
-            core->clip_min = vert_recip_z[3];
-        if (vert_recip_z[3] > core->clip_max)
-            core->clip_max = vert_recip_z[3];
-    }
 
     end_triangle_strip(pvr2);
 
@@ -938,8 +857,13 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     rend_exec_il(&cmd, 1);
 
     cmd.op = GFX_IL_SET_CLIP_RANGE;
-    cmd.arg.set_clip_range.clip_min = core->clip_min;
-    cmd.arg.set_clip_range.clip_max = core->clip_max;
+    if (listp) {
+        cmd.arg.set_clip_range.clip_min = listp->clip_min;
+        cmd.arg.set_clip_range.clip_max = listp->clip_max;
+    } else {
+        cmd.arg.set_clip_range.clip_min = 0.0f;
+        cmd.arg.set_clip_range.clip_max = 0.0f;
+    }
     rend_exec_il(&cmd, 1);
 
     // initial rendering settings

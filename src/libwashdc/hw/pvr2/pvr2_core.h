@@ -176,6 +176,13 @@ struct pvr2_display_list {
     pvr2_display_list_key key;
     unsigned age_counter; // used for determining the least-recently used list
     bool valid;
+
+    /*
+     * minimum and maximum vertex depth per display list, used for mapping to
+     * OpenGL clip coordinates
+     */
+    float clip_min, clip_max;
+
     struct pvr2_display_list_group poly_groups[PVR2_POLY_TYPE_COUNT];
 };
 
@@ -186,12 +193,6 @@ struct pvr2_core {
     bool stride_sel;
     unsigned tex_width_shift, tex_height_shift;
     unsigned cur_poly_group;
-
-    /*
-     * minimum and maximum vertex depth per frame, used for mapping to OpenGL
-     * clip coordinates
-     */
-    float clip_min, clip_max;
 
     // the 4-component color that gets sent to glClearColor
     float pvr2_bgcolor[4];
