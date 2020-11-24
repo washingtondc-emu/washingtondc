@@ -208,7 +208,40 @@ uint16_t pvr2_ta_fifo_poly_read_16(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_ta_fifo_poly_write_16(addr32_t addr, uint16_t val, void *ctxt) {
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    if (addr >= 0x11000000 && addr <= 0x11ffffe0) {
+        /*
+         * workaround for annoying bullshit in Sonic Adventure
+         *
+         * During E-102 Gamma's boss fight against E-101 Beta, the game will
+         * read from 0x1129411a, clear bit 15 and then write that value back.
+         * It will then read from 0x1129411a again, clear bit 0 and then write
+         * that value back.  It only does this a couple times.
+         *
+         * The address written to is one that corresponds to texture DMA
+         * transfers.  this is the only time I have ever seen a program write
+         * to this address range directly instead of writing to it via DMA
+         * transfer.
+         *
+         * Possible explanations are:
+         *     * a bug in WashingtonDC causes the address the game accesses to
+         *       be incorrect
+         *     * there is a legitimate bug in the game
+         *     * reading from and writing to this address has some sort of
+         *       low-level effect on the TA FIFO (such as forcing it to finish
+         *       processing any unprocessed data?)
+         *
+         * see issue #92 on github.
+         *
+         * The function where this happens is at PC=0x8c091b8a.
+         */
+        LOG_ERROR("%s - WRITE %04X to %08X (DIRECT TEXTURE)\n",
+                  __func__, (unsigned)val, (unsigned)addr);
+    } else {
+        error_set_value(val);
+        error_set_address(addr);
+        error_set_feature("trying to write a 16-bit value to the PVR2 TA FIFO");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
 }
 
 
