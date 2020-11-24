@@ -551,49 +551,107 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_QUAD;
 
     struct pvr2_display_list_quad *dl_quad = &cmd->quad;
-    memcpy(dl_quad->vert_pos, quad->vert_pos, sizeof(dl_quad->vert_pos));
-    memcpy(dl_quad->tex_coords_packed,
-           quad->tex_coords_packed, sizeof(dl_quad->tex_coords_packed));
-    memcpy(dl_quad->base_color,
-           ta->fifo_state.sprite_base_color_rgba, sizeof(dl_quad->base_color));
-    memcpy(dl_quad->offs_color,
-           ta->fifo_state.sprite_offs_color_rgba, sizeof(dl_quad->offs_color));
-    memcpy(dl_quad->vert_recip_z,
-           quad->vert_recip_z, sizeof(dl_quad->vert_recip_z));
-    dl_quad->degenerate = quad->degenerate;
+
+    float *vp[4] = {
+        dl_quad->vtx,
+        dl_quad->vtx + GFX_VERT_LEN,
+        dl_quad->vtx + GFX_VERT_LEN * 2,
+        dl_quad->vtx + GFX_VERT_LEN * 3
+    };
+    vp[0][GFX_VERT_POS_OFFSET + 0] = quad->vert_pos[1][0];
+    vp[0][GFX_VERT_POS_OFFSET + 1] = quad->vert_pos[1][1];
+    vp[0][GFX_VERT_POS_OFFSET + 2] = quad->vert_pos[1][2];
+    vp[0][GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    vp[1][GFX_VERT_POS_OFFSET + 0] = quad->vert_pos[0][0];
+    vp[1][GFX_VERT_POS_OFFSET + 1] = quad->vert_pos[0][1];
+    vp[1][GFX_VERT_POS_OFFSET + 2] = quad->vert_pos[0][2];
+    vp[1][GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    vp[2][GFX_VERT_POS_OFFSET + 0] = quad->vert_pos[2][0];
+    vp[2][GFX_VERT_POS_OFFSET + 1] = quad->vert_pos[2][1];
+    vp[2][GFX_VERT_POS_OFFSET + 2] = quad->vert_pos[2][2];
+    vp[2][GFX_VERT_POS_OFFSET + 3] = 1.0f;
+    vp[3][GFX_VERT_POS_OFFSET + 0] = quad->vert_pos[3][0];
+    vp[3][GFX_VERT_POS_OFFSET + 1] = quad->vert_pos[3][1];
+    vp[3][GFX_VERT_POS_OFFSET + 2] = quad->vert_pos[3][2];
+    vp[3][GFX_VERT_POS_OFFSET + 3] = 1.0f;
+
+    memcpy(vp[0] + GFX_VERT_BASE_COLOR_OFFSET,
+           ta->fifo_state.sprite_base_color_rgba, 4 * sizeof(float));
+    memcpy(vp[1] + GFX_VERT_BASE_COLOR_OFFSET,
+           ta->fifo_state.sprite_base_color_rgba, 4 * sizeof(float));
+    memcpy(vp[2] + GFX_VERT_BASE_COLOR_OFFSET,
+           ta->fifo_state.sprite_base_color_rgba, 4 * sizeof(float));
+    memcpy(vp[3] + GFX_VERT_BASE_COLOR_OFFSET,
+           ta->fifo_state.sprite_base_color_rgba, 4 * sizeof(float));
+
+    memcpy(vp[0] + GFX_VERT_OFFS_COLOR_OFFSET,
+           ta->fifo_state.sprite_offs_color_rgba, 4 * sizeof(float));
+    memcpy(vp[1] + GFX_VERT_OFFS_COLOR_OFFSET,
+           ta->fifo_state.sprite_offs_color_rgba, 4 * sizeof(float));
+    memcpy(vp[2] + GFX_VERT_OFFS_COLOR_OFFSET,
+           ta->fifo_state.sprite_offs_color_rgba, 4 * sizeof(float));
+    memcpy(vp[3] + GFX_VERT_OFFS_COLOR_OFFSET,
+           ta->fifo_state.sprite_offs_color_rgba, 4 * sizeof(float));
+
+    /*
+     * unpack the texture coordinates.  The third vertex's coordinate is the
+     * scond vertex's coordinate plus the two side-vectors.  We do this
+     * unconditionally even if textures are disabled.  If textures are disabled
+     * then the output of this texture-coordinate algorithm is undefined but it
+     * does not matter because the rendering code won't be using it anyways.
+     */
+    unpack_uv16(vp[1] + GFX_VERT_TEX_COORD_OFFSET,
+                vp[1] + GFX_VERT_TEX_COORD_OFFSET + 1,
+                quad->tex_coords_packed);
+    unpack_uv16(vp[0] + GFX_VERT_TEX_COORD_OFFSET,
+                vp[0] + GFX_VERT_TEX_COORD_OFFSET + 1,
+                quad->tex_coords_packed + 1);
+    unpack_uv16(vp[2] + GFX_VERT_TEX_COORD_OFFSET,
+                vp[2] + GFX_VERT_TEX_COORD_OFFSET + 1,
+                quad->tex_coords_packed + 2);
+    float uv_vec[2][2] = {
+        { vp[1][GFX_VERT_TEX_COORD_OFFSET] - vp[0][GFX_VERT_TEX_COORD_OFFSET],
+          vp[1][GFX_VERT_TEX_COORD_OFFSET + 1] - vp[0][GFX_VERT_TEX_COORD_OFFSET + 1] },
+        { vp[2][GFX_VERT_TEX_COORD_OFFSET] - vp[0][GFX_VERT_TEX_COORD_OFFSET],
+          vp[2][GFX_VERT_TEX_COORD_OFFSET + 1] - vp[0][GFX_VERT_TEX_COORD_OFFSET + 1] }
+    };
+    vp[3][GFX_VERT_TEX_COORD_OFFSET] =
+        vp[0][GFX_VERT_TEX_COORD_OFFSET] + uv_vec[0][0] + uv_vec[1][0];
+    vp[3][GFX_VERT_TEX_COORD_OFFSET + 1] =
+        vp[0][GFX_VERT_TEX_COORD_OFFSET + 1] + uv_vec[0][1] + uv_vec[1][1];
 
     // update display list depth clipping
-    if (!isinf(quad->vert_recip_z[0]) &&
-        !isnan(quad->vert_recip_z[0]) &&
-        fabsf(quad->vert_recip_z[0]) < 1024 * 1024) {
-        if (quad->vert_recip_z[0] < cur_list->clip_min)
-            cur_list->clip_min = quad->vert_recip_z[0];
-        if (quad->vert_recip_z[0] > cur_list->clip_max)
-            cur_list->clip_max = quad->vert_recip_z[0];
+    if (!isinf(quad->vert_pos[0][2]) &&
+        !isnan(quad->vert_pos[0][2]) &&
+        fabsf(quad->vert_pos[0][2]) < 1024 * 1024) {
+        if (quad->vert_pos[0][2] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_pos[0][2];
+        if (quad->vert_pos[0][2] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_pos[0][2];
     }
-    if (!isinf(quad->vert_recip_z[1]) &&
-        !isnan(quad->vert_recip_z[1]) &&
-        fabsf(quad->vert_recip_z[1]) < 1024 * 1024) {
-        if (quad->vert_recip_z[1] < cur_list->clip_min)
-            cur_list->clip_min = quad->vert_recip_z[1];
-        if (quad->vert_recip_z[1] > cur_list->clip_max)
-            cur_list->clip_max = quad->vert_recip_z[1];
+    if (!isinf(quad->vert_pos[1][2]) &&
+        !isnan(quad->vert_pos[1][2]) &&
+        fabsf(quad->vert_pos[1][2]) < 1024 * 1024) {
+        if (quad->vert_pos[1][2] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_pos[1][2];
+        if (quad->vert_pos[1][2] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_pos[1][2];
     }
-    if (!isinf(quad->vert_recip_z[2]) &&
-        !isnan(quad->vert_recip_z[2]) &&
-        fabsf(quad->vert_recip_z[2]) < 1024 * 1024) {
-        if (quad->vert_recip_z[2] < cur_list->clip_min)
-            cur_list->clip_min = quad->vert_recip_z[2];
-        if (quad->vert_recip_z[2] > cur_list->clip_max)
-            cur_list->clip_max = quad->vert_recip_z[2];
+    if (!isinf(quad->vert_pos[2][2]) &&
+        !isnan(quad->vert_pos[2][2]) &&
+        fabsf(quad->vert_pos[2][2]) < 1024 * 1024) {
+        if (quad->vert_pos[2][2] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_pos[2][2];
+        if (quad->vert_pos[2][2] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_pos[2][2];
     }
-    if (!isinf(quad->vert_recip_z[3]) &&
-        !isnan(quad->vert_recip_z[3]) &&
-        fabsf(quad->vert_recip_z[3]) < 1024 * 1024) {
-        if (quad->vert_recip_z[3] < cur_list->clip_min)
-            cur_list->clip_min = quad->vert_recip_z[3];
-        if (quad->vert_recip_z[3] > cur_list->clip_max)
-            cur_list->clip_max = quad->vert_recip_z[3];
+    if (!isinf(quad->vert_pos[3][2]) &&
+        !isnan(quad->vert_pos[3][2]) &&
+        fabsf(quad->vert_pos[3][2]) < 1024 * 1024) {
+        if (quad->vert_pos[3][2] < cur_list->clip_min)
+            cur_list->clip_min = quad->vert_pos[3][2];
+        if (quad->vert_pos[3][2] > cur_list->clip_max)
+            cur_list->clip_max = quad->vert_pos[3][2];
     }
 }
 
@@ -830,19 +888,16 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     p1[0] = ta_fifo_float[1];
     p1[1] = ta_fifo_float[2];
     p1[2] = 1.0 / ta_fifo_float[3];
-    quad->vert_recip_z[0] = ta_fifo_float[3];
 
     float *p2 = quad->vert_pos[1];
     p2[0] = ta_fifo_float[4];
     p2[1] = ta_fifo_float[5];
     p2[2] = 1.0 / ta_fifo_float[6];
-    quad->vert_recip_z[1] = ta_fifo_float[6];
 
     float *p3 = quad->vert_pos[2];
     p3[0] = ta_fifo_float[7];
     p3[1] = ta_fifo_float[8];
     p3[2] = 1.0 / ta_fifo_float[9];
-    quad->vert_recip_z[2] = ta_fifo_float[9];
 
     float *p4 = quad->vert_pos[3];
     p4[0] = ta_fifo_float[10];
@@ -917,8 +972,10 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt) {
     // hyperplane translation
     float dist = -norm[0] * p1[0] - norm[1] * p1[1] - norm[2] * p1[2];
 
-    p4[2] = -1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]) / norm[2];
-    quad->vert_recip_z[3] = 1.0f / p4[2];
+    p1[2] = ta_fifo_float[3];
+    p2[2] = ta_fifo_float[6];
+    p3[2] = ta_fifo_float[9];
+    p4[2] = norm[2] / (-1.0f * (dist + norm[0] * p4[0] + norm[1] * p4[1]));
 
     return 0;
 }

@@ -95,7 +95,6 @@ struct pvr2_pkt_quad {
      *and 2-component texture coordinates
      */
     float vert_pos[4][3];
-    float vert_recip_z[4];
     unsigned tex_coords_packed[3];
     bool degenerate;
 };

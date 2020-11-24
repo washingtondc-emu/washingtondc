@@ -507,99 +507,12 @@ static void
 display_list_exec_quad(struct pvr2 *pvr2,
                        struct pvr2_display_list_command const *cmd) {
     struct pvr2_display_list_quad const *cmd_quad = &cmd->quad;
+    float *vp = pvr2_core_alloc_verts(pvr2, 4);
 
-    if (cmd_quad->degenerate)
+    if (!vp)
         return;
 
-    /*
-     * unpack the texture coordinates.  The third vertex's coordinate is the
-     * scond vertex's coordinate plus the two side-vectors.  We do this
-     * unconditionally even if textures are disabled.  If textures are disabled
-     * then the output of this texture-coordinate algorithm is undefined but it
-     * does not matter because the rendering code won't be using it anyways.
-     */
-    float vert_tex_coords[4][2];
-    unpack_uv16(vert_tex_coords[0], vert_tex_coords[0] + 1,
-                cmd_quad->tex_coords_packed);
-    unpack_uv16(vert_tex_coords[1], vert_tex_coords[1] + 1,
-                cmd_quad->tex_coords_packed + 1);
-    unpack_uv16(vert_tex_coords[2], vert_tex_coords[2] + 1,
-                cmd_quad->tex_coords_packed + 2);
-
-    float uv_vec[2][2] = {
-        { vert_tex_coords[0][0] - vert_tex_coords[1][0],
-          vert_tex_coords[0][1] - vert_tex_coords[1][1] },
-        { vert_tex_coords[2][0] - vert_tex_coords[1][0],
-          vert_tex_coords[2][1] - vert_tex_coords[1][1] }
-    };
-
-    vert_tex_coords[3][0] =
-        vert_tex_coords[1][0] + uv_vec[0][0] + uv_vec[1][0];
-    vert_tex_coords[3][1] =
-        vert_tex_coords[1][1] + uv_vec[0][1] + uv_vec[1][1];
-
-    float const base_col[] = {
-        cmd_quad->base_color[0],
-        cmd_quad->base_color[1],
-        cmd_quad->base_color[2],
-        cmd_quad->base_color[3]
-    };
-
-    float const offs_col[] = {
-        cmd_quad->offs_color[0],
-        cmd_quad->offs_color[1],
-        cmd_quad->offs_color[2],
-        cmd_quad->offs_color[3]
-    };
-
-    float const *p1 = cmd_quad->vert_pos[0];
-    float const *p2 = cmd_quad->vert_pos[1];
-    float const *p3 = cmd_quad->vert_pos[2];
-    float const *p4 = cmd_quad->vert_pos[3];
-
-    float* verts = pvr2_core_alloc_verts(pvr2, 4);
-    float *vp = verts;
-
-    float const *vert_recip_z = cmd_quad->vert_recip_z;
-
-    vp[GFX_VERT_POS_OFFSET + 0] = p2[0];
-    vp[GFX_VERT_POS_OFFSET + 1] = p2[1];
-    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[1];
-    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
-    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
-           vert_tex_coords[1], 2 * sizeof(float));
-    vp += GFX_VERT_LEN;
-
-    vp[GFX_VERT_POS_OFFSET + 0] = p3[0];
-    vp[GFX_VERT_POS_OFFSET + 1] = p3[1];
-    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[2];
-    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
-    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
-           vert_tex_coords[2], 2 * sizeof(float));
-    vp += GFX_VERT_LEN;
-
-    vp[GFX_VERT_POS_OFFSET + 0] = p1[0];
-    vp[GFX_VERT_POS_OFFSET + 1] = p1[1];
-    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[0];
-    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
-    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
-           vert_tex_coords[0], 2 * sizeof(float));
-    vp += GFX_VERT_LEN;
-
-    vp[GFX_VERT_POS_OFFSET + 0] = p4[0];
-    vp[GFX_VERT_POS_OFFSET + 1] = p4[1];
-    vp[GFX_VERT_POS_OFFSET + 2] = vert_recip_z[3];
-    vp[GFX_VERT_POS_OFFSET + 3] = 1.0f;
-    memcpy(vp + GFX_VERT_BASE_COLOR_OFFSET, base_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_OFFS_COLOR_OFFSET, offs_col, 4 * sizeof(float));
-    memcpy(vp + GFX_VERT_TEX_COORD_OFFSET,
-           vert_tex_coords[3], 2 * sizeof(float));
+    memcpy(vp, cmd_quad->vtx, sizeof(float) * GFX_VERT_LEN * 4);
 
     end_triangle_strip(pvr2);
 

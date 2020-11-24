@@ -136,13 +136,7 @@ struct pvr2_display_list_quad {
      * four vertices consisting of 3-component poistions
      *and 2-component texture coordinates
      */
-    float vert_pos[4][3];
-    float vert_recip_z[4];
-    unsigned tex_coords_packed[3];
-    bool degenerate;
-
-    float base_color[4];
-    float offs_color[4];
+    float vtx[4 * GFX_VERT_LEN];
 };
 
 struct pvr2_display_list_user_clip {
