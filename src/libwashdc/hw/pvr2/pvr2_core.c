@@ -31,7 +31,6 @@
 #include "intmath.h"
 #include "hw/sys/holly_intc.h"
 
-#define PVR2_CORE_VERT_BUF_LEN (1024 * 1024)
 #define PVR2_GFX_IL_INST_BUF_LEN (1024 * 256)
 
 #define ISP_BACKGND_T_ADDR_SHIFT 1
@@ -62,27 +61,20 @@ display_list_exec_header(struct pvr2 *pvr2,
                          struct pvr2_display_list_command const *cmd,
                          bool punch_through, bool blend_enable);
 static void
-display_list_exec_vertex(struct pvr2 *pvr2,
-                         struct pvr2_display_list_command const *cmd);
-static void
 display_list_exec_quad(struct pvr2 *pvr2,
                        struct pvr2_display_list_command const *cmd);
-static void
-display_list_exec_end_of_group(struct pvr2 *pvr2,
-                               struct pvr2_display_list_command const *cmd);
 
 static void
 display_list_exec_user_clip(struct pvr2 *pvr2,
                             struct pvr2_display_list_command const *cmd);
-
-static inline float *pvr2_core_alloc_verts(struct pvr2 *pvr2, unsigned n_verts);
+static void
+display_list_exec_tri_strip(struct pvr2 *pvr2,
+                            struct pvr2_display_list_command const *cmd);
 
 static inline void
 pvr2_core_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst);
 
 static void render_frame_init(struct pvr2 *pvr2);
-
-static void end_triangle_strip(struct pvr2 *pvr2);
 
 void pvr2_core_init(struct pvr2 *pvr2) {
     struct pvr2_core *core = &pvr2->core;
@@ -95,6 +87,12 @@ void pvr2_core_init(struct pvr2 *pvr2) {
     for (list_idx = 0; list_idx < PVR2_MAX_FRAMES_IN_FLIGHT; list_idx++) {
         struct pvr2_display_list *disp_list = core->disp_lists + list_idx;
         int group_idx;
+
+        disp_list->vert_array = malloc(PVR2_DISPLAY_LIST_MAX_VERTS *
+                                       sizeof(float) * GFX_VERT_LEN);
+        if (!disp_list->vert_array)
+            RAISE_ERROR(ERROR_FAILED_ALLOC);
+
         for (group_idx = 0; group_idx < PVR2_POLY_TYPE_COUNT; group_idx++) {
             disp_list->poly_groups[group_idx].cmds =
                 malloc(sizeof(struct pvr2_display_list_command) *
@@ -104,13 +102,6 @@ void pvr2_core_init(struct pvr2 *pvr2) {
     }
 
     core->disp_list_counter = 0;
-
-    core->pvr2_core_vert_buf = (float*)malloc(PVR2_CORE_VERT_BUF_LEN *
-                                              sizeof(float) * GFX_VERT_LEN);
-    if (!core->pvr2_core_vert_buf)
-        RAISE_ERROR(ERROR_FAILED_ALLOC);
-    core->pvr2_core_vert_buf_count = 0;
-    core->pvr2_core_vert_buf_start = 0;
 
     core->gfx_il_inst_buf = (struct gfx_il_inst*)malloc(PVR2_GFX_IL_INST_BUF_LEN *
                                                         sizeof(struct gfx_il_inst));
@@ -127,15 +118,13 @@ void pvr2_core_cleanup(struct pvr2 *pvr2) {
     free(core->gfx_il_inst_buf);
     core->gfx_il_inst_buf = NULL;
 
-    free(core->pvr2_core_vert_buf);
-    core->pvr2_core_vert_buf = NULL;
-
     int list_idx;
     for (list_idx = 0; list_idx < PVR2_MAX_FRAMES_IN_FLIGHT; list_idx++) {
         struct pvr2_display_list *disp_list = core->disp_lists + list_idx;
         int group_idx;
         for (group_idx = 0; group_idx < PVR2_POLY_TYPE_COUNT; group_idx++)
             free(disp_list->poly_groups[group_idx].cmds);
+        free(disp_list->vert_array);
     }
 }
 
@@ -156,6 +145,7 @@ void pvr2_display_list_init(struct pvr2_display_list *list) {
         group->n_cmds = 0;
     }
 
+    list->n_verts = 0;
     list->clip_min = 0.0f;
     list->clip_max = 0.0f;
 }
@@ -253,10 +243,6 @@ display_list_exec(struct pvr2 *pvr2, struct pvr2_display_list const *listp) {
     unsigned group_no;
     struct pvr2_core *core = &pvr2->core;
 
-    // reset vertex array
-    core->pvr2_core_vert_buf_count = 0;
-    core->pvr2_core_vert_buf_start = 0;
-
     for (group_no = PVR2_POLY_TYPE_OPAQUE;
          group_no <= PVR2_POLY_TYPE_PUNCH_THROUGH; group_no++) {
 
@@ -297,17 +283,14 @@ display_list_exec(struct pvr2 *pvr2, struct pvr2_display_list const *listp) {
             case PVR2_DISPLAY_LIST_COMMAND_TP_HEADER:
                 display_list_exec_header(pvr2, cmd, punch_through, blend_enable);
                 break;
-            case PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX:
-                display_list_exec_vertex(pvr2, cmd);
-                break;
             case PVR2_DISPLAY_LIST_COMMAND_TP_QUAD:
                 display_list_exec_quad(pvr2, cmd);
                 break;
-            case PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP:
-                display_list_exec_end_of_group(pvr2, cmd);
-                break;
             case PVR2_DISPLAY_LIST_COMMAND_TP_USER_CLIP:
                 display_list_exec_user_clip(pvr2, cmd);
+                break;
+            case PVR2_DISPLAY_LIST_COMMAND_TP_TRI_STRIP:
+                display_list_exec_tri_strip(pvr2, cmd);
                 break;
             default:
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -329,14 +312,6 @@ display_list_exec_header(struct pvr2 *pvr2,
     struct pvr2_core *core = &pvr2->core;
     struct pvr2_display_list_command_header const *cmd_hdr = &cmd->hdr;
     struct gfx_il_inst gfx_cmd;
-
-#ifdef INVARIANTS
-    if (core->pvr2_core_vert_buf_start > core->pvr2_core_vert_buf_count)
-        RAISE_ERROR(ERROR_INTEGRITY);
-#endif
-
-    if (core->pvr2_core_vert_buf_count != core->pvr2_core_vert_buf_start)
-        end_triangle_strip(pvr2);
 
     if (cmd_hdr->tex_enable) {
         PVR2_TRACE("texture enabled\n");
@@ -477,71 +452,13 @@ display_list_exec_header(struct pvr2 *pvr2,
 }
 
 static void
-display_list_exec_vertex(struct pvr2 *pvr2,
-                         struct pvr2_display_list_command const *cmd) {
-    struct pvr2_display_list_vertex const *cmd_vtx = &cmd->vtx;
-    float *vert_out = pvr2_core_alloc_verts(pvr2, 1);
-
-    if (!vert_out)
-        return;
-
-    PVR2_TRACE("(%f, %f, %f)\n",
-               cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 0],
-               cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 1],
-               cmd_vtx->vtx[GFX_VERT_POS_OFFSET + 2]);
-
-    memcpy(vert_out, cmd_vtx->vtx, sizeof(float) * GFX_VERT_LEN);
-
-    if (cmd_vtx->end_of_strip) {
-        /*
-         * TODO: handle degenerate cases where the user sends an
-         * end-of-strip on the first or second vertex
-         */
-        end_triangle_strip(pvr2);
-    }
-
-    pvr2->stat.per_frame_counters.vert_count[pvr2->core.cur_poly_group]++;
-}
-
-static void
 display_list_exec_quad(struct pvr2 *pvr2,
                        struct pvr2_display_list_command const *cmd) {
-    struct pvr2_display_list_quad const *cmd_quad = &cmd->quad;
-    float *vp = pvr2_core_alloc_verts(pvr2, 4);
-
-    if (!vp)
-        return;
-
-    memcpy(vp, cmd_quad->vtx, sizeof(float) * GFX_VERT_LEN * 4);
-
-    end_triangle_strip(pvr2);
-
-    pvr2->stat.per_frame_counters.vert_count[pvr2->core.cur_poly_group]++;
-}
-
-static void end_triangle_strip(struct pvr2 *pvr2) {
     struct gfx_il_inst gfx_cmd;
-    struct pvr2_core *core = &pvr2->core;
-    unsigned n_verts = core->pvr2_core_vert_buf_count - core->pvr2_core_vert_buf_start;
-
-#ifdef INVARIANTS
-    if (core->pvr2_core_vert_buf_start > core->pvr2_core_vert_buf_count)
-        RAISE_ERROR(ERROR_INTEGRITY);
-#endif
-
-    if (n_verts) {
-        gfx_cmd.op = GFX_IL_DRAW_VERT_ARRAY;
-        gfx_cmd.arg.draw_vert_array.first_idx = core->pvr2_core_vert_buf_start;
-        gfx_cmd.arg.draw_vert_array.n_verts = n_verts;
-        pvr2_core_push_gfx_il(pvr2, gfx_cmd);
-        core->pvr2_core_vert_buf_start = core->pvr2_core_vert_buf_count;
-    }
-}
-
-static void
-display_list_exec_end_of_group(struct pvr2 *pvr2,
-                               struct pvr2_display_list_command const *cmd) {
-    end_triangle_strip(pvr2);
+    gfx_cmd.op = GFX_IL_DRAW_VERT_ARRAY;
+    gfx_cmd.arg.draw_vert_array.first_idx = cmd->quad.first_vtx;
+    gfx_cmd.arg.draw_vert_array.n_verts = 4;
+    pvr2_core_push_gfx_il(pvr2, gfx_cmd);
 }
 
 static void
@@ -558,19 +475,18 @@ display_list_exec_user_clip(struct pvr2 *pvr2,
     pvr2_core_push_gfx_il(pvr2, gfx_cmd);
 }
 
-static inline float *
-pvr2_core_alloc_verts(struct pvr2 *pvr2, unsigned n_verts) {
-    struct pvr2_core *core = &pvr2->core;
-    if (core->pvr2_core_vert_buf_count + n_verts > PVR2_CORE_VERT_BUF_LEN) {
-        LOG_ERROR("PVR2 CORE vertex buffer overflow\n");
-        return NULL;
-    }
+static void
+display_list_exec_tri_strip(struct pvr2 *pvr2,
+                            struct pvr2_display_list_command const *cmd) {
+    unsigned n_verts = cmd->strip.vtx_count;
 
-    float *outp = core->pvr2_core_vert_buf +
-        GFX_VERT_LEN * core->pvr2_core_vert_buf_count;
-    core->pvr2_core_vert_buf_count += n_verts;
-    PVR2_TRACE("vert_buf_count is now %u\n", core->pvr2_core_vert_buf_count);
-    return outp;
+    if (n_verts) {
+        struct gfx_il_inst gfx_cmd;
+        gfx_cmd.op = GFX_IL_DRAW_VERT_ARRAY;
+        gfx_cmd.arg.draw_vert_array.first_idx = cmd->strip.first_vtx;
+        gfx_cmd.arg.draw_vert_array.n_verts = n_verts;
+        pvr2_core_push_gfx_il(pvr2, gfx_cmd);
+    }
 }
 
 static inline void
@@ -782,13 +698,15 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     rend_exec_il(&cmd, 1);
 
     // load vertex data
-    cmd.op = GFX_IL_SET_VERT_ARRAY;
-    cmd.arg.set_vert_array.n_verts = core->pvr2_core_vert_buf_count;
-    cmd.arg.set_vert_array.verts = core->pvr2_core_vert_buf;
-    rend_exec_il(&cmd, 1);
+    if (listp) {
+        cmd.op = GFX_IL_SET_VERT_ARRAY;
+        cmd.arg.set_vert_array.n_verts = listp->n_verts;
+        cmd.arg.set_vert_array.verts = listp->vert_array;
+        rend_exec_il(&cmd, 1);
 
-    // execute queued gfx_il commands
-    rend_exec_il(core->gfx_il_inst_buf, core->gfx_il_inst_buf_count);
+        // execute queued gfx_il commands
+        rend_exec_il(core->gfx_il_inst_buf, core->gfx_il_inst_buf_count);
+    }
 
     // tear down rendering context
     cmd.op = GFX_IL_END_REND;

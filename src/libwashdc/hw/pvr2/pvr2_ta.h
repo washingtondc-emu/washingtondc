@@ -495,6 +495,9 @@ struct pvr2_fifo_state {
     // current geometry type (either triangle strips or quads)
     enum pvr2_hdr_tp geo_tp;
 
+    bool open_tri_strip;
+    unsigned cur_tri_strip_start, cur_tri_strip_len;
+
 
     /**************************************************************************
      *

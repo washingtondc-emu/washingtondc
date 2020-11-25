@@ -82,10 +82,9 @@
  */
 enum pvr2_display_list_command_tp {
     PVR2_DISPLAY_LIST_COMMAND_TP_HEADER,
-    PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP,
-    PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX,
     PVR2_DISPLAY_LIST_COMMAND_TP_QUAD,
-    PVR2_DISPLAY_LIST_COMMAND_TP_USER_CLIP
+    PVR2_DISPLAY_LIST_COMMAND_TP_USER_CLIP,
+    PVR2_DISPLAY_LIST_COMMAND_TP_TRI_STRIP
 };
 
 struct pvr2_display_list_command_header {
@@ -122,21 +121,12 @@ struct pvr2_display_list_command_header {
     enum Pvr2DepthFunc depth_func;
 };
 
-struct pvr2_display_list_end_of_group {
-    enum pvr2_poly_type poly_type;
-};
-
-struct pvr2_display_list_vertex {
-    float vtx[GFX_VERT_LEN];
-    bool end_of_strip;
-};
-
 struct pvr2_display_list_quad {
     /*
-     * four vertices consisting of 3-component poistions
-     *and 2-component texture coordinates
+     * index pointing to the first vertex.
+     * This is a quad so it's implied that there are four vertices.
      */
-    float vtx[4 * GFX_VERT_LEN];
+    unsigned first_vtx;
 };
 
 struct pvr2_display_list_user_clip {
@@ -144,14 +134,17 @@ struct pvr2_display_list_user_clip {
     unsigned x_min, y_min, x_max, y_max;
 };
 
+struct pvr2_display_list_tri_strip {
+    unsigned first_vtx, vtx_count;
+};
+
 struct pvr2_display_list_command {
     enum pvr2_display_list_command_tp tp;
     union {
         struct pvr2_display_list_command_header hdr;
-        struct pvr2_display_list_end_of_group end_of_group;
-        struct pvr2_display_list_vertex vtx;
         struct pvr2_display_list_quad quad;
         struct pvr2_display_list_user_clip user_clip;
+        struct pvr2_display_list_tri_strip strip;
     };
 };
 
@@ -178,6 +171,11 @@ struct pvr2_display_list {
     float clip_min, clip_max;
 
     struct pvr2_display_list_group poly_groups[PVR2_POLY_TYPE_COUNT];
+
+    // TODO: made up bullshit limit, probably way higher than it needs to be
+#define PVR2_DISPLAY_LIST_MAX_VERTS (128*1024)
+    float *vert_array;
+    unsigned n_verts;
 };
 
 #define PVR2_MAX_FRAMES_IN_FLIGHT 4
@@ -192,7 +190,6 @@ struct pvr2_core {
     float pvr2_bgcolor[4];
 
     // vertex buf containing vertices which have not yet been put into the gfx_il_inst_buf
-    float *pvr2_core_vert_buf;
     unsigned pvr2_core_vert_buf_count;
     unsigned pvr2_core_vert_buf_start;
 

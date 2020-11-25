@@ -112,6 +112,8 @@ static int decode_quad(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 static int decode_input_list(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 static int decode_user_clip(struct pvr2 *pvr2, struct pvr2_pkt *pkt);
 
+static void close_tri_strip(struct pvr2 *pvr2);
+
 // call this whenever a packet has been processed
 static void ta_fifo_finish_packet(struct pvr2_ta *ta);
 
@@ -516,16 +518,20 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_display_list *cur_list = core->disp_lists + ta->cur_list_idx;
     if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
         RAISE_ERROR(ERROR_INTEGRITY);
-    struct pvr2_display_list_command *cmd =
-        pvr2_list_alloc_new_cmd(cur_list, poly_type);
-    if (cmd) {
-        cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_END_OF_GROUP;
-        cmd->end_of_group.poly_type = poly_type;
-    } else {
-        LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
-    }
 
     ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
+}
+
+static float *
+alloc_disp_list_verts(struct pvr2_display_list *listp, unsigned n_verts) {
+    if (listp->n_verts + n_verts > PVR2_DISPLAY_LIST_MAX_VERTS) {
+        LOG_ERROR("PVR2 CORE display list vertex buffer overflow\n");
+        return NULL;
+    }
+
+    float *outp = listp->vert_array + GFX_VERT_LEN * listp->n_verts;
+    listp->n_verts += n_verts;
+    return outp;
 }
 
 static void
@@ -541,22 +547,26 @@ on_quad_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     struct pvr2_display_list *cur_list = core->disp_lists + ta->cur_list_idx;
     if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
         RAISE_ERROR(ERROR_INTEGRITY);
+    float *verts_out = alloc_disp_list_verts(cur_list, 4);
+
+    if (!verts_out)
+        return;
+
+    close_tri_strip(pvr2);
     struct pvr2_display_list_command *cmd =
         pvr2_list_alloc_new_cmd(cur_list, ta->fifo_state.cur_poly_type);
     if (!cmd) {
         LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
         return;
     }
-
     cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_QUAD;
-
-    struct pvr2_display_list_quad *dl_quad = &cmd->quad;
+    cmd->quad.first_vtx = cur_list->n_verts - 4;
 
     float *vp[4] = {
-        dl_quad->vtx,
-        dl_quad->vtx + GFX_VERT_LEN,
-        dl_quad->vtx + GFX_VERT_LEN * 2,
-        dl_quad->vtx + GFX_VERT_LEN * 3
+        verts_out,
+        verts_out + GFX_VERT_LEN,
+        verts_out + GFX_VERT_LEN * 2,
+        verts_out + GFX_VERT_LEN * 3
     };
     vp[0][GFX_VERT_POS_OFFSET + 0] = quad->vert_pos[1][0];
     vp[0][GFX_VERT_POS_OFFSET + 1] = quad->vert_pos[1][1];
@@ -674,12 +684,6 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         struct pvr2_display_list *cur_list = core->disp_lists + ta->cur_list_idx;
         if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT || !cur_list->valid)
             RAISE_ERROR(ERROR_INTEGRITY);
-        struct pvr2_display_list_command *cmd =
-            pvr2_list_alloc_new_cmd(cur_list, ta->fifo_state.cur_poly_type);
-        if (!cmd) {
-            LOG_ERROR("%s unable to allocate display list entry!\n", __func__);
-            return;
-        }
 
         /*
          * update the clipping planes.
@@ -721,15 +725,57 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
                 cur_list->clip_max = depth;
         }
 
-        cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_VERTEX;
-        struct pvr2_display_list_vertex *dl_vtx = &cmd->vtx;
-        memcpy(dl_vtx->vtx + GFX_VERT_POS_OFFSET, vtx->pos, sizeof(float) * 3);
-        dl_vtx->vtx[GFX_VERT_POS_OFFSET + 3] = 1.0f;
-        memcpy(dl_vtx->vtx + GFX_VERT_BASE_COLOR_OFFSET, vtx->base_color, sizeof(float) * 4);
-        memcpy(dl_vtx->vtx + GFX_VERT_OFFS_COLOR_OFFSET, vtx->offs_color, sizeof(float) * 4);
-        memcpy(dl_vtx->vtx + GFX_VERT_TEX_COORD_OFFSET, vtx->uv, sizeof(float) * 2);
+        float *vtx_out = alloc_disp_list_verts(cur_list, 1);
 
-        dl_vtx->end_of_strip = vtx->end_of_strip;
+        if (!vtx_out)
+            return;
+
+        memcpy(vtx_out + GFX_VERT_POS_OFFSET, vtx->pos, sizeof(float) * 3);
+        vtx_out[GFX_VERT_POS_OFFSET + 3] = 1.0f;
+        memcpy(vtx_out + GFX_VERT_BASE_COLOR_OFFSET, vtx->base_color, sizeof(float) * 4);
+        memcpy(vtx_out + GFX_VERT_OFFS_COLOR_OFFSET, vtx->offs_color, sizeof(float) * 4);
+        memcpy(vtx_out + GFX_VERT_TEX_COORD_OFFSET, vtx->uv, sizeof(float) * 2);
+
+        if (!ta->fifo_state.open_tri_strip) {
+            ta->fifo_state.cur_tri_strip_start = cur_list->n_verts - 1;
+            ta->fifo_state.cur_tri_strip_len = 0;
+            ta->fifo_state.open_tri_strip = true;
+        }
+        ta->fifo_state.cur_tri_strip_len++;
+
+        if (vtx->end_of_strip)
+            close_tri_strip(pvr2);
+    }
+}
+
+static void close_tri_strip(struct pvr2 *pvr2) {
+    struct pvr2_ta *ta = &pvr2->ta;
+    struct pvr2_core *core = &pvr2->core;
+    struct pvr2_display_list_command *cmd = NULL;
+
+    if (ta->fifo_state.open_tri_strip) {
+        ta->fifo_state.open_tri_strip = false;
+        if (ta->fifo_state.cur_poly_type >= PVR2_POLY_TYPE_FIRST &&
+            ta->fifo_state.cur_poly_type <= PVR2_POLY_TYPE_LAST) {
+            // queue up in a display list
+            struct pvr2_display_list *cur_list =
+                core->disp_lists + ta->cur_list_idx;
+            if (ta->cur_list_idx >= PVR2_MAX_FRAMES_IN_FLIGHT ||
+                !cur_list->valid) {
+                RAISE_ERROR(ERROR_INTEGRITY);
+            }
+            cmd = pvr2_list_alloc_new_cmd(cur_list,
+                                          ta->fifo_state.cur_poly_type);
+            if (cmd) {
+                cmd->tp = PVR2_DISPLAY_LIST_COMMAND_TP_TRI_STRIP;
+                struct pvr2_display_list_tri_strip *strip = &cmd->strip;
+                strip->first_vtx = ta->fifo_state.cur_tri_strip_start;
+                strip->vtx_count = ta->fifo_state.cur_tri_strip_len;
+            } else {
+                LOG_ERROR("%s unable to allocate display list entry!\n",
+                          __func__);
+            }
+        }
     }
 }
 
@@ -1436,6 +1482,7 @@ static void next_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
 static void finish_poly_group(struct pvr2 *pvr2, enum pvr2_poly_type poly_type) {
     struct pvr2_ta *ta = &pvr2->ta;
     PVR2_TRACE("%s(%s)\n", __func__, pvr2_poly_type_name(poly_type));
+    close_tri_strip(pvr2);
     ta->fifo_state.open_group = false;
 }
 
