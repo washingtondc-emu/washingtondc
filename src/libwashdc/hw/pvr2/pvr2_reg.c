@@ -20,6 +20,7 @@
  *
  ******************************************************************************/
 
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -423,9 +424,22 @@ double pvr2_reg_read_double(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_reg_write_double(addr32_t addr, double val, void *ctxt) {
-    error_set_address(addr);
-    error_set_length(sizeof(double));
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    uint32_t val32[2];
+
+    static_assert(sizeof(double) == sizeof(val32),
+                  "double is not 64-bit!");
+
+    if (addr % sizeof(double)) {
+        error_set_feature("unaligned pvr2 register writes\n");
+        error_set_address(addr);
+        error_set_length(sizeof(double));
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    memcpy(val32, &val, sizeof(val32));
+
+    pvr2_reg_do_write((struct pvr2*)ctxt, addr, val32[0]);
+    pvr2_reg_do_write((struct pvr2*)ctxt, addr + 4, val32[1]);
 }
 
 float pvr2_reg_read_float(addr32_t addr, void *ctxt) {
