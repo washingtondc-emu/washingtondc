@@ -214,7 +214,23 @@ static void vmu_dev_set_cond(struct maple_device *dev,
     if (!(dev->enable && (dev->tp == MAPLE_DEVICE_VMU)))
         RAISE_ERROR(ERROR_INTEGRITY);
 
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    /*
+     * TODO: need to implement this for real
+     *
+     * Grand Theft Auto 2 sends this packet for function 08000000 (clock)
+     */
+    if (cond->n_dwords >= 1) {
+        LOG_ERROR("%s - UNIMPLEMENTED SET_COND COMMAND FOR VMU FUNCTION %08X\n",
+                  __func__, (unsigned)cond->dat[0]);
+    } else {
+        LOG_ERROR("%s - UNIMPLEMENTED SET_COND COMMAND FOR VMU\n",
+                  __func__);
+    }
+
+    LOG_INFO("%u DWORDS\n", cond->n_dwords);
+    unsigned idx;
+    for (idx = 0; idx < cond->n_dwords; idx++)
+        LOG_INFO("[%u] - %08X\n", idx, (unsigned)cond->dat[idx]);
 }
 
 static void
