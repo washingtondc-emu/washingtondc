@@ -698,8 +698,8 @@ static void aica_sys_channel_read(struct aica *aica, void *dst,
     case AICA_CHAN_AMP_ENV1:
     case AICA_CHAN_AMP_ENV2:
         break;
-    default:
 #ifdef AICA_PEDANTIC
+    default:
         error_set_channel(chan_no);
         error_set_address(reg_no);
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
