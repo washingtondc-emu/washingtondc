@@ -2005,6 +2005,10 @@ static void sh4_unmapped_write32(uint32_t addr, uint32_t val, void *ctxt) {
         // same situation as above, but this time it's Bangai-O
         LOG_WARN("%s (PC=0x%08x) - allowing 4-byte write of 0x%08x to unmapped address "
                  "0x%08x\n", __func__, (unsigned)cpu.reg[SH4_REG_PC], (unsigned)val, (unsigned)addr);
+    } else if ((addr >> 16) == 0xbc40 && !val) {
+        // same situation as above, but this time it's Grand Theft Auto 2.  PC=0x8c01232a
+        LOG_WARN("%s (PC=0x%08x) - allowing 4-byte write of 0x%08x to unmapped address "
+                 "0x%08x\n", __func__, (unsigned)cpu.reg[SH4_REG_PC], (unsigned)val, (unsigned)addr);
     } else {
         error_set_feature("memory mapping");
         error_set_value(val);

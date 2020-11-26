@@ -21,6 +21,18 @@ Guilty Gear X:
           0x8c025ece:	add    #-8,r4
           0x8c025ed0:	mov.l  @(4,r4),r3
 
+Grand Theft Auto 2:
+    * writes 0 (4 bytes)to the following undocumented addresses at PC=0x8c01232a:
+      0xbc402a6c, 0xbc402dbc, 0xbc40310c, 0xbc40345c,
+      0xbc4037ac, 0xbc403afc, 0xbc403e4c, 0xbc40419c,
+      0xbc4044ec, 0xbc40483c, 0xbc404b8c, 0xbc404edc,
+      0xbc40522c, 0xbc40557c, 0xbc4058cc, 0xbc405c1c
+      This is most likely a mistake on the game's part, as it gets to those
+      addresses by multiplying r15 (which is the stack pointer) by four and
+      adding some offsets to it.  I don't think it ever makes sense to multiply
+      the stack pointer, or any other pointer, by a scalar like that.
+
+
 Street Fighter Alpha 3:
     * needs realistic AICA DMA timings or else it will hang before displaying
       the CAPCOM logo
