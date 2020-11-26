@@ -570,6 +570,9 @@ static void gdrom_clear_error(struct gdrom_ctxt *gdrom) {
     memset(&gdrom->error_reg, 0, sizeof(gdrom->error_reg));
 }
 
+static DEF_ERROR_U32_ATTR(gdrom_dma_prot_top)
+static DEF_ERROR_U32_ATTR(gdrom_dma_prot_bot)
+
 static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
     unsigned bytes_transmitted = 0;
     unsigned bytes_to_transmit = gdrom->dma_len_reg;
@@ -608,13 +611,13 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
          * For now we raise unimplemented errors when this happens because I
          * don't have any known testcases.
          */
-        if (addr < gdrom_dma_prot_top(gdrom)) {
+        if (addr < gdrom_dma_prot_top(gdrom) ||
+            (addr + chunk_sz - 1) > gdrom_dma_prot_bot(gdrom)) {
             // don't do this chunk if the end is below gdrom_dma_prot_top
-            error_set_feature("the GD-ROM DMA protection register");
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-
-        if ((addr + chunk_sz - 1) > gdrom_dma_prot_bot(gdrom)) {
+            error_set_address(addr);
+            error_set_length(chunk_sz);
+            error_set_gdrom_dma_prot_top(gdrom_dma_prot_top(gdrom));
+            error_set_gdrom_dma_prot_bot(gdrom_dma_prot_bot(gdrom));
             error_set_feature("the GD-ROM DMA protection register");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
