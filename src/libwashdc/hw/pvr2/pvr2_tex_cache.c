@@ -85,6 +85,32 @@ static unsigned tex_twiddle(unsigned x, unsigned y,
 static enum gfx_tex_fmt
 translate_palette_to_pix_format(enum palette_tp palette_tp);
 
+static inline tex_attrs
+pvr2_tex_attrs_ctor(unsigned w_shift, unsigned h_shift, unsigned linestride,
+                    uint32_t pal_addr, int tex_fmt, bool twiddled,
+                    bool vq_compression, bool mipmap) {
+    tex_attrs attrs = 0;
+
+    if (twiddled)
+        attrs |= PVR2_TEX_ATTR_TWIDDLE_MASK;
+    if (vq_compression)
+        attrs |= PVR2_TEX_ATTR_VQ_MASK;
+    if (mipmap)
+        attrs |= PVR2_TEX_ATTR_MIPMAP_MASK;
+    attrs |= (linestride << PVR2_TEX_ATTR_LINESTRIDE_SHIFT) &
+        PVR2_TEX_ATTR_LINESTRIDE_MASK;
+    attrs |= ((w_shift - 3) << PVR2_TEX_ATTR_W_SHIFT_SHIFT) &
+        PVR2_TEX_ATTR_W_SHIFT_MASK;
+    attrs |= ((h_shift - 3) << PVR2_TEX_ATTR_H_SHIFT_SHIFT) &
+        PVR2_TEX_ATTR_H_SHIFT_MASK;
+    attrs |= (tex_fmt << PVR2_TEX_ATTR_FMT_SHIFT) &
+        PVR2_TEX_ATTR_FMT_MASK;
+    attrs |= (pal_addr << PVR2_TEX_PALETTE_START_SHIFT) &
+        PVR2_TEX_PALETTE_START_MASK;
+
+    return attrs;
+}
+
 /*
  * maps from a normal row-major configuration to the
  * pvr2's own "twiddled" format.
@@ -151,8 +177,10 @@ void pvr2_tex_cache_init(struct pvr2 *pvr2) {
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         memset(cache->tex_cache + idx, 0, sizeof(cache->tex_cache[idx]));
         cache->tex_cache[idx].obj_no = -1;
+        cache->tex_cache[idx].meta = cache->tex_meta + idx;
     }
 
+    memset(cache->tex_meta, 0, sizeof(cache->tex_meta));
     memset(cache->page_stamps, 0, sizeof(cache->page_stamps));
 }
 
@@ -165,42 +193,10 @@ void pvr2_tex_cache_cleanup(struct pvr2 *pvr2) {
             pvr2_free_gfx_obj(cache->tex_cache[idx].obj_no);
 }
 
-struct pvr2_tex_hash {
-    uint32_t addr_first;
-    unsigned w_shift, h_shift, linestride;
-    int tex_fmt;
-    uint32_t tex_palette_start;
-    bool twiddled : 1;
-    bool vq_compression : 1;
-    bool mipmap : 1;
-};
-
 static inline bool pvr2_tex_hash_eq(struct pvr2_tex_hash const *hash1,
                                     struct pvr2_tex_hash const *hash2) {
-    if (hash1->addr_first != hash2->addr_first)
-        return false;
-    if (hash1->w_shift != hash2->w_shift)
-        return false;
-    if (hash1->h_shift != hash2->h_shift)
-        return false;
-    if (hash1->linestride != hash2->linestride)
-        return false;
-    if (hash1->tex_fmt != hash2->tex_fmt)
-        return false;
-    if (hash1->twiddled != hash2->twiddled)
-        return false;
-    if (hash1->vq_compression != hash2->vq_compression)
-        return false;
-    if (hash1->mipmap != hash2->mipmap)
-        return false;
-
-    if (hash1->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
-        hash1->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-        if (hash1->tex_palette_start != hash2->tex_palette_start)
-            return false;
-    }
-
-    return true;
+    return (hash1->attrs == hash2->attrs) &&
+        (hash1->addr_first == hash2->addr_first);
 }
 
 struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
@@ -208,47 +204,30 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
                                      unsigned w_shift, unsigned h_shift,
                                      unsigned linestride,
                                      int tex_fmt, bool twiddled,
-                                     bool vq_compression, bool mipmap,
-                                     bool stride_sel) {
+                                     bool vq_compression, bool mipmap) {
     unsigned idx;
-    struct pvr2_tex *tex;
     struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
 
     struct pvr2_tex_hash search_hash = {
         .addr_first = addr,
-        .w_shift = w_shift,
-        .h_shift = h_shift,
-        .linestride = linestride,
-        .tex_fmt = tex_fmt,
-        .twiddled = twiddled,
-        .vq_compression = vq_compression,
-        .mipmap = mipmap,
-        .tex_palette_start = pal_addr
+        .attrs = pvr2_tex_attrs_ctor(w_shift, h_shift, linestride, pal_addr,
+                                     tex_fmt, twiddled, vq_compression, mipmap)
     };
 
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
-        tex = tex_cache + idx;
-
-        if (!pvr2_tex_valid(tex->state))
-            continue;
-
-        struct pvr2_tex_meta *meta = &tex->meta;
+        struct pvr2_tex_meta *meta = pvr2->tex_cache.tex_meta + idx;
 
         struct pvr2_tex_hash tex_hash = {
             .addr_first = meta->addr_first,
-            .w_shift = meta->w_shift,
-            .h_shift = meta->h_shift,
-            .linestride = meta->linestride,
-            .tex_fmt = meta->tex_fmt,
-            .twiddled = meta->twiddled,
-            .vq_compression = meta->vq_compression,
-            .mipmap = meta->mipmap,
-            .tex_palette_start = meta->tex_palette_start
+            .attrs = meta->attrs
         };
 
         if (pvr2_tex_hash_eq(&search_hash, &tex_hash)) {
-            tex->frame_stamp_last_used = get_cur_frame_stamp(pvr2);
-            return tex;
+            struct pvr2_tex *tex = tex_cache + idx;
+            if (pvr2_tex_valid(tex->state)) {
+                tex->frame_stamp_last_used = get_cur_frame_stamp(pvr2);
+                return tex;
+            }
         }
     }
 
@@ -260,8 +239,7 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
                                     unsigned w_shift, unsigned h_shift,
                                     unsigned linestride,
                                     int tex_fmt, bool twiddled,
-                                    bool vq_compression, bool mipmap,
-                                    bool stride_sel) {
+                                    bool vq_compression, bool mipmap) {
     assert(tex_fmt < TEX_CTRL_PIX_FMT_INVALID);
     unsigned cur_frame_stamp = get_cur_frame_stamp(pvr2);
 
@@ -315,34 +293,25 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
         pvr2->stat.persistent_counters.fresh_texture_upload_count++;
     }
 
-    tex->meta.addr_first = addr;
-    tex->meta.w_shift = w_shift;
-    tex->meta.h_shift = h_shift;
-    tex->meta.linestride = linestride;
-    tex->meta.tex_fmt = tex_fmt;
-    tex->meta.twiddled = twiddled;
-    tex->meta.vq_compression = vq_compression;
-    tex->meta.mipmap = mipmap;
-    tex->meta.stride_sel = stride_sel;
-    tex->meta.tex_palette_start = pal_addr;
+    tex->meta->addr_first = addr;
     tex->frame_stamp_last_used = cur_frame_stamp;
     tex->obj_no = -1;
 
     if (tex_fmt != TEX_CTRL_PIX_FMT_4_BPP_PAL &&
         tex_fmt != TEX_CTRL_PIX_FMT_8_BPP_PAL) {
-        tex->meta.pix_fmt = pvr2_tex_fmt_to_gfx(tex_fmt);
+        tex->meta->pix_fmt = pvr2_tex_fmt_to_gfx(tex_fmt);
     } else {
-        tex->meta.pix_fmt = translate_palette_to_pix_format(get_palette_tp(pvr2));
+        tex->meta->pix_fmt = translate_palette_to_pix_format(get_palette_tp(pvr2));
     }
 
-    if (tex->meta.vq_compression && (tex->meta.w_shift != tex->meta.h_shift)) {
+    if (vq_compression && (w_shift != h_shift)) {
         LOG_WARN("PVR2: WARNING - DISABLING VQ COMPRESSION FOR 0x%x "
                  "DUE TO NON-SQUARE DIMENSIONS\n",
-                 (unsigned)tex->meta.addr_first);
-        tex->meta.vq_compression = false;
+                 (unsigned)tex->meta->addr_first);
+        vq_compression = false;
     }
 
-    if (tex->meta.vq_compression) {
+    if (vq_compression) {
         unsigned side_len = 1 << w_shift;
         if (linestride != side_len) {
             /*
@@ -353,37 +322,37 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
             error_set_feature("Vector Quantization + stride-select textures");
             RAISE_ERROR(ERROR_INTEGRITY);
         }
-        tex->meta.addr_last = addr - 1 + PVR2_CODE_BOOK_LEN +
+        tex->meta->addr_last = addr - 1 + PVR2_CODE_BOOK_LEN +
             sizeof(uint8_t) * side_len * side_len / 4;
     } else {
         if (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-            tex->meta.addr_last = addr - 1 +
+            tex->meta->addr_last = addr - 1 +
                 (linestride * (1 << h_shift)) / 2;
         } else {
-            tex->meta.addr_last = addr - 1 + pixel_sizes[tex_fmt] *
+            tex->meta->addr_last = addr - 1 + pixel_sizes[tex_fmt] *
                 linestride * (1 << h_shift);
         }
-        if (tex->meta.mipmap) {
-            if (tex->meta.w_shift != tex->meta.h_shift) {
+        if (mipmap) {
+            if (w_shift != h_shift) {
                 error_set_feature("proper response for attempt to enable "
                                   "mipmaps on a rectangular texture");
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
             }
-            if (tex->meta.vq_compression) {
-                tex->meta.addr_last += mipmap_byte_offset_vq[w_shift];
+            if (vq_compression) {
+                tex->meta->addr_last += mipmap_byte_offset_vq[w_shift];
             } else {
-                switch (tex->meta.tex_fmt) {
+                switch (tex_fmt) {
                 case TEX_CTRL_PIX_FMT_ARGB_1555:
                 case TEX_CTRL_PIX_FMT_RGB_565:
                 case TEX_CTRL_PIX_FMT_YUV_422:
                 case TEX_CTRL_PIX_FMT_ARGB_4444:
-                    tex->meta.addr_last += mipmap_byte_offset_norm[w_shift];
+                    tex->meta->addr_last += mipmap_byte_offset_norm[w_shift];
                     break;
                 case TEX_CTRL_PIX_FMT_4_BPP_PAL:
-                    tex->meta.addr_last += mipmap_byte_offset_palette[w_shift] / 2;
+                    tex->meta->addr_last += mipmap_byte_offset_palette[w_shift] / 2;
                     break;
                 case TEX_CTRL_PIX_FMT_8_BPP_PAL:
-                    tex->meta.addr_last += mipmap_byte_offset_palette[w_shift];
+                    tex->meta->addr_last += mipmap_byte_offset_palette[w_shift];
                     break;
                 default:
                 case TEX_CTRL_PIX_FMT_BUMP_MAP:
@@ -392,6 +361,10 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
             }
         }
     }
+
+    tex->meta->attrs =
+        pvr2_tex_attrs_ctor(w_shift, h_shift, linestride, pal_addr,
+                            tex_fmt, twiddled, vq_compression, mipmap);
 
     tex->state = PVR2_TEX_DIRTY;
     tex->last_update = 0;
@@ -444,9 +417,11 @@ void pvr2_tex_cache_notify_palette_tp_change(struct pvr2 *pvr2) {
     struct pvr2_tex *tex_cache = pvr2->tex_cache.tex_cache;
     for (idx = 0; idx < PVR2_TEX_CACHE_SIZE; idx++) {
         struct pvr2_tex *tex = tex_cache + idx;
+        int tex_fmt = (tex->meta->attrs & PVR2_TEX_ATTR_FMT_MASK) >>
+            PVR2_TEX_ATTR_FMT_SHIFT;
         if (tex->state == PVR2_TEX_READY &&
-            (tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
-             tex->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL)) {
+            (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
+             tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL)) {
             pvr2->stat.persistent_counters.pal_tex_invalidate_count++;
             tex->state = PVR2_TEX_DIRTY;
         }
@@ -573,7 +548,9 @@ pvr2_tex_vq_decompress(struct pvr2 *pvr2, void *dst,
 void pvr2_tex_cache_read(struct pvr2 *pvr2,
                          void **tex_dat_out, size_t *n_bytes_out,
                          struct pvr2_tex_meta const *meta) {
-    unsigned tex_w = meta->linestride, tex_h = 1 << meta->h_shift;
+    unsigned tex_w = (meta->attrs & PVR2_TEX_ATTR_LINESTRIDE_MASK) >>
+        PVR2_TEX_ATTR_LINESTRIDE_SHIFT,
+        tex_h = 1 << pvr2_tex_meta_h_shift(meta);
 
     if (tex_w % 8 || tex_h % 8) {
         /*
@@ -602,13 +579,15 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
     }
 
     size_t n_bytes;
+    int tex_fmt = (meta->attrs & PVR2_TEX_ATTR_FMT_MASK) >>
+        PVR2_TEX_ATTR_FMT_SHIFT;
 
-    if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+    if (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
         n_bytes = (tex_w * tex_h) / 2;
     } else {
-        unsigned px_sz = pixel_sizes[meta->tex_fmt];
+        unsigned px_sz = pixel_sizes[tex_fmt];
         if (!px_sz) {
-            error_set_tex_fmt(meta->tex_fmt);
+            error_set_tex_fmt(tex_fmt);
             error_set_feature("some texture format");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
@@ -633,41 +612,41 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
      * accomplish this, we have to offset the addr_first by the offset
      * to the highest-order mipmap.
      */
-    if (meta->mipmap) {
-        if (meta->w_shift != meta->h_shift) {
+    if (meta->attrs & PVR2_TEX_ATTR_MIPMAP_MASK) {
+        if (pvr2_tex_meta_w_shift(meta) != pvr2_tex_meta_h_shift(meta)) {
             error_set_feature("proper response for attempting to "
                               "enable mipmapping on a rectangular "
                               "texture");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
+        if (tex_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
             error_set_feature("mipmapped YUV422 textures\n");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        unsigned side_shift = meta->w_shift;
+        unsigned side_shift = pvr2_tex_meta_w_shift(meta);
 
-        if (meta->vq_compression) {
+        if (meta->attrs & PVR2_TEX_ATTR_VQ_MASK) {
             code_book_addr = meta->addr_first;
             beg_addr = code_book_addr + PVR2_CODE_BOOK_LEN +
                 mipmap_byte_offset_vq[side_shift];
         } else {
-            switch (meta->tex_fmt) {
+            switch (tex_fmt) {
             case TEX_CTRL_PIX_FMT_ARGB_1555:
             case TEX_CTRL_PIX_FMT_RGB_565:
             case TEX_CTRL_PIX_FMT_YUV_422:
             case TEX_CTRL_PIX_FMT_ARGB_4444:
                 beg_addr =
-                    meta->addr_first + mipmap_byte_offset_norm[meta->w_shift];
+                    meta->addr_first + mipmap_byte_offset_norm[side_shift];
                 break;
             case TEX_CTRL_PIX_FMT_4_BPP_PAL:
                 beg_addr =
-                    meta->addr_first + mipmap_byte_offset_palette[meta->w_shift] / 2;
+                    meta->addr_first + mipmap_byte_offset_palette[side_shift] / 2;
                 break;
             case TEX_CTRL_PIX_FMT_8_BPP_PAL:
                 beg_addr =
-                    meta->addr_first + mipmap_byte_offset_palette[meta->w_shift];
+                    meta->addr_first + mipmap_byte_offset_palette[side_shift];
                 break;
             default:
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);
@@ -679,52 +658,55 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
          * first byte of the texture.
          */
         beg_addr = meta->addr_first;
-        if (meta->vq_compression) {
+        if (meta->attrs & PVR2_TEX_ATTR_VQ_MASK) {
             code_book_addr = beg_addr;
             beg_addr += PVR2_CODE_BOOK_LEN;
         }
     }
 
-    if (meta->vq_compression) {
-        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
-            meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+    if (meta->attrs & PVR2_TEX_ATTR_VQ_MASK) {
+        if (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL ||
+            tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
             /*
              * 4BPP paletted VQ textures store 4x4 blocks in the code-book
              * instead of 2x2.  8BPP paletted VQ textures store 2x4 blocks
              * in the code-book.
              */
             error_set_feature("VQ compressed palette textures");
-            error_set_tex_fmt(meta->tex_fmt);
+            error_set_tex_fmt(tex_fmt);
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
+        if (tex_fmt == TEX_CTRL_PIX_FMT_YUV_422) {
             error_set_feature("VQ-compressed YUV422 textures\n");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        if (pixel_sizes[meta->tex_fmt] != 2) {
-            error_set_tex_fmt(meta->tex_fmt);
+        if (pixel_sizes[tex_fmt] != 2) {
+            error_set_tex_fmt(tex_fmt);
             error_set_feature("proper response for an attempt to use "
                               "VQ compression on a non-RGB texture");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        if (meta->w_shift != meta->h_shift) {
+        if (pvr2_tex_meta_w_shift(meta) != pvr2_tex_meta_h_shift(meta)) {
             error_set_feature("proper response for an attempt to use "
                               "VQ compression on a non-square texture");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
         pvr2_tex_vq_decompress(pvr2, tex_dat, code_book_addr,
-                               beg_addr, meta->w_shift);
-    } else if (meta->twiddled) {
-        if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
-            pvr2_tex_detwiddle_4bpp(pvr2, tex_dat, beg_addr, meta->w_shift, meta->h_shift);
+                               beg_addr, pvr2_tex_meta_w_shift(meta));
+    } else if (meta->attrs & PVR2_TEX_ATTR_TWIDDLE_MASK) {
+        if (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+            pvr2_tex_detwiddle_4bpp(pvr2, tex_dat, beg_addr,
+                                    pvr2_tex_meta_w_shift(meta),
+                                    pvr2_tex_meta_h_shift(meta));
         } else {
             pvr2_tex_detwiddle(pvr2, tex_dat, beg_addr,
-                               meta->w_shift, meta->h_shift,
-                               pixel_sizes[meta->tex_fmt]);
+                               pvr2_tex_meta_w_shift(meta),
+                               pvr2_tex_meta_h_shift(meta),
+                               pixel_sizes[tex_fmt]);
         }
     } else {
 #ifdef INVARIANTS
@@ -737,7 +719,7 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         pvr2_tex_mem_64bit_read_dwords(pvr2, tex_dat, beg_addr, n_bytes / 4);
     }
 
-    if (meta->tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
+    if (tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL) {
         uint32_t tex_size_actual;
         enum palette_tp palette_tp = get_palette_tp(pvr2);
         switch (palette_tp) {
@@ -762,7 +744,9 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         if (!tex_dat_no_palette)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-        uint32_t pal_start = (meta->tex_palette_start & 0x30) << 4;
+        uint32_t pal_start =
+            (((meta->attrs & PVR2_TEX_PALETTE_START_MASK) >>
+              PVR2_TEX_PALETTE_START_SHIFT) & 0x30) << 4;
         uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
 
         unsigned row, col;
@@ -781,8 +765,9 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         free(tex_dat);
         tex_dat = tex_dat_no_palette;
         LOG_DBG("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
-               (unsigned)meta->tex_palette_start);
-    } else if (meta->tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+                (unsigned)((meta->attrs & PVR2_TEX_PALETTE_START_MASK) >>
+                           PVR2_TEX_PALETTE_START_SHIFT));
+    } else if (tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
         uint32_t tex_size_actual;
         enum palette_tp palette_tp = get_palette_tp(pvr2);
         switch (palette_tp) {
@@ -807,7 +792,8 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         if (!tex_dat_no_palette)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-        uint32_t pal_start = meta->tex_palette_start << 4;
+        uint32_t pal_start = ((meta->attrs & PVR2_TEX_PALETTE_START_MASK) >>
+                              PVR2_TEX_PALETTE_START_SHIFT) << 4;
         uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
 
         uint8_t *pal_ram = pvr2_get_palette_ram(pvr2);
@@ -833,7 +819,8 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         free(tex_dat);
         tex_dat = tex_dat_no_palette;
         LOG_DBG("PVR2 paletted texture: tex_palette_start is 0x%04x\n",
-               (unsigned)meta->tex_palette_start);
+                (unsigned)((meta->attrs & PVR2_TEX_PALETTE_START_MASK) >>
+                           PVR2_TEX_PALETTE_START_SHIFT));
     }
 
     *tex_dat_out = tex_dat;
@@ -850,9 +837,9 @@ void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx) {
 
     if (tex_in->state != PVR2_TEX_INVALID) {
         pvr2_framebuffer_notify_texture(pvr2,
-                                        tex_in->meta.addr_first +
+                                        tex_in->meta->addr_first +
                                         ADDR_TEX64_FIRST,
-                                        tex_in->meta.addr_last +
+                                        tex_in->meta->addr_last +
                                         ADDR_TEX64_FIRST);
     }
 
@@ -860,8 +847,8 @@ void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx) {
     if (tex_in->state == PVR2_TEX_DIRTY)
         need_update = true;
     else if (tex_in->state == PVR2_TEX_READY) {
-        unsigned page = tex_in->meta.addr_first / PVR2_TEX_PAGE_SIZE;
-        unsigned last_page = tex_in->meta.addr_last / PVR2_TEX_PAGE_SIZE;
+        unsigned page = tex_in->meta->addr_first / PVR2_TEX_PAGE_SIZE;
+        unsigned last_page = tex_in->meta->addr_last / PVR2_TEX_PAGE_SIZE;
         while (page <= last_page) {
             if (page_stamps[page++] > tex_in->last_update) {
                 pvr2->stat.persistent_counters.tex_invalidate_count++;
@@ -898,6 +885,8 @@ void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx) {
             return;
         }
 
+        int tex_fmt = (tex_in->meta->attrs & PVR2_TEX_ATTR_FMT_MASK) >>
+            PVR2_TEX_ATTR_FMT_SHIFT;
         if (tex_in->obj_no < 0) {
             /*
              * This is a new texture; we need to create a data store,
@@ -907,9 +896,9 @@ void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx) {
 
             void *tex_dat;
             size_t n_bytes;
-            struct pvr2_tex_meta tmp = tex_in->meta;
-            if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
-                tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+            struct pvr2_tex_meta tmp = *tex_in->meta;
+            if (tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
                 tmp.pix_fmt =
                     translate_palette_to_pix_format(get_palette_tp(pvr2));
             }
@@ -931,8 +920,10 @@ void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx) {
             cmd.arg.bind_tex.gfx_obj_handle = tex_in->obj_no;
             cmd.arg.bind_tex.tex_no = idx;
             cmd.arg.bind_tex.pix_fmt = tmp.pix_fmt;
-            cmd.arg.bind_tex.width = tex_in->meta.linestride;
-            cmd.arg.bind_tex.height = 1 << tex_in->meta.h_shift;
+            cmd.arg.bind_tex.width =
+                (tex_in->meta->attrs & PVR2_TEX_ATTR_LINESTRIDE_MASK) >>
+                PVR2_TEX_ATTR_LINESTRIDE_SHIFT;
+            cmd.arg.bind_tex.height = 1 << pvr2_tex_meta_h_shift(tex_in->meta);
 
             rend_exec_il(&cmd, 1);
         } else {
@@ -941,9 +932,9 @@ void pvr2_tex_cache_xmit_one(struct pvr2 *pvr2, unsigned idx) {
              * already been created and bound, all we have to do is write
              * to it.
              */
-            struct pvr2_tex_meta tmp = tex_in->meta;
-            if (tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
-                tex_in->meta.tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+            struct pvr2_tex_meta tmp = *tex_in->meta;
+            if (tex_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+                tex_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
                 tmp.pix_fmt = translate_palette_to_pix_format(get_palette_tp(pvr2));
             }
             void *tex_dat;
@@ -977,7 +968,7 @@ int pvr2_tex_get_meta(struct pvr2 *pvr2,
                       struct pvr2_tex_meta *meta, unsigned tex_idx) {
     struct pvr2_tex const *tex_in = pvr2->tex_cache.tex_cache + tex_idx;
     if (pvr2_tex_valid(tex_in->state)) {
-        memcpy(meta, &tex_in->meta, sizeof(struct pvr2_tex_meta));
+        memcpy(meta, tex_in->meta, sizeof(struct pvr2_tex_meta));
         return 0;
     }
     return -1;

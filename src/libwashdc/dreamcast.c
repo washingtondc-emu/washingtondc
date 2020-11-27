@@ -292,8 +292,9 @@ static void dc_get_texinfo(struct washdc_texcache const *cache,
         texinfo->valid = true;
         texinfo->n_vars = 12;
 
-        texinfo->width = meta.linestride;
-        texinfo->height = 1 << meta.h_shift;
+        texinfo->width = (meta.attrs & PVR2_TEX_ATTR_LINESTRIDE_MASK) >>
+            PVR2_TEX_ATTR_LINESTRIDE_SHIFT;
+        texinfo->height = 1 << pvr2_tex_meta_h_shift(&meta);
 
         switch (meta.pix_fmt) {
         case GFX_TEX_FMT_ARGB_1555:
@@ -354,14 +355,14 @@ static void dc_get_texinfo_var(struct washdc_texcache const *cache,
         strncpy(var->name, "width", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
         var->tp = WASHDC_VAR_INT;
-        var->val.as_int = 1 << meta.w_shift;
+        var->val.as_int = 1 << pvr2_tex_meta_w_shift(&meta);
         return;
     case 3:
         // y-res
         strncpy(var->name, "height", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
         var->tp = WASHDC_VAR_INT;
-        var->val.as_int = 1 << meta.h_shift;
+        var->val.as_int = 1 << pvr2_tex_meta_h_shift(&meta);
         return;
     case 4:
         // pixel format
@@ -394,7 +395,8 @@ static void dc_get_texinfo_var(struct washdc_texcache const *cache,
         strncpy(var->name, "tex_fmt", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
         var->tp = WASHDC_VAR_STR;
-        switch (meta.tex_fmt) {
+        switch ((meta.attrs & PVR2_TEX_ATTR_FMT_MASK) >>
+                PVR2_TEX_ATTR_FMT_SHIFT) {
         case TEX_CTRL_PIX_FMT_ARGB_1555:
             strncpy(var->val.as_str, "ARGB_1555", WASHDC_VAR_STR_LEN);
             break;
@@ -426,35 +428,36 @@ static void dc_get_texinfo_var(struct washdc_texcache const *cache,
         strncpy(var->name, "tex_palette_start", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = 0;
         var->tp = WASHDC_VAR_HEX;
-        var->val.as_int = meta.tex_palette_start;
+        var->val.as_int = (meta.attrs & PVR2_TEX_PALETTE_START_MASK) >>
+            PVR2_TEX_PALETTE_START_SHIFT;
         return;
     case 8:
         // twiddled
         strncpy(var->name, "twiddled", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_BOOL;
-        var->val.as_bool = meta.twiddled;
+        var->val.as_bool = meta.attrs & PVR2_TEX_ATTR_TWIDDLE_MASK;
         return;
+    /* case 9: */
+    /*     // stride_sel */
+    /*     strncpy(var->name, "stride_sel", WASHDC_VAR_NAME_LEN); */
+    /*     var->name[WASHDC_VAR_NAME_LEN - 1] = '\0'; */
+    /*     var->tp = WASHDC_VAR_BOOL; */
+    /*     var->val.as_bool = meta.stride_sel; */
+    /*     return; */
     case 9:
-        // stride_sel
-        strncpy(var->name, "stride_sel", WASHDC_VAR_NAME_LEN);
-        var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
-        var->tp = WASHDC_VAR_BOOL;
-        var->val.as_bool = meta.stride_sel;
-        return;
-    case 10:
         // vq_compression
         strncpy(var->name, "vq_compression", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_BOOL;
-        var->val.as_bool = meta.vq_compression;
+        var->val.as_bool = meta.attrs & PVR2_TEX_ATTR_VQ_MASK;
         return;
-    case 11:
+    case 10:
         // mipmap
         strncpy(var->name, "mipmap", WASHDC_VAR_NAME_LEN);
         var->name[WASHDC_VAR_NAME_LEN - 1] = '\0';
         var->tp = WASHDC_VAR_BOOL;
-        var->val.as_bool = meta.mipmap;
+        var->val.as_bool = meta.attrs & PVR2_TEX_ATTR_MIPMAP_MASK;
         return;
     default:
         goto inval;

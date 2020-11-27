@@ -329,15 +329,21 @@ display_list_exec_header(struct pvr2 *pvr2,
         if (!linestride || linestride > (1 << cmd_hdr->tex_width_shift))
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
+        uint32_t pal_start;
+        if (cmd_hdr->pix_fmt == TEX_CTRL_PIX_FMT_8_BPP_PAL ||
+            cmd_hdr->pix_fmt == TEX_CTRL_PIX_FMT_4_BPP_PAL) {
+            pal_start = cmd_hdr->tex_palette_start;
+        } else {
+            pal_start = 0;
+        }
         struct pvr2_tex *ent =
-            pvr2_tex_cache_find(pvr2, cmd_hdr->tex_addr, cmd_hdr->tex_palette_start,
+            pvr2_tex_cache_find(pvr2, cmd_hdr->tex_addr, pal_start,
                                 cmd_hdr->tex_width_shift,
                                 cmd_hdr->tex_height_shift,
                                 linestride,
                                 cmd_hdr->pix_fmt, cmd_hdr->tex_twiddle,
                                 cmd_hdr->tex_vq_compression,
-                                cmd_hdr->tex_mipmap,
-                                cmd_hdr->stride_sel);
+                                cmd_hdr->tex_mipmap);
 
         PVR2_TRACE("texture dimensions are (%u, %u)\n",
                    1 << cmd_hdr->tex_width_shift,
@@ -349,15 +355,14 @@ display_list_exec_header(struct pvr2 *pvr2,
             PVR2_TRACE("Adding 0x%08x to texture cache...\n",
                        cmd_hdr->tex_addr);
             ent = pvr2_tex_cache_add(pvr2,
-                                     cmd_hdr->tex_addr, cmd_hdr->tex_palette_start,
+                                     cmd_hdr->tex_addr, pal_start,
                                      cmd_hdr->tex_width_shift,
                                      cmd_hdr->tex_height_shift,
                                      linestride,
                                      cmd_hdr->pix_fmt,
                                      cmd_hdr->tex_twiddle,
                                      cmd_hdr->tex_vq_compression,
-                                     cmd_hdr->tex_mipmap,
-                                     cmd_hdr->stride_sel);
+                                     cmd_hdr->tex_mipmap);
         }
 
         if (!ent) {

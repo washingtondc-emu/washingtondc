@@ -36,21 +36,58 @@
 #define PVR2_TEX_CACHE_SIZE GFX_TEX_CACHE_SIZE
 #define PVR2_TEX_CACHE_MASK GFX_TEX_CACHE_MASK
 
+#define PVR2_TEX_ATTR_TWIDDLE_SHIFT 0
+#define PVR2_TEX_ATTR_TWIDDLE_MASK (1 << PVR2_TEX_ATTR_TWIDDLE_SHIFT)
+
+#define PVR2_TEX_ATTR_VQ_SHIFT 1
+#define PVR2_TEX_ATTR_VQ_MASK (1 << PVR2_TEX_ATTR_VQ_SHIFT)
+
+#define PVR2_TEX_ATTR_MIPMAP_SHIFT 2
+#define PVR2_TEX_ATTR_MIPMAP_MASK (1 << PVR2_TEX_ATTR_MIPMAP_SHIFT)
+
+/*
+ * Linestride in this context doesn't work the same way it would in most
+ * other contexts.  PowerVR2 allows programs to submit textures with
+ * non-power-of-two dimensions by setting the stride select bit and writing
+ * the desired length to the lowest 5 bits of TEXT_CONTROL.  The linestride
+ * is always less than or equal to (1<<w_shift), and texture coordinates
+ * are all calculated based on (1<<w_shift) even though that's not actually
+ * the width of the texture.
+ */
+#define PVR2_TEX_ATTR_LINESTRIDE_SHIFT 3
+#define PVR2_TEX_ATTR_LINESTRIDE_MASK (0x3ff << PVR2_TEX_ATTR_LINESTRIDE_SHIFT)
+
+#define PVR2_TEX_ATTR_W_SHIFT_SHIFT 13
+#define PVR2_TEX_ATTR_W_SHIFT_MASK (7 << PVR2_TEX_ATTR_W_SHIFT_SHIFT)
+
+#define PVR2_TEX_ATTR_H_SHIFT_SHIFT 16
+#define PVR2_TEX_ATTR_H_SHIFT_MASK (7 << PVR2_TEX_ATTR_H_SHIFT_SHIFT)
+
+#define PVR2_TEX_ATTR_FMT_SHIFT 19
+#define PVR2_TEX_ATTR_FMT_MASK (7 << PVR2_TEX_ATTR_FMT_SHIFT)
+
+/*
+ * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
+ * palette address referenced by this texture.  It needs to be shifted left
+ * by 2 or 6 bits and ORed with pixel values to get palette addresses.
+ *
+ * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
+ * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it should be 0.
+ */
+#define PVR2_TEX_PALETTE_START_SHIFT 22
+#define PVR2_TEX_PALETTE_START_MASK (0x3f << PVR2_TEX_PALETTE_START_SHIFT)
+
+typedef uint_fast32_t tex_attrs;
+
+struct pvr2_tex_hash {
+    tex_attrs attrs;
+    uint32_t addr_first;
+};
+
 struct pvr2_tex_meta {
+    tex_attrs attrs;
+
     uint32_t addr_first, addr_last;
-
-    unsigned w_shift, h_shift;
-
-    /*
-     * Linestride in this context doesn't work the same way it would in most
-     * other contexts.  PowerVR2 allows programs to submit textures with
-     * non-power-of-two dimensions by setting the stride select bit and writing
-     * the desired length to the lowest 5 bits of TEXT_CONTROL.  The linestride
-     * is always less than or equal to (1<<w_shift), and texture coordinates
-     * are all calculated based on (1<<w_shift) even though that's not actually
-     * the width of the texture.
-     */
-    unsigned linestride;
 
     /*
      * The difference between pix_fmt and tex_fmt is that pix_fmt documents
@@ -63,26 +100,17 @@ struct pvr2_tex_meta {
      * so there's that too.
      */
     enum gfx_tex_fmt pix_fmt;
-    int tex_fmt;
-
-    /*
-     * this is the upper 2-bits (for 8BPP) or 6 bits (for 4BPP) of every
-     * palette address referenced by this texture.  It needs to be shifted left
-     * by 2 or 6 bits and ORed with pixel values to get palette addresses.
-     *
-     * this field only holds meaning if tex_fmt is TEX_CTRL_PIX_FMT_4_BPP_PAL
-     * or TEX_CTRL_PIX_FMT_8_BPP_PAL; otherwise it is meaningless.
-     */
-    uint32_t tex_palette_start;
-
-    bool twiddled;
-
-    bool stride_sel;
-
-    bool vq_compression;
-
-    bool mipmap;
 };
+
+static inline unsigned pvr2_tex_meta_w_shift(struct pvr2_tex_meta const *meta) {
+    return 3 + ((meta->attrs & PVR2_TEX_ATTR_W_SHIFT_MASK) >>
+                PVR2_TEX_ATTR_W_SHIFT_SHIFT);
+}
+
+static inline unsigned pvr2_tex_meta_h_shift(struct pvr2_tex_meta const *meta) {
+    return 3 + ((meta->attrs & PVR2_TEX_ATTR_H_SHIFT_MASK) >>
+                PVR2_TEX_ATTR_H_SHIFT_SHIFT);
+}
 
 enum pvr2_tex_state {
     // the texture in this slot is invalid
@@ -102,7 +130,7 @@ enum pvr2_tex_state {
 
 struct pvr2_tex {
     dc_cycle_stamp_t last_update;
-    struct pvr2_tex_meta meta;
+    struct pvr2_tex_meta *meta;
 
     // this refers to the gfx_obj bound to the texture
     int obj_no;
@@ -129,6 +157,7 @@ struct pvr2_tex {
 
 struct pvr2_tex_cache {
     dc_cycle_stamp_t page_stamps[PVR2_TEX_N_PAGES];
+    struct pvr2_tex_meta tex_meta[PVR2_TEX_CACHE_SIZE];
     struct pvr2_tex tex_cache[PVR2_TEX_CACHE_SIZE];
 };
 
@@ -141,8 +170,7 @@ struct pvr2_tex *pvr2_tex_cache_add(struct pvr2 *pvr2,
                                     unsigned w_shift, unsigned h_shift,
                                     unsigned linestride,
                                     int tex_fmt, bool twiddled,
-                                    bool vq_compression, bool mipmap,
-                                    bool stride_sel);
+                                    bool vq_compression, bool mipmap);
 
 /*
  * search the cache for the given texture
@@ -153,8 +181,7 @@ struct pvr2_tex *pvr2_tex_cache_find(struct pvr2 *pvr2,
                                      unsigned w_shift, unsigned h_shift,
                                      unsigned linestride,
                                      int tex_fmt, bool twiddled,
-                                     bool vq_compression, bool mipmap,
-                                     bool stride_sel);
+                                     bool vq_compression, bool mipmap);
 
 void
 pvr2_tex_cache_notify_write(struct pvr2 *pvr2,
