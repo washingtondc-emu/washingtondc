@@ -27,6 +27,7 @@ extern struct maple_switch_table maple_purupuru_switch_table;
 
 struct maple_purupuru {
     // this page left intentionally blank
+    int fake; // placeholder because MSVC doesn't like empty structs
 };
 
 struct maple_device;
