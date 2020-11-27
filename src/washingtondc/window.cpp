@@ -164,10 +164,12 @@ int win_glfw_init(unsigned width, unsigned height,
         return -1;
     }
 
-    static char const *gamecontrollerdb =
+    static char const *gamecontrollerdb[] = {
 #include "sdl_gamecontrollerdb.h"
-        ;
-    glfwUpdateGamepadMappings(gamecontrollerdb);
+    };
+    char const **curs = gamecontrollerdb;
+    while (*curs)
+        glfwUpdateGamepadMappings(*curs++);
 
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *vidmode = glfwGetVideoMode(monitor);
