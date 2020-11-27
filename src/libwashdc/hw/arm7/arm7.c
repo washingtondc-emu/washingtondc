@@ -1628,11 +1628,9 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-static uint32_t ror(uint32_t in, unsigned n_bits) {
-    // TODO: I know there has to be an O(1) way to do this
-    while (n_bits--)
-        in = ((in & 1) << 31) | (in >> 1);
-    return in;
+static inline uint32_t ror(uint32_t in, unsigned n_bits) {
+    n_bits %= 32;
+    return (in >> n_bits) | (in << (32 - n_bits));
 }
 
 static uint32_t decode_immed(arm7_inst inst) {
