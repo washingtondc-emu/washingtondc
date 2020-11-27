@@ -20,8 +20,9 @@
 #
 ################################################################################
 
-echo "\"# automatically generated from https://github.com/gabomdq/SDL_GameControllerDB on $(date)\\\\n\"" > sdl_gamecontrollerdb.h
-echo "\"\\\\n\"" >> sdl_gamecontrollerdb.h
-curl https://raw.githubusercontent.com/gabomdq/SDL_GameControllerDB/master/LICENSE | sed "s/\(.*\)/\"# \1\\\\n\"/" >> sdl_gamecontrollerdb.h
-echo "\"\\\\n\"" >> sdl_gamecontrollerdb.h
-curl https://raw.githubusercontent.com/gabomdq/SDL_GameControllerDB/master/gamecontrollerdb.txt | sed "s/\(.*\)/\"\1\\\\n\"/" >> sdl_gamecontrollerdb.h
+echo "\"# automatically generated from https://github.com/gabomdq/SDL_GameControllerDB on $(date)\\\\n\"," > sdl_gamecontrollerdb.h
+echo "\"\\\\n\"," >> sdl_gamecontrollerdb.h
+curl https://raw.githubusercontent.com/gabomdq/SDL_GameControllerDB/master/LICENSE | sed "s/\(.*\)/\"# \1\\\\n\",/" >> sdl_gamecontrollerdb.h
+echo "\"\\\\n\"," >> sdl_gamecontrollerdb.h
+curl https://raw.githubusercontent.com/gabomdq/SDL_GameControllerDB/master/gamecontrollerdb.txt | sed "s/\(.*\)/\"\1\\\\n\",/" >> sdl_gamecontrollerdb.h
+echo "NULL" >> sdl_gamecontrollerdb.h
