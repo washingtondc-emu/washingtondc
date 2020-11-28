@@ -1450,7 +1450,7 @@ static struct InstOpcode opcode_list[] = {
       SH4_GROUP_FE, 1, 0xf0ff, 0xf0ed },
 
     // FTRV XMTRX, FVn - multiple vector by matrix
-    { &sh4_inst_binary_fitrv_mxtrx_fv, sh4_jit_fallback, false,
+    { &sh4_inst_binary_ftrv_mxtrx_fv, sh4_jit_fallback, false,
       SH4_GROUP_FE, 1, 0xf3ff, 0xf1fd },
 
     // FSCA FPUL, DRn - sine/cosine table lookup
@@ -7084,7 +7084,7 @@ void sh4_inst_binary_fipr_fv_fv(void *cpu, cpu_inst_param inst) {
 
 // FTRV XMTRX, FVn - multiple vector by matrix
 // 1111nn0111111101
-void sh4_inst_binary_fitrv_mxtrx_fv(void *cpu, cpu_inst_param inst) {
+void sh4_inst_binary_ftrv_mxtrx_fv(void *cpu, cpu_inst_param inst) {
 
     CHECK_INST(inst, INST_MASK_1111nn0111111101, INST_CONS_1111nn0111111101);
 

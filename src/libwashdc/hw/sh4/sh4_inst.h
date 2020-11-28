@@ -1071,7 +1071,7 @@ void sh4_inst_binary_fipr_fv_fv(void *cpu, cpu_inst_param inst);
 
 // FTRV MXTRX, FVn - multiple vector by matrix
 // 1111nn0111111101
-void sh4_inst_binary_fitrv_mxtrx_fv(void *cpu, cpu_inst_param inst);
+void sh4_inst_binary_ftrv_mxtrx_fv(void *cpu, cpu_inst_param inst);
 
 // FSRRA FRn
 // 1111nnnn01111101
