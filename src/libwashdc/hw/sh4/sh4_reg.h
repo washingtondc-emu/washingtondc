@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,8 +35,8 @@ typedef struct Sh4 Sh4;
 
 static_assert(SH4_REG_FR15 - SH4_REG_FR0 + 1 == 16,
               "incorrect number of FPU registers");
-static_assert(SH4_REG_XF15 - SH4_REG_XF0 + 1 == 16,
-              "incorrect number of banked FPU registers");
+/* static_assert(SH4_REG_XF15 - SH4_REG_XF0 + 1 == 16, */
+/*               "incorrect number of banked FPU registers"); */
 
 typedef unsigned sh4_reg_val;
 

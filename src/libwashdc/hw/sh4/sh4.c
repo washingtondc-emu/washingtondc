@@ -223,11 +223,30 @@ void sh4_bank_switch_maybe(Sh4 *sh4, reg32_t old_sr, reg32_t new_sr) {
         sh4_bank_switch(sh4);
 }
 
+static inline void swap32(uint32_t *val1, uint32_t *val2) {
+    uint32_t tmp = *val1;
+    *val1 = *val2;
+    *val2 = tmp;
+}
+
 void sh4_fpu_bank_switch(Sh4 *sh4) {
-    uint32_t tmp[SH4_N_FLOAT_REGS];
-    memcpy(tmp, sh4->reg + SH4_REG_FR0, sizeof(tmp));
-    memcpy(sh4->reg + SH4_REG_FR0, sh4->reg + SH4_REG_XF0, sizeof(tmp));
-    memcpy(sh4->reg + SH4_REG_XF0, tmp, sizeof(tmp));
+    // SH4_REG_XF* are transponsed so we have to do this one register at a time
+    swap32(sh4->reg + SH4_REG_FR0, sh4->reg + SH4_REG_XF0);
+    swap32(sh4->reg + SH4_REG_FR1, sh4->reg + SH4_REG_XF1);
+    swap32(sh4->reg + SH4_REG_FR2, sh4->reg + SH4_REG_XF2);
+    swap32(sh4->reg + SH4_REG_FR3, sh4->reg + SH4_REG_XF3);
+    swap32(sh4->reg + SH4_REG_FR4, sh4->reg + SH4_REG_XF4);
+    swap32(sh4->reg + SH4_REG_FR5, sh4->reg + SH4_REG_XF5);
+    swap32(sh4->reg + SH4_REG_FR6, sh4->reg + SH4_REG_XF6);
+    swap32(sh4->reg + SH4_REG_FR7, sh4->reg + SH4_REG_XF7);
+    swap32(sh4->reg + SH4_REG_FR8, sh4->reg + SH4_REG_XF8);
+    swap32(sh4->reg + SH4_REG_FR9, sh4->reg + SH4_REG_XF9);
+    swap32(sh4->reg + SH4_REG_FR10, sh4->reg + SH4_REG_XF10);
+    swap32(sh4->reg + SH4_REG_FR11, sh4->reg + SH4_REG_XF11);
+    swap32(sh4->reg + SH4_REG_FR12, sh4->reg + SH4_REG_XF12);
+    swap32(sh4->reg + SH4_REG_FR13, sh4->reg + SH4_REG_XF13);
+    swap32(sh4->reg + SH4_REG_FR14, sh4->reg + SH4_REG_XF14);
+    swap32(sh4->reg + SH4_REG_FR15, sh4->reg + SH4_REG_XF15);
 }
 
 void sh4_fpu_bank_switch_maybe(Sh4 *sh4, reg32_t old_fpscr, reg32_t new_fpscr) {

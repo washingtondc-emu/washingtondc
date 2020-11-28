@@ -6195,9 +6195,9 @@ void sh4_inst_unary_fabs_dr(void *cpu, cpu_inst_param inst) {
 
     int dr_reg = (inst >> 9) & 0x7;
 
-    double in = sh4_read_double(sh4, dr_reg * 2);
+    double in = sh4_read_dr(sh4, dr_reg * 2);
     double out = fabs(in);
-    sh4_write_double(sh4, dr_reg * 2, out);
+    sh4_write_dr(sh4, dr_reg * 2, out);
 }
 
 #define INST_MASK_1111nnn0mmm00000 0xf11f
@@ -6223,12 +6223,12 @@ void sh4_inst_binary_fadd_dr_dr(void *cpu, cpu_inst_param inst) {
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
 
-    double src = sh4_read_double(sh4, dr_src * 2);
-    double dst = sh4_read_double(sh4, dr_dst * 2);
+    double src = sh4_read_dr(sh4, dr_src * 2);
+    double dst = sh4_read_dr(sh4, dr_dst * 2);
 
     dst += src;
 
-    sh4_write_double(sh4, dr_dst * 2, dst);
+    sh4_write_dr(sh4, dr_dst * 2, dst);
 }
 
 #define INST_MASK_1111nnn0mmm00100 0xf11f
@@ -6254,8 +6254,8 @@ void sh4_inst_binary_fcmpeq_dr_dr(void *cpu, cpu_inst_param inst) {
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
 
-    double src = sh4_read_double(sh4, dr_src * 2);
-    double dst = sh4_read_double(sh4, dr_dst * 2);
+    double src = sh4_read_dr(sh4, dr_src * 2);
+    double dst = sh4_read_dr(sh4, dr_dst * 2);
 
     unsigned t_flag = (dst == src);
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
@@ -6282,8 +6282,8 @@ void sh4_inst_binary_fcmpgt_dr_dr(void *cpu, cpu_inst_param inst) {
 
     sh4_fpu_clear_cause(sh4);
 
-    double src = sh4_read_double(sh4, ((inst >> 5) & 0x7) * 2);
-    double dst = sh4_read_double(sh4, ((inst >> 9) & 0x7) * 2);
+    double src = sh4_read_dr(sh4, ((inst >> 5) & 0x7) * 2);
+    double dst = sh4_read_dr(sh4, ((inst >> 9) & 0x7) * 2);
 
     unsigned t_flag = (dst > src);
     sh4->reg[SH4_REG_SR] &= ~SH4_SR_FLAG_T_MASK;
@@ -6313,12 +6313,12 @@ void sh4_inst_binary_fdiv_dr_dr(void *cpu, cpu_inst_param inst) {
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
 
-    double src = sh4_read_double(sh4, dr_src * 2);
-    double dst = sh4_read_double(sh4, dr_dst * 2);
+    double src = sh4_read_dr(sh4, dr_src * 2);
+    double dst = sh4_read_dr(sh4, dr_dst * 2);
 
     dst /= src;
 
-    sh4_write_double(sh4, dr_dst * 2, dst);
+    sh4_write_dr(sh4, dr_dst * 2, dst);
 }
 
 #define INST_MASK_1111mmm010111101 0xf1ff
@@ -6346,7 +6346,7 @@ void sh4_inst_binary_fcnvds_dr_fpul(void *cpu, cpu_inst_param inst) {
      */
     sh4_fpu_clear_cause(sh4);
 
-    double in_val = sh4_read_double(sh4, ((inst >> 9) & 0x7) * 2);
+    double in_val = sh4_read_dr(sh4, ((inst >> 9) & 0x7) * 2);
     float out_val = in_val;
 
     memcpy(sh4->reg + SH4_REG_FPUL, &out_val, sizeof(sh4->reg[SH4_REG_FPUL]));
@@ -6381,7 +6381,7 @@ void sh4_inst_binary_fcnvsd_fpul_dr(void *cpu, cpu_inst_param inst) {
     memcpy(&in_val, sh4->reg + SH4_REG_FPUL, sizeof(in_val));
     double out_val = in_val;
 
-    sh4_write_double(sh4, ((inst >> 9) & 0x7) * 2, out_val);
+    sh4_write_dr(sh4, ((inst >> 9) & 0x7) * 2, out_val);
 }
 
 #define INST_MASK_1111nnn000101101 0xf1ff
@@ -6402,7 +6402,7 @@ void sh4_inst_binary_float_fpul_dr(void *cpu, cpu_inst_param inst) {
 
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_PR_MASK, SH4_FPSCR_PR_MASK);
 
-    sh4_write_double(sh4, ((inst >> 9) & 0x7) * 2,
+    sh4_write_dr(sh4, ((inst >> 9) & 0x7) * 2,
                      (double)((int64_t)(int32_t)sh4->reg[SH4_REG_FPUL]));
 }
 
@@ -6430,12 +6430,12 @@ void sh4_inst_binary_fmul_dr_dr(void *cpu, cpu_inst_param inst) {
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
 
-    double src = sh4_read_double(sh4, dr_src * 2);
-    double dst = sh4_read_double(sh4, dr_dst * 2);
+    double src = sh4_read_dr(sh4, dr_src * 2);
+    double dst = sh4_read_dr(sh4, dr_dst * 2);
 
     dst *= src;
 
-    sh4_write_double(sh4, dr_dst * 2, dst);
+    sh4_write_dr(sh4, dr_dst * 2, dst);
 }
 
 #define INST_MASK_1111nnn001001101 0xf1ff
@@ -6460,9 +6460,9 @@ void sh4_inst_unary_fneg_dr(void *cpu, cpu_inst_param inst) {
 
     int dr_reg = (inst >> 9) & 0x7;
 
-    double in = sh4_read_double(sh4, dr_reg * 2);
+    double in = sh4_read_dr(sh4, dr_reg * 2);
     double out = -in;
-    sh4_write_double(sh4, dr_reg * 2, out);
+    sh4_write_dr(sh4, dr_reg * 2, out);
 }
 
 #define INST_MASK_1111nnn001101101 0xf1ff
@@ -6487,7 +6487,7 @@ void sh4_inst_unary_fsqrt_dr(void *cpu, cpu_inst_param inst) {
 
     int dr_reg = (inst >> 9) & 0x7;
 
-    double in = sh4_read_double(sh4, dr_reg * 2), out;
+    double in = sh4_read_dr(sh4, dr_reg * 2), out;
 
     if (in < 0.0) {
         /*
@@ -6510,7 +6510,7 @@ void sh4_inst_unary_fsqrt_dr(void *cpu, cpu_inst_param inst) {
     } else {
         out = sqrt(in);
     }
-    sh4_write_double(sh4, dr_reg * 2, out);
+    sh4_write_dr(sh4, dr_reg * 2, out);
 }
 
 #define INST_MASK_1111nnn0mmm00001 0xf11f
@@ -6537,12 +6537,12 @@ void sh4_inst_binary_fsub_dr_dr(void *cpu, cpu_inst_param inst) {
     int dr_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
 
-    double src = sh4_read_double(sh4, dr_src * 2);
-    double dst = sh4_read_double(sh4, dr_dst * 2);
+    double src = sh4_read_dr(sh4, dr_src * 2);
+    double dst = sh4_read_dr(sh4, dr_dst * 2);
 
     dst -= src;
 
-    sh4_write_double(sh4, dr_dst * 2, dst);
+    sh4_write_dr(sh4, dr_dst * 2, dst);
 }
 
 #define INST_MASK_1111mmm000111101 0xf1ff
@@ -6568,7 +6568,7 @@ void sh4_inst_binary_ftrc_dr_fpul(void *cpu, cpu_inst_param inst) {
      * should be done here.  I'm just going to implement this the naive way
      * instead
      */
-    double val_in = sh4_read_double(sh4, ((inst >> 9) & 0x7) * 2);
+    double val_in = sh4_read_dr(sh4, ((inst >> 9) & 0x7) * 2);
     int32_t val_int = val_in;
 
     int round_mode = fegetround();
@@ -6816,9 +6816,42 @@ void sh4_inst_binary_fmov_dr_xd(void *cpu, cpu_inst_param inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     int dr_src = (inst >> 5) & 0x7;
-    int dr_dst = (inst >> 9) & 0x7;
+    int xd_dst = (inst >> 9) & 0x7;
 
-    *sh4_fpu_xd(sh4, dr_dst) = *sh4_fpu_dr(sh4, dr_src);
+    switch (xd_dst) {
+    case 0:
+        sh4->reg[SH4_REG_XF0] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF1] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    case 1:
+        sh4->reg[SH4_REG_XF2] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF3] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    case 2:
+        sh4->reg[SH4_REG_XF4] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF5] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    case 3:
+        sh4->reg[SH4_REG_XF6] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF7] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    case 4:
+        sh4->reg[SH4_REG_XF8] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF9] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    case 5:
+        sh4->reg[SH4_REG_XF10] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF11] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    case 6:
+        sh4->reg[SH4_REG_XF12] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF13] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    case 7:
+        sh4->reg[SH4_REG_XF14] = sh4->reg[SH4_REG_DR0 + dr_src * 2];
+        sh4->reg[SH4_REG_XF15] = sh4->reg[SH4_REG_DR0 + dr_src * 2 + 1];
+        break;
+    }
 }
 
 #define INST_MASK_1111nnn0mmm11100 0xf11f
@@ -6838,10 +6871,43 @@ void sh4_inst_binary_fmov_xd_dr(void *cpu, cpu_inst_param inst) {
     CHECK_INST(inst, INST_MASK_1111nnn0mmm11100, INST_CONS_1111nnn0mmm11100);
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
-    int dr_src = (inst >> 5) & 0x7;
+    int xd_src = (inst >> 5) & 0x7;
     int dr_dst = (inst >> 9) & 0x7;
 
-    *sh4_fpu_dr(sh4, dr_dst) = *sh4_fpu_xd(sh4, dr_src);
+    switch (xd_src) {
+    case 0:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF0];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF1];
+        break;
+    case 1:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF2];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF3];
+        break;
+    case 2:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF4];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF5];
+        break;
+    case 3:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF6];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF7];
+        break;
+    case 4:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF8];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF9];
+        break;
+    case 5:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF10];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF11];
+        break;
+    case 6:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF12];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF13];
+        break;
+    case 7:
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2] = sh4->reg[SH4_REG_XF14];
+        sh4->reg[SH4_REG_DR0 + dr_dst * 2 + 1] = sh4->reg[SH4_REG_XF15];
+        break;
+    }
 }
 
 #define INST_MASK_1111nnn1mmm11100 0xf11f
@@ -6889,10 +6955,10 @@ void sh4_inst_binary_fmov_indgen_xd(void *cpu, cpu_inst_param inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 4) & 0xf);
-    double *dst_ptr = sh4_fpu_xd(sh4, (inst >> 9) & 0x7);
 
-    if (sh4_readdouble(sh4, addr, dst_ptr) != 0) {
-        // nothing to do here
+    double val;
+    if (sh4_readdouble(sh4, addr, &val) == 0) {
+        sh4_put_xd(sh4, (inst >> 9) & 0x7, val);
     }
 }
 
@@ -6915,12 +6981,13 @@ void sh4_inst_binary_fmov_indgeninc_xd(void *cpu, cpu_inst_param inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 4) & 0xf);
-    double *dst_ptr = sh4_fpu_xd(sh4, (inst >> 9) & 0x7);
 
-    if (sh4_readdouble(sh4, *addr_p, dst_ptr) != 0) {
+    double val;
+    if (sh4_readdouble(sh4, *addr_p, &val) != 0) {
         return;
     }
 
+    sh4_put_xd(sh4, (inst >> 9) & 0x7, val);
     *addr_p += 8;
 }
 
@@ -6969,7 +7036,7 @@ void sh4_inst_binary_fmov_xd_indgen(void *cpu, cpu_inst_param inst) {
     CHECK_FPSCR(sh4->reg[SH4_REG_FPSCR], SH4_FPSCR_SZ_MASK, SH4_FPSCR_SZ_MASK);
 
     reg32_t addr = *sh4_gen_reg(sh4, (inst >> 8) & 0xf);
-    double src_val = *sh4_fpu_xd(sh4, (inst >> 5) & 7);
+    double src_val = sh4_get_xd(sh4, (inst >> 5) & 7);
 
     if (sh4_writedouble(sh4, addr, src_val) != 0) {
         // nothing to do here
@@ -6996,9 +7063,9 @@ void sh4_inst_binary_fmov_xd_inddecgen(void *cpu, cpu_inst_param inst) {
 
     reg32_t *addr_p = sh4_gen_reg(sh4, (inst >> 8) & 0xf);
     reg32_t addr = *addr_p - 8;
-    double *src_p = sh4_fpu_xd(sh4, (inst >> 5) & 0x7);
+    double src_val = sh4_get_xd(sh4, (inst >> 5) & 7);;
 
-    if (sh4_writedouble(sh4, addr, *src_p) != 0) {
+    if (sh4_writedouble(sh4, addr, src_val) != 0) {
         return;
     }
 
@@ -7122,25 +7189,10 @@ void sh4_inst_binary_ftrv_mxtrx_fv(void *cpu, cpu_inst_param inst) {
 
     float row0[4], row1[4], row2[4], row3[4];
 
-    memcpy(row0, sh4->reg+SH4_REG_XF0, sizeof(float));
-    memcpy(row0 + 1, sh4->reg+SH4_REG_XF4, sizeof(float));
-    memcpy(row0 + 2, sh4->reg+SH4_REG_XF8, sizeof(float));
-    memcpy(row0 + 3, sh4->reg+SH4_REG_XF12, sizeof(float));
-
-    memcpy(row1, sh4->reg+SH4_REG_XF1, sizeof(float));
-    memcpy(row1+1, sh4->reg+SH4_REG_XF5, sizeof(float));
-    memcpy(row1+2, sh4->reg+SH4_REG_XF9, sizeof(float));
-    memcpy(row1+3, sh4->reg+SH4_REG_XF13, sizeof(float));
-
-    memcpy(row2, sh4->reg+SH4_REG_XF2, sizeof(float));
-    memcpy(row2+1, sh4->reg+SH4_REG_XF6, sizeof(float));
-    memcpy(row2+2, sh4->reg+SH4_REG_XF10, sizeof(float));
-    memcpy(row2+3, sh4->reg+SH4_REG_XF14, sizeof(float));
-
-    memcpy(row3, sh4->reg+SH4_REG_XF3, sizeof(float));
-    memcpy(row3+1, sh4->reg+SH4_REG_XF7, sizeof(float));
-    memcpy(row3+2, sh4->reg+SH4_REG_XF11, sizeof(float));
-    memcpy(row3+3, sh4->reg+SH4_REG_XF15, sizeof(float));
+    memcpy(row0, sh4->reg+SH4_REG_XF0, sizeof(row0));
+    memcpy(row1, sh4->reg+SH4_REG_XF1, sizeof(row1));
+    memcpy(row2, sh4->reg+SH4_REG_XF2, sizeof(row2));
+    memcpy(row3, sh4->reg+SH4_REG_XF3, sizeof(row3));
 
     tmp_out[0] = tmp[0] * row0[0] +
         tmp[1] * row0[1] +

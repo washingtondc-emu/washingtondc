@@ -267,19 +267,43 @@ static inline float *sh4_fpu_fr(Sh4 *sh4, unsigned reg_no) {
 static inline float *sh4_fpu_xf(Sh4 *sh4, unsigned reg_no) {
     assert(reg_no < SH4_N_FLOAT_REGS);
 
-    return (float*)(sh4->reg + SH4_REG_XF0 + reg_no);
-}
-
-static inline float *sh4_bank0_fpu_fr(Sh4 *sh4, unsigned reg_no) {
-    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_FR_MASK)
-        return sh4_fpu_xf(sh4, reg_no);
-    return sh4_fpu_fr(sh4, reg_no);
-}
-
-static inline float *sh4_bank1_fpu_fr(Sh4 *sh4, unsigned reg_no) {
-    if (sh4->reg[SH4_REG_FPSCR] & SH4_FPSCR_FR_MASK)
-        return sh4_fpu_fr(sh4, reg_no);
-    return sh4_fpu_xf(sh4, reg_no);
+    // can't do a simple array index here because these registers are transposed
+    switch (reg_no) {
+    case 0:
+        return (float*)(sh4->reg + SH4_REG_XF0);
+    case 1:
+        return (float*)(sh4->reg + SH4_REG_XF1);
+    case 2:
+        return (float*)(sh4->reg + SH4_REG_XF2);
+    case 3:
+        return (float*)(sh4->reg + SH4_REG_XF3);
+    case 4:
+        return (float*)(sh4->reg + SH4_REG_XF4);
+    case 5:
+        return (float*)(sh4->reg + SH4_REG_XF5);
+    case 6:
+        return (float*)(sh4->reg + SH4_REG_XF6);
+    case 7:
+        return (float*)(sh4->reg + SH4_REG_XF7);
+    case 8:
+        return (float*)(sh4->reg + SH4_REG_XF8);
+    case 9:
+        return (float*)(sh4->reg + SH4_REG_XF9);
+    case 10:
+        return (float*)(sh4->reg + SH4_REG_XF10);
+    case 11:
+        return (float*)(sh4->reg + SH4_REG_XF11);
+    case 12:
+        return (float*)(sh4->reg + SH4_REG_XF12);
+    case 13:
+        return (float*)(sh4->reg + SH4_REG_XF13);
+    case 14:
+        return (float*)(sh4->reg + SH4_REG_XF14);
+    case 15:
+        return (float*)(sh4->reg + SH4_REG_XF15);
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
 }
 
 /*
@@ -290,12 +314,6 @@ static inline double *sh4_fpu_dr(Sh4 *sh4, unsigned reg_no) {
     assert(reg_no < SH4_N_DOUBLE_REGS);
 
     return (double*)(sh4->reg + SH4_REG_DR0 + (reg_no * 2));
-}
-
-static inline double *sh4_fpu_xd(Sh4 *sh4, unsigned reg_no) {
-    assert(reg_no < SH4_N_DOUBLE_REGS);
-
-    return (double*)(sh4->reg + SH4_REG_XD0 + (reg_no << 1));
 }
 
 /*
@@ -368,7 +386,7 @@ sh4_count_inst_cycles(InstOpcode const *op, unsigned *last_inst_type_p) {
  * contents of a double-precision float register should use a simple binary copy
  * instead.
  */
-static inline double sh4_read_double(struct Sh4 *sh4, unsigned dr_reg) {
+static inline double sh4_read_dr(struct Sh4 *sh4, unsigned dr_reg) {
 #ifdef INVARIANTS
     if ((dr_reg % 2) || (dr_reg > 14))
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -382,7 +400,7 @@ static inline double sh4_read_double(struct Sh4 *sh4, unsigned dr_reg) {
     return ret_val;
 }
 
-static inline void sh4_write_double(struct Sh4 *sh4, unsigned dr_reg, double val) {
+static inline void sh4_write_dr(struct Sh4 *sh4, unsigned dr_reg, double val) {
 #ifdef INVARIANTS
     if ((dr_reg % 2) || (dr_reg > 14))
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -391,6 +409,108 @@ static inline void sh4_write_double(struct Sh4 *sh4, unsigned dr_reg, double val
 
     memcpy(ptr, ((uint32_t*)&val) + 1, sizeof(uint32_t));
     memcpy(((uint32_t*)ptr) + 1, &val, sizeof(uint32_t));
+}
+
+/*
+ * get and put values into the XD registers.  These need to be done using these
+ * functions because WashingtonDC stores the XF registers transposed compared
+ * to how they work in a retail dreamcast.
+ *
+ * unlike sh4_read_dr and sh4_write_dr, these don't do any byte order
+ * conversions, so you'd still need to swap the upper and lower DWORDs to
+ * actually interpret the value on a little-endian machine (and then reverse
+ * it all after that to interpret it on a big-endian machine) but that shouldn't
+ * be a problem because SH4 only supports data transfer for these registers.
+ */
+static inline double sh4_get_xd(struct Sh4 *sh4, unsigned xd_reg) {
+    static_assert(sizeof(double) == 2 * sizeof(uint32_t),
+                  "incompatible host double implementation");
+    double ret_val;
+    uint32_t *vin[2];
+    switch (xd_reg) {
+    case 0:
+        vin[0] = sh4->reg + SH4_REG_XF0;
+        vin[1] = sh4->reg + SH4_REG_XF1;
+        break;
+    case 1:
+        vin[0] = sh4->reg + SH4_REG_XF2;
+        vin[1] = sh4->reg + SH4_REG_XF3;
+        break;
+    case 2:
+        vin[0] = sh4->reg + SH4_REG_XF4;
+        vin[1] = sh4->reg + SH4_REG_XF5;
+        break;
+    case 3:
+        vin[0] = sh4->reg + SH4_REG_XF6;
+        vin[1] = sh4->reg + SH4_REG_XF7;
+        break;
+    case 4:
+        vin[0] = sh4->reg + SH4_REG_XF8;
+        vin[1] = sh4->reg + SH4_REG_XF9;
+        break;
+    case 5:
+        vin[0] = sh4->reg + SH4_REG_XF10;
+        vin[1] = sh4->reg + SH4_REG_XF11;
+        break;
+    case 6:
+        vin[0] = sh4->reg + SH4_REG_XF12;
+        vin[1] = sh4->reg + SH4_REG_XF13;
+        break;
+    case 7:
+        vin[0] = sh4->reg + SH4_REG_XF14;
+        vin[1] = sh4->reg + SH4_REG_XF15;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    memcpy(&ret_val, vin[0], sizeof(*vin[0]));
+    memcpy(((uint32_t*)&ret_val) + 1, vin[1], sizeof(*vin[1]));
+    return ret_val;
+}
+
+static inline void sh4_put_xd(struct Sh4 *sh4, unsigned xd_reg, double val) {
+    static_assert(sizeof(double) == 2 * sizeof(uint32_t),
+                  "incompatible host double implementation");
+    uint32_t *vout[2];
+    switch (xd_reg) {
+    case 0:
+        vout[0] = sh4->reg + SH4_REG_XF0;
+        vout[1] = sh4->reg + SH4_REG_XF1;
+        break;
+    case 1:
+        vout[0] = sh4->reg + SH4_REG_XF2;
+        vout[1] = sh4->reg + SH4_REG_XF3;
+        break;
+    case 2:
+        vout[0] = sh4->reg + SH4_REG_XF4;
+        vout[1] = sh4->reg + SH4_REG_XF5;
+        break;
+    case 3:
+        vout[0] = sh4->reg + SH4_REG_XF6;
+        vout[1] = sh4->reg + SH4_REG_XF7;
+        break;
+    case 4:
+        vout[0] = sh4->reg + SH4_REG_XF8;
+        vout[1] = sh4->reg + SH4_REG_XF9;
+        break;
+    case 5:
+        vout[0] = sh4->reg + SH4_REG_XF10;
+        vout[1] = sh4->reg + SH4_REG_XF11;
+        break;
+    case 6:
+        vout[0] = sh4->reg + SH4_REG_XF12;
+        vout[1] = sh4->reg + SH4_REG_XF13;
+        break;
+    case 7:
+        vout[0] = sh4->reg + SH4_REG_XF14;
+        vout[1] = sh4->reg + SH4_REG_XF15;
+        break;
+    default:
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+    memcpy(vout[0], &val, sizeof(*vout[0]));
+    memcpy(vout[1], ((uint32_t*)&val) + 1, sizeof(*vout[1]));
 }
 
 uint32_t sh4_pc_next(struct Sh4 *sh4);
