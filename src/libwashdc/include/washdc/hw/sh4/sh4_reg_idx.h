@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 
 #ifndef WASHDC_SH4_REG_IDX_H_
 #define WASHDC_SH4_REG_IDX_H_
+
+#include <assert.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -309,6 +311,10 @@ typedef enum sh4_reg_idx {
 
     SH4_REGISTER_COUNT
 } sh4_reg_idx_t;
+
+// we need 16-byte alignment for the SSE instructions in the FTRV implementation
+static_assert(SH4_REG_XF0 % 4 == 0, "bad XF register alignment");
+static_assert(SH4_REG_FV0 % 4 == 0, "bad FV register alignment");
 
 #ifdef __cplusplus
 }

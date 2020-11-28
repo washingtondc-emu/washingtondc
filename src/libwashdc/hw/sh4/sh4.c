@@ -38,12 +38,21 @@ static void sh4_error_set_regs(void *argptr);
 
 static struct error_callback sh4_error_callback;
 
+#define USE_SSE // DO NOT COMMIT
+
 void sh4_init(Sh4 *sh4, struct dc_clock *clk) {
     memset(sh4, 0, sizeof(*sh4));
+
+#ifdef USE_SSE
+    size_t min_bytes = SH4_REGISTER_COUNT * sizeof(sh4->reg[0]);
+    sh4->reg = aligned_alloc(16, ((min_bytes + 15) / 16) * 16);
+    memset(sh4->reg, 0, min_bytes);
+#else
+    sh4->reg = calloc(SH4_REGISTER_COUNT, sizeof(sh4->reg[0]));
+#endif
+
     sh4->reg_area = (uint8_t*)malloc(sizeof(uint8_t) * (SH4_P4_REGEND - SH4_P4_REGSTART));
     sh4->clk = clk;
-
-    memset(sh4->reg, 0, sizeof(sh4->reg));
 
     sh4_mem_init(sh4);
 
@@ -88,10 +97,12 @@ void sh4_cleanup(Sh4 *sh4) {
     sh4_mem_cleanup(sh4);
 
     free(sh4->reg_area);
+
+    free(sh4->reg);
 }
 
 void sh4_on_hard_reset(Sh4 *sh4) {
-    memset(sh4->reg, 0, sizeof(sh4->reg));
+    memset(sh4->reg, 0, SH4_REGISTER_COUNT * sizeof(sh4->reg[0]));
     sh4_init_regs(sh4);
     sh4->reg[SH4_REG_SR] = SH4_SR_MD_MASK | SH4_SR_RB_MASK | SH4_SR_BL_MASK |
         SH4_SR_IMASK_MASK;

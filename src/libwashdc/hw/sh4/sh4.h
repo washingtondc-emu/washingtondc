@@ -74,7 +74,7 @@ struct Sh4 {
 
     Sh4ExecState exec_state;
 
-    reg32_t reg[SH4_REGISTER_COUNT];
+    reg32_t *reg;
 
     /*
      * read/write handlers for implementing the PDTRA register; this register

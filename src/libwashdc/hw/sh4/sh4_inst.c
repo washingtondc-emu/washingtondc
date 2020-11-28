@@ -20,6 +20,12 @@
  *
  ******************************************************************************/
 
+#define USE_SSE // DO NOT MERGE TO MASTER
+
+#ifdef USE_SSE
+#include <immintrin.h>
+#endif
+
 #include <assert.h>
 #include <fenv.h>
 #include <limits.h>
@@ -7181,6 +7187,28 @@ void sh4_inst_binary_ftrv_mxtrx_fv(void *cpu, cpu_inst_param inst) {
      */
 #endif
 
+#ifdef USE_SSE
+    __m128 row0 = _mm_load_ps(sh4->reg + SH4_REG_XF0);
+    __m128 row1 = _mm_load_ps(sh4->reg + SH4_REG_XF1);
+    __m128 row2 = _mm_load_ps(sh4->reg + SH4_REG_XF2);
+    __m128 row3 = _mm_load_ps(sh4->reg + SH4_REG_XF3);
+
+    unsigned reg_idx = ((inst >> 10) & 0x3) * 4 + SH4_REG_FR0;
+    __m128 vec = _mm_load_ps(sh4->reg + reg_idx);
+
+    __m128 outv[4] = {
+        _mm_dp_ps(row0, vec, 0xf1),
+        _mm_dp_ps(row1, vec, 0xf2),
+        _mm_dp_ps(row2, vec, 0xf4),
+        _mm_dp_ps(row3, vec, 0xf8)
+    };
+
+    __m128 xy = _mm_blend_ps(outv[0], outv[1], 2);
+    __m128 zw = _mm_blend_ps(outv[2], outv[3], 8);
+    __m128 final = _mm_blend_ps(xy, zw, 12);
+
+    _mm_store_ps(sh4->reg + reg_idx, final);
+#else
     unsigned reg_idx = ((inst >> 10) & 0x3) * 4 + SH4_REG_FR0;
     float tmp[4];
     memcpy(tmp, sh4->reg + reg_idx, sizeof(tmp));
@@ -7212,6 +7240,7 @@ void sh4_inst_binary_ftrv_mxtrx_fv(void *cpu, cpu_inst_param inst) {
         tmp[3] * row3[3];
 
     memcpy(sh4->reg + reg_idx, tmp_out, sizeof(tmp_out));
+#endif
 }
 
 #define INST_MASK_1111nnnn01111101 0xf0ff
