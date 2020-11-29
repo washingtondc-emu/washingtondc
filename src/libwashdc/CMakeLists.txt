@@ -41,7 +41,7 @@ if (DBG_EXIT_ON_UNDEFINED_OPCODE)
    add_definitions(-DDBG_EXIT_ON_UNDEFINED_OPCODE)
 endif()
 
-if (SH4_FPU_FAST)
+if (NOT SH4_FPU_PEDANTIC)
    add_definitions(-DSH4_FPU_FAST)
 endif()
 
