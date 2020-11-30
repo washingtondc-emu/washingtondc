@@ -1733,18 +1733,19 @@ emit_slot_to_bool_inv(struct code_block_x86_64 *blk,
                       void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.slot_to_bool_inv.slot_no;
 
-    evict_register(blk, &gen_reg_state, REG_RET);
-    grab_register(&gen_reg_state.set, REG_RET);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no, 4);
 
-    x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
     x86asm_testl_reg32_reg32(slots[slot_no].reg_no, slots[slot_no].reg_no);
-    x86asm_setzl_reg32(REG_RET);
+    x86asm_setz_reg8(flag_reg);
 
-    x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
+    x86asm_mov_reg32_reg32(flag_reg, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(&gen_reg_state.set, REG_RET);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void
@@ -1812,23 +1813,25 @@ static void emit_set_gt_unsigned(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_gt_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_unsigned.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
-    x86asm_jbe_lbl8(&lbl);
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_seta_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_set_gt_signed(struct code_block_x86_64 *blk,
@@ -1838,23 +1841,25 @@ static void emit_set_gt_signed(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_gt_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
-    x86asm_jle_lbl8(&lbl);
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_setg_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_set_gt_signed_const(struct code_block_x86_64 *blk,
@@ -1864,21 +1869,23 @@ static void emit_set_gt_signed_const(struct code_block_x86_64 *blk,
     unsigned imm_rhs = inst->immed.set_gt_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed_const.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_cmpl_imm8_reg32(imm_rhs, slots[slot_lhs].reg_no);
-    x86asm_jle_lbl8(&lbl);
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_setg_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_set_ge_signed_const(struct code_block_x86_64 *blk,
@@ -1888,21 +1895,23 @@ static void emit_set_ge_signed_const(struct code_block_x86_64 *blk,
     unsigned imm_rhs = inst->immed.set_ge_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed_const.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_cmpl_imm8_reg32(imm_rhs, slots[slot_lhs].reg_no);
-    x86asm_jl_lbl8(&lbl);
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_setge_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_set_eq(struct code_block_x86_64 *blk,
@@ -1912,24 +1921,25 @@ static void emit_set_eq(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_eq.slot_rhs;
     unsigned slot_dst = inst->immed.set_eq.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
-    x86asm_jnz_lbl8(&lbl);
-
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_setz_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_set_ge_unsigned(struct code_block_x86_64 *blk,
@@ -1939,23 +1949,25 @@ static void emit_set_ge_unsigned(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_ge_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_unsigned.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
-    x86asm_jb_lbl8(&lbl);
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_setae_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_set_ge_signed(struct code_block_x86_64 *blk,
@@ -1965,23 +1977,25 @@ static void emit_set_ge_signed(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_ge_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_rhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_cmpl_reg32_reg32(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
-    x86asm_jl_lbl8(&lbl);
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_setge_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_set_gt_float(struct code_block_x86_64 *blk,
@@ -1991,23 +2005,25 @@ static void emit_set_gt_float(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_gt_float.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_float.slot_dst;
 
-    struct x86asm_lbl8 lbl;
-    x86asm_lbl8_init(&lbl);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    evict_register(blk, &gen_reg_state, flag_reg);
+    grab_register(&gen_reg_state.set, flag_reg);
 
     grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_lhs, 4);
     grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_rhs, 4);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
 
+    x86asm_xorl_reg32_reg32(flag_reg, flag_reg);
+    x86asm_andl_imm8_reg32(~1, slots[slot_dst].reg_no);
     x86asm_ucomiss_xmm_xmm(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
-    x86asm_jbe_lbl8(&lbl);
-    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
-    x86asm_lbl8_define(&lbl);
+    x86asm_seta_reg8(flag_reg);
+    x86asm_orl_reg32_reg32(flag_reg, slots[slot_dst].reg_no);
 
     ungrab_slot(slot_dst);
     ungrab_slot(slot_rhs);
     ungrab_slot(slot_lhs);
 
-    x86asm_lbl8_cleanup(&lbl);
+    ungrab_register(&gen_reg_state.set, flag_reg);
 }
 
 static void emit_mul_u32(struct code_block_x86_64 *blk,
