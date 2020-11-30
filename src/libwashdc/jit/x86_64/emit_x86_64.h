@@ -580,4 +580,7 @@ void x86asm_addss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
 // xorps %<xmm_reg_src>, %<xmm_reg_dst>
 void x86asm_xorps_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
 
+// ucomiss %<xmm_reg_rhs>, %<xmm_reg_lhs>
+void x86asm_ucomiss_xmm_xmm(unsigned xmm_reg_rhs, unsigned xmm_reg_lhs);
+
 #endif
