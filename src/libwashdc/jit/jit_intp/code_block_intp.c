@@ -386,6 +386,10 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                 block->slots[inst->immed.mul_float.slot_dst].as_float;
             inst++;
             break;
+        case JIT_OP_CLEAR_FLOAT:
+            block->slots[inst->immed.clear_float.slot_dst].as_float = 0.0f;
+            inst++;
+            break;
         case JIT_OP_SHAD:
             if ((int32_t)block->slots[inst->immed.shad.slot_shift_amt].as_u32 >= 0) {
                 block->slots[inst->immed.shad.slot_val].as_u32 <<=

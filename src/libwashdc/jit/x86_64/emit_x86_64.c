@@ -1628,3 +1628,9 @@ void x86asm_addss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
     put8(0xf3);
     emit_mod_reg_rm_2(0, 0x0f, 0x58, 3, xmm_reg_dst, xmm_reg_src);
 }
+
+// xorps %<xmm_reg_src>, %<xmm_reg_dst>
+void x86asm_xorps_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
+    put8(0x66);
+    emit_mod_reg_rm_2(0, 0x0f, 0x57, 3, xmm_reg_dst, xmm_reg_src);
+}

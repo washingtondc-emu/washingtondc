@@ -1237,7 +1237,7 @@ static struct InstOpcode opcode_list[] = {
       false, SH4_GROUP_LS, 1, 0xf0ff, 0x00c3 },
 
     // FLDI0 FRn
-    { FPU_HANDLER(fldi0), sh4_jit_fallback, false,
+    { FPU_HANDLER(fldi0), sh4_jit_fldi0_frn, false,
       SH4_GROUP_LS, 1, 0xf0ff, 0xf08d },
 
     // FLDI1 Frn

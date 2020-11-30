@@ -235,6 +235,9 @@ enum jit_opcode {
     // it's like JIT_OP_MUL_U32, but for 32-bit floating points
     JIT_OP_MUL_FLOAT,
 
+    // set a floating-point slot to 0.0f
+    JIT_OP_CLEAR_FLOAT,
+
     /*
      * This tells the backend that a given slot is no longer needed and its
      * value does not need to be preserved.
@@ -540,6 +543,10 @@ struct mul_float_immed {
     unsigned slot_lhs, slot_dst;
 };
 
+struct clear_float_immed {
+    unsigned slot_dst;
+};
+
 union jit_immed {
     struct jit_fallback_immed fallback;
     struct jump_immed jump;
@@ -598,6 +605,7 @@ union jit_immed {
     struct set_ge_signed_const_immed set_ge_signed_const;
     struct mul_u32_immed mul_u32;
     struct mul_float_immed mul_float;
+    struct clear_float_immed clear_float;
 };
 
 struct jit_inst {
@@ -725,5 +733,6 @@ void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
                  unsigned slot_rhs, unsigned slot_dst);
 void jit_mul_float(struct il_code_block *block, unsigned slot_lhs,
                    unsigned slot_dst);
+void jit_clear_float(struct il_code_block *block, unsigned slot_dst);
 
 #endif

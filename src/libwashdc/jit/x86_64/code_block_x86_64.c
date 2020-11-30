@@ -2236,6 +2236,19 @@ emit_store_float_slot_offset(struct code_block_x86_64 *blk,
     ungrab_slot(slot_base);
 }
 
+static void
+emit_clear_float(struct code_block_x86_64 *blk,
+                 struct il_code_block const *il_blk,
+                 void *cpu, struct jit_inst const *inst) {
+    unsigned slot_dst = inst->immed.clear_float.slot_dst;
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_dst, 4);
+
+    unsigned reg_dst = slots[slot_dst].reg_no;
+    x86asm_xorps_xmm_xmm(reg_dst, reg_dst);
+
+    ungrab_slot(slot_dst);
+}
+
 /*
  * pad the stack so that it is properly aligned for a function call.
  * At the beginning of the stack frame, the stack was aligned to a 16-byte
@@ -2473,6 +2486,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_STORE_FLOAT_SLOT_OFFSET:
             emit_store_float_slot_offset(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_CLEAR_FLOAT:
+            emit_clear_float(out, il_blk, cpu, inst);
             break;
         default:
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
