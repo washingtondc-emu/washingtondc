@@ -305,9 +305,10 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
             // nothing to do here
             inst++;
             break;
-        case JIT_OP_SLOT_TO_BOOL:
-            block->slots[inst->immed.slot_to_bool.slot_no].as_u32 =
-                (block->slots[inst->immed.slot_to_bool.slot_no].as_u32 ? 1 : 0);
+        case JIT_OP_SLOT_TO_BOOL_INV:
+            block->slots[inst->immed.slot_to_bool_inv.slot_no].as_u32 =
+                (block->slots[inst->immed.slot_to_bool_inv.slot_no].as_u32 ?
+                 0 : 1);
             inst++;
             break;
         case JIT_OP_NOT:

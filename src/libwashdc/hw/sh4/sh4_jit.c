@@ -1006,9 +1006,7 @@ bool sh4_jit_tst_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     res_disassociate_reg(sh4, ctx, block, reg_dst);
     jit_and(block, slot_src, slot_dst);
 
-    jit_slot_to_bool(block, slot_dst);
-    jit_not(block, slot_dst);
-    jit_and_const32(block, slot_dst, 1);
+    jit_slot_to_bool_inv(block, slot_dst);
 
     jit_and_const32(block, slot_sr, ~1);
     jit_or(block, slot_dst, slot_sr);
@@ -1031,9 +1029,7 @@ bool sh4_jit_tst_imm8_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     res_disassociate_reg(sh4, ctx, block, SH4_REG_R0);
     jit_and_const32(block, slot_r0, inst & 0xff);
 
-    jit_slot_to_bool(block, slot_r0);
-    jit_not(block, slot_r0);
-    jit_and_const32(block, slot_r0, 1);
+    jit_slot_to_bool_inv(block, slot_r0);
 
     jit_and_const32(block, slot_sr, ~1);
     jit_or(block, slot_r0, slot_sr);
@@ -1850,9 +1846,7 @@ bool sh4_jit_dt_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     jit_and_const32(block, sr_slot, ~1);
     jit_add_const32(block, slot_no, ~(uint32_t)0);
     jit_mov(block, slot_no, tmp_slot);
-    jit_slot_to_bool(block, tmp_slot);
-    jit_not(block, tmp_slot);
-    jit_and_const32(block, tmp_slot, 1);
+    jit_slot_to_bool_inv(block, tmp_slot);
     jit_or(block, tmp_slot, sr_slot);
 
     reg_map[reg_no].stat = REG_STATUS_SLOT;

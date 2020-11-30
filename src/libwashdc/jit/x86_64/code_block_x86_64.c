@@ -1728,10 +1728,10 @@ emit_xor_const32(struct code_block_x86_64 *blk,
 }
 
 static void
-emit_slot_to_bool(struct code_block_x86_64 *blk,
-                  struct il_code_block const *il_blk,
-                  void *cpu, struct jit_inst const *inst) {
-    unsigned slot_no = inst->immed.slot_to_bool.slot_no;
+emit_slot_to_bool_inv(struct code_block_x86_64 *blk,
+                      struct il_code_block const *il_blk,
+                      void *cpu, struct jit_inst const *inst) {
+    unsigned slot_no = inst->immed.slot_to_bool_inv.slot_no;
 
     evict_register(blk, &gen_reg_state, REG_RET);
     grab_register(&gen_reg_state.set, REG_RET);
@@ -1739,7 +1739,7 @@ emit_slot_to_bool(struct code_block_x86_64 *blk,
 
     x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_testl_reg32_reg32(slots[slot_no].reg_no, slots[slot_no].reg_no);
-    x86asm_setnzl_reg32(REG_RET);
+    x86asm_setzl_reg32(REG_RET);
 
     x86asm_mov_reg32_reg32(REG_RET, slots[slot_no].reg_no);
 
@@ -2414,8 +2414,8 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
         case JIT_OP_DISCARD_SLOT:
             discard_slot(out, inst->immed.discard_slot.slot_no);
             break;
-        case JIT_OP_SLOT_TO_BOOL:
-            emit_slot_to_bool(out, il_blk, cpu, inst);
+        case JIT_OP_SLOT_TO_BOOL_INV:
+            emit_slot_to_bool_inv(out, il_blk, cpu, inst);
             break;
         case JIT_OP_NOT:
             emit_not(out, il_blk, cpu, inst);

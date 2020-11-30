@@ -190,8 +190,8 @@ enum jit_opcode {
     // OR one slot with a 32-bit constant
     JIT_OP_OR_CONST32,
 
-    // set the given slot to 1 if any bits are set, else 0
-    JIT_OP_SLOT_TO_BOOL,
+    // set the given slot to 0 if any bits are set, else 1
+    JIT_OP_SLOT_TO_BOOL_INV,
 
     // place one's-compliment of given slot into another slot
     JIT_OP_NOT,
@@ -459,7 +459,7 @@ struct or_const32_immed {
     unsigned const32;
 };
 
-struct slot_to_bool_immed {
+struct slot_to_bool_inv_immed {
     unsigned slot_no;
 };
 
@@ -583,7 +583,7 @@ union jit_immed {
     struct and_const32_immed and_const32;
     struct or_immed or;
     struct or_const32_immed or_const32;
-    struct slot_to_bool_immed slot_to_bool;
+    struct slot_to_bool_inv_immed slot_to_bool_inv;
     struct not_immed not;
     struct shll_immed shll;
     struct shar_immed shar;
@@ -697,7 +697,7 @@ void jit_or(struct il_code_block *block, unsigned slot_src,
             unsigned slot_dst);
 void jit_or_const32(struct il_code_block *block, unsigned slot_no,
                     unsigned const32);
-void jit_slot_to_bool(struct il_code_block *block, unsigned slot_no);
+void jit_slot_to_bool_inv(struct il_code_block *block, unsigned slot_no);
 void jit_not(struct il_code_block *block, unsigned slot_no);
 void jit_shll(struct il_code_block *block, unsigned slot_no,
               unsigned shift_amt);

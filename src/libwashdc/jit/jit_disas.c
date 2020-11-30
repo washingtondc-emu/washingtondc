@@ -241,9 +241,9 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                (unsigned)immed->or_const32.const32,
                                immed->or_const32.slot_no);
         break;
-    case JIT_OP_SLOT_TO_BOOL:
-        washdc_hostfile_printf(out, "%02X: SLOT_TO_BOOL <SLOT %02X>\n",
-                               idx, immed->slot_to_bool.slot_no);
+    case JIT_OP_SLOT_TO_BOOL_INV:
+        washdc_hostfile_printf(out, "%02X: SLOT_TO_BOOL_INV <SLOT %02X>\n",
+                               idx, immed->slot_to_bool_inv.slot_no);
         break;
     case JIT_OP_NOT:
         washdc_hostfile_printf(out, "%02X: NOT <SLOT %02X>\n",

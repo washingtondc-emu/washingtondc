@@ -605,13 +605,13 @@ void jit_or_const32(struct il_code_block *block, unsigned slot_no,
     il_code_block_push_inst(block, &op);
 }
 
-void jit_slot_to_bool(struct il_code_block *block, unsigned slot_no) {
+void jit_slot_to_bool_inv(struct il_code_block *block, unsigned slot_no) {
     struct jit_inst op;
 
     check_slot(block, slot_no, WASHDC_JIT_SLOT_GEN);
 
-    op.op = JIT_OP_SLOT_TO_BOOL;
-    op.immed.slot_to_bool.slot_no = slot_no;
+    op.op = JIT_OP_SLOT_TO_BOOL_INV;
+    op.immed.slot_to_bool_inv.slot_no = slot_no;
 
     il_code_block_push_inst(block, &op);
 }
@@ -915,8 +915,8 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
         return slot_no == immed->or.slot_src || slot_no == immed->or.slot_dst;
     case JIT_OP_OR_CONST32:
         return slot_no == immed->or_const32.slot_no;
-    case JIT_OP_SLOT_TO_BOOL:
-        return slot_no == immed->slot_to_bool.slot_no;
+    case JIT_OP_SLOT_TO_BOOL_INV:
+        return slot_no == immed->slot_to_bool_inv.slot_no;
     case JIT_OP_NOT:
         return slot_no == immed->not.slot_no;
     case JIT_OP_SHLL:
@@ -1085,8 +1085,8 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
     case JIT_OP_OR_CONST32:
         write_slots[0] = immed->or_const32.slot_no;
         break;
-    case JIT_OP_SLOT_TO_BOOL:
-        write_slots[0] = immed->slot_to_bool.slot_no;
+    case JIT_OP_SLOT_TO_BOOL_INV:
+        write_slots[0] = immed->slot_to_bool_inv.slot_no;
         break;
     case JIT_OP_NOT:
         write_slots[0] = immed->not.slot_no;

@@ -1473,6 +1473,10 @@ void x86asm_setnzl_reg32(unsigned reg_no) {
     emit_mod_reg_rm_2(0, 0x0f, 0x95, 3, 0, reg_no);
 }
 
+void x86asm_setzl_reg32(unsigned reg_no) {
+    emit_mod_reg_rm_2(0, 0x0f, 0x94, 3, 0, reg_no);
+}
+
 void x86asm_negl_reg32(unsigned reg_no) {
     emit_mod_reg_rm(0, 0xf7, 3, 3, reg_no);
 }
