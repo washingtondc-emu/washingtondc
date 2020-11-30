@@ -303,6 +303,10 @@ void x86asm_and_imm32_rax(unsigned imm32);
 // andl $<imm32>, %<reg32>
 void x86asm_andl_imm32_reg32(uint32_t imm32, unsigned reg_no);
 
+// andl $<imm8>, %<reg32>
+// the immediate is sign-extended to 32 bits
+void x86asm_andl_imm8_reg32(unsigned imm8, unsigned reg_no);
+
 // andl %<reg32>, %<reg32>
 void x86asm_andl_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 
@@ -438,6 +442,10 @@ void x86asm_movsx_reg16_reg32(unsigned reg_src, unsigned reg_dst);
 // movzxw (%<reg_src>), %<reg_dst>
 void x86asm_movzxw_indreg_reg(unsigned reg_src, unsigned reg_dst);
 
+// movzbl %<reg_src>, %<reg_dst>
+// (zero-extend 8-bit register to 32/64 bits)
+void x86asm_movzbl_reg_reg(unsigned reg_src, unsigned reg_dst);
+
 // orl $<imm32>, %<reg_no>
 void x86asm_orl_imm32_reg32(unsigned imm32, unsigned reg_no);
 
@@ -500,9 +508,18 @@ void x86asm_cmovgel_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 // conditional-move if greater-or-equal (unsigned)
 void x86asm_cmovael_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 
-void x86asm_setnzl_reg32(unsigned reg_no);
-
-void x86asm_setzl_reg32(unsigned reg_no);
+/*
+ * conditionally set the least-significant byte of the given register
+ *
+ * These functions don't support ah, bh, ch, or dh.  If you try to use one of
+ * those, it will get mis-identified as spb, dib, bpb, or sib instead.
+ */
+void x86asm_seta_reg8(unsigned reg_no);
+void x86asm_setae_reg8(unsigned reg_no);
+void x86asm_setg_reg8(unsigned reg_no);
+void x86asm_setge_reg8(unsigned reg_no);
+void x86asm_setnz_reg8(unsigned reg_no);
+void x86asm_setz_reg8(unsigned reg_no);
 
 void x86asm_negl_reg32(unsigned reg_no);
 

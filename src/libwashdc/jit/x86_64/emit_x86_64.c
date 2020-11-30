@@ -1021,6 +1021,13 @@ void x86asm_and_imm32_rax(unsigned imm32) {
     put32(imm32);
 }
 
+// andl $<imm8>, %<reg32>
+// the immediate is sign-extended to 32 bits
+void x86asm_andl_imm8_reg32(unsigned imm8, unsigned reg_no) {
+    emit_mod_reg_rm(0, 0x83, 3, 4, reg_no);
+    put8(imm8);
+}
+
 // andl $<imm32>, %<reg32>
 void x86asm_andl_imm32_reg32(uint32_t imm32, unsigned reg_no) {
     emit_mod_reg_rm(0, 0x81, 3, 4, reg_no);
@@ -1330,6 +1337,12 @@ void x86asm_movzxw_indreg_reg(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0xb7, 0, reg_dst, reg_src);
 }
 
+// movzbl %<reg_src>, %<reg_dst>
+// (zero-extend 8-bit register to 32/64 bits)
+void x86asm_movzbl_reg_reg(unsigned reg_src, unsigned reg_dst) {
+    emit_mod_reg_rm_2(0, 0x0f, 0xb6, 3, reg_dst, reg_src);
+}
+
 // orl $<imm32>, %eax
 void x86asm_orl_imm32_reg32(unsigned imm32, unsigned reg_no) {
     emit_mod_reg_rm(0, 0x81, 3, 1, reg_no);
@@ -1469,12 +1482,46 @@ void x86asm_cmovgel_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0x4d, 3, reg_dst, reg_src);
 }
 
-void x86asm_setnzl_reg32(unsigned reg_no) {
-    emit_mod_reg_rm_2(0, 0x0f, 0x95, 3, 0, reg_no);
+void x86asm_seta_reg8(unsigned reg_no) {
+    unsigned rex = 0;
+    if (reg_no == SP || reg_no == BP || reg_no == SI || reg_no == DI)
+        rex = 0x40;
+    emit_mod_reg_rm_2(rex, 0x0f, 0x97, 3, 0, reg_no);
 }
 
-void x86asm_setzl_reg32(unsigned reg_no) {
-    emit_mod_reg_rm_2(0, 0x0f, 0x94, 3, 0, reg_no);
+void x86asm_setae_reg8(unsigned reg_no) {
+    unsigned rex = 0;
+    if (reg_no == SP || reg_no == BP || reg_no == SI || reg_no == DI)
+        rex = 0x40;
+    emit_mod_reg_rm_2(rex, 0x0f, 0x93, 3, 0, reg_no);
+}
+
+void x86asm_setg_reg8(unsigned reg_no) {
+    unsigned rex = 0;
+    if (reg_no == SP || reg_no == BP || reg_no == SI || reg_no == DI)
+        rex = 0x40;
+    emit_mod_reg_rm_2(rex, 0x0f, 0x9f, 3, 0, reg_no);
+}
+
+void x86asm_setge_reg8(unsigned reg_no) {
+    unsigned rex = 0;
+    if (reg_no == SP || reg_no == BP || reg_no == SI || reg_no == DI)
+        rex = 0x40;
+    emit_mod_reg_rm_2(rex, 0x0f, 0x9d, 3, 0, reg_no);
+}
+
+void x86asm_setnz_reg8(unsigned reg_no) {
+    unsigned rex = 0;
+    if (reg_no == SP || reg_no == BP || reg_no == SI || reg_no == DI)
+        rex = 0x40;
+    emit_mod_reg_rm_2(rex, 0x0f, 0x95, 3, 0, reg_no);
+}
+
+void x86asm_setz_reg8(unsigned reg_no) {
+    unsigned rex = 0;
+    if (reg_no == SP || reg_no == BP || reg_no == SI || reg_no == DI)
+        rex = 0x40;
+    emit_mod_reg_rm_2(rex, 0x0f, 0x94, 3, 0, reg_no);
 }
 
 void x86asm_negl_reg32(unsigned reg_no) {
