@@ -568,13 +568,16 @@ void x86asm_movups_xmm_disp32_reg(unsigned xmm_reg_src,
 void x86asm_movups_disp32_reg_xmm(int disp32, unsigned reg_base,
 				  unsigned xmm_reg_dst);
 
-// mulss %<xmm_reg_src>, %<xmm_reg_src>
+// mulss %<xmm_reg_src>, %<xmm_reg_dst>
 void x86asm_mulss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
 
-// subss %<xmm_reg_src>, %<xmm_reg_src>
+// subss %<xmm_reg_src>, %<xmm_reg_dst>
 void x86asm_subss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
 
-// addss %<xmm_reg_src>, %<xmm_reg_src>
+// addss %<xmm_reg_src>, %<xmm_reg_dst>
 void x86asm_addss_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
+
+// xorps %<xmm_reg_src>, %<xmm_reg_dst>
+void x86asm_xorps_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst);
 
 #endif

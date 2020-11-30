@@ -806,4 +806,9 @@ bool sh4_jit_trapa_imm(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                        struct il_code_block *block, unsigned pc,
                        struct InstOpcode const *op, cpu_inst_param inst);
 
+// FLDI0 FRn
+// 1111nnnn10001101
+bool sh4_jit_fldi0_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, cpu_inst_param inst);
 #endif

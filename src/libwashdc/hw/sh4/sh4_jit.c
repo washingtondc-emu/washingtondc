@@ -119,8 +119,8 @@ static unsigned reg_slot(Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
  * contents of a given register are irrelevant because they will immediately be
  * overwritten.
  */
-static unsigned
-reg_slot_noload(Sh4 *sh4, struct il_code_block *block, unsigned reg_no);
+static unsigned reg_slot_noload(Sh4 *sh4, struct il_code_block *block,
+                                unsigned reg_no, enum washdc_jit_slot_tp tp);
 
 #ifdef JIT_PROFILE
 static void sh4_jit_profile_disas(washdc_hostfile out, uint32_t addr, void const *instp);
@@ -461,7 +461,8 @@ bool sh4_jit_bsrf_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     res_disassociate_reg(sh4, ctx, block, SH4_REG_R0 + reg_no);
     jit_add_const32(block, addr_slot_no, jump_offs);
 
-    unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR);
+    unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR,
+                                          WASHDC_JIT_SLOT_GEN);
     jit_set_slot(block, pr_slot_no, pc + 4);
 
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
@@ -661,7 +662,8 @@ bool sh4_jit_bsr(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
         disp |= 0xfffff000;
     disp = disp * 2 + 4;
 
-    unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR);
+    unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR,
+                                          WASHDC_JIT_SLOT_GEN);
     jit_set_slot(block, pr_slot_no, pc + 4);
 
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
@@ -727,7 +729,8 @@ bool sh4_jit_jsr_arn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                                      WASHDC_JIT_SLOT_GEN);
     res_disassociate_reg(sh4, ctx, block, SH4_REG_R0 + reg_no);
 
-    unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR);
+    unsigned pr_slot_no = reg_slot_noload(sh4, block, SH4_REG_PR,
+                                          WASHDC_JIT_SLOT_GEN);
     jit_set_slot(block, pr_slot_no, pc + 4);
 
     sh4_jit_delay_slot(sh4, ctx, block, pc + 2);
@@ -760,7 +763,8 @@ sh4_jit_movw_a_disp_pc_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     unsigned disp = inst & 0xff;
     addr32_t addr = disp * 2 + pc + 4;
 
-    unsigned slot_no = reg_slot_noload(sh4, block, reg_no);
+    unsigned slot_no = reg_slot_noload(sh4, block, reg_no,
+                                       WASHDC_JIT_SLOT_GEN);
 
     jit_mem_read_constaddr_16(sh4->mem.map, block, addr, slot_no);
 
@@ -778,7 +782,8 @@ sh4_jit_movl_a_disp_pc_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     unsigned disp = inst & 0xff;
     addr32_t addr = disp * 4 + (pc & ~3) + 4;
 
-    unsigned slot_no = reg_slot_noload(sh4, block, reg_no);
+    unsigned slot_no = reg_slot_noload(sh4, block, reg_no,
+                                       WASHDC_JIT_SLOT_GEN);
     jit_mem_read_constaddr_32(sh4->mem.map, block, addr, slot_no);
 
     return true;
@@ -791,7 +796,8 @@ sh4_jit_mova_a_disp_pc_r0(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     unsigned disp = inst & 0xff;
     addr32_t addr = disp * 4 + (pc & ~3) + 4;
 
-    unsigned slot_no = reg_slot_noload(sh4, block, SH4_REG_R0);
+    unsigned slot_no = reg_slot_noload(sh4, block, SH4_REG_R0,
+                                       WASHDC_JIT_SLOT_GEN);
     jit_set_slot(block, slot_no, addr);
 
     return true;
@@ -1396,7 +1402,8 @@ bool sh4_jit_mov_imm8_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     int32_t imm32 = (int32_t)((int8_t)(inst & 0xff));
     unsigned dst_reg = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
 
-    unsigned dst_slot = reg_slot_noload(sh4, block, dst_reg);
+    unsigned dst_slot = reg_slot_noload(sh4, block, dst_reg,
+                                        WASHDC_JIT_SLOT_GEN);
     jit_set_slot(block, dst_slot, imm32);
 
     reg_map[dst_reg].stat = REG_STATUS_SLOT;
@@ -1604,7 +1611,8 @@ bool sh4_jit_swapw_rm_rn(Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     unsigned reg_dst = ((inst & 0x0f00) >> 8) + SH4_REG_R0;
 
     unsigned slot_src = reg_slot(sh4, ctx, block, reg_src, WASHDC_JIT_SLOT_GEN);
-    unsigned slot_dst = reg_slot_noload(sh4, block, reg_dst);
+    unsigned slot_dst = reg_slot_noload(sh4, block, reg_dst,
+                                        WASHDC_JIT_SLOT_GEN);
 
     unsigned slot_tmp = alloc_slot(block, WASHDC_JIT_SLOT_GEN);
 
@@ -2589,6 +2597,29 @@ bool sh4_jit_fmov_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// FLDI0 FRn
+// 1111nnnn10001101
+bool sh4_jit_fldi0_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
+                       struct il_code_block *block, unsigned pc,
+                       struct InstOpcode const *op, cpu_inst_param inst) {
+    if (ctx->pr_bit != 0) {
+        /*
+         * this instruction is undefined for PR != 0.  correct behavior is
+         * probably to raise an exception of some sort.
+         */
+        error_set_address(pc);
+        error_set_feature("FLDI0 in double-precision mode");
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
+
+    unsigned reg_no = ((inst >> 8) & 0xf) + SH4_REG_FR0;
+    unsigned slot_no = reg_slot_noload(sh4, block, reg_no,
+                                       WASHDC_JIT_SLOT_FLOAT);
+    jit_clear_float(block, slot_no);
+    reg_map[reg_no].stat = REG_STATUS_SLOT;
+    return true;
+}
+
 static unsigned reg_slot(Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
                          struct il_code_block *block, unsigned reg_no,
                          enum washdc_jit_slot_tp tp) {
@@ -2617,16 +2648,17 @@ static unsigned reg_slot(Sh4 *sh4, struct sh4_jit_compile_ctx *ctx,
     return res->slot_no;
 }
 
-static unsigned reg_slot_noload(Sh4 *sh4,
-                                struct il_code_block *block, unsigned reg_no) {
+static unsigned reg_slot_noload(Sh4 *sh4, struct il_code_block *block,
+                                unsigned reg_no, enum washdc_jit_slot_tp tp) {
     struct residency *res = reg_map + reg_no;
     if (res->stat == REG_STATUS_SH4) {
-        unsigned slot_no = alloc_slot(block, WASHDC_JIT_SLOT_GEN);
+        unsigned slot_no = alloc_slot(block, tp);
         res_associate_reg(reg_no, slot_no);
         res->stat = REG_STATUS_SLOT;
         res->slot_no = slot_no;
         // TODO: set res->last_read here
     } else if (res->stat == REG_STATUS_SLOT_AND_SH4) {
+        check_slot(block, res->slot_no, tp);
         res->stat = REG_STATUS_SLOT;
     }
     return res->slot_no;
