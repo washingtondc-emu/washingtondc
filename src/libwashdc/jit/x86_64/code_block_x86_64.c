@@ -1984,6 +1984,32 @@ static void emit_set_ge_signed(struct code_block_x86_64 *blk,
     x86asm_lbl8_cleanup(&lbl);
 }
 
+static void emit_set_gt_float(struct code_block_x86_64 *blk,
+                              struct il_code_block const *il_blk,
+                              void *cpu, struct jit_inst const *inst) {
+    unsigned slot_lhs = inst->immed.set_gt_float.slot_lhs;
+    unsigned slot_rhs = inst->immed.set_gt_float.slot_rhs;
+    unsigned slot_dst = inst->immed.set_gt_float.slot_dst;
+
+    struct x86asm_lbl8 lbl;
+    x86asm_lbl8_init(&lbl);
+
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_lhs, 4);
+    grab_slot(blk, il_blk, inst, &xmm_reg_state, slot_rhs, 4);
+    grab_slot(blk, il_blk, inst, &gen_reg_state, slot_dst, 4);
+
+    x86asm_ucomiss_xmm_xmm(slots[slot_rhs].reg_no, slots[slot_lhs].reg_no);
+    x86asm_jbe_lbl8(&lbl);
+    x86asm_orl_imm32_reg32(1, slots[slot_dst].reg_no);
+    x86asm_lbl8_define(&lbl);
+
+    ungrab_slot(slot_dst);
+    ungrab_slot(slot_rhs);
+    ungrab_slot(slot_lhs);
+
+    x86asm_lbl8_cleanup(&lbl);
+}
+
 static void emit_mul_u32(struct code_block_x86_64 *blk,
                          struct il_code_block const *il_blk,
                          void *cpu, struct jit_inst const *inst) {
@@ -2462,6 +2488,9 @@ void code_block_x86_64_compile(void *cpu, struct code_block_x86_64 *out,
             break;
         case JIT_OP_SET_GE_SIGNED_CONST:
             emit_set_ge_signed_const(out, il_blk, cpu, inst);
+            break;
+        case JIT_OP_SET_GT_FLOAT:
+            emit_set_gt_float(out, il_blk, cpu, inst);
             break;
         case JIT_OP_MUL_U32:
             emit_mul_u32(out, il_blk, cpu, inst);

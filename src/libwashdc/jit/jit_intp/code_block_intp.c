@@ -374,6 +374,12 @@ reg32_t code_block_intp_exec(void *cpu, struct code_block_intp const *block) {
                 block->slots[inst->immed.set_ge_signed_const.slot_dst].as_u32 |= 1;
             inst++;
             break;
+        case JIT_OP_SET_GT_FLOAT:
+            if (block->slots[inst->immed.set_gt_float.slot_lhs].as_float >
+                block->slots[inst->immed.set_gt_float.slot_rhs].as_float)
+                block->slots[inst->immed.set_gt_float.slot_dst].as_u32 |= 1;
+            inst++;
+            break;
         case JIT_OP_MUL_U32:
             block->slots[inst->immed.mul_u32.slot_dst].as_u32 =
                 block->slots[inst->immed.mul_u32.slot_lhs].as_u32 *

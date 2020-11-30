@@ -1634,3 +1634,8 @@ void x86asm_xorps_xmm_xmm(unsigned xmm_reg_src, unsigned xmm_reg_dst) {
     put8(0x66);
     emit_mod_reg_rm_2(0, 0x0f, 0x57, 3, xmm_reg_dst, xmm_reg_src);
 }
+
+// ucomiss %<xmm_reg_rhs>, %<xmm_reg_lhs>
+void x86asm_ucomiss_xmm_xmm(unsigned xmm_reg_rhs, unsigned xmm_reg_lhs) {
+    emit_mod_reg_rm_2(0, 0x0f, 0x2e, 3, xmm_reg_lhs, xmm_reg_rhs);
+}

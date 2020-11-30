@@ -2359,23 +2359,33 @@ bool sh4_jit_fmul_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
 bool sh4_jit_fcmpgt_frm_frn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
                             struct il_code_block *block, unsigned pc,
                             struct InstOpcode const *op, cpu_inst_param inst) {
-    void (*handler)(void*, cpu_inst_param);
+    if (ctx->pr_bit) {
+        struct jit_inst il_inst;
 
-    if (ctx->pr_bit)
-        handler = sh4_inst_binary_fcmpgt_dr_dr;
-    else
-        handler = sh4_inst_binary_fcmpgt_fr_fr;
+        res_drain_all_regs(sh4, ctx, block);
+        res_invalidate_all_regs(block);
 
-    struct jit_inst il_inst;
+        il_inst.op = JIT_OP_FALLBACK;
+        il_inst.immed.fallback.fallback_fn = sh4_inst_binary_fcmpgt_dr_dr;
+        il_inst.immed.fallback.inst = inst;
 
-    res_drain_all_regs(sh4, ctx, block);
-    res_invalidate_all_regs(block);
+        il_code_block_push_inst(block, &il_inst);
 
-    il_inst.op = JIT_OP_FALLBACK;
-    il_inst.immed.fallback.fallback_fn = handler;
-    il_inst.immed.fallback.inst = inst;
+    } else {
+        unsigned reg_rhs = ((inst >> 4) & 0xf) + SH4_REG_FR0;
+        unsigned reg_lhs = ((inst >> 8) & 0xf) + SH4_REG_FR0;
+        unsigned slot_lhs =
+            reg_slot(sh4, ctx, block, reg_lhs, WASHDC_JIT_SLOT_FLOAT);
+        unsigned slot_rhs =
+            reg_slot(sh4, ctx, block, reg_rhs, WASHDC_JIT_SLOT_FLOAT);
+        unsigned slot_sr =
+            reg_slot(sh4, ctx, block, SH4_REG_SR, WASHDC_JIT_SLOT_GEN);
 
-    il_code_block_push_inst(block, &il_inst);
+        jit_and_const32(block, slot_sr, ~1);
+        jit_set_gt_float(block, slot_lhs, slot_rhs, slot_sr);
+
+        reg_map[SH4_REG_SR].stat = REG_STATUS_SLOT;
+    }
 
     return true;
 }

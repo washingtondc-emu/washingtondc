@@ -314,6 +314,13 @@ void jit_disas_il(washdc_hostfile out, struct jit_inst const *inst, int idx) {
                                (unsigned)immed->set_ge_signed_const.imm_rhs,
                                immed->set_ge_signed_const.slot_dst);
         break;
+    case JIT_OP_SET_GT_FLOAT:
+        washdc_hostfile_printf(out, "%02X: SET_GT_FLOAT <SLOT %02X>, "
+                               "<SLOT %02X>, <SLOT %02X>\n", idx,
+                               immed->set_gt_float.slot_lhs,
+                               immed->set_gt_float.slot_rhs,
+                               immed->set_gt_float.slot_dst);
+        break;
     case JIT_OP_MUL_U32:
         washdc_hostfile_printf(out, "%02X: MUL_U32 <SLOT %02X>, <SLOT %02X>, "
                                "<SLOT %02X>\n",

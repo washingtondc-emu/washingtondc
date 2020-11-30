@@ -776,6 +776,22 @@ void jit_set_ge_signed_const(struct il_code_block *block, unsigned slot_lhs,
     il_code_block_push_inst(block, &op);
 }
 
+void jit_set_gt_float(struct il_code_block *block, unsigned slot_lhs,
+                      unsigned slot_rhs, unsigned slot_dst) {
+    struct jit_inst op;
+
+    check_slot(block, slot_lhs, WASHDC_JIT_SLOT_FLOAT);
+    check_slot(block, slot_rhs, WASHDC_JIT_SLOT_FLOAT);
+    check_slot(block, slot_dst, WASHDC_JIT_SLOT_GEN);
+
+    op.op = JIT_OP_SET_GT_FLOAT;
+    op.immed.set_gt_float.slot_lhs = slot_lhs;
+    op.immed.set_gt_float.slot_rhs = slot_rhs;
+    op.immed.set_gt_float.slot_dst = slot_dst;
+
+    il_code_block_push_inst(block, &op);
+}
+
 void jit_mul_u32(struct il_code_block *block, unsigned slot_lhs,
                  unsigned slot_rhs, unsigned slot_dst) {
     struct jit_inst op;
@@ -965,6 +981,10 @@ bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
     case JIT_OP_SET_GE_SIGNED_CONST:
         return slot_no == immed->set_ge_signed_const.slot_lhs ||
             slot_no == immed->set_ge_signed_const.slot_dst;
+    case JIT_OP_SET_GT_FLOAT:
+        return slot_no == immed->set_gt_float.slot_lhs ||
+            slot_no == immed->set_gt_float.slot_rhs ||
+            slot_no == immed->set_gt_float.slot_dst;
     case JIT_OP_MUL_U32:
         return slot_no == immed->mul_u32.slot_lhs ||
             slot_no == immed->mul_u32.slot_rhs;
@@ -1136,6 +1156,9 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
         break;
     case JIT_OP_SET_GE_SIGNED_CONST:
         write_slots[0] = immed->set_ge_signed_const.slot_dst;
+        break;
+    case JIT_OP_SET_GT_FLOAT:
+        write_slots[0] = immed->set_gt_float.slot_dst;
         break;
     case JIT_OP_MUL_U32:
         write_slots[0] = immed->mul_u32.slot_dst;
