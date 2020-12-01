@@ -894,7 +894,7 @@ static void emit_stack_frame_open(void) {
     struct x86asm_lbl8 properly_aligned_stack;
     x86asm_lbl8_init(&properly_aligned_stack);
 
-    x86asm_testl_imm32_reg32(15, RSP);
+    x86asm_testb_imm8_reg8(15, RSP);
     x86asm_jz_lbl8(&properly_aligned_stack);
 
     /*
@@ -988,7 +988,7 @@ static void emit_cset(struct code_block_x86_64 *blk,
 
     unsigned flag_reg = slots[flag_slot].reg_no;
 
-    x86asm_testl_imm32_reg32(1, flag_reg);
+    x86asm_testb_imm8_reg8(1, flag_reg);
     if (inst->immed.cset.t_flag)
         x86asm_jz_lbl8(&lbl);
     else
