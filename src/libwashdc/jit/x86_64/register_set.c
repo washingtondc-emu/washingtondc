@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -164,6 +164,9 @@ pick_unused_reg_with_flags(struct register_set *set,
  * This function will pick an unused register to use.  This doesn't change the
  * state of the register.  If there are no unused registers available, this
  * function will return -1.
+ *
+ * TODO: more robust support for multiple hints.  ie, currently we ignore
+ * REGISTER_HINT_8BIT if it's not the only hint.
  */
 int register_pick_unused(struct register_set *set, enum register_hint hints) {
     int reg_no;
@@ -213,6 +216,38 @@ int register_pick_unused(struct register_set *set, enum register_hint hints) {
         reg_no =
             pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE,
                                        REGISTER_FLAG_RETURN);
+        if (reg_no >= 0)
+            return reg_no;
+    } else if (hints & REGISTER_HINT_8BIT) {
+        /*
+         * first look at registers that don't need a rex.
+         * IDK why RAX gets top priority but this code
+         * has been that way for a while.
+         */
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_RETURN,
+                                       REGISTER_FLAG_RETURN |
+                                       REGISTER_FLAG_REX_8BIT);
+        if (reg_no >= 0)
+            return reg_no;
+
+        // consider RBX even though it's nonvolatile since it doesn't need REX
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_PRESERVED,
+                                       REGISTER_FLAG_REX_8BIT);
+        if (reg_no >= 0)
+            return reg_no;
+
+        // volatile registers that need REX
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE, REGISTER_FLAG_PRESERVED);
+        if (reg_no >= 0)
+            return reg_no;
+
+        // nonvolatile registers that need REX
+        reg_no =
+            pick_unused_reg_with_flags(set, REGISTER_FLAG_NONE,
+                                       REGISTER_FLAG_NONE);
         if (reg_no >= 0)
             return reg_no;
     } else {

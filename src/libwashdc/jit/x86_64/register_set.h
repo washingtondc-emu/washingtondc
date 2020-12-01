@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -41,7 +41,10 @@ enum register_flag {
     REGISTER_FLAG_RETURN = 8,
 
     // register introduces a REX prefix
-    REGISTER_FLAG_REX = 16
+    REGISTER_FLAG_REX = 16,
+
+    // register introduces a REX prefix when used as an 8-bit register
+    REGISTER_FLAG_REX_8BIT = 32
 };
 
 enum register_hint {
@@ -63,7 +66,13 @@ enum register_hint {
      * Tells the allocator that this slot will be used to store the address for
      * the jump instruction
      */
-    REGISTER_HINT_JUMP_ADDR = 4
+    REGISTER_HINT_JUMP_ADDR = 4,
+
+    /*
+     * Tells the allocator that this slot will be used to access a the 8-bit
+     * version of a register.
+     */
+    REGISTER_HINT_8BIT
 };
 
 struct reg_stat {

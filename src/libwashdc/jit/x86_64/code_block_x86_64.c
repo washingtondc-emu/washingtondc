@@ -82,13 +82,13 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     [RSP] = {
         // stack pointer
         .locked = true,
-        .flags = REGISTER_FLAG_PRESERVED
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX_8BIT
 
     },
     [RBP] = {
         // base pointer
         .locked = true,
-        .flags = REGISTER_FLAG_PRESERVED
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX_8BIT
     },
     [RSI] = {
         .locked = false,
@@ -96,7 +96,7 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
 #ifdef ABI_UNIX
         .flags = REGISTER_FLAG_NATIVE_DISPATCH_HASH
 #elif defined(ABI_MICROSOFT)
-        .flags = REGISTER_FLAG_PRESERVED
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX_8BIT
 #else
 #error unknown ABI
 #endif
@@ -107,7 +107,7 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
 #ifdef ABI_UNIX
         .flags = REGISTER_FLAG_NATIVE_DISPATCH_PC
 #elif defined(ABI_MICROSOFT)
-        .flags = REGISTER_FLAG_PRESERVED
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX_8BIT
 #else
 #error unknown ABI
 #endif
@@ -115,22 +115,22 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     [R8] = {
         .locked = false,
         .prio = 6,
-        .flags = REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_REX | REGISTER_FLAG_REX_8BIT
     },
     [R9] = {
         .locked = false,
         .prio = 5,
-        .flags = REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_REX | REGISTER_FLAG_REX_8BIT
     },
     [R10] = {
         .locked = false,
         .prio = 4,
-        .flags = REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_REX | REGISTER_FLAG_REX_8BIT
     },
     [R11] = {
         .locked = false,
         .prio = 3,
-        .flags = REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_REX | REGISTER_FLAG_REX_8BIT
     },
     /*
      * R12 and R13 have a lower priority than R14 and R15 because they require
@@ -140,12 +140,14 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
     [R12] = {
         .locked = false,
         .prio = 7,
-        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX |
+        REGISTER_FLAG_REX_8BIT
     },
     [R13] = {
         .locked = false,
         .prio = 6,
-        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX |
+        REGISTER_FLAG_REX_8BIT
     },
     [R14] = {
         /*
@@ -154,12 +156,14 @@ static struct reg_stat const gen_regs_template[N_REGS] = {
          */
         .locked = true,
         .prio = 9,
-        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX |
+        REGISTER_FLAG_REX_8BIT
     },
     [R15] = {
         .locked = false,
         .prio = 8,
-        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX
+        .flags = REGISTER_FLAG_PRESERVED | REGISTER_FLAG_REX |
+        REGISTER_FLAG_REX_8BIT
     }
 };
 
@@ -1733,7 +1737,7 @@ emit_slot_to_bool_inv(struct code_block_x86_64 *blk,
                       void *cpu, struct jit_inst const *inst) {
     unsigned slot_no = inst->immed.slot_to_bool_inv.slot_no;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no, 4);
@@ -1813,7 +1817,7 @@ static void emit_set_gt_unsigned(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_gt_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_unsigned.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
@@ -1841,7 +1845,7 @@ static void emit_set_gt_signed(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_gt_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
@@ -1869,7 +1873,7 @@ static void emit_set_gt_signed_const(struct code_block_x86_64 *blk,
     unsigned imm_rhs = inst->immed.set_gt_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_gt_signed_const.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
@@ -1895,7 +1899,7 @@ static void emit_set_ge_signed_const(struct code_block_x86_64 *blk,
     unsigned imm_rhs = inst->immed.set_ge_signed_const.imm_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed_const.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
@@ -1921,7 +1925,7 @@ static void emit_set_eq(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_eq.slot_rhs;
     unsigned slot_dst = inst->immed.set_eq.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
@@ -1949,7 +1953,7 @@ static void emit_set_ge_unsigned(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_ge_unsigned.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_unsigned.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
@@ -1977,7 +1981,7 @@ static void emit_set_ge_signed(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_ge_signed.slot_rhs;
     unsigned slot_dst = inst->immed.set_ge_signed.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
@@ -2005,7 +2009,7 @@ static void emit_set_gt_float(struct code_block_x86_64 *blk,
     unsigned slot_rhs = inst->immed.set_gt_float.slot_rhs;
     unsigned slot_dst = inst->immed.set_gt_float.slot_dst;
 
-    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_NONE);
+    int flag_reg = register_pick(&gen_reg_state.set, REGISTER_HINT_8BIT);
     evict_register(blk, &gen_reg_state, flag_reg);
     grab_register(&gen_reg_state.set, flag_reg);
 
