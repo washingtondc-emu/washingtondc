@@ -497,6 +497,8 @@ void x86asm_testq_reg64_reg64(unsigned reg_src, unsigned reg_dst);
 
 void x86asm_testl_imm32_reg32(uint32_t imm32, unsigned reg_no);
 
+void x86asm_testb_imm8_reg8(unsigned imm8, unsigned reg_no);
+
 // conditional-move if not-equal (ZF=0)
 void x86asm_cmovnel_reg32_reg32(unsigned reg_src, unsigned reg_dst);
 

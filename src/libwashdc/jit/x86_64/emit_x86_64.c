@@ -1464,6 +1464,18 @@ void x86asm_testl_imm32_reg32(uint32_t imm32, unsigned reg_no) {
     put32(imm32);
 }
 
+void x86asm_testb_imm8_reg8(unsigned imm8, unsigned reg_no) {
+    if (reg_no == AX) {
+        put8(0xa8);
+    } else {
+        unsigned rex = 0;
+        if (reg_no == SP || reg_no == BP || reg_no == SI || reg_no == DI)
+            rex = 0x40;
+        emit_mod_reg_rm(rex, 0xf6, 3, 0, reg_no);
+    }
+    put8(imm8);
+}
+
 // conditional-move if not-equal (ZF=0)
 void x86asm_cmovnel_reg32_reg32(unsigned reg_src, unsigned reg_dst) {
     emit_mod_reg_rm_2(0, 0x0f, 0x45, 3, reg_dst, reg_src);
