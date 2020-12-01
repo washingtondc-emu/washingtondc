@@ -957,6 +957,18 @@ void x86asm_add_imm32_eax(unsigned imm32) {
     put32(imm32);
 }
 
+// add $imm8, <reg_dst>
+// imm8 will be sign-extended
+void x86asm_addl_imm8_reg32(unsigned imm8, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x83, 3, 0, reg_dst);
+    put8(imm8);
+}
+
+void x86asm_addl_imm32_reg32(unsigned imm32, unsigned reg_dst) {
+    emit_mod_reg_rm(0, 0x81, 3, 0, reg_dst);
+    put32(imm32);
+}
+
 void x86asm_addq_imm32_reg64(unsigned imm32, unsigned reg_dst) {
     emit_mod_reg_rm(REX_W, 0x81, 3, 0, reg_dst);
     put32(imm32);

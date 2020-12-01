@@ -1585,19 +1585,17 @@ emit_add_const32(struct code_block_x86_64 *blk,
     unsigned slot_no = inst->immed.add_const32.slot_dst;
     uint32_t const_val = inst->immed.add_const32.const32;
 
-    evict_register(blk, &gen_reg_state, REG_RET);
-    grab_register(&gen_reg_state.set, REG_RET);
-
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no, 4);
 
     unsigned reg_no = slots[slot_no].reg_no;
 
-    x86asm_mov_reg32_reg32(reg_no, REG_RET);
-    x86asm_add_imm32_eax(const_val);
-    x86asm_mov_reg32_reg32(REG_RET, reg_no);
+    if ((const_val & BIT_RANGE(7, 31)) == BIT_RANGE(7, 31) ||
+        (const_val & BIT_RANGE(7, 31)) == 0)
+        x86asm_addl_imm8_reg32(const_val, reg_no);
+    else
+        x86asm_addl_imm32_reg32(const_val, reg_no);
 
     ungrab_slot(slot_no);
-    ungrab_register(&gen_reg_state.set, REG_RET);
 }
 
 static void
