@@ -42,6 +42,7 @@
 #include "washdc/cpu.h"
 #include "register_set.h"
 #include "compiler_bullshit.h"
+#include "intmath.h"
 
 #include "emit_x86_64.h"
 #include "code_block_x86_64.h"
@@ -1680,7 +1681,11 @@ emit_and_const32(struct code_block_x86_64 *blk,
 
     grab_slot(blk, il_blk, inst, &gen_reg_state, slot_no, 4);
 
-    x86asm_andl_imm32_reg32(const32, slots[slot_no].reg_no);
+    if ((const32 & BIT_RANGE(7, 31)) == BIT_RANGE(7, 31) ||
+        (const32 & BIT_RANGE(7, 31)) == 0)
+        x86asm_andl_imm8_reg32(const32, slots[slot_no].reg_no);
+    else
+        x86asm_andl_imm32_reg32(const32, slots[slot_no].reg_no);
 
     ungrab_slot(slot_no);
 }
