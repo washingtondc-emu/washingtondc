@@ -269,6 +269,13 @@ void x86asm_movq_disp32_reg_reg(int disp32, unsigned reg_src, unsigned reg_dst);
 // add $imm32, %eax
 void x86asm_add_imm32_eax(unsigned imm32);
 
+// add $imm8, <reg_dst>
+// imm8 will be sign-extended
+void x86asm_addl_imm8_reg32(unsigned imm8, unsigned reg_dst);
+
+// add $imm32, <reg_dst>
+void x86asm_addl_imm32_reg32(unsigned imm32, unsigned reg_dst);
+
 // add $imm32, <reg_dst>
 // imm32 will be sign-extended
 void x86asm_addq_imm32_reg64(unsigned imm32, unsigned reg_dst);
