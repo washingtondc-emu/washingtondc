@@ -72,7 +72,7 @@ enum register_hint {
      * Tells the allocator that this slot will be used to access a the 8-bit
      * version of a register.
      */
-    REGISTER_HINT_8BIT
+    REGISTER_HINT_8BIT = 8
 };
 
 struct reg_stat {
