@@ -1036,7 +1036,11 @@ void x86asm_and_imm32_rax(unsigned imm32) {
 // andl $<imm8>, %<reg32>
 // the immediate is sign-extended to 32 bits
 void x86asm_andl_imm8_reg32(unsigned imm8, unsigned reg_no) {
-    emit_mod_reg_rm(0, 0x83, 3, 4, reg_no);
+    if (reg_no == EAX && (imm8 & (1 << 7))) {
+        put8(0x24);
+    } else {
+        emit_mod_reg_rm(0, 0x83, 3, 4, reg_no);
+    }
     put8(imm8);
 }
 
