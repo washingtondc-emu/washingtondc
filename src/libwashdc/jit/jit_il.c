@@ -20,9 +20,14 @@
  *
  ******************************************************************************/
 
+#include <string.h>
+
 #include "washdc/error.h"
 #include "washdc/cpu.h"
 #include "code_block.h"
+#include "washdc/hostfile.h"
+#include "log.h"
+#include "jit_disas.h"
 
 #include "jit_il.h"
 
@@ -1254,3 +1259,54 @@ bool jit_inst_is_write_slot(struct jit_inst const *inst, unsigned slot_no) {
             return true;
     return false;
 }
+
+#ifdef INVARIANTS
+
+static DEF_ERROR_INT_ATTR(jit_slot_no)
+static DEF_ERROR_INT_ATTR(jit_inst_idx)
+
+// check for obvious bugs in the IL instruction list
+void jit_sanity_checks(struct jit_inst const *inst_list, unsigned n_insts) {
+    static bool slot_states[MAX_SLOTS];
+    memset(slot_states, 0, sizeof(slot_states));
+
+    unsigned idx;
+    for (idx = 0; idx < n_insts; idx++) {
+        struct jit_inst const *inst = inst_list + idx;
+
+        int read_slots[JIT_IL_MAX_READ_SLOTS];
+        jit_inst_get_read_slots(inst, read_slots);
+        unsigned read_slot_idx;
+        for (read_slot_idx = 0; read_slot_idx < JIT_IL_MAX_READ_SLOTS;
+             read_slot_idx++) {
+            if (read_slots[read_slot_idx] >= 0 &&
+                !slot_states[read_slots[read_slot_idx]]) {
+
+                LOG_ERROR("***** %s - READING FROM UNINITIALIZED JIT SLOT %u"
+                          "*****\n", __func__, read_slots[read_slot_idx]);
+                LOG_INFO("***** DUMP OF ALL PROCESSED JIT INSTRUCTIONS "
+                         "FOLLOWS *****\n");
+
+                washdc_hostfile logfile = log_get_file();
+
+                unsigned print_idx;
+                for (print_idx = 0; print_idx <= idx; print_idx++)
+                    jit_disas_il(logfile, inst_list + print_idx, print_idx);
+
+                error_set_jit_slot_no(read_slots[read_slot_idx]);
+                error_set_jit_inst_idx(idx);
+                RAISE_ERROR(ERROR_INTEGRITY);
+            }
+        }
+
+        int write_slots[JIT_IL_MAX_WRITE_SLOTS];
+        jit_inst_get_write_slots(inst, write_slots);
+        unsigned write_slot_idx;
+        for (write_slot_idx = 0; write_slot_idx < JIT_IL_MAX_WRITE_SLOTS;
+             write_slot_idx++) {
+            if (write_slots[write_slot_idx] >= 0)
+                slot_states[write_slots[write_slot_idx]] = true;
+        }
+    }
+}
+#endif

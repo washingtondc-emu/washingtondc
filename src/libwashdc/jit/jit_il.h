@@ -629,6 +629,11 @@ struct jit_inst {
 
 struct il_code_block;
 
+#ifdef INVARIANTS
+// check for obvious bugs in the IL instruction list
+void jit_sanity_checks(struct jit_inst const *inst_list, unsigned n_insts);
+#endif
+
 // return true if the instruction reads from the given slot, else return false
 #define JIT_IL_MAX_READ_SLOTS 3
 void jit_inst_get_read_slots(struct jit_inst const *inst,
