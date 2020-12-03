@@ -1304,8 +1304,26 @@ void jit_sanity_checks(struct jit_inst const *inst_list, unsigned n_insts) {
         unsigned write_slot_idx;
         for (write_slot_idx = 0; write_slot_idx < JIT_IL_MAX_WRITE_SLOTS;
              write_slot_idx++) {
-            if (write_slots[write_slot_idx] >= 0)
+            if (write_slots[write_slot_idx] >= 0) {
+                if (slot_states[write_slots[write_slot_idx]]) {
+                    LOG_ERROR("***** %s - ATTEMPTING TO OVER-WRITE JIT SLOT "
+                              "%u *****\n",
+                              __func__, write_slots[write_slot_idx]);
+                    LOG_INFO("***** DUMP OF ALL PROCESSED JIT INSTRUCTIONS "
+                              "FOLLOWS *****\n");
+
+                    washdc_hostfile logfile = log_get_file();
+
+                    unsigned print_idx;
+                    for (print_idx = 0; print_idx <= idx; print_idx++)
+                        jit_disas_il(logfile, inst_list + print_idx, print_idx);
+
+                    error_set_jit_slot_no(write_slots[write_slot_idx]);
+                    error_set_jit_inst_idx(idx);
+                    RAISE_ERROR(ERROR_INTEGRITY);
+                }
                 slot_states[write_slots[write_slot_idx]] = true;
+            }
         }
     }
 }
