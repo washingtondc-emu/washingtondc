@@ -1,7 +1,7 @@
 ################################################################################
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2016-2019  snickerbockers
+#    Copyright (C) 2016-2020  snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -42,7 +42,13 @@ if(UNIX)
     # the -Wno-format-trunction is there to prevent gcc from raising frivolous
     # warnings whenever there's a chance that snprintf might do the one thing
     # it exists to do.
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-format-truncation")
+    if (WARNINGS_AS_ERRORS)
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wno-format-truncation")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -Wno-format-truncation")
+    else()
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-format-truncation")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-format-truncation")
+    endif()
 endif()
 
 if (USE_LIBEVENT)

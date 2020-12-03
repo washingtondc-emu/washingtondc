@@ -38,6 +38,7 @@ option(BUILD_WASHINGTONDC "Build the washingtondc frontend program" ON)
 option(BUILD_WASHDC_HEADLESS "Build the washdc-headless frontend program" ON)
 option(ENABLE_TESTS "enable automatic testing" OFF)
 option(ENABLE_MMU "enable the SH4's Memory Management Unit (interpreter only)" OFF)
+option(WARNINGS_AS_ERRORS "enable compiler warnings as errors (unix only) OFF")
 
 # OKAY.
 # this one is sort-of a compatibility hack to get around outdated packages on
