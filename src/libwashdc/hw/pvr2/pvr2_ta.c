@@ -508,7 +508,6 @@ on_pkt_end_of_list_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    enum pvr2_poly_type poly_type = ta->fifo_state.cur_poly_type;
     finish_poly_group(pvr2, ta->fifo_state.cur_poly_type);
     set_poly_type_state(ta, ta->fifo_state.cur_poly_type,
                         PVR2_POLY_TYPE_STATE_SUBMITTED);

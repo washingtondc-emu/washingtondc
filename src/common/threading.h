@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -59,31 +59,31 @@ inline static void washdc_mutex_unlock(washdc_mutex *mtx) {
     ReleaseSRWLockExclusive(mtx);
 }
 
-static void washdc_cvar_init(washdc_cvar *cvar) {
+inline static void washdc_cvar_init(washdc_cvar *cvar) {
     InitializeConditionVariable(cvar);
 }
 
-static void washdc_cvar_cleanup(washdc_cvar *cvar) {
+inline static void washdc_cvar_cleanup(washdc_cvar *cvar) {
 }
 
-static void washdc_cvar_wait(washdc_cvar *cvar, washdc_mutex *mtx) {
+inline static void washdc_cvar_wait(washdc_cvar *cvar, washdc_mutex *mtx) {
     if (!SleepConditionVariableSRW(cvar, mtx, INFINITE, 0)) {
         fprintf(stderr, "Failure to acquire condition variable - %08X!\n",
                 (unsigned)GetLastError());
     }
 }
 
-static void washdc_cvar_signal(washdc_cvar *cvar) {
+inline static void washdc_cvar_signal(washdc_cvar *cvar) {
     WakeAllConditionVariable(cvar);
 }
 
-static DWORD washdc_thread_entry_proxy_win32(_In_ LPVOID lpParameter) {
+inline static DWORD washdc_thread_entry_proxy_win32(_In_ LPVOID lpParameter) {
     washdc_thread *td = (washdc_thread*)lpParameter;
     td->entry(td->argp);
     return 0;
 }
 
-static void washdc_thread_create(washdc_thread *td, washdc_thread_main entry, void *argp) {
+inline static void washdc_thread_create(washdc_thread *td, washdc_thread_main entry, void *argp) {
     td->argp = argp;
     td->entry = entry;
     HANDLE newtd = CreateThread(NULL, 0, washdc_thread_entry_proxy_win32,
@@ -93,7 +93,7 @@ static void washdc_thread_create(washdc_thread *td, washdc_thread_main entry, vo
     td->td = newtd;
 }
 
-static void washdc_thread_join(washdc_thread *td) {
+inline static void washdc_thread_join(washdc_thread *td) {
     if (WaitForSingleObject(td->td, INFINITE) == WAIT_FAILED)
         fprintf(stderr, "unable to join thread\n");
 }
@@ -130,37 +130,37 @@ inline static void washdc_mutex_unlock(washdc_mutex *mtx) {
     pthread_mutex_unlock(mtx);
 }
 
-static void washdc_cvar_init(washdc_cvar *cvar) {
+inline static void washdc_cvar_init(washdc_cvar *cvar) {
     pthread_cond_init(cvar, NULL);
 }
 
-static void washdc_cvar_cleanup(washdc_cvar *cvar) {
+inline static void washdc_cvar_cleanup(washdc_cvar *cvar) {
     pthread_cond_destroy(cvar);
 }
 
-static void washdc_cvar_wait(washdc_cvar *cvar, washdc_mutex *mtx) {
+inline static void washdc_cvar_wait(washdc_cvar *cvar, washdc_mutex *mtx) {
     if (pthread_cond_wait(cvar, mtx) != 0)
         fprintf(stderr, "Failure to acquire condition variable\n");
 }
 
-static void washdc_cvar_signal(washdc_cvar *cvar) {
+inline static void washdc_cvar_signal(washdc_cvar *cvar) {
     pthread_cond_signal(cvar);
 }
 
-static void *washdc_thread_entry_proxy_unix(void *argp) {
+inline static void *washdc_thread_entry_proxy_unix(void *argp) {
     washdc_thread *td = (washdc_thread*)argp;
     td->entry(td->argp);
     return NULL;
 }
 
-static void washdc_thread_create(washdc_thread *td, washdc_thread_main entry, void *argp) {
+inline static void washdc_thread_create(washdc_thread *td, washdc_thread_main entry, void *argp) {
     td->argp = argp;
     td->entry = entry;
     if (pthread_create(&td->td, NULL, washdc_thread_entry_proxy_unix, td) != 0)
         fprintf(stderr, "ERROR: unable to launch thread\n");
 }
 
-static void washdc_thread_join(washdc_thread *td) {
+inline static void washdc_thread_join(washdc_thread *td) {
     pthread_join(td->td, NULL);
 }
 

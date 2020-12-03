@@ -117,7 +117,7 @@ struct framebuffer {
 #define OGL_FB_BYTES (OGL_FB_W_MAX * OGL_FB_H_MAX * 4)
 
 struct pvr2_fb {
-    uint8_t ogl_fb[OGL_FB_BYTES];
+    uint32_t ogl_fb[OGL_FB_BYTES / sizeof(uint32_t)];
     struct framebuffer fb_heap[FB_HEAP_SIZE];
     unsigned stamp;
 };

@@ -615,9 +615,19 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
         n_bytes = tex_w * tex_h * px_sz;
     }
 
-    uint8_t *tex_dat = NULL;
+#ifdef INVARIANTS
+    /*
+     * tex_w and tex_h are both divisible by 8 so this ought to be divisible by
+     * 4 in any case
+     */
+    if (n_bytes % 4) {
+        error_set_length(n_bytes);
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+#endif
+    uint32_t *tex_dat = NULL;
     if (n_bytes)
-        tex_dat = (uint8_t*)malloc(n_bytes * sizeof(uint8_t));
+        tex_dat = malloc(n_bytes);
 
     if (!tex_dat)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -757,22 +767,22 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
             RAISE_ERROR(ERROR_INTEGRITY);
         }
         n_bytes = tex_size_actual * tex_w * tex_h;
-        uint8_t *tex_dat_no_palette =
-            (uint8_t*)malloc(n_bytes);
+        uint32_t *tex_dat_no_palette = malloc(n_bytes);
         if (!tex_dat_no_palette)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         uint32_t pal_start = (meta->tex_palette_start & 0x30) << 4;
-        uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
+        char const *tex_dat8 = (char const*)tex_dat;
+        char *tex_dat_no_palette8 = (char*)tex_dat_no_palette;
 
         unsigned row, col;
         uint8_t *pal_ram = pvr2_get_palette_ram(pvr2);
         for (row = 0; row < tex_h; row++) {
             for (col = 0; col < tex_w; col++) {
                 unsigned pix_idx = row * tex_w + col;
-                uint8_t *pix_out = tex_dat_no_palette +
+                char *pix_out = tex_dat_no_palette8 +
                     pix_idx * tex_size_actual;
-                uint8_t pix_in = tex_dat8[pix_idx];
+                unsigned char pix_in = tex_dat8[pix_idx];
                 uint32_t palette_addr =
                     (pal_start | (uint32_t)pix_in) * 4;
                 memcpy(pix_out, pal_ram + palette_addr, tex_size_actual);
@@ -802,13 +812,13 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
             RAISE_ERROR(ERROR_INTEGRITY);
         }
         n_bytes = tex_size_actual * tex_w * tex_h;
-        uint8_t *tex_dat_no_palette =
-            (uint8_t*)malloc(n_bytes);
+        uint32_t *tex_dat_no_palette = malloc(n_bytes);
         if (!tex_dat_no_palette)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         uint32_t pal_start = meta->tex_palette_start << 4;
-        uint8_t const *tex_dat8 = (uint8_t const*)tex_dat;
+        char const *tex_dat8 = (char const*)tex_dat;
+        char *tex_dat_no_palette8 = (char*)tex_dat_no_palette;
 
         uint8_t *pal_ram = pvr2_get_palette_ram(pvr2);
         unsigned row, col;
@@ -816,9 +826,9 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
             for (col = 0; col < tex_w; col++) {
                 unsigned pix_idx = row * tex_w + col;
 
-                uint8_t *pix_out = tex_dat_no_palette +
+                char *pix_out = tex_dat_no_palette8 +
                     pix_idx * tex_size_actual;
-                uint8_t pix_in;
+                char pix_in;
 
                 if (pix_idx % 2 == 0)
                     pix_in = tex_dat8[pix_idx / 2] & 0xf;

@@ -145,7 +145,7 @@ sync_fb_from_tex_mem_rgb565_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    uint32_t *dst_fb = pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -213,7 +213,7 @@ sync_fb_from_tex_mem_rgb565_prog(struct pvr2 *pvr2, struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    uint32_t *dst_fb = pvr2->fb.ogl_fb;
     memset(pvr2->fb.ogl_fb, 0xff, sizeof(pvr2->fb.ogl_fb));
 
     unsigned row;
@@ -290,7 +290,7 @@ sync_fb_from_tex_mem_rgb555_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    uint32_t *dst_fb = pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -371,7 +371,7 @@ sync_fb_from_tex_mem_rgb888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    uint32_t *dst_fb = pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -439,7 +439,7 @@ sync_fb_from_tex_mem_rgb555_prog(struct pvr2 *pvr2, struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    uint32_t *dst_fb = pvr2->fb.ogl_fb;
     memset(pvr2->fb.ogl_fb, 0xff, sizeof(pvr2->fb.ogl_fb));
 
     unsigned row;
@@ -516,7 +516,7 @@ sync_fb_from_tex_mem_rgb0888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    uint32_t *dst_fb = pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < rows_per_field; row++) {
@@ -583,7 +583,7 @@ sync_fb_from_tex_mem_rgb0888_prog(struct pvr2 *pvr2, struct framebuffer *fb,
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
 
-    uint32_t *dst_fb = (uint32_t*)pvr2->fb.ogl_fb;
+    uint32_t *dst_fb = pvr2->fb.ogl_fb;
 
     unsigned row;
     for (row = 0; row < fb_height; row++) {
@@ -909,7 +909,7 @@ fb_sync_from_host_0565_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
 #endif
 
     unsigned row, col;
-    uint8_t *ogl_fb = pvr2->fb.ogl_fb;
+    unsigned char *ogl_fb = (unsigned char*)pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {
@@ -943,7 +943,7 @@ fb_sync_from_host_0555_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
 #endif
 
     unsigned row, col;
-    uint8_t *ogl_fb = pvr2->fb.ogl_fb;
+    unsigned char *ogl_fb = (unsigned char*)pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {
@@ -976,7 +976,7 @@ fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
 #endif
 
     unsigned row, col;
-    uint8_t *ogl_fb = pvr2->fb.ogl_fb;
+    unsigned char *ogl_fb = (unsigned char *)pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         /*
          * TODO: figure out how this is supposed to work with interlacing.
@@ -991,7 +991,7 @@ fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
         for (col = x_min; col <= x_max; col++) {
             unsigned fb_idx = row * width + col;
 
-            uint8_t const *pix_in = ogl_fb + 4 * fb_idx;
+            unsigned char const *pix_in = ogl_fb + 4 * fb_idx;
             uint16_t red = (pix_in[0] & 0xf8) >> 3;
             uint16_t green = (pix_in[1] & 0xf8) >> 3;
             uint16_t blue = (pix_in[2] * 0xf8) >> 3;
@@ -1024,7 +1024,7 @@ static void fb_sync_from_host_rgb0888(struct pvr2 *pvr2, struct framebuffer *fb)
 #endif
 
     unsigned row, col;
-    char *ogl_fb = pvr2->fb.ogl_fb;
+    unsigned char *ogl_fb = (unsigned char*)pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {
@@ -1056,7 +1056,7 @@ static void fb_sync_from_host_argb8888(struct pvr2 *pvr2, struct framebuffer *fb
 #endif
 
     unsigned row, col;
-    char *ogl_fb = pvr2->fb.ogl_fb;
+    char *ogl_fb = (char*)pvr2->fb.ogl_fb;
     for (row = y_min; row <= y_max; row++) {
         unsigned line_offs = addr[0] + (height - (row + 1)) * stride;
         for (col = x_min; col <= x_max; col++) {

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 struct host_joystick_btn {
     // glfw joystick identifier
     int js;
-    unsigned btn;
+    int btn;
 };
 
 struct host_joystick_axis {

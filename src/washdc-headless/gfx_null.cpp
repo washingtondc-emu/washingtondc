@@ -48,10 +48,6 @@ static void null_render_bind_obj(struct gfx_il_inst *cmd);
 static void null_render_unbind_obj(struct gfx_il_inst *cmd);
 static int null_render_get_fb(int *obj_handle_out, unsigned *width_out,
                               unsigned *height_out, bool *flip_out);
-static void null_render_new_framebuffer(int obj_handle,
-                                        unsigned fb_new_width,
-                                        unsigned fb_new_height,
-                                        bool do_flip, bool interlaced);
 
 static void null_render_obj_read(struct gfx_obj *obj, void *out,
                                  size_t n_bytes);
@@ -153,17 +149,6 @@ static int null_render_get_fb(int *obj_handle_out, unsigned *width_out,
     *height_out = bound_obj_h;
     *flip_out = flip_screen;
     return 0;
-}
-
-static void null_render_new_framebuffer(int obj_handle,
-                                        unsigned fb_new_width,
-                                        unsigned fb_new_height, bool do_flip, bool interlaced) {
-    flip_screen = do_flip;
-    if (obj_handle < 0)
-        return;
-    bound_obj_handle = obj_handle;
-    bound_obj_w = fb_new_width;
-    bound_obj_h = fb_new_height;
 }
 
 static void null_render_obj_init(struct gfx_il_inst *cmd) {

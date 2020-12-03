@@ -58,7 +58,6 @@ WASHDC_NORETURN void error_raise(enum error_type tp) {
 
     error_print();
 
-    bool dump_mem;
     if (config_get_dump_mem_on_error())
         washdc_dump_main_memory("washdc_error_dump.bin");
 

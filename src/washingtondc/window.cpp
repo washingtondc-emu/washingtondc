@@ -56,7 +56,7 @@ static unsigned win_res_x, win_res_y;
 static GLFWwindow *win;
 static enum win_mode win_mode = WIN_MODE_WINDOWED;
 
-static const unsigned N_MOUSE_BTNS = 3;
+#define N_MOUSE_BTNS 3
 static bool mouse_btns[N_MOUSE_BTNS];
 
 static bool show_overlay;
@@ -1247,8 +1247,8 @@ int win_glfw_get_height(void) {
 }
 
 static void toggle_fullscreen(void) {
-    int old_res_x = res_x;
-    int old_res_y = res_y;
+    unsigned old_res_x = res_x;
+    unsigned old_res_y = res_y;
 
     if (win_mode == WIN_MODE_WINDOWED) {
         printf("toggle windowed=>fullscreen\n");

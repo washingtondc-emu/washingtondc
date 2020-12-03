@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "gfxgl4_renderer.h"
 #include "tex_cache.h"
 #include "../gfx_obj.h"
 

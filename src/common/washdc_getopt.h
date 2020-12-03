@@ -48,12 +48,9 @@ extern char *washdc_optarg;
 extern int washdc_optind, washdc_opterr, washdc_optopt;
 
 static int washdc_getopt(int argc, char **argv, char const *optstring) {
-    bool need_arg = false;
-
     if (washdc_optind < 1 || washdc_optind >= argc)
         return -1;
 
-    char *arg = argv[washdc_optind];
     int src_idx = washdc_optind;
 
     if (argv[src_idx][0] != '-')

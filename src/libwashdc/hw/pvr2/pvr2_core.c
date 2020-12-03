@@ -241,7 +241,6 @@ void pvr2_inc_age_counter(struct pvr2 *pvr2) {
 void
 display_list_exec(struct pvr2 *pvr2, struct pvr2_display_list const *listp) {
     unsigned group_no;
-    struct pvr2_core *core = &pvr2->core;
 
     for (group_no = PVR2_POLY_TYPE_OPAQUE;
          group_no <= PVR2_POLY_TYPE_PUNCH_THROUGH; group_no++) {

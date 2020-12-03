@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -124,6 +124,14 @@ static inline int32_t sat_shift(int32_t in, unsigned n_bits) {
         return INT32_MIN;
     return INT32_MAX;
 #endif
+}
+
+static inline uint32_t sext16to32(uint16_t val) {
+    return (int16_t)val;
+}
+
+static inline uint32_t sext8to32(uint8_t val) {
+    return (int8_t)val;
 }
 
 #endif

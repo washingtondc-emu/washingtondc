@@ -451,7 +451,6 @@ overlay::update_tex_cache_ent(struct washdc_texinfo *texinfo,
     unsigned tex_w = texinfo->width, tex_h = texinfo->height;
     void *dat = texinfo->tex_dat;
 
-    int color_tp_png;
     unsigned n_colors;
     unsigned pvr2_pix_size;
     GLenum fmt;
@@ -529,11 +528,13 @@ overlay::update_tex_cache_ent(struct washdc_texinfo *texinfo,
                 red <<= 3;
                 green <<= 2;
                 blue <<= 3;
+                alpha = 255;
                 break;
             case WASHDC_TEX_FMT_YUV_422:
                 red = src_pix[0];
                 green = src_pix[1];
                 blue = src_pix[2];
+                alpha = 255;
                 break;
             case WASHDC_TEX_FMT_ARGB_8888:
                 alpha = src_pix[0];

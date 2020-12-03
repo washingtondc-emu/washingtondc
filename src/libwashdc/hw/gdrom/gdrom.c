@@ -111,7 +111,7 @@ static void post_delay_gdrom_delayed_processing(struct SchedEvent *event);
 /*     .handler = post_delay_gdrom_delayed_processing */
 /* }; */
 
-static char const *gdrom_state_name(enum gdrom_state state) {
+static inline char const *gdrom_state_name(enum gdrom_state state) {
     switch (state) {
     case GDROM_STATE_NORM:
         return "GDROM_STATE_NORM";

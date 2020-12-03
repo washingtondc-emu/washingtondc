@@ -760,8 +760,7 @@ static void sh4_pdtra_write_handler(Sh4 *sh4,
     if (sh4->pdtra_write_handler) {
         sh4->pdtra_write_handler(sh4, val);
     } else {
-        LOG_ERROR("%s - no PDTRA write handler defined!! returning 0.\n", __func__);
-        return 0;
+        LOG_ERROR("%s - no PDTRA write handler defined!!.\n", __func__);
     }
 }
 

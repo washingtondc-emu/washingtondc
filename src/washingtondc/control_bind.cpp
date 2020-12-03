@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -140,7 +140,7 @@ float ctrl_get_axis_state(struct host_ctrl_bind const *axis) {
 
 static bool ctrl_get_joystick_button_state(struct host_joystick_btn const *btn) {
     int len;
-    unsigned btn_idx = btn->btn;
+    int btn_idx = btn->btn;
     const unsigned char *joystick_state = glfwGetJoystickButtons(btn->js, &len);
     if (joystick_state && len > btn_idx)
         return joystick_state[btn_idx] == GLFW_PRESS;
@@ -152,7 +152,6 @@ static bool ctrl_get_kbd_button_state(struct host_kbd_ctrl const *btn) {
 }
 
 static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn) {
-    int len;
     unsigned btn_idx = btn->btn;
     GLFWgamepadstate gp_state;
     if ((btn_idx <= GLFW_GAMEPAD_BUTTON_LAST) &&
@@ -164,7 +163,7 @@ static bool ctrl_get_gamepad_button_state(struct host_gamepad_btn const *btn) {
 
 static bool ctrl_get_joystick_hat_state(struct host_joystick_hat const *btn) {
     int len;
-    unsigned hat_idx = btn->hat;
+    int hat_idx = btn->hat;
     const unsigned char *hat_state = glfwGetJoystickHats(btn->js, &len);
     if (hat_state && len > hat_idx)
         return hat_state[hat_idx] & btn->mask ? true : false;
@@ -204,7 +203,7 @@ ctrl_get_gamepad_axis_button_state(struct host_gamepad_axis const *axis) {
 
 static float ctrl_get_joystick_axis_state(struct host_joystick_btn const *btn) {
     int len;
-    unsigned btn_idx = btn->btn;
+    int btn_idx = btn->btn;
     const unsigned char *joystick_state = glfwGetJoystickButtons(btn->js, &len);
     if (joystick_state && len > btn_idx && joystick_state[btn_idx] == GLFW_PRESS)
         return 1.0f;
@@ -213,7 +212,6 @@ static float ctrl_get_joystick_axis_state(struct host_joystick_btn const *btn) {
 
 static float
 ctrl_get_gamepad_button_axis_state(struct host_gamepad_btn const *btn) {
-    int len;
     unsigned btn_idx = btn->btn;
     GLFWgamepadstate gp_state;
     if ((btn_idx <= GLFW_GAMEPAD_BUTTON_LAST) &&
@@ -264,7 +262,7 @@ ctrl_get_gamepad_axis_axis_state(struct host_gamepad_axis const *axis) {
 static float
 ctrl_get_joystick_hat_axis_state(struct host_joystick_hat const *btn) {
     int len;
-    unsigned hat_idx = btn->hat;
+    int hat_idx = btn->hat;
     const unsigned char *hat_state = glfwGetJoystickHats(btn->js, &len);
     if (hat_state && len > hat_idx && (hat_state[hat_idx] & btn->mask))
         return 1.0f;

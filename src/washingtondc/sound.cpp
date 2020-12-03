@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018-2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -122,7 +122,7 @@ static int snd_cb(const void *input, void *output,
     washdc_mutex_lock(&buffer_lock);
 
     washdc_sample_type *outbuf = (washdc_sample_type*)output;
-    int frame_no;
+    unsigned long frame_no;
     for (frame_no = 0; frame_no < n_frames; frame_no++) {
         // TODO: stereo
         washdc_sample_type sample;

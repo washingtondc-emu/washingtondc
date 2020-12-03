@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -69,7 +69,6 @@ static void work_callback(evutil_socket_t fd, short ev, void *arg);
 static std::atomic_bool alive;
 
 void init() {
-    int err_code;
     alive = true;
 
     washdc_mutex_lock(&create_mutex);

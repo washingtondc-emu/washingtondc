@@ -343,14 +343,14 @@ void pvr2_tex_mem_64bit_read_raw(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    uint8_t *dst = (uint8_t*)dstp;
+    char *dst = (char*)dstp;
     while (n_bytes) {
         uint8_t val = pvr2_tex_mem_64bit_read8(pvr2, addr);
         memcpy(dst, &val, sizeof(uint8_t));
 
         --n_bytes;
         ++addr;
-        ++dst;
+        dst += sizeof(uint8_t);
     }
 }
 

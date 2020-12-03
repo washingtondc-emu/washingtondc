@@ -353,7 +353,7 @@ SH4_TRY_READ_P4_TMPL(uint32_t, 32)
 SH4_TRY_READ_P4_TMPL(float, float)
 SH4_TRY_READ_P4_TMPL(double, double)
 
-static uint32_t vpn_mask_for_size(enum sh4_tlb_page_sz sz) {
+static inline uint32_t vpn_mask_for_size(enum sh4_tlb_page_sz sz) {
     switch (sz) {
     case SH4_TLB_PAGE_1KB:
         return ~0x3ff;
@@ -368,7 +368,7 @@ static uint32_t vpn_mask_for_size(enum sh4_tlb_page_sz sz) {
     }
 }
 
-static uint32_t ppn_mask_for_size(enum sh4_tlb_page_sz sz) {
+static inline uint32_t ppn_mask_for_size(enum sh4_tlb_page_sz sz) {
     switch (sz) {
     case SH4_TLB_PAGE_1KB:
         return ~0x3ff;
@@ -383,7 +383,7 @@ static uint32_t ppn_mask_for_size(enum sh4_tlb_page_sz sz) {
     }
 }
 
-static uint32_t page_offset_mask_for_size(enum sh4_tlb_page_sz sz) {
+static inline uint32_t page_offset_mask_for_size(enum sh4_tlb_page_sz sz) {
     switch (sz) {
     case SH4_TLB_PAGE_1KB:
         return 0x3ff;
@@ -577,6 +577,7 @@ sh4_utlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     bool shared = (val >> 1) & 1;
     bool wt = val & 1;
 
+#ifdef ENABLE_LOG_DEBUG
     char const *page_sz;
     switch (sz) {
     case SH4_TLB_PAGE_1KB:
@@ -610,6 +611,7 @@ sh4_utlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
                   dirty ? "TRUE" : "FALSE",
                   shared ? "TRUE" : "FALSE",
                   wt ? "TRUE" : "FALSE");
+#endif
 
     ent->ppn = ppn;
     ent->sz = sz;
@@ -675,6 +677,7 @@ sh4_itlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     ent->cacheable = (val >> 3) & 1;
     ent->shared = (val >> 1) & 1;
 
+#ifdef ENABLE_LOG_DEBUG
     char const *page_sz;
     switch (ent->sz) {
     case SH4_TLB_PAGE_1KB:
@@ -708,6 +711,7 @@ sh4_itlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
                   page_sz,
                   ent->cacheable ? "TRUE" : "FALSE",
                   ent->shared ? "TRUE" : "FALSE");
+#endif
 }
 
 static uint32_t sh4_itlb_data_array_1_read(struct Sh4 *sh4, addr32_t addr) {
@@ -957,6 +961,7 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
     ent->sa = ptea & 7;
     ent->tc = (ptea >> 3) & 1;
 
+#ifdef ENABLE_LOG_DEBUG
     char const *page_sz;
     switch (ent->sz) {
     case SH4_TLB_PAGE_1KB:
@@ -995,4 +1000,5 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
                   ent->shared ? "TRUE" : "FALSE",
                   ent->wt ? "TRUE" : "FALSE",
                   ent->sa, ent->tc ? "TRUE" : "FALSE");
+#endif
 }

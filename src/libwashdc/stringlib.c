@@ -70,8 +70,6 @@ void string_set(struct string *str, char const *txt) {
 }
 
 void string_load_hostfile(struct string *str, washdc_hostfile fp) {
-    long file_sz, buf_sz;
-
     int ch;
     while ((ch = washdc_hostfile_getc(fp)) != WASHDC_HOSTFILE_EOF)
       string_append_char(str, ch);

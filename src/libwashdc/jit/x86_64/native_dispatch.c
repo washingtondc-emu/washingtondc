@@ -49,7 +49,6 @@ static unsigned const countdown_reg = REG_NONVOL0;
 static unsigned const new_pc_reg = NATIVE_DISPATCH_PC_REG;
 static unsigned const hash_reg = NATIVE_DISPATCH_HASH_REG;
 static unsigned const cycle_stamp_reg = NATIVE_DISPATCH_CYCLE_COUNT_REG;
-static unsigned const ret_reg = REG_RET;
 
 static void native_dispatch_emit(struct native_dispatch_meta const *meta);
 

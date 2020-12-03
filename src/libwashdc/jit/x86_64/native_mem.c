@@ -631,7 +631,7 @@ static void* emit_native_mem_write_float(struct memory_map const *map) {
     static unsigned const VAL_REG = REG_ARG1_XMM;
     static unsigned const CTXT_REG = REG_ARG2;
 #elif defined(ABI_UNIX)
-    static unsigned const VAL_REG = REG_ARG0_XMM;
+    /* static unsigned const VAL_REG = REG_ARG0_XMM; */
     static unsigned const CTXT_REG = REG_ARG1;
 #else
 #error unknown abi

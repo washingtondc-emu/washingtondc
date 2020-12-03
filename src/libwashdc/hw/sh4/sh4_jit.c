@@ -1948,6 +1948,11 @@ sh4_jit_extub_rm_rn(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     return true;
 }
 
+// proxy-wrapper for sh4_set_exception that can be used for jit_call_func_imm32
+static void sh4_set_exception_proxy(void *sh4, unsigned excp_code) {
+    sh4_set_exception((Sh4*)sh4, excp_code);
+}
+
 // TRAPA #immed
 // 11000011iiiiiiii
 bool sh4_jit_trapa_imm(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
@@ -1972,7 +1977,7 @@ bool sh4_jit_trapa_imm(struct Sh4 *sh4, struct sh4_jit_compile_ctx* ctx,
     /* calling sh4_set_exception will change the sr */
     res_drain_all_regs(sh4, ctx, block);
     res_invalidate_all_regs(block);
-    jit_call_func_imm32(block, sh4_set_exception,
+    jit_call_func_imm32(block, sh4_set_exception_proxy,
                         SH4_EXCP_UNCONDITIONAL_TRAP);
 
     // jump to new PC which was set by sh4_set_exception

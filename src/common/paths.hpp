@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include <iostream>
 
 #include "washdc/hostfile.h"
+#include "compiler_bullshit.h"
 
 /*
  * XXX I want to make this work with wchar_t for win32,
@@ -47,7 +48,7 @@ typedef char path_char;
 typedef std::string path_string;
 // #endif
 
-static path_string path_append(path_string lhs, path_string rhs) {
+WASHDC_UNUSED static path_string path_append(path_string lhs, path_string rhs) {
 #ifdef _WIN32
     static char const pathsep = '\\';
 #else
@@ -77,7 +78,7 @@ static path_string path_append(path_string lhs, path_string rhs) {
     return lhs + rhs;
 }
 
-static void create_directory(path_string name) {
+WASHDC_UNUSED static void create_directory(path_string name) {
 #ifdef _WIN32
     if (!CreateDirectoryA(name.c_str(), NULL) &&
         GetLastError() != ERROR_ALREADY_EXISTS)
@@ -89,7 +90,7 @@ static void create_directory(path_string name) {
 #endif
 }
 
-static path_string data_dir(void) {
+WASHDC_UNUSED static path_string data_dir(void) {
 #ifdef _WIN32
     char appdata_dir[MAX_PATH];
     if (SHGetFolderPathA((HWND)0, CSIDL_LOCAL_APPDATA, NULL,
@@ -112,7 +113,7 @@ static path_string data_dir(void) {
 #endif
 }
 
-static path_string cfg_dir(void) {
+WASHDC_UNUSED static path_string cfg_dir(void) {
 #ifdef _WIN32
     char appdata_dir[MAX_PATH];
     if (SHGetFolderPathA((HWND)0, CSIDL_LOCAL_APPDATA, NULL,
@@ -136,43 +137,43 @@ static path_string cfg_dir(void) {
 #endif
 }
 
-static path_string cfg_file(void) {
+WASHDC_UNUSED static path_string cfg_file(void) {
     return path_append(cfg_dir(), "wash.cfg");
 }
 
-static path_string screenshot_dir(void) {
+WASHDC_UNUSED static path_string screenshot_dir(void) {
     return path_append(data_dir(), "screenshots");
 }
 
-static path_string vmu_dir(void) {
+WASHDC_UNUSED static path_string vmu_dir(void) {
     return path_append(data_dir(), "vmu");
 }
 
-static void create_data_dir(void) {
+WASHDC_UNUSED static void create_data_dir(void) {
     create_directory(data_dir());
 }
 
-static void create_vmu_dir(void) {
+WASHDC_UNUSED static void create_vmu_dir(void) {
     create_data_dir();
     create_directory(vmu_dir());
 }
 
-static void create_screenshot_dir(void) {
+WASHDC_UNUSED static void create_screenshot_dir(void) {
     create_data_dir();
     create_directory(screenshot_dir());
 }
 
-static void create_cfg_dir(void) {
+WASHDC_UNUSED static void create_cfg_dir(void) {
     create_directory(cfg_dir());
 }
 
-static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
+WASHDC_UNUSED static washdc_hostfile open_cfg_file(enum washdc_hostfile_mode mode) {
     path_string the_cfg_file(cfg_file());
     create_directory(cfg_dir());
     return washdc_hostfile_open(the_cfg_file.c_str(), mode);
 }
 
-static washdc_hostfile open_screenshot(char const *name,
+WASHDC_UNUSED static washdc_hostfile open_screenshot(char const *name,
                                        enum washdc_hostfile_mode mode) {
 #ifdef _WIN32
     static char const pathsep = '\\';
