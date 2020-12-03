@@ -847,155 +847,225 @@ void jit_clear_float(struct il_code_block *block, unsigned slot_dst) {
     il_code_block_push_inst(block, &op);
 }
 
-bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
+void jit_inst_get_read_slots(struct jit_inst const *inst,
+                             int read_slots[JIT_IL_MAX_READ_SLOTS]) {
+    for (int idx = 0; idx < JIT_IL_MAX_READ_SLOTS; idx++)
+        read_slots[idx] = -1;
+
     union jit_immed const *immed = &inst->immed;
     switch (inst->op) {
     case JIT_OP_FALLBACK:
-        return false;
+        break;
     case JIT_OP_JUMP:
-        return slot_no == immed->jump.jmp_addr_slot ||
-            slot_no == immed->jump.jmp_hash_slot;
+        read_slots[0] = immed->jump.jmp_addr_slot;
+        read_slots[1] = immed->jump.jmp_hash_slot;
+        break;
     case JIT_CSET:
-        return slot_no == immed->cset.flag_slot ||
-            slot_no == immed->cset.dst_slot;
+        read_slots[0] = immed->cset.flag_slot;
+        read_slots[1] = immed->cset.dst_slot;
+        break;
     case JIT_SET_SLOT:
-        return false;
+        break;
     case JIT_SET_SLOT_HOST_PTR:
-        return false;
+        break;
     case JIT_OP_CALL_FUNC:
-        return slot_no == immed->call_func.slot_no;
+        read_slots[0] = immed->call_func.slot_no;
+        break;
     case JIT_OP_CALL_FUNC_IMM32:
-        return false;
+        break;
     case JIT_OP_READ_16_CONSTADDR:
-        return false;
+        break;
     case JIT_OP_SIGN_EXTEND_8:
-        return slot_no == immed->sign_extend_8.slot_no;
+        read_slots[0] = immed->sign_extend_8.slot_no;
+        break;
     case JIT_OP_SIGN_EXTEND_16:
-        return slot_no == immed->sign_extend_16.slot_no;
+        read_slots[0] = immed->sign_extend_16.slot_no;
+        break;
     case JIT_OP_READ_32_CONSTADDR:
-        return false;
+        break;
     case JIT_OP_READ_8_SLOT:
-        return slot_no == immed->read_8_slot.addr_slot;
+        read_slots[0] = immed->read_8_slot.addr_slot;
+        break;
     case JIT_OP_READ_16_SLOT:
-        return slot_no == immed->read_16_slot.addr_slot;
+        read_slots[0] = immed->read_16_slot.addr_slot;
+        break;
     case JIT_OP_READ_32_SLOT:
-        return slot_no == immed->read_32_slot.addr_slot;
+        read_slots[0] = immed->read_32_slot.addr_slot;
+        break;
     case JIT_OP_READ_FLOAT_SLOT:
-        return slot_no == immed->read_float_slot.addr_slot;
+        read_slots[0] = immed->read_float_slot.addr_slot;
+        break;
     case JIT_OP_WRITE_8_SLOT:
-        return slot_no == immed->write_8_slot.addr_slot ||
-            slot_no == immed->write_8_slot.src_slot;
+        read_slots[0] = immed->write_8_slot.addr_slot;
+        read_slots[1] = immed->write_8_slot.src_slot;
+        break;
     case JIT_OP_WRITE_16_SLOT:
-        return slot_no == immed->write_16_slot.addr_slot ||
-            slot_no == immed->write_16_slot.src_slot;
+        read_slots[0] = immed->write_16_slot.addr_slot;
+        read_slots[1] = immed->write_16_slot.src_slot;
+        break;
     case JIT_OP_WRITE_32_SLOT:
-        return slot_no == immed->write_32_slot.addr_slot ||
-            slot_no == immed->write_32_slot.src_slot;
+        read_slots[0] = immed->write_32_slot.addr_slot;
+        read_slots[1] = immed->write_32_slot.src_slot;
+        break;
     case JIT_OP_WRITE_FLOAT_SLOT:
-        return slot_no == immed->write_float_slot.addr_slot ||
-            slot_no == immed->write_float_slot.src_slot;
+        read_slots[0] = immed->write_float_slot.addr_slot;
+        read_slots[1] = immed->write_float_slot.src_slot;
+        break;
     case JIT_OP_LOAD_SLOT16:
-        return false;
+        break;
     case JIT_OP_LOAD_SLOT:
-        return false;
+        break;
     case JIT_OP_LOAD_SLOT_OFFSET:
-        return slot_no == immed->load_slot_offset.slot_base;
+        read_slots[0] = immed->load_slot_offset.slot_base;
+        break;
     case JIT_OP_LOAD_FLOAT_SLOT:
-        return false;
+        break;
     case JIT_OP_LOAD_FLOAT_SLOT_OFFSET:
-        return slot_no == immed->load_float_slot_offset.slot_base;
+        read_slots[0] = immed->load_float_slot_offset.slot_base;
+        break;
     case JIT_OP_STORE_SLOT:
-        return slot_no == immed->store_slot.slot_no;
+        read_slots[0] = immed->store_slot.slot_no;
+        break;
     case JIT_OP_STORE_SLOT_OFFSET:
-        return slot_no == immed->store_slot_offset.slot_src ||
-            slot_no == immed->store_slot_offset.slot_base;
+        read_slots[0] = immed->store_slot_offset.slot_src;
+        read_slots[1] = immed->store_slot_offset.slot_base;
+        break;
     case JIT_OP_STORE_FLOAT_SLOT:
-        return slot_no == immed->store_float_slot.slot_no;
+        read_slots[0] = immed->store_float_slot.slot_no;
+        break;
     case JIT_OP_STORE_FLOAT_SLOT_OFFSET:
-        return slot_no == immed->store_float_slot_offset.slot_src ||
-            slot_no == immed->store_float_slot_offset.slot_base;
+        read_slots[0] = immed->store_float_slot_offset.slot_src;
+        read_slots[1] = immed->store_float_slot_offset.slot_base;
+        break;
     case JIT_OP_ADD:
-        return slot_no == immed->add.slot_src || slot_no == immed->add.slot_dst;
+        read_slots[0] = immed->add.slot_src;
+        read_slots[1] = immed->add.slot_dst;
+        break;
     case JIT_OP_SUB:
-        return slot_no == immed->sub.slot_src || slot_no == immed->sub.slot_dst;
+        read_slots[0] = immed->sub.slot_src;
+        read_slots[1] = immed->sub.slot_dst;
+        break;
     case JIT_OP_SUB_FLOAT:
-        return slot_no == immed->sub_float.slot_src || slot_no == immed->sub_float.slot_dst;
+        read_slots[0] = immed->sub_float.slot_src;
+        read_slots[1] = immed->sub_float.slot_dst;
+        break;
     case JIT_OP_ADD_FLOAT:
-        return slot_no == immed->add_float.slot_src || slot_no == immed->add_float.slot_dst;
+        read_slots[0] = immed->add_float.slot_src;
+        read_slots[1] = immed->add_float.slot_dst;
+        break;
     case JIT_OP_ADD_CONST32:
-        return slot_no == immed->add_const32.slot_dst;
+        read_slots[0] = immed->add_const32.slot_dst;
+        break;
     case JIT_OP_DISCARD_SLOT:
-        return false;
+        break;
     case JIT_OP_XOR:
-        return slot_no == immed->xor.slot_src || slot_no == immed->xor.slot_dst;
+        read_slots[0] = immed->xor.slot_src;
+        read_slots[1] = immed->xor.slot_dst;
+        break;
     case JIT_OP_XOR_CONST32:
-        return slot_no == immed->xor_const32.slot_no;
+        read_slots[0] = immed->xor_const32.slot_no;
+        break;
     case JIT_OP_MOV:
-        return slot_no == immed->mov.slot_src;
+        read_slots[0] = immed->mov.slot_src;
+        break;
     case JIT_OP_MOV_FLOAT:
-        return slot_no == immed->mov_float.slot_src;
+        read_slots[0] = immed->mov_float.slot_src;
+        break;
     case JIT_OP_AND:
-        return slot_no == immed->and.slot_src || slot_no == immed->and.slot_dst;
+        read_slots[0] = immed->and.slot_src;
+        read_slots[1] = immed->and.slot_dst;
+        break;
     case JIT_OP_AND_CONST32:
-        return slot_no == immed->and_const32.slot_no;
+        read_slots[0] = immed->and_const32.slot_no;
+        break;
     case JIT_OP_OR:
-        return slot_no == immed->or.slot_src || slot_no == immed->or.slot_dst;
+        read_slots[0] = immed->or.slot_src;
+        read_slots[1] = immed->or.slot_dst;
+        break;
     case JIT_OP_OR_CONST32:
-        return slot_no == immed->or_const32.slot_no;
+        read_slots[0] = immed->or_const32.slot_no;
+        break;
     case JIT_OP_SLOT_TO_BOOL_INV:
-        return slot_no == immed->slot_to_bool_inv.slot_no;
+        read_slots[0] = immed->slot_to_bool_inv.slot_no;
+        break;
     case JIT_OP_NOT:
-        return slot_no == immed->not.slot_no;
+        read_slots[0] = immed->not.slot_no;
+        break;
     case JIT_OP_SHLL:
-        return slot_no == immed->shll.slot_no;
+        read_slots[0] = immed->shll.slot_no;
+        break;
     case JIT_OP_SHAR:
-        return slot_no == immed->shar.slot_no;
+        read_slots[0] = immed->shar.slot_no;
+        break;
     case JIT_OP_SHLR:
-        return slot_no == immed->shlr.slot_no;
+        read_slots[0] = immed->shlr.slot_no;
+        break;
     case JIT_OP_SHAD:
-        return slot_no == immed->shad.slot_val ||
-            slot_no == immed->shad.slot_shift_amt;
+        read_slots[0] = immed->shad.slot_val;
+        read_slots[1] = immed->shad.slot_shift_amt;
+        break;
     case JIT_OP_SET_GT_UNSIGNED:
-        return slot_no == immed->set_gt_unsigned.slot_lhs ||
-            slot_no == immed->set_gt_unsigned.slot_rhs ||
-            slot_no == immed->set_gt_unsigned.slot_dst;
+        read_slots[0] = immed->set_gt_unsigned.slot_lhs;
+        read_slots[1] = immed->set_gt_unsigned.slot_rhs;
+        read_slots[2] = immed->set_gt_unsigned.slot_dst;
+        break;
     case JIT_OP_SET_GT_SIGNED:
-        return slot_no == immed->set_gt_signed.slot_lhs ||
-            slot_no == immed->set_gt_signed.slot_rhs ||
-            slot_no == immed->set_gt_signed.slot_dst;
+        read_slots[0] = immed->set_gt_signed.slot_lhs;
+        read_slots[1] = immed->set_gt_signed.slot_rhs;
+        read_slots[2] = immed->set_gt_signed.slot_dst;
+        break;
     case JIT_OP_SET_GT_SIGNED_CONST:
-        return slot_no == immed->set_gt_signed_const.slot_lhs ||
-            slot_no == immed->set_gt_signed_const.slot_dst;
+        read_slots[0] = immed->set_gt_signed_const.slot_lhs;
+        read_slots[1] = immed->set_gt_signed_const.slot_dst;
+        break;
     case JIT_OP_SET_EQ:
-        return slot_no == immed->set_eq.slot_lhs ||
-            slot_no == immed->set_eq.slot_rhs ||
-            slot_no == immed->set_eq.slot_dst;
+        read_slots[0] = immed->set_eq.slot_lhs;
+        read_slots[1] = immed->set_eq.slot_rhs;
+        read_slots[2] = immed->set_eq.slot_dst;
+        break;
     case JIT_OP_SET_GE_UNSIGNED:
-        return slot_no == immed->set_ge_unsigned.slot_lhs ||
-            slot_no == immed->set_ge_unsigned.slot_rhs ||
-            slot_no == immed->set_ge_unsigned.slot_dst;
+        read_slots[0] = immed->set_ge_unsigned.slot_lhs;
+        read_slots[1] = immed->set_ge_unsigned.slot_rhs;
+        read_slots[2] = immed->set_ge_unsigned.slot_dst;
+        break;
     case JIT_OP_SET_GE_SIGNED:
-        return slot_no == immed->set_ge_signed.slot_lhs ||
-            slot_no == immed->set_ge_signed.slot_rhs ||
-            slot_no == immed->set_ge_signed.slot_dst;
+        read_slots[0] = immed->set_ge_signed.slot_lhs;
+        read_slots[1] = immed->set_ge_signed.slot_rhs;
+        read_slots[2] = immed->set_ge_signed.slot_dst;
+        break;
     case JIT_OP_SET_GE_SIGNED_CONST:
-        return slot_no == immed->set_ge_signed_const.slot_lhs ||
-            slot_no == immed->set_ge_signed_const.slot_dst;
+        read_slots[0] = immed->set_ge_signed_const.slot_lhs;
+        read_slots[1] = immed->set_ge_signed_const.slot_dst;
+        break;
     case JIT_OP_SET_GT_FLOAT:
-        return slot_no == immed->set_gt_float.slot_lhs ||
-            slot_no == immed->set_gt_float.slot_rhs ||
-            slot_no == immed->set_gt_float.slot_dst;
+        read_slots[0] = immed->set_gt_float.slot_lhs;
+        read_slots[1] = immed->set_gt_float.slot_rhs;
+        read_slots[2] = immed->set_gt_float.slot_dst;
+        break;
     case JIT_OP_MUL_U32:
-        return slot_no == immed->mul_u32.slot_lhs ||
-            slot_no == immed->mul_u32.slot_rhs;
+        read_slots[0] = immed->mul_u32.slot_lhs;
+        read_slots[1] = immed->mul_u32.slot_rhs;
+        break;
     case JIT_OP_MUL_FLOAT:
-        return slot_no == immed->mul_float.slot_lhs ||
-            slot_no == immed->mul_float.slot_dst;
+        read_slots[0] = immed->mul_float.slot_lhs;
+        read_slots[1] = immed->mul_float.slot_dst;
+        break;
     case JIT_OP_CLEAR_FLOAT:
-        return false;
+        break;
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+}
+
+bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no) {
+    int idx;
+    int read_slots[JIT_IL_MAX_READ_SLOTS];
+
+    jit_inst_get_read_slots(inst, read_slots);
+    for (idx = 0; idx < JIT_IL_MAX_READ_SLOTS; idx++)
+        if (slot_no == read_slots[idx])
+            return true;
+    return false;
 }
 
 void jit_inst_get_write_slots(struct jit_inst const *inst,

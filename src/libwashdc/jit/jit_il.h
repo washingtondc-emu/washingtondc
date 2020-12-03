@@ -630,10 +630,13 @@ struct jit_inst {
 struct il_code_block;
 
 // return true if the instruction reads from the given slot, else return false
+#define JIT_IL_MAX_READ_SLOTS 3
+void jit_inst_get_read_slots(struct jit_inst const *inst,
+                             int read_slots[JIT_IL_MAX_READ_SLOTS]);
 bool jit_inst_is_read_slot(struct jit_inst const *inst, unsigned slot_no);
 
 // return true if the instruction writes to the given slot, else return false
-#define JIT_IL_MAX_WRITE_SLOTS 2
+#define JIT_IL_MAX_WRITE_SLOTS 3
 void jit_inst_get_write_slots(struct jit_inst const *inst,
                               int write_slots[JIT_IL_MAX_WRITE_SLOTS]);
 bool jit_inst_is_write_slot(struct jit_inst const *inst, unsigned slot_no);
