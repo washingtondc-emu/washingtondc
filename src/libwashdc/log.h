@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 #define LOG_H_
 
 #include <stdbool.h>
+
+#include "washdc/hostfile.h"
 
 #define ENABLE_LOG_ERROR
 #define ENABLE_LOG_WARN
@@ -69,5 +71,14 @@ void log_do_write(enum log_severity lvl, char const *fmt, ...);
 void log_init(bool to_stdout, bool verbose);
 void log_flush(void);
 void log_cleanup(void);
+
+/*
+ * you should only ever write to this, don't call seek or anything weird like
+ * that.
+ *
+ * the purpose of this function is to accomodate a few places where it makes
+ * sense to allow writing to the logfile or to any other washdc_hostfile.
+ */
+washdc_hostfile log_get_file(void);
 
 #endif

@@ -148,6 +148,10 @@ sh4_jit_compile_native(void *cpu, struct native_dispatch_meta const *meta,
 
     jit_optimize(&il_blk);
 
+#ifdef INVARIANTS
+    jit_sanity_checks(il_blk.inst_list, il_blk.inst_count);
+#endif
+
 #ifdef JIT_PROFILE
     unsigned inst_no;
     for (inst_no = 0; inst_no < il_blk.inst_count; inst_no++) {
@@ -195,6 +199,10 @@ sh4_jit_compile_intp(void *cpu, void *blk_ptr, uint32_t pc) {
     sh4_jit_il_code_block_compile(cpu, &ctx, jit_blk, &il_blk, pc);
 
     jit_optimize(&il_blk);
+
+#ifdef INVARIANTS
+    jit_sanity_checks(il_blk.inst_list, il_blk.inst_count);
+#endif
 
 #ifdef JIT_PROFILE
     unsigned inst_no;
