@@ -29,6 +29,9 @@
 #include "washdc/types.h"
 #include "washdc/MemoryMap.h"
 
+// index into il_inst list
+typedef int il_inst_idx;
+
 /*
  * Defines the number of slots available to IL programs.
  *
@@ -646,12 +649,14 @@ void jit_inst_get_write_slots(struct jit_inst const *inst,
                               int write_slots[JIT_IL_MAX_WRITE_SLOTS]);
 bool jit_inst_is_write_slot(struct jit_inst const *inst, unsigned slot_no);
 
-void jit_fallback(struct il_code_block *block,
-                  void(*fallback_fn)(void*,cpu_inst_param), cpu_inst_param inst);
-void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot, unsigned jmp_hash_slot);
-void jit_cset(struct il_code_block *block, unsigned flag_slot,
-              unsigned t_flag, uint32_t src_val, unsigned dst_slot);
-void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
+il_inst_idx jit_fallback(struct il_code_block *block,
+                         void(*fallback_fn)(void*,cpu_inst_param),
+                         cpu_inst_param inst);
+il_inst_idx jit_jump(struct il_code_block *block, unsigned jmp_addr_slot,
+                     unsigned jmp_hash_slot);
+il_inst_idx jit_cset(struct il_code_block *block, unsigned flag_slot,
+                     unsigned t_flag, uint32_t src_val, unsigned dst_slot);
+il_inst_idx jit_set_slot(struct il_code_block *block, unsigned slot_idx,
                   uint32_t new_val);
 void jit_set_slot_host_ptr(struct il_code_block *block, unsigned slot_idx,
                            void *ptr);

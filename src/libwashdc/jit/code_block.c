@@ -43,8 +43,8 @@ void il_code_block_cleanup(struct il_code_block *block) {
     memset(block, 0, sizeof(*block));
 }
 
-void il_code_block_push_inst(struct il_code_block *block,
-                              struct jit_inst const *inst) {
+il_inst_idx il_code_block_push_inst(struct il_code_block *block,
+                                    struct jit_inst const *inst) {
     if (block->inst_count >= block->inst_alloc) {
         unsigned new_alloc = block->inst_alloc + BLOCK_GROW_LEN;
         struct jit_inst *new_list =
@@ -57,7 +57,9 @@ void il_code_block_push_inst(struct il_code_block *block,
         block->inst_alloc = new_alloc;
     }
 
-    block->inst_list[block->inst_count++] = *inst;
+    il_inst_idx inst_idx = block->inst_count++;
+    block->inst_list[inst_idx] = *inst;
+    return inst_idx;
 }
 
 void il_code_block_strike_inst(struct il_code_block *blk, unsigned inst_idx) {

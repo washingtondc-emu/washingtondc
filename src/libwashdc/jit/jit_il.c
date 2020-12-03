@@ -31,19 +31,20 @@
 
 #include "jit_il.h"
 
-void jit_fallback(struct il_code_block *block,
-                  void(*fallback_fn)(void*,cpu_inst_param), cpu_inst_param inst) {
+il_inst_idx jit_fallback(struct il_code_block *block,
+                         void(*fallback_fn)(void*,cpu_inst_param),
+                         cpu_inst_param inst) {
     struct jit_inst op;
 
     op.op = JIT_OP_FALLBACK;
     op.immed.fallback.fallback_fn = fallback_fn;
     op.immed.fallback.inst = inst;
 
-    il_code_block_push_inst(block, &op);
+    return il_code_block_push_inst(block, &op);
 }
 
-void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot,
-              unsigned jmp_hash_slot) {
+il_inst_idx jit_jump(struct il_code_block *block, unsigned jmp_addr_slot,
+                     unsigned jmp_hash_slot) {
     struct jit_inst op;
 
     check_slot(block, jmp_addr_slot, WASHDC_JIT_SLOT_GEN);
@@ -53,11 +54,11 @@ void jit_jump(struct il_code_block *block, unsigned jmp_addr_slot,
     op.immed.jump.jmp_addr_slot = jmp_addr_slot;
     op.immed.jump.jmp_hash_slot = jmp_hash_slot;
 
-    il_code_block_push_inst(block, &op);
+    return il_code_block_push_inst(block, &op);
 }
 
-void jit_cset(struct il_code_block *block, unsigned flag_slot,
-              unsigned t_flag, uint32_t src_val, unsigned dst_slot) {
+il_inst_idx jit_cset(struct il_code_block *block, unsigned flag_slot,
+                     unsigned t_flag, uint32_t src_val, unsigned dst_slot) {
     struct jit_inst op;
 
     check_slot(block, flag_slot, WASHDC_JIT_SLOT_GEN);
@@ -69,11 +70,11 @@ void jit_cset(struct il_code_block *block, unsigned flag_slot,
     op.immed.cset.src_val = src_val;
     op.immed.cset.dst_slot = dst_slot;
 
-    il_code_block_push_inst(block, &op);
+    return il_code_block_push_inst(block, &op);
 }
 
-void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
-                  uint32_t new_val) {
+il_inst_idx jit_set_slot(struct il_code_block *block, unsigned slot_idx,
+                         uint32_t new_val) {
     struct jit_inst op;
 
     check_slot(block, slot_idx, WASHDC_JIT_SLOT_GEN);
@@ -82,7 +83,7 @@ void jit_set_slot(struct il_code_block *block, unsigned slot_idx,
     op.immed.set_slot.new_val = new_val;
     op.immed.set_slot.slot_idx = slot_idx;
 
-    il_code_block_push_inst(block, &op);
+    return il_code_block_push_inst(block, &op);
 }
 
 void jit_set_slot_host_ptr(struct il_code_block *block, unsigned slot_idx,
