@@ -20,7 +20,20 @@ jobs:
     - name: dependencies (linux only)
       run: sudo apt-get -y install libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libgl-dev libglu-dev libxi-dev
       if: "contains(matrix.os, 'ubuntu')"
-    - uses: lukka/run-cmake@v2
+    - name: create build directory
+      run: mkdir build
+    - name: configure
+      run: cmake '-DENABLE_MMU=${{ matrix.mmu_enabled }} -DINVARIANTS=${{ matrix.invariants }} -DCMAKE_BUILD_TYPE=Release' ..
+      working-directory: build
+    - name: build
+      run: cmake --build . --config Release
+      working-directory: build
+    - name: package
+      run: cpack -G ZIP
+      working-directory: build
+      if: ${{ matrix.os == 'windows-latest' && matrix.mmu_enabled == 'Off' && matrix.invariants == 'Off' }}
+    - uses: actions/upload-artifact@v2.2.1
+      if: ${{ matrix.os == 'windows-latest' && matrix.mmu_enabled == 'Off' && matrix.invariants == 'Off' }}
       with:
-        cmakeAppendedArgs: '-DENABLE_MMU=${{ matrix.mmu_enabled }} -DINVARIANTS=${{ matrix.invariants }}'
-        cmakeBuildType: RelWithDebInfo
+        name: WashingtonDC Windows build
+        path: build/WashingtonDC-0.0.0-win64.zip

@@ -197,6 +197,7 @@ endif()
 
 add_executable(washingtondc ${washingtondc_sources} ${ui_sources}
                             ${imgui_sources})
+install(TARGETS washingtondc RUNTIME DESTINATION bin)
 
 add_definitions(-DGLEW_STATIC)
 

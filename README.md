@@ -121,35 +121,41 @@ various different licenses.
 
 A copy of libpng version 1.6.34 is included in this source distribution with
 some unnecessary components removed.  The license for this software can be
-found at external/libpng/LICENSE.
+found at external/libpng/LICENSE in the source, or at LICENSE_libpng.txt in
+packaged builds.
 
 A copy of zlib is included in this source distribution with some unnecessary
 components removed and some minor modifications made to facilitate building on
 certain platforms.  The license for this software can be found at
-external/zlib/README.
+external/zlib/README in the source, or at LICENSE_zlib.txt in packaged builds.
 
 WashingtonDC also makes use of the glfw library.  This is not included in this
 source distribution, and is instead distributed using a git submodule.  The
-license for this software can be found in external/glfw/LICENSE.md.
+license for this software can be found in external/glfw/LICENSE.md in the
+source, or at LICENSE_glfw.txt in packaged builds.
 
 WashingtonDC also makes use of the Capstone library.  This is not included in
 this source distribution, and is instead distributed using a git submodule.  The
 licenses for this software can be found in external/capstone/LICENSE.txt and
-external/capstone/LICENSE_LLVM.txt.
+external/capstone/LICENSE_LLVM.txt in the source, or at LICENSE_capstone.txt and
+LICENSE_llvm.txt in packaged builds.
 
 WashingtonDC also makes use of the libevent library.  This is not included in
 this source distribution, and is instead automatically downloaded by the build
 system as a tarball.  The license for this software can be found in the tarball
-at libevent-2.1.8-stable/LICENSE.
+at libevent-2.1.8-stable/LICENSE in the source, or at LICENSE_libevent.txt in
+packaged builds.
 
 WashingtonDC also makes use of version 2.1.0 of the glew library.  A copy of
 this software with some unnecessary components removed is included in
 external/glew.  The license for this software can be found at
-external/glew/LICENSE.txt.
+external/glew/LICENSE.txt in the source, or at LICENSE_glew.txt in packaged
+builds.
 
 WashingtonDC uses the imgui library.  This software is included via a git
 submodule.  The license for this software can be found at
-external/imgui/LICENSE.txt.
+external/imgui/LICENSE.txt in the source, or at LICENSE_imgui.txt in packaged
+builds.
 
 Some code from FFmpeg was used to implement Yamaha's ADPCM format.  This code is
 part of the FFmpeg library and is licensed under version 2.1 or greater of the
