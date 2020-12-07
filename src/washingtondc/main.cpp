@@ -497,14 +497,44 @@ int main(int argc, char **argv) {
         settings.boot_mode = WASHDC_BOOT_FIRMWARE;
     }
 
-    if (dc_bios_path)
+    if (dc_bios_path) {
         settings.path_dc_bios = dc_bios_path;
-    else if (have_console_name)
+    } else if (have_console_name) {
         settings.path_dc_bios = console_get_firmware_path(console_name);
-    if (dc_flash_path)
+    } else {
+        fprintf(stderr,
+                "========================================================\n");
+        fprintf(stderr,
+                "==\n");
+        fprintf(stderr,
+                "== ERROR - SUPPLY DREAMCAST FIRMWARE IMAGE FILE (-b option)\n");
+        fprintf(stderr,
+                "==\n");
+        fprintf(stderr,
+                "========================================================\n");
+        print_usage(cmd);
+        exit(1);
+    }
+
+    if (dc_flash_path) {
         settings.path_dc_flash = dc_flash_path;
-    else if (have_console_name)
+    } else if (have_console_name) {
         settings.path_dc_flash = console_get_flashrom_path(console_name);
+    } else {
+        fprintf(stderr,
+                "========================================================\n");
+        fprintf(stderr,
+                "==\n");
+        fprintf(stderr,
+                "== ERROR - SUPPLY DREAMCAST FLASH IMAGE FILE (-f option)\n");
+        fprintf(stderr,
+                "==\n");
+        fprintf(stderr,
+                "========================================================\n");
+        print_usage(cmd);
+        exit(1);
+    }
+
     if (have_console_name)
         settings.path_rtc = console_get_rtc_path(console_name);
     settings.enable_serial = enable_serial;
