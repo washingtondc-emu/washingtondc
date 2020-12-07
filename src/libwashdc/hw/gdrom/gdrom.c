@@ -610,9 +610,14 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
          *
          * For now we raise unimplemented errors when this happens because I
          * don't have any known testcases.
+         *
+         * The GDAPRO register only applies to system memory, which is why we
+         * don't raise an error for writes that go outside of
+         * 0x0c000000-0x0cffffff (thanks to p1pkin for explaining this to me).
          */
-        if (addr < gdrom_dma_prot_top(gdrom) ||
-            (addr + chunk_sz - 1) > gdrom_dma_prot_bot(gdrom)) {
+        if (addr >= 0x0c000000 && addr <= 0x0cffffff &&
+            (addr < gdrom_dma_prot_top(gdrom) ||
+             (addr + chunk_sz - 1) > gdrom_dma_prot_bot(gdrom))) {
             // don't do this chunk if the end is below gdrom_dma_prot_top
             error_set_address(addr);
             error_set_length(chunk_sz);
