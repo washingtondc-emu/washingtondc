@@ -44,8 +44,8 @@
 
 #include <winsock2.h>
 #include <windows.h>
-#include <KnownFolders.h>
-#include <Shlobj.h>
+#include <knownfolders.h>
+#include <shlobj.h>
 
 #endif
 
