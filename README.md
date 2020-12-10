@@ -157,6 +157,11 @@ submodule.  The license for this software can be found at
 external/imgui/LICENSE.txt in the source, or at LICENSE_imgui.txt in packaged
 builds.
 
+WashingtonDC uses the portaudio.  This software is included via a git
+submodule.  The license for this software can be found at
+external/portaudio/LICENSE.txt in the source, or at LICENSE_portaudio.txt in
+packaged builds.
+
 Some code from FFmpeg was used to implement Yamaha's ADPCM format.  This code is
 part of the FFmpeg library and is licensed under version 2.1 or greater of the
 GNU Lesser General Public License (LGPL).  The GNU LGPL allows licensees to

@@ -218,6 +218,7 @@ configure_file("${CMAKE_SOURCE_DIR}/external/capstone/LICENSE_LLVM.TXT" "LICENSE
 configure_file("${CMAKE_SOURCE_DIR}/external/libevent/LICENSE" "LICENSE_libevent.txt" COPYONLY)
 configure_file("${CMAKE_SOURCE_DIR}/external/glew/LICENSE.txt" "LICENSE_glew.txt" COPYONLY)
 configure_file("${CMAKE_SOURCE_DIR}/external/imgui/LICENSE.txt" "LICENSE_imgui.txt" COPYONLY)
+configure_file("${CMAKE_SOURCE_DIR}/external/portaudio/LICENSE.txt" "LICENSE_portaudio.txt" COPYONLY)
 
 set(licenses "${CMAKE_CURRENT_BINARY_DIR}/COPYING"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_libpng.txt"
@@ -227,7 +228,8 @@ set(licenses "${CMAKE_CURRENT_BINARY_DIR}/COPYING"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_llvm.txt"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_libevent.txt"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_glew.txt"
-             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_imgui.txt")
+             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_imgui.txt"
+             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_portaudio.txt")
 
 install(FILES ${licenses} DESTINATION ${LICENSE_DIR})
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md  COPYING DESTINATION ${README_DIR})
