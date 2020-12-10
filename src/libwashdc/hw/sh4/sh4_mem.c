@@ -577,7 +577,7 @@ sh4_utlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     bool shared = (val >> 1) & 1;
     bool wt = val & 1;
 
-#ifdef ENABLE_LOG_DEBUG
+#if defined ENABLE_LOG_DEBUG && defined(SUPER_VERBOSE_MEM_TRACE)
     char const *page_sz;
     switch (sz) {
     case SH4_TLB_PAGE_1KB:
@@ -677,7 +677,7 @@ sh4_itlb_data_array_1_write(struct Sh4 *sh4, addr32_t addr, uint32_t val) {
     ent->cacheable = (val >> 3) & 1;
     ent->shared = (val >> 1) & 1;
 
-#ifdef ENABLE_LOG_DEBUG
+#if defined ENABLE_LOG_DEBUG && defined(SUPER_VERBOSE_MEM_TRACE)
     char const *page_sz;
     switch (ent->sz) {
     case SH4_TLB_PAGE_1KB:
@@ -961,7 +961,7 @@ void sh4_mmu_do_ldtlb(struct Sh4 *sh4) {
     ent->sa = ptea & 7;
     ent->tc = (ptea >> 3) & 1;
 
-#ifdef ENABLE_LOG_DEBUG
+#if defined ENABLE_LOG_DEBUG && defined(SUPER_VERBOSE_MEM_TRACE)
     char const *page_sz;
     switch (ent->sz) {
     case SH4_TLB_PAGE_1KB:
