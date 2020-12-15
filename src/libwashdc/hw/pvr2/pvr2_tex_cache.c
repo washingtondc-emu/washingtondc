@@ -828,7 +828,7 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
 
                 char *pix_out = tex_dat_no_palette8 +
                     pix_idx * tex_size_actual;
-                char pix_in;
+                unsigned char pix_in;
 
                 if (pix_idx % 2 == 0)
                     pix_in = tex_dat8[pix_idx / 2] & 0xf;
