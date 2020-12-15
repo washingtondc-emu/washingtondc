@@ -269,10 +269,17 @@ SH4_TRY_WRITE_P4_TMPL(double, double)
             } else if (addr >= SH4_P4_UTLB_DATA_ARRAY_2_FIRST &&        \
                        addr <= SH4_P4_UTLB_DATA_ARRAY_2_LAST) {         \
                 return sh4_utlb_data_array_2_read(sh4, addr);           \
+            } else if (addr >= 0xe4000000 && addr < 0xf0000000) {       \
+                /* SEGA Tetris does this. */                            \
+                /* TODO: is returning 0 the correct behavior? */        \
+                LOG_WARN("Reading from addr %08X in SH4 P4 "            \
+                         "reserved area.\n", (unsigned)addr);           \
+                return 0;                                               \
             } else {                                                    \
                 error_set_address(addr);                                \
                 error_set_length(sizeof(type));                         \
-                error_set_feature("writing to part of the P4 memory region"); \
+                error_set_feature("reading from part of the P4 memory " \
+                                  "region");                            \
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
             }                                                           \
         } else {                                                        \
