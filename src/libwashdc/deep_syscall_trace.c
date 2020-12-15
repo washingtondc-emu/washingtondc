@@ -46,10 +46,30 @@
 
 #include "deep_syscall_trace.h"
 
-#define GDROM_SYSCALL_ADDR 0x8c001000
-
 static uint32_t ret_addr;
 static bool in_syscall;
+
+static struct memory_map *mem_map;
+
+void deep_syscall_trace_init(struct memory_map *map) {
+    mem_map = map;
+}
+
+void deep_syscall_trace_cleanup(void) {
+}
+
+static uint32_t syscall_gdrom_vector(void) {
+    if (!mem_map) {
+        LOG_ERROR("You forgot to call deep_syscall_trace_init, dumbass!\n");
+        return 0x8c001000; // this is the default value
+    }
+    uint32_t ret;
+    if (memory_map_try_read_32(mem_map, 0x8c0000bc, &ret) != 0) {
+        LOG_ERROR("Failure to read GD-ROM syscall vector!\n");
+        return 0x8c001000; // this is the default value
+    }
+    return ret;
+}
 
 #define SYSCALL_TRACE(msg, ...)                                         \
     do {                                                                \
@@ -126,7 +146,7 @@ static struct syscall_stat {
 
 void deep_syscall_notify_jump(addr32_t pc) {
     Sh4 *sh4 = dreamcast_get_cpu();
-    if (pc == GDROM_SYSCALL_ADDR) {
+    if (pc == syscall_gdrom_vector()) {
         if (in_syscall) {
             SYSCALL_TRACE("recursive syscall detected.  "
                           "Trace will be unreliable!\n");

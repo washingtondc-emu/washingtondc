@@ -84,6 +84,7 @@
 #include "sound.h"
 #include "washdc/hostfile.h"
 #include "hw/sys/holly_intc.h"
+#include "deep_syscall_trace.h"
 
 #ifdef ENABLE_TCP_SERIAL
 #include "serial_server.h"
@@ -557,6 +558,13 @@ dreamcast_init(char const *gdi_path,
     gfx_init(gfx_if);
     dc_sound_init(snd_intf);
 
+    memory_map_init(&mem_map);
+    memory_map_init(&arm7_mem_map);
+
+#ifdef DEEP_SYSCALL_TRACE
+    deep_syscall_trace_init(&mem_map);
+#endif
+
     memory_init(&dc_mem);
     flash_mem_init(&flash_mem, config_get_dc_flash_path(), flash_mem_writeable);
     boot_rom_init(&firmware, config_get_dc_bios_path());
@@ -670,11 +678,9 @@ dreamcast_init(char const *gdi_path,
     sh4_register_pdtra_read_handler(&cpu, on_pdtra_read);
     sh4_register_pdtra_write_handler(&cpu, on_pdtra_write);
 
-    memory_map_init(&mem_map);
     construct_sh4_mem_map(&cpu, &mem_map);
     sh4_set_mem_map(&cpu, &mem_map);
 
-    memory_map_init(&arm7_mem_map);
     construct_arm7_mem_map(&arm7_mem_map);
     arm7_set_mem_map(&arm7, &arm7_mem_map);
 
@@ -747,9 +753,6 @@ void dreamcast_cleanup() {
 
     aica_rtc_cleanup(&rtc);
 
-    memory_map_cleanup(&arm7_mem_map);
-    memory_map_cleanup(&mem_map);
-
     // disconnect PDTRA read/write handlers
     sh4_register_pdtra_read_handler(&cpu, NULL);
     sh4_register_pdtra_write_handler(&cpu, NULL);
@@ -783,6 +786,13 @@ void dreamcast_cleanup() {
     boot_rom_cleanup(&firmware);
     flash_mem_cleanup(&flash_mem);
     memory_cleanup(&dc_mem);
+
+#ifdef DEEP_SYSCALL_TRACE
+    deep_syscall_trace_cleanup();
+#endif
+
+    memory_map_cleanup(&arm7_mem_map);
+    memory_map_cleanup(&mem_map);
 
     dc_sound_cleanup();
     gfx_cleanup();

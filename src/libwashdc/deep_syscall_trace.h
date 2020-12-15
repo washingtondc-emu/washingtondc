@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2020 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,6 +28,9 @@
 #define DEEP_SYSCALL_TRACE_H_
 
 #include "washdc/types.h"
+
+void deep_syscall_trace_init(struct memory_map *mem_map);
+void deep_syscall_trace_cleanup(void);
 
 void deep_syscall_notify_jump(addr32_t pc);
 
