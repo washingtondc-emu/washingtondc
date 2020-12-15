@@ -84,7 +84,10 @@
 #include "sound.h"
 #include "washdc/hostfile.h"
 #include "hw/sys/holly_intc.h"
+
+#ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
+#endif
 
 #ifdef ENABLE_TCP_SERIAL
 #include "serial_server.h"
