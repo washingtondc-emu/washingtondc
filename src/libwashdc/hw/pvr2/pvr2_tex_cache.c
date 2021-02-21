@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -772,7 +772,7 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         uint32_t pal_start = (meta->tex_palette_start & 0x30) << 4;
-        char const *tex_dat8 = (char const*)tex_dat;
+        unsigned char const *tex_dat8 = (unsigned char const*)tex_dat;
         char *tex_dat_no_palette8 = (char*)tex_dat_no_palette;
 
         unsigned row, col;
@@ -817,7 +817,7 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
         uint32_t pal_start = meta->tex_palette_start << 4;
-        char const *tex_dat8 = (char const*)tex_dat;
+        unsigned char const *tex_dat8 = (unsigned char const*)tex_dat;
         char *tex_dat_no_palette8 = (char*)tex_dat_no_palette;
 
         uint8_t *pal_ram = pvr2_get_palette_ram(pvr2);
@@ -837,6 +837,10 @@ void pvr2_tex_cache_read(struct pvr2 *pvr2,
 
                 uint32_t palette_addr =
                     (pal_start | (uint32_t)pix_in) * 4;
+
+                if (palette_addr >= PVR2_PALETTE_RAM_LEN) {
+                    RAISE_ERROR(ERROR_INTEGRITY);
+                }
                 memcpy(pix_out, pal_ram + palette_addr, tex_size_actual);
             }
         }
