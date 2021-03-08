@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -582,9 +582,12 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
 
     while (bytes_transmitted < bytes_to_transmit) {
         if (!fifo_node) {
-            GDROM_ERROR("%s attempting to transfer more data than there is in"
-                        "the bufq available\n", __func__);
-            goto done;
+            /*
+             * this used to not be an error.  tbh im not sure if it should be
+             * or not...
+             */
+            error_set_feature("reading more data than is available");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
         struct gdrom_bufq_node *bufq_node =
@@ -641,7 +644,6 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
         fifo_node = fifo_peek(&gdrom->bufq);
     }
 
-done:
     if (bytes_transmitted)
         GDROM_TRACE("GD-ROM DMA transfer %u bytes to %08X\n",
                     bytes_transmitted, gdrom->dma_start_addr_reg);
@@ -738,27 +740,48 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
 
     unsigned fad_offs = 0;
     while (trans_len--) {
-        struct gdrom_bufq_node *node =
-            (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+        struct gdrom_bufq_node *node = malloc(sizeof(struct gdrom_bufq_node));
 
         if (!node)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-        if (mount_read_sectors(node->dat, start_addr + fad_offs++, 1) < 0) {
-            GDROM_ERROR("GD-ROM failed to read fad %u\n", fad_offs);
+        int err = mount_read_sectors(node->dat, start_addr + fad_offs++, 1);
+        switch (err) {
+        case MOUNT_SUCCESS:
+            node->idx = 0;
+            node->len = CDROM_FRAME_DATA_SIZE;
 
+            fifo_push(&gdrom->bufq, &node->fifo_node);
+            break;
+        case MOUNT_ERROR_OUT_OF_BOUNDS:
+            /*
+             * this isn't an error because 2k sports games will enqueue massive
+             * 32767-sector reads and then only DMA some of the data over to
+             * system memory
+             */
+
+            // do we actually want to log this?  could get excessively spammy
+            GDROM_WARN("GD-ROM failed to read fad %u (this is not necessarilly "
+                       "a problem as long as the game does not request the "
+                       "unread data via DMA or PIO)\n", fad_offs);
             free(node);
-
-            gdrom->error_reg.sense_key = SENSE_KEY_ILLEGAL_REQ;
-            gdrom->stat_reg.check = true;
-            gdrom_state_transition(gdrom, GDROM_STATE_NORM);
-            return;
+            /*
+             * TODO: make sure we handle the case where the game tries to read
+             * data using PIO or DMA but there's no data to read.
+             */
+            break;
+        case MOUNT_ERROR_NO_MEDIA:
+            free(node);
+            error_set_feature("trying to read sectors when nothing is mounted\n");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        case MOUNT_ERROR_FILE_IO:
+            free(node);
+            RAISE_ERROR(ERROR_FILE_IO);
+        default:
+            free(node);
+            GDROM_ERROR("unknown error!\n");
+            RAISE_ERROR(ERROR_INTEGRITY);
         }
-
-        node->idx = 0;
-        node->len = CDROM_FRAME_DATA_SIZE;
-
-        fifo_push(&gdrom->bufq, &node->fifo_node);
     }
 
     if (gdrom->feat_reg.dma_enable) {
@@ -1326,8 +1349,12 @@ void gdrom_read_data(struct gdrom_ctxt *gdrom, uint8_t *buf, unsigned n_bytes) {
             gdrom->meta.read.bytes_read < gdrom->data_byte_count) {
             *ptr++ = dat;
         } else {
-            GDROM_ERROR("%s bufq is out of data!  returning 0\n", __func__);
-            *ptr++ = 0;
+            /*
+             * this used to not be an error.  tbh im not sure if it should be
+             * or not...
+             */
+            error_set_feature("reading more data than is available");
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
         gdrom->meta.read.bytes_read++;
     }

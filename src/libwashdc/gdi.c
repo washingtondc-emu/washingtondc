@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2019, 2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -408,19 +408,18 @@ static int mount_read_sector(struct mount *mount, void *buf, unsigned fad) {
             if (washdc_hostfile_seek(gdi_mount->track_streams[track_idx],
                                      byte_offset,
                                      WASHDC_HOSTFILE_SEEK_BEG) != 0) {
-                goto return_err;
+                return MOUNT_ERROR_FILE_IO;
             }
 
             if (washdc_hostfile_read(gdi_mount->track_streams[track_idx], buf,
                                      2048) != 2048)
-                goto return_err;
+                return MOUNT_ERROR_FILE_IO;
 
-            return 0;
+            return MOUNT_SUCCESS;
         }
     }
 
-return_err:
-    return -1;
+    return MOUNT_ERROR_OUT_OF_BOUNDS;
 }
 
 static int mount_gdi_get_meta(struct mount *mount, struct mount_meta *meta) {

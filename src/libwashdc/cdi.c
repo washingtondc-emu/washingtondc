@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2020 snickerbockers
+ *    Copyright (C) 2020, 2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -476,21 +476,21 @@ static int mount_cdi_read_sector(struct mount *mount,
                                          WASHDC_HOSTFILE_SEEK_BEG) != 0) {
                     LOG_ERROR("failure to seek to track (byte offset %llx)\n",
                               (unsigned long long)byte_offset);
-                    return -1;
+                    return MOUNT_ERROR_FILE_IO;
                 }
                 size_t bytes_read;
                 if ((bytes_read = washdc_hostfile_read(cdi_mount->stream,
                                                        buf, 2048)) != 2048) {
                     LOG_ERROR("Failure to read from cdi file (returned length %llu)\n",
                               (long long unsigned)bytes_read);
-                    return -1;
+                    return MOUNT_ERROR_FILE_IO;
                 }
-                return 0;
+                return MOUNT_SUCCESS;
             }
         }
     }
-    LOG_ERROR("unable to locate LBA %u\n", lba);
-    return -1;
+    LOG_WARN("unable to locate LBA %u\n", lba);
+    return MOUNT_ERROR_OUT_OF_BOUNDS;
 }
 
 static void cdi_get_session_start(struct mount *mount, unsigned session_no,

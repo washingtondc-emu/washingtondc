@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -85,17 +85,19 @@ int mount_read_toc(struct mount_toc* out, unsigned region) {
 int mount_read_sectors(void *buf_out, unsigned fad_start,
                        unsigned sector_count) {
     if (!mount_check() || !img.ops->read_sector)
-        return -1;
+        return MOUNT_ERROR_NO_MEDIA;
 
     unsigned fad;
     for (fad = fad_start; fad < (fad_start + sector_count); fad++) {
         void *where = ((uint8_t*)buf_out) +
             CDROM_FRAME_DATA_SIZE * (fad - fad_start);
-        if (img.ops->read_sector(&img, where, fad) != 0)
-            return -1;
+        int err_code;
+        if ((err_code = img.ops->read_sector(&img, where, fad)) !=
+            MOUNT_SUCCESS)
+            return err_code;
     }
 
-    return 0;
+    return MOUNT_SUCCESS;
 }
 
 void const* mount_encode_toc(struct mount_toc const *toc) {

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -108,6 +108,12 @@ enum mount_disc_type {
     DISC_TYPE_CDI = 3, // i think this refers to phillips CD-I, not .cdi images
     DISC_TYPE_GDROM = 8
 };
+
+// error/success codes; for now these only apply to read_sector(s)
+#define MOUNT_SUCCESS 0 // operation completed successfully
+#define MOUNT_ERROR_NO_MEDIA -1 // there's nothing mounted
+#define MOUNT_ERROR_FILE_IO -2 // one of the file io functions returned error
+#define MOUNT_ERROR_OUT_OF_BOUNDS -3 // requested fad does not exist on media
 
 struct mount_ops {
     // return the number of sessions on the disc (shouldn't be more than 2)
