@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -211,7 +211,7 @@ static void washdbg_print_banner(void) {
     // this gets printed to the dev console every time somebody connects to the debugger
     static char const *login_banner =
         "Welcome to WashDbg!\n"
-        "WashingtonDC Copyright (C) 2016-2020 snickerbockers\n"
+        "WashingtonDC Copyright (C) 2016-2021 snickerbockers\n"
         "This program comes with ABSOLUTELY NO WARRANTY;\n"
         "This is free software, and you are welcome to redistribute it\n"
         "under the terms of the GNU GPL version 3.\n\n";
@@ -240,6 +240,7 @@ void washdbg_do_help(int argc, char **argv) {
         "bplist       - list all breakpoints\n"
         "bpset <addr> - set a breakpoint\n"
         "continue     - continue execution when suspended.\n"
+        "crash        - crash the emulator.\n"
         "dump         - dump memory to disk\n"
         "echo         - echo back text\n"
         "exit         - exit the debugger and close WashingtonDC\n"
@@ -1115,6 +1116,14 @@ static void washdbg_dump(int argc, char **argv) {
     cur_state = WASHDBG_STATE_CMD_DUMP;
 }
 
+static bool washdbg_is_crash_cmd(char const *str) {
+    return strcmp(str, "crash") == 0;
+}
+
+static void washdbg_crash(int argc, char **argv) {
+    RAISE_ERROR(ERROR_DEBUG);
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1309,6 +1318,8 @@ static void washdbg_process_input(void) {
                 washdbg_at_mode(argc, argv);
             } else if (washdbg_is_dump_cmd(cmd)) {
                 washdbg_dump(argc, argv);
+            } else if (washdbg_is_crash_cmd(cmd)) {
+                washdbg_crash(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
