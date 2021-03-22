@@ -68,6 +68,143 @@ static struct washdbg_bp_stat {
     bool valid;
 } washdbg_bp_stat[NUM_DEBUG_CONTEXTS][DEBUG_N_BREAKPOINTS];
 
+static struct name_map {
+    char const *str;
+    int idx;
+} const sh4_reg_map[] = {
+    { "r0", SH4_REG_R0 },
+    { "r1", SH4_REG_R1 },
+    { "r2", SH4_REG_R2 },
+    { "r3", SH4_REG_R3 },
+    { "r4", SH4_REG_R4 },
+    { "r5", SH4_REG_R5 },
+    { "r6", SH4_REG_R6 },
+    { "r7", SH4_REG_R7 },
+    { "r8", SH4_REG_R8 },
+    { "r9", SH4_REG_R9 },
+    { "r10", SH4_REG_R10 },
+    { "r11", SH4_REG_R11 },
+    { "r12", SH4_REG_R12 },
+    { "r13", SH4_REG_R13 },
+    { "r14", SH4_REG_R14 },
+    { "r15", SH4_REG_R15 },
+
+    { "r0b", SH4_REG_R0_BANK },
+    { "r1b", SH4_REG_R1_BANK },
+    { "r2b", SH4_REG_R2_BANK },
+    { "r3b", SH4_REG_R3_BANK },
+    { "r4b", SH4_REG_R4_BANK },
+    { "r5b", SH4_REG_R5_BANK },
+    { "r6b", SH4_REG_R6_BANK },
+    { "r7b", SH4_REG_R7_BANK },
+
+    { "fr0", SH4_REG_FR0 },
+    { "fr1", SH4_REG_FR1 },
+    { "fr2", SH4_REG_FR2 },
+    { "fr3", SH4_REG_FR3 },
+    { "fr4", SH4_REG_FR4 },
+    { "fr5", SH4_REG_FR5 },
+    { "fr6", SH4_REG_FR6 },
+    { "fr7", SH4_REG_FR7 },
+    { "fr8", SH4_REG_FR8 },
+    { "fr9", SH4_REG_FR9 },
+    { "fr10", SH4_REG_FR10 },
+    { "fr11", SH4_REG_FR11 },
+    { "fr12", SH4_REG_FR12 },
+    { "fr13", SH4_REG_FR13 },
+    { "fr14", SH4_REG_FR14 },
+    { "fr15", SH4_REG_FR15 },
+
+    // TODO: double-precision registers, vector registers, XMTRX
+
+    { "xf0", SH4_REG_XF0 },
+    { "xf1", SH4_REG_XF1 },
+    { "xf2", SH4_REG_XF2 },
+    { "xf3", SH4_REG_XF3 },
+    { "xf4", SH4_REG_XF4 },
+    { "xf5", SH4_REG_XF5 },
+    { "xf6", SH4_REG_XF6 },
+    { "xf7", SH4_REG_XF7 },
+    { "xf8", SH4_REG_XF8 },
+    { "xf9", SH4_REG_XF9 },
+    { "xf10", SH4_REG_XF10 },
+    { "xf11", SH4_REG_XF11 },
+    { "xf12", SH4_REG_XF12 },
+    { "xf13", SH4_REG_XF13 },
+    { "xf14", SH4_REG_XF14 },
+    { "xf15", SH4_REG_XF15 },
+
+    { "fpscr", SH4_REG_FPSCR },
+    { "fpul", SH4_REG_FPUL },
+    { "sr", SH4_REG_SR },
+    { "ssr", SH4_REG_SSR },
+    { "spc", SH4_REG_SPC },
+    { "gbr", SH4_REG_GBR },
+    { "vbr", SH4_REG_VBR },
+    { "sgr", SH4_REG_SGR },
+    { "dbr", SH4_REG_DBR },
+    { "mach", SH4_REG_MACH },
+    { "macl", SH4_REG_MACL },
+    { "pr", SH4_REG_PR },
+    { "pc", SH4_REG_PC },
+
+    { NULL }
+};
+
+WASHDC_UNUSED
+static struct name_map const arm7_reg_map[] = {
+    { "r0", ARM7_REG_R0 },
+    { "r1", ARM7_REG_R1 },
+    { "r2", ARM7_REG_R2 },
+    { "r3", ARM7_REG_R3 },
+    { "r4", ARM7_REG_R4 },
+    { "r5", ARM7_REG_R5 },
+    { "r6", ARM7_REG_R6 },
+    { "r7", ARM7_REG_R7 },
+    { "r8", ARM7_REG_R8 },
+    { "r9", ARM7_REG_R9 },
+    { "r10", ARM7_REG_R10 },
+    { "r11", ARM7_REG_R11 },
+    { "r12", ARM7_REG_R12 },
+    { "r13", ARM7_REG_R13 },
+    { "r14", ARM7_REG_R14 },
+    { "r15", ARM7_REG_R15 },
+
+    { "sb", ARM7_REG_R9 },
+    { "sl", ARM7_REG_R10 },
+    { "fp", ARM7_REG_R11 },
+    { "ip", ARM7_REG_R12 },
+    { "sp", ARM7_REG_R13 },
+    { "lr", ARM7_REG_R14 },
+    { "pc", ARM7_REG_PC },
+
+    { "r8_fiq", ARM7_REG_R8_FIQ },
+    { "r9_fiq", ARM7_REG_R9_FIQ },
+    { "r10_fiq", ARM7_REG_R10_FIQ },
+    { "r11_fiq", ARM7_REG_R11_FIQ },
+    { "r12_fiq", ARM7_REG_R12_FIQ },
+    { "r13_fiq", ARM7_REG_R13_FIQ },
+    { "r14_fiq", ARM7_REG_R14_FIQ },
+    { "r13_svc", ARM7_REG_R13_SVC },
+    { "r14_svc", ARM7_REG_R14_SVC },
+    { "r13_abt", ARM7_REG_R13_ABT },
+    { "r14_abt", ARM7_REG_R14_ABT },
+    { "r13_irq", ARM7_REG_R13_IRQ },
+    { "r14_irq", ARM7_REG_R14_IRQ },
+    { "r13_und", ARM7_REG_R13_UND },
+    { "r14_und", ARM7_REG_R14_UND },
+
+    { "cpsr", ARM7_REG_CPSR },
+
+    { "spsr_fiq", ARM7_REG_SPSR_FIQ },
+    { "spsr_svc", ARM7_REG_SPSR_SVC },
+    { "spsr_abt", ARM7_REG_SPSR_ABT },
+    { "spsr_irq", ARM7_REG_SPSR_IRQ },
+    { "spsr_und", ARM7_REG_SPSR_UND },
+
+    { NULL }
+};
+
 static void washdbg_process_input(void);
 static int washdbg_puts(char const *txt);
 
@@ -131,6 +268,7 @@ enum washdbg_state {
     WASHDBG_STAT_CMD_AT_MODE,
     WASHDBG_STATE_CMD_AT_MODE,
     WASHDBG_STATE_CMD_DUMP,
+    WASHDBG_STATE_CMD_REGS,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -249,6 +387,7 @@ void washdbg_do_help(int argc, char **argv) {
         "memwatch     - watch a specific memory address for a specific value\n"
 #endif
         "print        - print a value\n"
+        "regs         - print all registers\n"
 #ifdef ENABLE_DBG_COND
         "regwatch     - watch for a register to be set to a given value\n"
 #endif
@@ -1124,6 +1263,118 @@ static void washdbg_crash(int argc, char **argv) {
     RAISE_ERROR(ERROR_DEBUG);
 }
 
+#define WASHDBG_REGS_STATE_STR_LEN 128
+
+static struct regs_state {
+    uint32_t sh4_regs[SH4_REGISTER_COUNT];
+    uint32_t arm7_regs[ARM7_REGISTER_COUNT];
+
+    char cur_str[WASHDBG_REGS_STATE_STR_LEN];
+    enum dbg_context_id cur_ctx;
+    int cur_reg;
+    // unsigned cur_char;
+
+    struct washdbg_txt_state txt;
+} regs_state;
+
+// may return NULL if there is no name
+static char const *washdbg_sh4_reg_name(int reg_idx) {
+    struct name_map const *curs = sh4_reg_map;
+    while (curs->str) {
+        if (curs->idx == reg_idx)
+            return curs->str;
+        curs++;
+    }
+    return NULL;
+}
+
+// may return NULL if there is no name
+static char const *washdbg_arm7_reg_name(int reg_idx) {
+    struct name_map const *curs = arm7_reg_map;
+    while (curs->str) {
+        if (curs->idx == reg_idx)
+            return curs->str;
+        curs++;
+    }
+    return NULL;
+}
+
+static int washdbg_regs_fill_str_sh4(void) {
+    if (regs_state.cur_ctx != DEBUG_CONTEXT_SH4)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+        while (regs_state.cur_reg < SH4_REGISTER_COUNT) {
+            char const *name = washdbg_sh4_reg_name(regs_state.cur_reg);
+            if (name) {
+                snprintf(regs_state.cur_str, sizeof(regs_state.cur_str),
+                         "sh4:$%s\t%08x\n", name,
+                         (unsigned)regs_state.sh4_regs[regs_state.cur_reg]);
+                regs_state.txt.pos = 0;
+                regs_state.txt.txt = regs_state.cur_str;
+                return 0;
+            }
+            regs_state.cur_reg++;
+        }
+        return -1;
+}
+
+static int washdbg_regs_fill_str_arm7(void) {
+    if (regs_state.cur_ctx != DEBUG_CONTEXT_ARM7)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+        while (regs_state.cur_reg < ARM7_REGISTER_COUNT) {
+            char const *name = washdbg_arm7_reg_name(regs_state.cur_reg);
+            if (name) {
+                snprintf(regs_state.cur_str, sizeof(regs_state.cur_str),
+                         "arm7:$%s\t%08x\n", name,
+                         (unsigned)regs_state.arm7_regs[regs_state.cur_reg]);
+                regs_state.txt.pos = 0;
+                regs_state.txt.txt = regs_state.cur_str;
+                return 0;
+            }
+            regs_state.cur_reg++;
+        }
+        return -1;
+}
+
+static int washdbg_regs_fill_str(void) {
+    if (regs_state.cur_ctx == DEBUG_CONTEXT_SH4) {
+        if (washdbg_regs_fill_str_sh4() == 0)
+            return 0;
+        regs_state.cur_ctx = DEBUG_CONTEXT_ARM7;
+        regs_state.cur_reg = 0;
+    }
+
+    if (regs_state.cur_ctx != DEBUG_CONTEXT_ARM7)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    return washdbg_regs_fill_str_arm7();
+}
+
+static bool washdbg_is_regs_cmd(char const *str) {
+    return strcmp(str, "regs") == 0;
+}
+
+static void washdbg_regs(int argc, char **argv) {
+    if (argc != 1) {
+        washdbg_print_error("usage: regs\n");
+        return;
+    }
+
+    debug_get_all_regs(DEBUG_CONTEXT_SH4, regs_state.sh4_regs,
+                       sizeof(regs_state.sh4_regs));
+    debug_get_all_regs(DEBUG_CONTEXT_ARM7, regs_state.arm7_regs,
+                       sizeof(regs_state.arm7_regs));
+
+    regs_state.cur_ctx = DEBUG_CONTEXT_SH4;
+    regs_state.cur_reg = 0;
+
+    if (washdbg_regs_fill_str() != 0)
+        RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
+
+    cur_state = WASHDBG_STATE_CMD_REGS;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1199,6 +1450,13 @@ void washdbg_core_run_once(void) {
     case WASHDBG_STATE_CMD_DUMP:
         if (washdbg_print_buffer(&dump_state.txt) == 0)
             washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_REGS:
+        if (washdbg_print_buffer(&regs_state.txt) == 0) {
+            regs_state.cur_reg++;
+            if (washdbg_regs_fill_str() != 0)
+                washdbg_print_prompt();
+        }
         break;
     default:
         break;
@@ -1320,6 +1578,8 @@ static void washdbg_process_input(void) {
                 washdbg_dump(argc, argv);
             } else if (washdbg_is_crash_cmd(cmd)) {
                 washdbg_crash(argc, argv);
+            } else if (washdbg_is_regs_cmd(cmd)) {
+                washdbg_regs(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
@@ -1481,143 +1741,6 @@ static unsigned parse_hex_str(char const *str) {
     printf("%s is %u\n", str, total);
     return total;
 }
-
-static struct name_map {
-    char const *str;
-    int idx;
-} const sh4_reg_map[] = {
-    { "r0", SH4_REG_R0 },
-    { "r1", SH4_REG_R1 },
-    { "r2", SH4_REG_R2 },
-    { "r3", SH4_REG_R3 },
-    { "r4", SH4_REG_R4 },
-    { "r5", SH4_REG_R5 },
-    { "r6", SH4_REG_R6 },
-    { "r7", SH4_REG_R7 },
-    { "r8", SH4_REG_R8 },
-    { "r9", SH4_REG_R9 },
-    { "r10", SH4_REG_R10 },
-    { "r11", SH4_REG_R11 },
-    { "r12", SH4_REG_R12 },
-    { "r13", SH4_REG_R13 },
-    { "r14", SH4_REG_R14 },
-    { "r15", SH4_REG_R15 },
-
-    { "r0b", SH4_REG_R0_BANK },
-    { "r1b", SH4_REG_R1_BANK },
-    { "r2b", SH4_REG_R2_BANK },
-    { "r3b", SH4_REG_R3_BANK },
-    { "r4b", SH4_REG_R4_BANK },
-    { "r5b", SH4_REG_R5_BANK },
-    { "r6b", SH4_REG_R6_BANK },
-    { "r7b", SH4_REG_R7_BANK },
-
-    { "fr0", SH4_REG_FR0 },
-    { "fr1", SH4_REG_FR1 },
-    { "fr2", SH4_REG_FR2 },
-    { "fr3", SH4_REG_FR3 },
-    { "fr4", SH4_REG_FR4 },
-    { "fr5", SH4_REG_FR5 },
-    { "fr6", SH4_REG_FR6 },
-    { "fr7", SH4_REG_FR7 },
-    { "fr8", SH4_REG_FR8 },
-    { "fr9", SH4_REG_FR9 },
-    { "fr10", SH4_REG_FR10 },
-    { "fr11", SH4_REG_FR11 },
-    { "fr12", SH4_REG_FR12 },
-    { "fr13", SH4_REG_FR13 },
-    { "fr14", SH4_REG_FR14 },
-    { "fr15", SH4_REG_FR15 },
-
-    // TODO: double-precision registers, vector registers, XMTRX
-
-    { "xf0", SH4_REG_XF0 },
-    { "xf1", SH4_REG_XF1 },
-    { "xf2", SH4_REG_XF2 },
-    { "xf3", SH4_REG_XF3 },
-    { "xf4", SH4_REG_XF4 },
-    { "xf5", SH4_REG_XF5 },
-    { "xf6", SH4_REG_XF6 },
-    { "xf7", SH4_REG_XF7 },
-    { "xf8", SH4_REG_XF8 },
-    { "xf9", SH4_REG_XF9 },
-    { "xf10", SH4_REG_XF10 },
-    { "xf11", SH4_REG_XF11 },
-    { "xf12", SH4_REG_XF12 },
-    { "xf13", SH4_REG_XF13 },
-    { "xf14", SH4_REG_XF14 },
-    { "xf15", SH4_REG_XF15 },
-
-    { "fpscr", SH4_REG_FPSCR },
-    { "fpul", SH4_REG_FPUL },
-    { "sr", SH4_REG_SR },
-    { "ssr", SH4_REG_SSR },
-    { "spc", SH4_REG_SPC },
-    { "gbr", SH4_REG_GBR },
-    { "vbr", SH4_REG_VBR },
-    { "sgr", SH4_REG_SGR },
-    { "dbr", SH4_REG_DBR },
-    { "mach", SH4_REG_MACH },
-    { "macl", SH4_REG_MACL },
-    { "pr", SH4_REG_PR },
-    { "pc", SH4_REG_PC },
-
-    { NULL }
-};
-
-WASHDC_UNUSED
-static struct name_map const arm7_reg_map[] = {
-    { "r0", ARM7_REG_R0 },
-    { "r1", ARM7_REG_R1 },
-    { "r2", ARM7_REG_R2 },
-    { "r3", ARM7_REG_R3 },
-    { "r4", ARM7_REG_R4 },
-    { "r5", ARM7_REG_R5 },
-    { "r6", ARM7_REG_R6 },
-    { "r7", ARM7_REG_R7 },
-    { "r8", ARM7_REG_R8 },
-    { "r9", ARM7_REG_R9 },
-    { "r10", ARM7_REG_R10 },
-    { "r11", ARM7_REG_R11 },
-    { "r12", ARM7_REG_R12 },
-    { "r13", ARM7_REG_R13 },
-    { "r14", ARM7_REG_R14 },
-    { "r15", ARM7_REG_R15 },
-
-    { "sb", ARM7_REG_R9 },
-    { "sl", ARM7_REG_R10 },
-    { "fp", ARM7_REG_R11 },
-    { "ip", ARM7_REG_R12 },
-    { "sp", ARM7_REG_R13 },
-    { "lr", ARM7_REG_R14 },
-    { "pc", ARM7_REG_PC },
-
-    { "r8_fiq", ARM7_REG_R8_FIQ },
-    { "r9_fiq", ARM7_REG_R9_FIQ },
-    { "r10_fiq", ARM7_REG_R10_FIQ },
-    { "r11_fiq", ARM7_REG_R11_FIQ },
-    { "r12_fiq", ARM7_REG_R12_FIQ },
-    { "r13_fiq", ARM7_REG_R13_FIQ },
-    { "r14_fiq", ARM7_REG_R14_FIQ },
-    { "r13_svc", ARM7_REG_R13_SVC },
-    { "r14_svc", ARM7_REG_R14_SVC },
-    { "r13_abt", ARM7_REG_R13_ABT },
-    { "r14_abt", ARM7_REG_R14_ABT },
-    { "r13_irq", ARM7_REG_R13_IRQ },
-    { "r14_irq", ARM7_REG_R14_IRQ },
-    { "r13_und", ARM7_REG_R13_UND },
-    { "r14_und", ARM7_REG_R14_UND },
-
-    { "cpsr", ARM7_REG_CPSR },
-
-    { "spsr_fiq", ARM7_REG_SPSR_FIQ },
-    { "spsr_svc", ARM7_REG_SPSR_SVC },
-    { "spsr_abt", ARM7_REG_SPSR_ABT },
-    { "spsr_irq", ARM7_REG_SPSR_IRQ },
-    { "spsr_und", ARM7_REG_SPSR_UND },
-
-    { NULL }
-};
 
 static int reg_idx_sh4(char const *reg_name) {
     struct name_map const *cursor = sh4_reg_map;
