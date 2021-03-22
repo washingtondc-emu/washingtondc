@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -129,7 +129,8 @@ struct debugger {
 
 static struct debugger dbg;
 
-static struct debug_context *get_ctx(void);
+static struct debug_context *get_ctx(enum dbg_context_id ctx);
+static struct debug_context *get_cur_ctx(void);
 
 
 // uncomment this line to make the debugger print what it's doing
@@ -184,13 +185,13 @@ void debug_cleanup(void) {
 
 static inline bool debug_is_at_watch(void) {
 #ifdef ENABLE_WATCHPOINTS
-    if (get_ctx()->cur_state == DEBUG_STATE_PRE_WATCH) {
+    if (get_cur_ctx()->cur_state == DEBUG_STATE_PRE_WATCH) {
         DBG_TRACE("NOW ENTERING WATCHPOINT BREAK AT PC=0x%08x\n",
                   (unsigned)dreamcast_get_cpu()->reg[SH4_REG_PC]);
-        if (get_ctx()->is_read_watchpoint)
-            frontend_on_read_watchpoint(get_ctx()->watchpoint_addr);
+        if (get_cur_ctx()->is_read_watchpoint)
+            frontend_on_read_watchpoint(get_cur_ctx()->watchpoint_addr);
         else
-            frontend_on_write_watchpoint(get_ctx()->watchpoint_addr);
+            frontend_on_write_watchpoint(get_cur_ctx()->watchpoint_addr);
         dbg_state_transition(DEBUG_STATE_WATCH);
         dc_state_transition(DC_STATE_DEBUG, DC_STATE_RUNNING);
         return true;
@@ -387,7 +388,7 @@ int debug_remove_w_watch(enum dbg_context_id id, addr32_t addr, unsigned len) {
 }
 
 bool debug_is_w_watch(addr32_t addr, unsigned len) {
-    struct debug_context *ctx = get_ctx();
+    struct debug_context *ctx = get_cur_ctx();
 
     if (ctx->cur_state != DEBUG_STATE_NORM)
         return false;
@@ -419,7 +420,7 @@ bool debug_is_w_watch(addr32_t addr, unsigned len) {
 }
 
 bool debug_is_r_watch(addr32_t addr, unsigned len) {
-    struct debug_context *ctx = get_ctx();
+    struct debug_context *ctx = get_cur_ctx();
 
     if (ctx->cur_state != DEBUG_STATE_NORM)
 	return false;
@@ -563,7 +564,7 @@ void debug_request_continue(void) {
 }
 
 void debug_request_single_step(void) {
-    washdc_atomic_flag_clear(&get_ctx()->not_single_step);
+    washdc_atomic_flag_clear(&get_cur_ctx()->not_single_step);
 }
 
 void debug_request_break() {
@@ -598,7 +599,7 @@ dbg_state_names[DEBUG_STATE_COUNT] = {
 #endif
 
 static void dbg_state_transition(enum debug_state new_state) {
-    struct debug_context *ctx = get_ctx();
+    struct debug_context *ctx = get_cur_ctx();
     DBG_TRACE("state transition from %s to %s\n",
               dbg_state_names[ctx->cur_state], dbg_state_names[new_state]);
     ctx->cur_state = new_state;
@@ -622,7 +623,7 @@ void debug_signal(void) {
 void debug_run_once(void) {
     frontend_run_once();
 
-    struct debug_context *ctx = get_ctx();
+    struct debug_context *ctx = get_cur_ctx();
 
     if ((ctx->cur_state != DEBUG_STATE_BREAK) &&
         (ctx->cur_state != DEBUG_STATE_WATCH)) {
@@ -674,13 +675,13 @@ void debug_get_all_regs(enum dbg_context_id id,
     case DEBUG_CONTEXT_SH4:
         if (n_bytes != SH4_REGISTER_COUNT * sizeof(reg32_t))
             RAISE_ERROR(ERROR_INTEGRITY);
-        sh4_get_regs(get_ctx()->cpu, reg.sh4_reg_file);
+        sh4_get_regs(get_ctx(DEBUG_CONTEXT_SH4)->cpu, reg.sh4_reg_file);
         memcpy(reg_file_out, reg.sh4_reg_file, n_bytes);
         break;
     case DEBUG_CONTEXT_ARM7:
         if (n_bytes != ARM7_REGISTER_COUNT * sizeof(reg32_t))
             RAISE_ERROR(ERROR_INTEGRITY);
-        arm7_get_regs(get_ctx()->cpu, reg.arm7_reg_file);
+        arm7_get_regs(get_ctx(DEBUG_CONTEXT_ARM7)->cpu, reg.arm7_reg_file);
         memcpy(reg_file_out, reg.arm7_reg_file, n_bytes);
         break;
     default:
@@ -941,8 +942,12 @@ static char const *cur_ctx_str(void) {
     }
 }
 
-static struct debug_context *get_ctx(void) {
-    return dbg.contexts + dbg.cur_ctx;
+static struct debug_context *get_ctx(enum dbg_context_id ctx) {
+    return dbg.contexts + ctx;
+}
+
+static struct debug_context *get_cur_ctx(void) {
+    return get_ctx(dbg.cur_ctx);
 }
 
 uint32_t debug_pc_next(enum dbg_context_id id) {
