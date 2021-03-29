@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -230,6 +230,24 @@ void overlay::draw(void) {
                     irqstr = "GD-DMA";
                 else if (ImGui::MenuItem("SORT DMA"))
                     irqstr = "SORT DMA";
+                else if (ImGui::MenuItem("AICA SAMPLE INTERVAL"))
+                    irqstr = "AICA SAMPLE INTERVAL";
+                else if (ImGui::MenuItem("AICA MIDI OUT"))
+                    irqstr = "AICA MIDI OUT";
+                else if (ImGui::MenuItem("AICA TIMER C"))
+                    irqstr = "AICA TIMER C";
+                else if (ImGui::MenuItem("AICA TIMER B"))
+                    irqstr = "AICA TIMER B";
+                else if (ImGui::MenuItem("AICA TIMER A"))
+                    irqstr = "AICA TIMER A";
+                else if (ImGui::MenuItem("SH4 => AICA"))
+                    irqstr = "SH4 => AICA";
+                else if (ImGui::MenuItem("AICA DMA"))
+                    irqstr = "AICA DMA";
+                else if (ImGui::MenuItem("AICA MIDI IN"))
+                    irqstr = "AICA MIDI IN";
+                else if (ImGui::MenuItem("AICA EXTERNAL"))
+                    irqstr = "AICA EXTERNAL";
 
                 if (irqstr)
                     washdc_gameconsole_inject_irq(console, irqstr);

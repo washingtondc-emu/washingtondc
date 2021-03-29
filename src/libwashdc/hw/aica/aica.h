@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017-2019, 2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -237,5 +237,45 @@ void aica_get_sndchan_var(struct aica const *aica,
  * mute a channel.
  */
 void aica_mute_chan(struct aica *aica, unsigned chan_no, bool is_muted);
+
+#define AICA_INT_EXTERNAL_SHIFT 0
+#define AICA_INT_EXTERNAL_MASK (1 << AICA_INT_EXTERNAL_SHIFT)
+
+#define AICA_INT_MIDI_IN_SHIFT 3
+#define AICA_INT_MIDI_IN_MASK (1 << AICA_INT_MIDI_IN_SHIFT)
+
+#define AICA_INT_DMA_SHIFT 4
+#define AICA_INT_DMA_MASK (1 << AICA_INT_DMA_SHIFT)
+
+#define AICA_INT_CPU_SHIFT 5
+#define AICA_INT_CPU_MASK (1 << AICA_INT_CPU_SHIFT)
+
+#define AICA_INT_TIMA_SHIFT 6
+#define AICA_INT_TIMA_MASK (1 << AICA_INT_TIMA_SHIFT)
+
+#define AICA_INT_TIMB_SHIFT 7
+#define AICA_INT_TIMB_MASK (1 << AICA_INT_TIMB_SHIFT)
+
+#define AICA_INT_TIMC_SHIFT 8
+#define AICA_INT_TIMC_MASK (1 << AICA_INT_TIMC_SHIFT)
+
+#define AICA_INT_MIDI_OUT_SHIFT 9
+#define AICA_INT_MIDI_OUT_MASK (1 << AICA_INT_MIDI_OUT_SHIFT)
+
+#define AICA_INT_SAMPLE_INTERVAL_SHIFT 10
+#define AICA_INT_SAMPLE_INTERVAL_MASK (1 << AICA_INT_SAMPLE_INTERVAL_SHIFT)
+
+// Mask of all the interrupt bits that we care about
+#define AICA_ALL_INT_MASK (AICA_INT_SAMPLE_INTERVAL_MASK |      \
+                           AICA_INT_MIDI_OUT_MASK |             \
+                           AICA_INT_TIMC_MASK |                 \
+                           AICA_INT_TIMB_MASK |                 \
+                           AICA_INT_TIMA_MASK |                 \
+                           AICA_INT_CPU_MASK |                  \
+                           AICA_INT_DMA_MASK |                  \
+                           AICA_INT_MIDI_IN_MASK |              \
+                           AICA_INT_EXTERNAL_MASK)
+
+void aica_inject_irq(struct aica *aica, unsigned irq);
 
 #endif

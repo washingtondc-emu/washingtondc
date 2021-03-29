@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -245,8 +245,6 @@ static inline void washdc_sleep_ms(unsigned n_ms) {
 }
 
 static void dc_inject_irq(char const *id) {
-    // TODO: add support for more than just Hollywood IRQs
-
     LOG_INFO("injecting IRQ %s\n", id);
 
     if (strcmp(id, "HBLANK") == 0)
@@ -283,6 +281,24 @@ static void dc_inject_irq(char const *id) {
         holly_raise_nrm_int(HOLLY_REG_ISTNRM_GDROM_DMA_COMPLETE);
     else if (strcmp(id, "SORT DMA") == 0)
         holly_raise_nrm_int(HOLLY_REG_ISTNRM_SORT_DMA_COMPLETE);
+    else if (strcmp(id, "AICA SAMPLE INTERVAL") == 0)
+        aica_inject_irq(&aica, AICA_INT_SAMPLE_INTERVAL_MASK);
+    else if (strcmp(id, "AICA MIDI OUT") == 0)
+        aica_inject_irq(&aica, AICA_INT_MIDI_OUT_MASK);
+    else if (strcmp(id, "AICA TIMER C") == 0)
+        aica_inject_irq(&aica, AICA_INT_TIMC_MASK);
+    else if (strcmp(id, "AICA TIMER B") == 0)
+        aica_inject_irq(&aica, AICA_INT_TIMB_MASK);
+    else if (strcmp(id, "AICA TIMER A") == 0)
+        aica_inject_irq(&aica, AICA_INT_TIMA_MASK);
+    else if (strcmp(id, "SH4 => AICA") == 0)
+        aica_inject_irq(&aica, AICA_INT_CPU_MASK);
+    else if (strcmp(id, "AICA DMA") == 0)
+        aica_inject_irq(&aica, AICA_INT_DMA_MASK);
+    else if (strcmp(id, "AICA MIDI IN") == 0)
+        aica_inject_irq(&aica, AICA_INT_MIDI_IN_MASK);
+    else if (strcmp(id, "AICA EXTERNAL") == 0)
+        aica_inject_irq(&aica, AICA_INT_EXTERNAL_MASK);
     else
         LOG_ERROR("FAILURE TO INJECT IRQ \"%s\"\n", id);
 }

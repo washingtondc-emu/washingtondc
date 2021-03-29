@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -128,44 +128,6 @@ typedef uint32_t aica_atten;
 #define AICA_INTCLEAR 0x2d04
 
 #define AICA_CHANINFOREQ 0x280c
-
-#define AICA_INT_EXTERNAL_SHIFT 0
-#define AICA_INT_EXTERNAL_MASK (1 << AICA_INT_EXTERNAL_SHIFT)
-
-#define AICA_INT_MIDI_IN_SHIFT 3
-#define AICA_INT_MIDI_IN_MASK (1 << AICA_INT_MIDI_IN_SHIFT)
-
-#define AICA_INT_DMA_SHIFT 4
-#define AICA_INT_DMA_MASK (1 << AICA_INT_DMA_SHIFT)
-
-#define AICA_INT_CPU_SHIFT 5
-#define AICA_INT_CPU_MASK (1 << AICA_INT_CPU_SHIFT)
-
-#define AICA_INT_TIMA_SHIFT 6
-#define AICA_INT_TIMA_MASK (1 << AICA_INT_TIMA_SHIFT)
-
-#define AICA_INT_TIMB_SHIFT 7
-#define AICA_INT_TIMB_MASK (1 << AICA_INT_TIMB_SHIFT)
-
-#define AICA_INT_TIMC_SHIFT 8
-#define AICA_INT_TIMC_MASK (1 << AICA_INT_TIMC_SHIFT)
-
-#define AICA_INT_MIDI_OUT_SHIFT 9
-#define AICA_INT_MIDI_OUT_MASK (1 << AICA_INT_MIDI_OUT_SHIFT)
-
-#define AICA_INT_SAMPLE_INTERVAL_SHIFT 10
-#define AICA_INT_SAMPLE_INTERVAL_MASK (1 << AICA_INT_SAMPLE_INTERVAL_SHIFT)
-
-// Mask of all the interrupt bits that we care about
-#define AICA_ALL_INT_MASK (AICA_INT_SAMPLE_INTERVAL_MASK |      \
-                           AICA_INT_MIDI_OUT_MASK |             \
-                           AICA_INT_TIMC_MASK |                 \
-                           AICA_INT_TIMB_MASK |                 \
-                           AICA_INT_TIMA_MASK |                 \
-                           AICA_INT_CPU_MASK |                  \
-                           AICA_INT_DMA_MASK |                  \
-                           AICA_INT_MIDI_IN_MASK |              \
-                           AICA_INT_EXTERNAL_MASK)
 
 /*
  * 0 is probably the correct value for this since this interrupt is actually
@@ -1163,12 +1125,28 @@ static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 }
 
 static void aica_update_interrupts(struct aica *aica) {
-    /*
-     * this is really just a placeholder in case I ever want to put some logging
-     * in or something, this function doesn't actually need to be here.
-     */
+    // TODO: how do priorities work out when there are multiple IRQs?
+
     LOG_DBG("FIQ: aica->int_enable is now 0x%08x\n",
             (unsigned)aica->int_enable);
+    /*
+     * it is not a mistake that timer B and timer C both share pin 7 scilv.
+     * the corlett doc says that bit 7 of scilv referes to bits 7, 8, 9 and 10
+     * of SCIPD all at the same time.
+     */
+    if ((aica->int_pending & AICA_INT_TIMA_MASK) &&
+        (aica->int_enable & AICA_INT_TIMA_MASK)) {
+        aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 6);
+        arm7_set_fiq(aica->arm7);
+    } else if ((aica->int_pending & AICA_INT_TIMB_MASK) &&
+               (aica->int_enable & AICA_INT_TIMB_MASK)) {
+        aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
+        arm7_set_fiq(aica->arm7);
+    } else if ((aica->int_pending & AICA_INT_TIMC_MASK) &&
+               (aica->int_enable & AICA_INT_TIMC_MASK)) {
+        aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
+        arm7_set_fiq(aica->arm7);
+    }
 }
 
 static void aica_unsched_all_timers(struct aica *aica) {
@@ -1263,6 +1241,11 @@ aica_timer_c_handler(struct SchedEvent *evt) {
     aica_timer_handler(aica, 2);
 }
 
+void aica_inject_irq(struct aica *aica, unsigned irq) {
+    aica->int_pending |= irq;
+    aica_update_interrupts(aica);
+}
+
 static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
     struct aica_timer *timer = aica->timers + tim_idx;
 
@@ -1274,32 +1257,18 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
-    /*
-     * it is not a mistake that timer B and timer C both share pin 7 scilv.
-     * the corlett doc says that bit 7 of scilv referes to bits 7, 8, 9 and 10
-     * of SCIPD all at the same time.
-     */
     switch (tim_idx) {
     case 0:
         aica->int_pending |= AICA_INT_TIMA_MASK;
-        if (aica->int_enable & AICA_INT_TIMA_MASK) {
-            aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 6);
-            arm7_set_fiq(aica->arm7);
-        }
+        aica_update_interrupts(aica);
         break;
     case 1:
         aica->int_pending |= AICA_INT_TIMB_MASK;
-        if (aica->int_enable & AICA_INT_TIMB_MASK) {
-            aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
-            arm7_set_fiq(aica->arm7);
-        }
+        aica_update_interrupts(aica);
         break;
     case 2:
         aica->int_pending |= AICA_INT_TIMC_MASK;
-        if (aica->int_enable & AICA_INT_TIMC_MASK) {
-            aica->sys_reg[AICA_INTREQ/4] = aica_read_sci(aica, 7);
-            arm7_set_fiq(aica->arm7);
-        }
+        aica_update_interrupts(aica);
         break;
     }
 
