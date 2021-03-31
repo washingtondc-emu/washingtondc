@@ -36,6 +36,7 @@
 #include "washdc/washdc.h"
 #include "washdbg_tcp.hpp"
 #include "compiler_bullshit.h"
+#include "paths.hpp"
 
 #include "washdbg_core.hpp"
 
@@ -1246,7 +1247,13 @@ static void washdbg_dump(int argc, char **argv) {
         return;
     }
 
-    washdc_dump_main_memory(argv[1]);
+    path_string dir(argv[1]);
+    path_string main_mem(path_append(dir, "main_memory.bin"));
+    path_string aica_mem(path_append(dir, "aica_memory.bin"));
+
+    create_directory(dir);
+    washdc_dump_main_memory(main_mem.c_str());
+    washdc_dump_aica_memory(aica_mem.c_str());
 
     snprintf(dump_state.msg, sizeof(dump_state.msg),
              "memory dumped\n");

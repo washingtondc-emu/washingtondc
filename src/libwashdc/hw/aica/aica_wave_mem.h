@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -85,6 +85,8 @@ static inline uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
 
     return ret;
 }
+
+void dump_aica_wave_memory(struct aica_wave_mem const *wm, char const *path);
 
 void aica_log_verbose(bool verbose);
 

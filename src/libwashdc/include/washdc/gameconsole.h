@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019, 2020 snickerbockers
+ *    Copyright (C) 2019-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -154,7 +154,7 @@ void washdc_gameconsole_inject_irq(struct washdc_gameconsole const *cons,
                                    char const *irq_id);
 
 void washdc_dump_main_memory(char const *path);
-
+void washdc_dump_aica_memory(char const *path);
 
 #ifdef __cplusplus
 }

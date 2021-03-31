@@ -199,6 +199,10 @@ void washdc_dump_main_memory(char const *path) {
     }
 }
 
+void washdc_dump_aica_memory(char const *path) {
+    aica_dump_memory(&aica, path);
+}
+
 static uint32_t on_pdtra_read(struct Sh4*);
 static void on_pdtra_write(struct Sh4*, uint32_t);
 

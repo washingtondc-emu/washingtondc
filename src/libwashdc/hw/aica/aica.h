@@ -278,4 +278,8 @@ void aica_mute_chan(struct aica *aica, unsigned chan_no, bool is_muted);
 
 void aica_inject_irq(struct aica *aica, unsigned irq);
 
+static inline void aica_dump_memory(struct aica const *aica, char const *path) {
+    dump_aica_wave_memory(&aica->mem, path);
+}
+
 #endif
