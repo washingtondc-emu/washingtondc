@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -178,5 +178,7 @@ void dc_keyboard_release_special(unsigned port_no,
 
 double dc_get_fps(void);
 double dc_get_virt_fps(void);
+
+void dc_inject_irq(char const *id);
 
 #endif

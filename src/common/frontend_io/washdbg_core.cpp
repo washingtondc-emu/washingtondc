@@ -270,6 +270,7 @@ enum washdbg_state {
     WASHDBG_STATE_CMD_AT_MODE,
     WASHDBG_STATE_CMD_DUMP,
     WASHDBG_STATE_CMD_REGS,
+    WASHDBG_STATE_INJECT_IRQ_USAGE_STRING,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -384,6 +385,7 @@ void washdbg_do_help(int argc, char **argv) {
         "echo         - echo back text\n"
         "exit         - exit the debugger and close WashingtonDC\n"
         "help         - display this message\n"
+        "inject_irq   - artificially inject an IRQ\n"
 #ifdef ENABLE_DBG_COND
         "memwatch     - watch a specific memory address for a specific value\n"
 #endif
@@ -1382,6 +1384,90 @@ static void washdbg_regs(int argc, char **argv) {
     cur_state = WASHDBG_STATE_CMD_REGS;
 }
 
+/*
+ * maps washdbg IRQ strings to the ones accepted by
+ * washdc_gameconsole_inject_irq
+ */
+static struct washdbg_irqstr_translation {
+    char const *washdbg_str; // this is case-insensitive
+    char const *emu_str;     // this is case-sensitive
+} const irqstr_translations[] = {
+    { "HBLANK", "HBLANK" },
+    { "VBLANK-IN", "VBLANK-IN" },
+    { "VBLANK-OUT", "VBLANK-OUT" },
+    { "POLYGON-EOL-OPAQUE", "POLYGON EOL OPAQUE" },
+    { "POLYGON-EOL-OPAQUE-MOD", "POLYGON EOL OPAQUE MOD" },
+    { "POLYGON-EOL-TRANSPARENT", "POLYGON EOL TRANSPARENT" },
+    { "POLYGON-EOL-TRANSPARENT-MOD", "POLYGON EOL TRANSPARENT MOD" },
+    { "POLYGON-EOL-PUNCH-THROUGH", "POLYGON EOL PUNCH-THROUGH" },
+    { "POWERVR2-RENDER-COMPLETE", "POWERVR2 RENDER COMPLETE" },
+    { "POWERVR2-YUV-CONVERSION-COMPLETE", "POWERVR2 YUV CONVERSION COMPLETE" },
+    { "POWERVR2-DMA", "POWERVR2 DMA" },
+    { "MAPLE-DMA", "MAPLE DMA" },
+    { "AICA-DMA", "AICA DMA" },
+    { "ARM7-TO-SH4", "AICA (ARM7 TO SH4)" },
+    { "GD-ROM", "GD-ROM" },
+    { "GD-DMA", "GD-DMA" },
+    { "SORT-DMA", "SORT DMA" },
+    { "AICA-SAMPLE-INTERVAL", "AICA SAMPLE INTERVAL" },
+    { "AICA-MIDI-OUT", "AICA MIDI OUT" },
+    { "AICA-TIMER-C", "AICA TIMER C" },
+    { "AICA-TIMER-B", "AICA TIMER B" },
+    { "AICA-TIMER-A", "AICA TIMER A" },
+    { "SH4-TO-ARM7", "SH4 => AICA" },
+    { "AICA-DMA", "AICA DMA" },
+    { "AICA-MIDI-IN", "AICA MIDI IN" },
+    { "AICA-EXTERNAL", "AICA EXTERNAL" },
+    { nullptr, nullptr }
+};
+
+#define WASHDBG_IRQSTR_MAX_LEN 64
+
+static struct inject_irq_state {
+    char msg[WASHDBG_IRQSTR_MAX_LEN];
+
+    // state used for printing a list of the allowed irqs in the usage string
+    struct washdbg_irqstr_translation const *next_irqstr;
+    struct washdbg_txt_state txt;
+} inject_irq_state;
+
+static bool washdbg_is_inject_irq_cmd(char const *str) {
+    return strcmp(str, "inject_irq") == 0;
+}
+
+static char const *washdbg_translate_irqstr(char const *input) {
+    struct washdbg_irqstr_translation const *cursor = irqstr_translations;
+    while (cursor->washdbg_str) {
+        if (strlen(input) == strlen(cursor->washdbg_str)) {
+            char const *cmp1 = input;
+            char const *cmp2 = cursor->washdbg_str;
+            while (*cmp1 && *cmp2) {
+                if (toupper(*cmp1) != toupper(*cmp2))
+                    break;
+                cmp1++;
+                cmp2++;
+            }
+            if (!*cmp1 && !*cmp2)
+                return cursor->emu_str;
+        }
+        cursor++;
+    }
+    return nullptr;
+}
+
+static void washdbg_inject_irq(int argc, char **argv) {
+    char const *irqstr;
+    if (argc != 2 || !(irqstr = washdbg_translate_irqstr(argv[1]))) {
+        inject_irq_state.txt.pos = 0;
+        inject_irq_state.txt.txt = "usage: inject_irq <irq>\nallowed irqs:\n";
+        inject_irq_state.next_irqstr = irqstr_translations;
+        cur_state = WASHDBG_STATE_INJECT_IRQ_USAGE_STRING;
+        return;
+    }
+    debug_inject_irq(irqstr);
+    washdbg_print_prompt();
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1465,6 +1551,19 @@ void washdbg_core_run_once(void) {
                 washdbg_print_prompt();
         }
         break;
+    case WASHDBG_STATE_INJECT_IRQ_USAGE_STRING:
+        if (washdbg_print_buffer(&inject_irq_state.txt) == 0) {
+            if (inject_irq_state.next_irqstr->washdbg_str) {
+                inject_irq_state.txt.txt = inject_irq_state.msg;
+                snprintf(inject_irq_state.msg, sizeof(inject_irq_state.msg),
+                         "\t%s\n", inject_irq_state.next_irqstr->washdbg_str);
+                inject_irq_state.msg[sizeof(inject_irq_state.msg) - 1] = '\0';
+                inject_irq_state.txt.pos = 0;
+                inject_irq_state.next_irqstr++;
+            } else {
+                washdbg_print_prompt();
+            }
+        }
     default:
         break;
     }
@@ -1587,6 +1686,8 @@ static void washdbg_process_input(void) {
                 washdbg_crash(argc, argv);
             } else if (washdbg_is_regs_cmd(cmd)) {
                 washdbg_regs(argc, argv);
+            } else if (washdbg_is_inject_irq_cmd(cmd)) {
+                washdbg_inject_irq(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }

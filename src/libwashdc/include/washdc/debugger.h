@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2021 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -318,6 +318,8 @@ int debug_trans_utlb(enum dbg_context_id id, uint32_t *addr_p);
 
 int debug_set_at_mode(enum dbg_context_id id, bool en);
 #endif
+
+void debug_inject_irq(char const *irqstr);
 
 #ifdef __cplusplus
 }

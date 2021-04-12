@@ -961,6 +961,10 @@ uint32_t debug_pc_next(enum dbg_context_id id) {
     }
 }
 
+void debug_inject_irq(char const *irqstr) {
+    dc_inject_irq(irqstr);
+}
+
 #ifdef ENABLE_DBG_COND
 
 static struct dbg_condition conditions[N_DEBUG_CONDITIONS];

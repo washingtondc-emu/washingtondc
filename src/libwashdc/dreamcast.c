@@ -189,7 +189,7 @@ static void dreamcast_enable_serial_server(void);
 
 static void suspend_loop(void);
 
-static void dc_inject_irq(char const *id);
+void dc_inject_irq(char const *id);
 
 void washdc_dump_main_memory(char const *path) {
     FILE *outfile = fopen(path, "wb");
@@ -248,7 +248,7 @@ static inline void washdc_sleep_ms(unsigned n_ms) {
 #endif
 }
 
-static void dc_inject_irq(char const *id) {
+void dc_inject_irq(char const *id) {
     LOG_INFO("injecting IRQ %s\n", id);
 
     if (strcmp(id, "HBLANK") == 0)
