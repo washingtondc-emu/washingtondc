@@ -149,6 +149,9 @@ if (ENABLE_DEBUGGER OR JIT_PROFILE)
     add_subdirectory("${PROJECT_SOURCE_DIR}/external/capstone" EXCLUDE_FROM_ALL)
 endif()
 
+# CHD support
+add_subdirectory(external/libchdr EXCLUDE_FROM_ALL)
+
 add_subdirectory(src)
 
 configure_file("${CMAKE_SOURCE_DIR}/COPYING" "COPYING" COPYONLY)
@@ -159,6 +162,10 @@ configure_file("${CMAKE_SOURCE_DIR}/external/libevent/LICENSE" "LICENSE_libevent
 configure_file("${CMAKE_SOURCE_DIR}/external/glew/LICENSE.txt" "LICENSE_glew.txt" COPYONLY)
 configure_file("${CMAKE_SOURCE_DIR}/external/imgui/LICENSE.txt" "LICENSE_imgui.txt" COPYONLY)
 configure_file("${CMAKE_SOURCE_DIR}/external/portaudio/LICENSE.txt" "LICENSE_portaudio.txt" COPYONLY)
+configure_file("${CMAKE_SOURCE_DIR}/external/libchdr/LICENSE.txt" "LICENSE_libchdr.txt" COPYONLY)
+configure_file("${CMAKE_SOURCE_DIR}/external/libchdr/deps/lzma-19.00/LICENSE" "LICENSE_lzma.txt" COPYONLY)
+configure_file("${CMAKE_SOURCE_DIR}/external/external_licenses/zlib" "LICENSE_zlib.txt" COPYONLY)
+configure_file("${CMAKE_SOURCE_DIR}/external/external_licenses/libchdr_aaron_giles" "LICENSE_aaron_giles.txt" COPYONLY)
 
 set(licenses "${CMAKE_CURRENT_BINARY_DIR}/COPYING"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_glfw.txt"
@@ -167,7 +174,11 @@ set(licenses "${CMAKE_CURRENT_BINARY_DIR}/COPYING"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_libevent.txt"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_glew.txt"
              "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_imgui.txt"
-             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_portaudio.txt")
+             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_portaudio.txt"
+             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_libchdr.txt"
+             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_lzma.txt"
+             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_zlib.txt"
+             "${CMAKE_CURRENT_BINARY_DIR}/LICENSE_aaron_giles.txt")
 
 install(FILES ${licenses} DESTINATION ${LICENSE_DIR})
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md  COPYING DESTINATION ${README_DIR})

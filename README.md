@@ -151,10 +151,22 @@ submodule.  The license for this software can be found at
 external/imgui/LICENSE.txt in the source, or at LICENSE_imgui.txt in packaged
 builds.
 
-WashingtonDC uses the portaudio.  This software is included via a git
+WashingtonDC uses the portaudio library.  This software is included via a git
 submodule.  The license for this software can be found at
 external/portaudio/LICENSE.txt in the source, or at LICENSE_portaudio.txt in
 packaged builds.
+
+WashingtonDC uses the libchdr library; this software is included via a git submodule.
+The license for this software can be found at external/libchdr/LICENSE.txt.  Libchdr
+is based upon source code from the MAME project; this license can be found in the
+libchdr source in a comment line at the top of most source files, or alternatively
+in external/external_licenses/libchdr_aaron_giles.
+
+WashingtonDC uses the zlib library, which is included in the libchdr sources.
+The license for this library can be found at external/libchdr/deps/zlib-1.2.11/README.
+
+WashingtonDC uses the LZMA SDK, which is included in the libchdr sources.
+The license for this library can be found at external/libchdr/deps/lzma-19.00/LICENSE.
 
 Some code from FFmpeg was used to implement Yamaha's ADPCM format.  This code is
 part of the FFmpeg library and is licensed under version 2.1 or greater of the

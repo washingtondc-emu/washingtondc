@@ -233,6 +233,8 @@ if (need_capstone STREQUAL "TRUE")
     set(washingtondc_libs "${washingtondc_libs}" capstone-static)
 endif()
 
+set(washingtondc_libs "${washingtondc_libs}" chdr-static)
+
 target_include_directories(washingtondc PRIVATE "${WASHDC_SOURCE_DIR}/include"
                                                 "${CMAKE_SOURCE_DIR}/src/common"
                                                 "${CMAKE_SOURCE_DIR}/src/libwashdc/include"

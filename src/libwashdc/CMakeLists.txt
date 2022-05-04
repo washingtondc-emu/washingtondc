@@ -293,4 +293,4 @@ endif()
 
 add_library(washdc ${libwashdc_sources})
 
-target_include_directories(washdc PRIVATE "${include_dirs}" "${WASHDC_SOURCE_DIR}/" "${WASHDC_SOURCE_DIR}/hw/sh4" "${WASHDC_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/common")
+target_include_directories(washdc PRIVATE "${include_dirs}" "${WASHDC_SOURCE_DIR}/" "${WASHDC_SOURCE_DIR}/hw/sh4" "${WASHDC_SOURCE_DIR}/include" "${CMAKE_SOURCE_DIR}/src/common" "${CMAKE_SOURCE_DIR}/external/libchdr/include")
