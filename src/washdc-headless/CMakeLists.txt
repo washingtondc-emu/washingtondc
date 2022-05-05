@@ -1,7 +1,7 @@
 ################################################################################
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2019, 2020  snickerbockers
+#    Copyright (C) 2019, 2020, 2022 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -75,10 +75,7 @@ if (JIT_PROFILE)
     set(need_capstone "TRUE")
 endif()
 
-# TODO: I don't want to link against libpng and zlib for the headless client,
-# but I have to because the code that saves screenshots is part of the core
-# library.
-set(washdc_headless_libs washdc png zlib)
+set(washdc_headless_libs washdc)
 
 if (ENABLE_DEBUGGER)
     if (NOT USE_LIBEVENT)

@@ -119,15 +119,9 @@ terms of this license can be found in COPYING.
 WashingtonDC also makes use of several third-party libraries available under
 various different licenses.
 
-A copy of libpng version 1.6.34 is included in this source distribution with
-some unnecessary components removed.  The license for this software can be
-found at external/libpng/LICENSE in the source, or at LICENSE_libpng.txt in
-packaged builds.
-
-A copy of zlib is included in this source distribution with some unnecessary
-components removed and some minor modifications made to facilitate building on
-certain platforms.  The license for this software can be found at
-external/zlib/README in the source, or at LICENSE_zlib.txt in packaged builds.
+WashingtonDC makes use of nothings' stb_image_write, which is included in
+src/libwashdc/stb_image_write.h .  The license can be found at the bottom of
+that file.
 
 WashingtonDC also makes use of the glfw library.  This is not included in this
 source distribution, and is instead distributed using a git submodule.  The

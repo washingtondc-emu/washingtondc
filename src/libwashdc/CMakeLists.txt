@@ -1,7 +1,7 @@
 ################################################################################
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2016-2020  snickerbockers
+#    Copyright (C) 2016-2020, 2022 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -234,6 +234,7 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/hostfile.h"
                       "${WASHDC_SOURCE_DIR}/screenshot.h"
                       "${WASHDC_SOURCE_DIR}/screenshot.c"
+                      "${WASHDC_SOURCE_DIR}/stb_image_write.h"
                       "${WASHDC_SOURCE_DIR}/washdc.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/washdc.h"
                       "${WASHDC_SOURCE_DIR}/include/washdc/gameconsole.h"

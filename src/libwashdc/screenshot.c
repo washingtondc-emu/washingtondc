@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019, 2020 snickerbockers
+ *    Copyright (C) 2019, 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#include <png.h>
 #include <time.h>
 #include <string.h>
 #include <stdint.h>
@@ -31,12 +30,12 @@
 #include "washdc/gfx/gfx_il.h"
 #include "log.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 static int do_save_screenshot(washdc_hostfile stream, char const *path);
 static int grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
                        unsigned *fb_height_out, bool *do_flip_out);
-
-static void write_wrapper_png(png_structp png, png_bytep dat, png_size_t len);
-static void flush_wrapper_png(png_structp png);
 
 int save_screenshot(char const *path) {
     washdc_hostfile stream =
@@ -85,6 +84,11 @@ int save_screenshot_dir(void) {
     return ret;
 }
 
+static void write_png_callback(void *ctxt, void *data, int size) {
+    washdc_hostfile fp = (washdc_hostfile)ctxt;
+    washdc_hostfile_write(fp, data, size);
+}
+
 static int do_save_screenshot(washdc_hostfile stream, char const *path) {
     int err_val = 0;
     uint32_t *fb_tmp = NULL;
@@ -103,37 +107,16 @@ static int do_save_screenshot(washdc_hostfile stream, char const *path) {
         goto free_screengrab;
     }
 
-    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
-                                                  NULL, NULL, NULL);
-    if (!png_ptr) {
-        err_val = -1;
-        goto close_file;
-    }
-
-    png_infop info_ptr = png_create_info_struct(png_ptr);
-
-    if (!info_ptr) {
+    unsigned char *img_data = malloc(fb_width * fb_height * 3);
+    if (!img_data) {
         err_val = -1;
         goto cleanup_png;
     }
-
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        err_val = -1;
-        goto cleanup_png;
-    }
-
-    png_set_write_fn(png_ptr, stream, write_wrapper_png, flush_wrapper_png);
-
-    png_bytepp row_pointers = (png_bytepp)calloc(fb_height, sizeof(png_bytep));
-    if (!row_pointers)
-        goto cleanup_png;
 
     unsigned row, col;
     for (row = 0; row < fb_height; row++) {
-        png_bytep cur_row = row_pointers[row] =
-            (png_bytep)malloc(sizeof(png_byte) * fb_width * 3);
-
         for (col = 0; col < fb_width; col++) {
+            unsigned char *outp = img_data + (row * fb_width + col) * 3;
             unsigned pix_idx;
             if (!do_flip)
                 pix_idx = (fb_height - 1 - row) * fb_width + col;
@@ -143,25 +126,17 @@ static int do_save_screenshot(washdc_hostfile stream, char const *path) {
             unsigned red = in_px & 0xff;
             unsigned green = (in_px >> 8) & 0xff;
             unsigned blue = (in_px >> 16) & 0xff;
-            cur_row[col * 3] = (png_byte)red;
-            cur_row[col * 3 + 1] = (png_byte)green;
-            cur_row[col * 3 + 2] = (png_byte)blue;
+            outp[0] = (unsigned char)red;
+            outp[1] = (unsigned char)green;
+            outp[2] = (unsigned char)blue;
         }
     }
 
-    png_set_IHDR(png_ptr, info_ptr, fb_width, fb_height, 8,
-                 PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
-                 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    err_val = stbi_write_png_to_func(write_png_callback, stream, fb_width,
+                                     fb_height, 3, img_data, 3 * fb_width);
 
-    png_write_info(png_ptr, info_ptr);
-    png_write_image(png_ptr, row_pointers);
-    png_write_end(png_ptr, info_ptr);
-
-    for (row = 0; row < fb_height; row++)
-        free(row_pointers[row]);
-    free(row_pointers);
+    free(img_data);
  cleanup_png:
-    png_destroy_write_struct(&png_ptr, &info_ptr);
  close_file:
  free_screengrab:
     free(fb_tmp);
@@ -190,14 +165,4 @@ static int grab_screen(uint32_t **fb_out, unsigned *fb_width_out,
     }
 
     return -1;
-}
-
-static void write_wrapper_png(png_structp png, png_bytep dat, png_size_t len) {
-    washdc_hostfile fp = (washdc_hostfile)png_get_io_ptr(png);
-    washdc_hostfile_write(fp, dat, len);
-}
-
-static void flush_wrapper_png(png_structp png) {
-    washdc_hostfile fp = (washdc_hostfile)png_get_io_ptr(png);
-    washdc_hostfile_flush(fp);
 }

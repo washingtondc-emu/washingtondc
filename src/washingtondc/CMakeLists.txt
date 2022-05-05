@@ -1,7 +1,7 @@
 ################################################################################
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2019, 2020 snickerbockers
+#    Copyright (C) 2019, 2020, 2022 snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -208,9 +208,7 @@ if (NOT WIN32)
 endif()
 
 set(washingtondc_libs "washdc"
-                      "png"
                       "${vid_libs}"
-                      "zlib"
                       "portaudio_static"
                       "${CMAKE_DL_LIBS}")
 
