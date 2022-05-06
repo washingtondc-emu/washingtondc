@@ -129,6 +129,8 @@ if (USE_LIBEVENT)
     endif()
 endif()
 
+set(washdc_headless_libs "${washdc_headless_libs}" chdr-static)
+
 add_executable(washdc-headless "${washdc_headless_sources}")
 
 target_include_directories(washdc-headless PRIVATE

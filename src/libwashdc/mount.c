@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,8 @@
 #include <string.h>
 
 #include "washdc/error.h"
+#include "washdc/log.h"
+#include "log.h"
 #include "cdrom.h"
 
 #include "mount.h"
@@ -30,7 +32,11 @@
 static bool mounted;
 static struct mount img;
 
+#define MOUNT_TRACE(msg, ...) LOG_DBG("MOUNT: " msg, ##__VA_ARGS__)
+
 void mount_insert(struct mount_ops const *ops, void *ptr) {
+    MOUNT_TRACE("%s - inserting media\n", __func__);
+
     if (img.state)
         mount_eject();
 
@@ -40,6 +46,8 @@ void mount_insert(struct mount_ops const *ops, void *ptr) {
 }
 
 void mount_eject(void) {
+    MOUNT_TRACE("%s - ejecting media\n", __func__);
+
     if (img.ops->cleanup)
         img.ops->cleanup(&img);
 
@@ -48,6 +56,10 @@ void mount_eject(void) {
 }
 
 bool mount_check(void) {
+    if (mounted)
+        MOUNT_TRACE("%s - media mounted\n", __func__);
+    else
+        MOUNT_TRACE("%s - no media mounted\n", __func__);
     return mounted;
 }
 
@@ -62,9 +74,30 @@ unsigned mount_session_count(void) {
     RAISE_ERROR(ERROR_INTEGRITY);
 }
 
+static inline char const *mount_disc_type_str(enum mount_disc_type tp) {
+    switch (tp) {
+    case DISC_TYPE_CDDA:
+        return "CDDA";
+    case DISC_TYPE_CDROM:
+        return "CD-ROM";
+    case DISC_TYPE_CDROM_XA:
+        return "XA";
+    case DISC_TYPE_CDI:
+        return "CD-i";
+    case DISC_TYPE_GDROM:
+        return "GD-ROM";
+    default:
+        return "UNKNOWN/ERROR";
+    }
+}
+
 enum mount_disc_type mount_get_disc_type(void) {
-    if (mounted)
-        return img.ops->get_disc_type(&img);
+    if (mounted) {
+        enum mount_disc_type tp = img.ops->get_disc_type(&img);
+        MOUNT_TRACE("%s - disc type is %s\n",
+                    __func__, mount_disc_type_str(tp));
+        return tp;
+    }
 
     error_set_wtf("calling mount_session_count when there's nothing mounted");
     RAISE_ERROR(ERROR_INTEGRITY);
@@ -75,7 +108,29 @@ int mount_read_toc(struct mount_toc* out, unsigned region) {
         if ((region == MOUNT_HD_REGION && !mount_has_hd_region()) ||
             !img.ops->read_toc)
             return -1;
-        return img.ops->read_toc(&img, out, region);
+        int err = img.ops->read_toc(&img, out, region);
+        if (err == 0) {
+            MOUNT_TRACE("%s TOC DUMP:\n", __func__);
+            MOUNT_TRACE("\tfirst_track: %u\n", out->first_track);
+            MOUNT_TRACE("\tlast_track: %u\n", out->last_track);
+            MOUNT_TRACE("\tleadout_adr: %u\n", out->leadout_adr);
+            unsigned row;
+            for (row = 0; row < 10; row++) {
+                unsigned col;
+                for (col = 0; col < 10; col++) {
+                    unsigned trackno = row * 10 + col + 1;
+                    if (trackno >= 100)
+                        break; // TODO: fix this shitty-ass math before merging to master
+                    struct mount_track const *trackp = out->tracks + (trackno - 1);
+                    MOUNT_TRACE("\ttrack %u: %s\n", trackno,
+                              trackp->valid ? "valid" : "invalid");
+                    MOUNT_TRACE("\t\tctrl: %u\n", trackp->ctrl);
+                    MOUNT_TRACE("\t\tadr: %u\n", trackp->adr);
+                    MOUNT_TRACE("\t\tfad: %u\n", trackp->fad);
+                }
+            }
+        }
+        return err;
     } else {
         error_set_wtf("calling mount_read_toc when there's nothing mounted");
         RAISE_ERROR(ERROR_INTEGRITY);
@@ -84,6 +139,9 @@ int mount_read_toc(struct mount_toc* out, unsigned region) {
 
 int mount_read_sectors(void *buf_out, unsigned fad_start,
                        unsigned sector_count) {
+    MOUNT_TRACE("request to read %u sectors starting from %u\n",
+                sector_count, fad_start);
+
     if (!mount_check() || !img.ops->read_sector)
         return -1;
 
@@ -151,21 +209,41 @@ void const* mount_encode_toc(struct mount_toc const *toc) {
 }
 
 int mount_get_meta(struct mount_meta *meta) {
-    if (!mount_check() || !img.ops->get_meta)
+    if (!mount_check())
         return -1;
 
-    return img.ops->get_meta(&img, meta);
+    if (!img.ops->get_meta) {
+        LOG_ERROR("%s - unable to obtain metadata because the get_meta function is "
+                  "not implemented for the given media.\n", __func__);
+        return -1;
+    }
+
+    int err = img.ops->get_meta(&img, meta);
+    if (err != 0) {
+        LOG_ERROR("%s - failed because get_meta implementation returned %d\n",
+                  __func__, err);
+    }
+    return err;
 }
 
 unsigned mount_get_leadout(void) {
-    return img.ops->get_leadout(&img);
+    unsigned leadout = img.ops->get_leadout(&img);
+    MOUNT_TRACE("%s - leadout %u\n", __func__, leadout);
+    return leadout;
 }
 
 bool mount_has_hd_region(void) {
-    return img.ops->has_hd_region(&img);
+    bool has_hd = img.ops->has_hd_region(&img);
+    if (has_hd)
+        MOUNT_TRACE("%s - true\n", __func__);
+    else
+        MOUNT_TRACE("%s - false\n", __func__);
+    return has_hd;
 }
 
 void mount_get_session_start(unsigned session_no, unsigned* first_track,
                              unsigned* first_fad) {
-    return img.ops->get_session_start(&img, session_no, first_track, first_fad);
+    img.ops->get_session_start(&img, session_no, first_track, first_fad);
+    MOUNT_TRACE("%s - first_track=%u, first_fad=%u\n",
+                __func__, *first_track, *first_fad);
 }

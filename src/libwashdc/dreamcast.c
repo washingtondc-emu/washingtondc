@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -79,6 +79,7 @@
 #include "mount.h"
 #include "gdi.h"
 #include "cdi.h"
+#include "chd.h"
 #include "washdc/win.h"
 #include "washdc/sound_intf.h"
 #include "sound.h"
@@ -519,6 +520,8 @@ dreamcast_init(char const *gdi_path,
             mount_cdi(gdi_path);
         else if (ext && streq_case_insensitive(ext, ".gdi"))
             mount_gdi(gdi_path);
+        else if (ext && streq_case_insensitive(ext, ".chd"))
+            mount_chd(gdi_path);
         else {
             LOG_ERROR("Unknown file type (need either GDI or CDI)!\n");
             exit(1);
