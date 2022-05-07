@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,6 +33,34 @@
 #include "log.h"
 
 #include "gdi.h"
+
+#define GDI_DATA_TRACK 3
+
+#define GDI_SECONDARY_DATA_TRACK 5
+
+struct gdi_track {
+    unsigned fad_start;    // block address offset
+    unsigned ctrl;         // ???
+    unsigned sector_size;  // sector size, typically (but not always) 2352
+
+    /*
+     * store both the relative and absolute paths.
+     * relative is used for UI/error-reporting
+     * absolute is how we actually access the file.
+     */
+    struct string rel_path, abs_path;
+
+    unsigned offset;
+
+    /* this is used in the loaded code, it should always be true */
+    bool valid;
+};
+
+struct gdi_info {
+    unsigned n_tracks;
+
+    struct gdi_track *tracks;
+};
 
 struct gdi_mount {
     struct gdi_info meta;
