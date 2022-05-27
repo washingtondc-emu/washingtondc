@@ -1,0 +1,11 @@
+This directory is used for storing some of the licenses that belong
+to external dependencies of WashingtonDC.
+
+When possible, WashingtonDC's root CMakeLists.txt will copy a license
+file directly from a dependency.  There are, however, a couple dependencies
+whose licenses are not contained in a single dedicated file and are instead
+part of another file which primarily serves a different purpose; eg some
+libraries will only include the license in their README file or only include
+it in comment lines in code.  In this case, we store those licenses in the
+external_licenses directories so that CMakeLists.txt can copy them to
+the output directory when installing or packaging.
