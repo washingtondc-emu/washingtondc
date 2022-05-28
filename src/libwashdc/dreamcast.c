@@ -193,9 +193,19 @@ static void suspend_loop(void);
 static void dc_inject_irq(char const *id);
 
 void washdc_dump_main_memory(char const *path) {
+    // TODO: use washdc_hostfile instead of FILE
     FILE *outfile = fopen(path, "wb");
     if (outfile) {
         fwrite(dc_mem.mem, sizeof(dc_mem.mem), 1, outfile);
+        fclose(outfile);
+    }
+}
+
+void washdc_dump_aica_memory(char const *path) {
+    // TODO: use washdc_hostfile instead of FILE
+    FILE *outfile = fopen(path, "wb");
+    if (outfile) {
+        fwrite(aica.mem.mem, sizeof(aica.mem.mem), 1, outfile);
         fclose(outfile);
     }
 }

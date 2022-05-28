@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -1101,15 +1101,27 @@ static bool washdbg_is_dump_cmd(char const *str) {
 }
 
 static void washdbg_dump(int argc, char **argv) {
-    if (argc != 2) {
-        washdbg_print_error("usage: dump path\n");
+    if (argc != 3) {
+        washdbg_print_error("usage: dump <type> path\n");
+        washdbg_print_error("type should be either aica or main\n");
         return;
     }
 
-    washdc_dump_main_memory(argv[1]);
+    char const *tp = argv[1];
+    if (strcmp(tp, "main") == 0) {
+        washdc_dump_main_memory(argv[2]);
+        snprintf(dump_state.msg, sizeof(dump_state.msg),
+                 "main memory dumped\n");
+    } else if (strcmp(tp, "aica") == 0) {
+        washdc_dump_aica_memory(argv[2]);
+        snprintf(dump_state.msg, sizeof(dump_state.msg),
+                 "aica memory dumped\n");
+        return;
+    } else {
+        washdbg_print_error("invalid memory type");
+        return;
+    }
 
-    snprintf(dump_state.msg, sizeof(dump_state.msg),
-             "memory dumped\n");
     dump_state.txt.txt = dump_state.msg;
     dump_state.txt.pos = 0;
     cur_state = WASHDBG_STATE_CMD_DUMP;
