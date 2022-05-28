@@ -254,6 +254,7 @@ pvr2_reg_do_write(struct pvr2 *pvr2, unsigned addr, uint32_t val) {
             pvr2_tex_cache_notify_palette_write(pvr2,
                                                 idx * 4 + ADDR_PVR2_FIRST, 4);
         } else {
+            error_set_value(val);
             error_set_index(idx);
             error_set_address(addr);
             error_set_feature("writing to an unknown PVR2 register");
