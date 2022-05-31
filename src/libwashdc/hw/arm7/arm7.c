@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -321,7 +321,7 @@ void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map) {
 
 void arm7_reset(struct arm7 *arm7, bool val) {
     // TODO: set the ARM7 to supervisor (svc) mode and enter a reset exception.
-    printf("%s(%s)\n", __func__, val ? "true" : "false");
+    LOG_INFO("%s(%s)\n", __func__, val ? "true" : "false");
 
     if (!arm7->enabled && val) {
         // enable the CPU
