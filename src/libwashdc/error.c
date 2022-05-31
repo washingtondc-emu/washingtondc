@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -148,6 +148,8 @@ static char const *error_type_string(enum error_type tp) {
         return "out of buffer space";
     case ERROR_EXT_FAILURE:
         return "a failure occurred in a component WashingtonDC depends upon";
+    case ERROR_DEBUG:
+        return "artificually induced crash for debugging purposes";
     default:
         return "Unknown error (this shouldn\'t happen)";
     }

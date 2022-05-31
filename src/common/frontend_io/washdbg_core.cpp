@@ -240,6 +240,7 @@ void washdbg_do_help(int argc, char **argv) {
         "bplist       - list all breakpoints\n"
         "bpset <addr> - set a breakpoint\n"
         "continue     - continue execution when suspended.\n"
+        "crash        - crash the emulator.\n"
         "dump         - dump memory to disk\n"
         "echo         - echo back text\n"
         "exit         - exit the debugger and close WashingtonDC\n"
@@ -1127,6 +1128,14 @@ static void washdbg_dump(int argc, char **argv) {
     cur_state = WASHDBG_STATE_CMD_DUMP;
 }
 
+static bool washdbg_is_crash_cmd(char const *str) {
+    return strcmp(str, "crash") == 0;
+}
+
+static void washdbg_crash(int argc, char **argv) {
+    RAISE_ERROR(ERROR_DEBUG);
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1321,6 +1330,8 @@ static void washdbg_process_input(void) {
                 washdbg_at_mode(argc, argv);
             } else if (washdbg_is_dump_cmd(cmd)) {
                 washdbg_dump(argc, argv);
+            } else if (washdbg_is_crash_cmd(cmd)) {
+                washdbg_crash(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }

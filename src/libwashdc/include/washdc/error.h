@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -75,6 +75,9 @@ enum error_type {
 
     /* something beyond my control (library, system call, etc) failed. */
     ERROR_EXT_FAILURE,
+
+    /* intentional crash for debugging purposes */
+    ERROR_DEBUG,
 
     ERROR_INVALID_FILE_LEN
 };
