@@ -99,6 +99,10 @@ static int parse_int_str(char const *valstr, uint32_t *out);
 static char const *washdbg_disas_single_sh4(uint32_t addr, uint16_t val);
 static char const *washdbg_disas_single_arm7(uint32_t addr, uint32_t val);
 
+// may return NULL if there is no name
+static char const *washdbg_sh4_reg_name(int reg_idx);
+static char const *washdbg_arm7_reg_name(int reg_idx);
+
 enum washdbg_byte_count {
     WASHDBG_1_BYTE = 1,
     WASHDBG_2_BYTE = 2,
@@ -131,6 +135,7 @@ enum washdbg_state {
     WASHDBG_STAT_CMD_AT_MODE,
     WASHDBG_STATE_CMD_AT_MODE,
     WASHDBG_STATE_CMD_DUMP,
+    WASHDBG_STATE_CMD_REGS,
 
     // permanently stop accepting commands because we're about to disconnect.
     WASHDBG_STATE_CMD_EXIT
@@ -249,6 +254,7 @@ void washdbg_do_help(int argc, char **argv) {
         "memwatch     - watch a specific memory address for a specific value\n"
 #endif
         "print        - print a value\n"
+        "regs         - print all registers\n"
 #ifdef ENABLE_DBG_COND
         "regwatch     - watch for a register to be set to a given value\n"
 #endif
@@ -1136,6 +1142,117 @@ static void washdbg_crash(int argc, char **argv) {
     RAISE_ERROR(ERROR_DEBUG);
 }
 
+#define WASHDBG_REGS_STATE_STR_LEN 128
+
+static struct regs_state {
+    uint32_t sh4_regs[SH4_REGISTER_COUNT];
+    uint32_t arm7_regs[ARM7_REGISTER_COUNT];
+
+    bool show_sh4_regs, show_arm7_regs;
+
+    char cur_str[WASHDBG_REGS_STATE_STR_LEN];
+    enum dbg_context_id cur_ctx;
+    int cur_reg;
+
+    struct washdbg_txt_state txt;
+} regs_state;
+
+static bool washdbg_is_regs_cmd(char const *str) {
+    return strcmp(str, "regs") == 0;
+}
+
+static int washdbg_regs_fill_str_sh4(void) {
+    if (regs_state.cur_ctx != DEBUG_CONTEXT_SH4)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    while (regs_state.cur_reg < SH4_REGISTER_COUNT) {
+        char const *name = washdbg_sh4_reg_name(regs_state.cur_reg);
+        if (name) {
+            snprintf(regs_state.cur_str, sizeof(regs_state.cur_str),
+                     "sh4:$%s\t%08x\n", name,
+                     (unsigned)regs_state.sh4_regs[regs_state.cur_reg]);
+            regs_state.txt.pos = 0;
+            regs_state.txt.txt = regs_state.cur_str;
+            return 0;
+        }
+        regs_state.cur_reg++;
+    }
+    return -1;
+}
+
+static int washdbg_regs_fill_str_arm7(void) {
+    if (regs_state.cur_ctx != DEBUG_CONTEXT_ARM7)
+        RAISE_ERROR(ERROR_INTEGRITY);
+
+    while (regs_state.cur_reg < ARM7_REGISTER_COUNT) {
+        char const *name = washdbg_arm7_reg_name(regs_state.cur_reg);
+        if (name) {
+            snprintf(regs_state.cur_str, sizeof(regs_state.cur_str),
+                     "arm7:$%s\t%08x\n", name,
+                     (unsigned)regs_state.arm7_regs[regs_state.cur_reg]);
+            regs_state.txt.pos = 0;
+            regs_state.txt.txt = regs_state.cur_str;
+            return 0;
+        }
+        regs_state.cur_reg++;
+    }
+    return -1;
+}
+
+static int washdbg_regs_fill_str(void) {
+    if (regs_state.cur_ctx == DEBUG_CONTEXT_SH4) {
+        int ret = washdbg_regs_fill_str_sh4();
+        if (ret == 0 || !regs_state.show_arm7_regs) {
+            return ret;
+        } else {
+            regs_state.cur_reg = 0;
+            regs_state.cur_ctx = DEBUG_CONTEXT_ARM7;
+            return washdbg_regs_fill_str_arm7();
+        }
+    } else if (regs_state.cur_ctx == DEBUG_CONTEXT_ARM7) {
+        return washdbg_regs_fill_str_arm7();
+    } else {
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+}
+
+static void washdbg_regs(int argc, char **argv) {
+    switch (argc) {
+    case 1:
+        regs_state.show_sh4_regs = true;
+        regs_state.show_arm7_regs = true;
+        break;
+    case 2:
+        if (strcmp(argv[1], "sh4") == 0) {
+            regs_state.show_sh4_regs = true;
+            regs_state.show_arm7_regs = false;
+            break;
+        } else if (strcmp(argv[1], "arm7") == 0) {
+            regs_state.show_sh4_regs = false;
+            regs_state.show_arm7_regs = true;
+            break;
+        }
+        // intentional fall-through
+    default:
+        washdbg_print_error("usage: regs [context]\n");
+        return;
+    }
+
+    debug_get_all_regs(DEBUG_CONTEXT_SH4, regs_state.sh4_regs,
+                       sizeof(regs_state.sh4_regs));
+    debug_get_all_regs(DEBUG_CONTEXT_ARM7, regs_state.arm7_regs,
+                       sizeof(regs_state.arm7_regs));
+
+    regs_state.cur_ctx = regs_state.show_sh4_regs ?
+        DEBUG_CONTEXT_SH4 : DEBUG_CONTEXT_ARM7;
+    regs_state.cur_reg = 0;
+
+    if (washdbg_regs_fill_str() != 0)
+        RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
+
+    cur_state = WASHDBG_STATE_CMD_REGS;
+}
+
 void washdbg_core_run_once(void) {
     switch (cur_state) {
     case WASHDBG_STATE_BANNER:
@@ -1211,6 +1328,13 @@ void washdbg_core_run_once(void) {
     case WASHDBG_STATE_CMD_DUMP:
         if (washdbg_print_buffer(&dump_state.txt) == 0)
             washdbg_print_prompt();
+        break;
+    case WASHDBG_STATE_CMD_REGS:
+        if (washdbg_print_buffer(&regs_state.txt) == 0) {
+            regs_state.cur_reg++;
+            if (washdbg_regs_fill_str() != 0)
+                washdbg_print_prompt();
+        }
         break;
     default:
         break;
@@ -1332,6 +1456,8 @@ static void washdbg_process_input(void) {
                 washdbg_dump(argc, argv);
             } else if (washdbg_is_crash_cmd(cmd)) {
                 washdbg_crash(argc, argv);
+            } else if (washdbg_is_regs_cmd(cmd)) {
+                washdbg_regs(argc, argv);
             } else {
                 washdbg_bad_input(cmd);
             }
@@ -1630,6 +1756,28 @@ static struct name_map const arm7_reg_map[] = {
 
     { NULL }
 };
+
+// may return NULL if there is no name
+static char const *washdbg_arm7_reg_name(int reg_idx) {
+    struct name_map const *curs = arm7_reg_map;
+    while (curs->str) {
+        if (curs->idx == reg_idx)
+            return curs->str;
+        curs++;
+    }
+    return NULL;
+}
+
+// may return NULL if there is no name
+static char const *washdbg_sh4_reg_name(int reg_idx) {
+    struct name_map const *curs = sh4_reg_map;
+    while (curs->str) {
+        if (curs->idx == reg_idx)
+            return curs->str;
+        curs++;
+    }
+    return NULL;
+}
 
 static int reg_idx_sh4(char const *reg_name) {
     struct name_map const *cursor = sh4_reg_map;
