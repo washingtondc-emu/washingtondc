@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -674,13 +674,13 @@ void debug_get_all_regs(enum dbg_context_id id,
     case DEBUG_CONTEXT_SH4:
         if (n_bytes != SH4_REGISTER_COUNT * sizeof(reg32_t))
             RAISE_ERROR(ERROR_INTEGRITY);
-        sh4_get_regs(get_ctx()->cpu, reg.sh4_reg_file);
+        sh4_get_regs(dbg.contexts[DEBUG_CONTEXT_SH4].cpu, reg.sh4_reg_file);
         memcpy(reg_file_out, reg.sh4_reg_file, n_bytes);
         break;
     case DEBUG_CONTEXT_ARM7:
         if (n_bytes != ARM7_REGISTER_COUNT * sizeof(reg32_t))
             RAISE_ERROR(ERROR_INTEGRITY);
-        arm7_get_regs(get_ctx()->cpu, reg.arm7_reg_file);
+        arm7_get_regs(dbg.contexts[DEBUG_CONTEXT_ARM7].cpu, reg.arm7_reg_file);
         memcpy(reg_file_out, reg.arm7_reg_file, n_bytes);
         break;
     default:
