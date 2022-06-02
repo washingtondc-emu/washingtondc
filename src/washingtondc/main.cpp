@@ -100,7 +100,8 @@ static void print_usage(char const *cmd) {
             "\t-v\t\tenable verbose logging\n"
             "\t-x\t\tenable native x86_64 dynamic recompiler backend "
             "(default)\n"
-            "\t-r opengl|soft\tselect renderer (default is opengl))\n");
+            "\t-r opengl|soft\tselect renderer (default is opengl))\n"
+            "\t-w\t\tcreate a new console (you must also supply -b, -f, and -c)\n");
 }
 
 struct washdc_gameconsole const *console;
@@ -254,7 +255,7 @@ int main(int argc, char **argv) {
     create_screenshot_dir();
     create_vmu_dir();
 
-    while ((opt = washdc_getopt(argc, argv, "w:b:f:c:s:m:d:u:g:r:htjxpnlv")) != -1) {
+    while ((opt = washdc_getopt(argc, argv, "wb:f:c:s:m:d:u:g:r:htjxpnlv")) != -1) {
         switch (opt) {
         case 'g':
             enable_debugger = true;
