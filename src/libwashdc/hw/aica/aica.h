@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -210,6 +210,11 @@ struct aica {
 
     // timerA, timerB, timerC
     struct aica_timer timers[3];
+
+    // event that goes off every time a sample is processed (if enabled)
+    dc_cycle_stamp_t last_sample;
+    bool per_sample_scheduled;
+    struct SchedEvent per_sample;
 
     struct dc_clock *clk;
     struct dc_clock *sh4_clk;

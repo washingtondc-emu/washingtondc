@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -242,6 +242,9 @@ aica_timer_c_handler(struct SchedEvent *evt);
 
 static void aica_timer_handler(struct aica *aica, unsigned tim_idx);
 
+static void aica_sched_per_sample(struct aica *aica);
+static void aica_per_sample_handler(struct SchedEvent *evt);
+
 static unsigned aica_read_sci(struct aica *aica, unsigned bit);
 
 static char const *fmt_name(enum aica_fmt fmt);
@@ -288,6 +291,9 @@ void aica_init(struct aica *aica, struct arm7 *arm7,
     aica->aica_sh4_raise_event.handler = post_delay_raise_aica_sh4_int;
     aica->aica_sh4_raise_event.arg_ptr = aica;
 
+    aica->per_sample.handler = aica_per_sample_handler;
+    aica->per_sample.arg_ptr = aica;
+
     // HACK
     aica->int_enable = AICA_INT_TIMA_MASK;
 
@@ -306,6 +312,7 @@ void aica_init(struct aica *aica, struct arm7 *arm7,
     aica->timers[2].evt.arg_ptr = aica;
 
     aica_sched_all_timers(aica);
+    aica_sched_per_sample(aica);
 
     aica_wave_mem_init(&aica->mem);
 }
@@ -1304,6 +1311,34 @@ static void aica_timer_handler(struct aica *aica, unsigned tim_idx) {
     }
 
     aica_sched_timer(aica, tim_idx);
+}
+
+static void aica_sched_per_sample(struct aica *aica) {
+    if (aica->per_sample_scheduled)
+        return;
+
+    struct dc_clock *clk = aica->clk;
+    aica->per_sample.when = (aica->last_sample + 1) * TICKS_PER_SAMPLE;
+
+    sched_event(clk, &aica->per_sample);
+    aica->per_sample_scheduled = true;
+}
+
+static void aica_per_sample_handler(struct SchedEvent *evt) {
+    struct aica *aica = (struct aica*)evt->arg_ptr;
+
+    aica->last_sample++;
+    aica->per_sample_scheduled = false;
+    LOG_DBG("%s invoked for sample number %llu\n",
+            __func__, (unsigned long long)aica->last_sample);
+
+    aica_sched_per_sample(aica);
+
+    aica->int_pending |= AICA_INT_SAMPLE_INTERVAL_MASK;
+    if (aica->int_enable & AICA_INT_SAMPLE_INTERVAL_MASK) {
+        // TODO: INTREQ???
+        arm7_set_fiq(aica->arm7);
+    }
 }
 
 static unsigned aica_read_sci(struct aica *aica, unsigned bit) {
