@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -281,7 +281,7 @@ struct gdrom_bufq_node {
     // len is the number of bytes which are valid
     // when idx == len, this buffer is empty and should be removed
     unsigned idx, len;
-    uint8_t dat[GDROM_BUFQ_LEN];
+    unsigned char dat[GDROM_BUFQ_LEN];
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,7 +531,7 @@ static void bufq_clear(struct gdrom_ctxt *gdrom) {
         struct gdrom_bufq_node *bufq_node =
             &FIFO_DEREF(fifo_pop(&gdrom->bufq), struct gdrom_bufq_node, fifo_node);
 
-        len += bufq_node->len;
+        len += bufq_node->len - bufq_node->idx;
 
         free(bufq_node);
     }
@@ -542,28 +542,77 @@ static void bufq_clear(struct gdrom_ctxt *gdrom) {
     }
 }
 
-static int bufq_consume_byte(struct gdrom_ctxt *gdrom, unsigned *byte) {
+/*
+ * return a pointer to data in the bufq.
+ *
+ * *n_bytes_p is the length of data you need.  This function may return
+ * less data than you wanted, in which case *n_bytes will be modified
+ * to reflect how much data you got.  Data returned by this function
+ * will be removed from the bufq.  A data pointer returned by this function
+ * will no longer be valid after the next invocation of this function.
+ */
+static unsigned char *
+bufq_data_pointer(struct gdrom_ctxt *gdrom, unsigned *n_bytes_p) {
     struct fifo_node *node = fifo_peek(&gdrom->bufq);
-
-    if (node) {
-        struct gdrom_bufq_node *bufq_node =
-            &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
-
-        *byte = (unsigned)bufq_node->dat[bufq_node->idx++];
-
-        if (bufq_node->idx >= bufq_node->len) {
-            fifo_pop(&gdrom->bufq);
-            free(bufq_node);
-        }
-
-        return 0;
+    if (!node) {
+        *n_bytes_p = 0;
+        return NULL;
     }
 
-    return -1;
+    struct gdrom_bufq_node *bufq_node =
+        &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
+
+    if (bufq_node->len < bufq_node->idx)
+        RAISE_ERROR(ERROR_INTEGRITY);
+    unsigned bytes_left = bufq_node->len - bufq_node->idx;
+    if (!bytes_left) {
+        // free this node and retrieve the next one
+        if (fifo_pop(&gdrom->bufq) != node)
+            RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
+        free(bufq_node);
+
+        node = fifo_peek(&gdrom->bufq);
+        if (!node) {
+            *n_bytes_p = 0;
+            return NULL;
+        }
+        bufq_node = &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
+        bytes_left = bufq_node->len - bufq_node->idx;
+        if (!bytes_left)
+            RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
+    }
+
+    if (bytes_left > GDROM_BUFQ_LEN)
+        RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
+
+    unsigned char *ret_ptr = bufq_node->dat + bufq_node->idx;
+    if (bytes_left < *n_bytes_p)
+        *n_bytes_p = bytes_left;
+    bufq_node->idx += *n_bytes_p;
+
+    return ret_ptr;
+}
+
+static int bufq_consume_byte(struct gdrom_ctxt *gdrom, unsigned *byte) {
+    unsigned n_bytes = 1;
+    unsigned char *ch = bufq_data_pointer(gdrom, &n_bytes);
+    if (ch && n_bytes) {
+        *byte = *ch;
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 static bool bufq_empty(struct gdrom_ctxt *gdrom) {
-    return fifo_empty(&gdrom->bufq);
+    struct fifo_node *node;
+    FIFO_FOREACH(gdrom->bufq, node) {
+        struct gdrom_bufq_node *bufq_node =
+            &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
+        if (bufq_node->idx < bufq_node->len)
+            return false;
+    }
+    return true;
 }
 
 static void gdrom_clear_error(struct gdrom_ctxt *gdrom) {
@@ -578,29 +627,15 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
     unsigned bytes_to_transmit = gdrom->dma_len_reg;
     unsigned addr = gdrom->dma_start_addr_reg;
 
-    struct fifo_node *fifo_node = fifo_peek(&gdrom->bufq);
-
     while (bytes_transmitted < bytes_to_transmit) {
-        if (!fifo_node) {
+        unsigned n_bytes = bytes_to_transmit - bytes_transmitted;
+        unsigned char *dat_ptr = bufq_data_pointer(gdrom, &n_bytes);
+
+        if (!dat_ptr || !n_bytes) {
             GDROM_ERROR("%s attempting to transfer more data than there is in"
                         "the bufq available\n", __func__);
             goto done;
         }
-
-        struct gdrom_bufq_node *bufq_node =
-            &FIFO_DEREF(fifo_node, struct gdrom_bufq_node, fifo_node);
-
-#ifdef INVARIANTS
-        if (bufq_node->idx >= bufq_node->len)
-            RAISE_ERROR(ERROR_INTEGRITY);
-#endif
-
-        unsigned chunk_sz = bufq_node->len - bufq_node->idx;
-
-        if ((chunk_sz + bytes_transmitted) > bytes_to_transmit)
-            chunk_sz = bytes_to_transmit - bytes_transmitted;
-
-        bytes_transmitted += chunk_sz;
 
         /*
          * enforce the gdapro register
@@ -617,35 +652,30 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
          */
         if (addr >= 0x0c000000 && addr <= 0x0cffffff &&
             (addr < gdrom_dma_prot_top(gdrom) ||
-             (addr + chunk_sz - 1) > gdrom_dma_prot_bot(gdrom))) {
+             (addr + n_bytes - 1) > gdrom_dma_prot_bot(gdrom))) {
             // don't do this chunk if the end is below gdrom_dma_prot_top
             error_set_address(addr);
-            error_set_length(chunk_sz);
+            error_set_length(n_bytes);
             error_set_gdrom_dma_prot_top(gdrom_dma_prot_top(gdrom));
             error_set_gdrom_dma_prot_bot(gdrom_dma_prot_bot(gdrom));
             error_set_feature("the GD-ROM DMA protection register");
             RAISE_ERROR(ERROR_UNIMPLEMENTED);
         }
 
-        sh4_dmac_transfer_to_mem(dreamcast_get_cpu(), addr, chunk_sz,
-                                 1, bufq_node->dat + bufq_node->idx);
-
-        bufq_node->idx += chunk_sz;
-
-        if (bufq_node->idx < bufq_node->len)
-            continue;
-
-        fifo_pop(&gdrom->bufq);
-        addr += chunk_sz;
-        free(bufq_node);
-        fifo_node = fifo_peek(&gdrom->bufq);
+        sh4_dmac_transfer_to_mem(dreamcast_get_cpu(), addr, n_bytes, 1,
+                                 dat_ptr);
+        addr += n_bytes;
+        bytes_transmitted += n_bytes;
     }
 
 done:
-    if (bytes_transmitted)
+    if (bytes_transmitted) {
         GDROM_TRACE("GD-ROM DMA transfer %u bytes to %08X\n",
                     bytes_transmitted, gdrom->dma_start_addr_reg);
-
+    } else {
+        GDROM_TRACE("GD-ROM DMA failed to transfer %u bytes to %08X\n",
+                    bytes_transmitted, gdrom->dma_start_addr_reg);
+    }
 
     // set GD_LEND, etc here
 
