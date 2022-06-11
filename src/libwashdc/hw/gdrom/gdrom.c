@@ -552,7 +552,7 @@ static void bufq_clear(struct gdrom_ctxt *gdrom) {
  * will no longer be valid after the next invocation of this function.
  */
 static unsigned char *
-bufq_data_pointer(struct gdrom_ctxt *gdrom, unsigned *n_bytes_p) {
+bufq_consume_data(struct gdrom_ctxt *gdrom, unsigned *n_bytes_p) {
     struct fifo_node *node = fifo_peek(&gdrom->bufq);
     if (!node) {
         *n_bytes_p = 0;
@@ -595,7 +595,7 @@ bufq_data_pointer(struct gdrom_ctxt *gdrom, unsigned *n_bytes_p) {
 
 static int bufq_consume_byte(struct gdrom_ctxt *gdrom, unsigned *byte) {
     unsigned n_bytes = 1;
-    unsigned char *ch = bufq_data_pointer(gdrom, &n_bytes);
+    unsigned char *ch = bufq_consume_data(gdrom, &n_bytes);
     if (ch && n_bytes) {
         *byte = *ch;
         return 0;
@@ -629,7 +629,7 @@ static void gdrom_complete_dma(struct gdrom_ctxt *gdrom) {
 
     while (bytes_transmitted < bytes_to_transmit) {
         unsigned n_bytes = bytes_to_transmit - bytes_transmitted;
-        unsigned char *dat_ptr = bufq_data_pointer(gdrom, &n_bytes);
+        unsigned char *dat_ptr = bufq_consume_data(gdrom, &n_bytes);
 
         if (!dat_ptr || !n_bytes) {
             GDROM_ERROR("%s attempting to transfer more data than there is in"
@@ -769,7 +769,7 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
     unsigned fad_offs = 0;
     while (trans_len--) {
         struct gdrom_bufq_node *node =
-            (struct gdrom_bufq_node*)calloc(1, sizeof(struct gdrom_bufq_node));
+            calloc(1, sizeof(struct gdrom_bufq_node));
 
         if (!node)
             RAISE_ERROR(ERROR_FAILED_ALLOC);
@@ -777,7 +777,6 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
         if (mount_read_sectors(node->dat, start_addr + fad_offs++, 1) < 0)
             GDROM_ERROR("GD-ROM failed to read fad %u\n", fad_offs);
 
-        node->idx = 0;
         node->len = CDROM_FRAME_DATA_SIZE;
 
         fifo_push(&gdrom->bufq, &node->fifo_node);
@@ -942,13 +941,11 @@ void gdrom_cmd_identify(struct gdrom_ctxt *gdrom) {
 
     bufq_clear(gdrom);
 
-    struct gdrom_bufq_node *node =
-        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+    struct gdrom_bufq_node *node = calloc(1, sizeof(struct gdrom_bufq_node));
 
     if (!node)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
-    node->idx = 0;
     node->len = GDROM_IDENT_RESP_LEN;
     memcpy(node->dat, gdrom_ident_resp, sizeof(gdrom_ident_resp));
 
@@ -1023,8 +1020,7 @@ static void gdrom_input_req_error_packet(struct gdrom_ctxt *gdrom) {
     unsigned byte_count;
     if (len != 0) {
         struct gdrom_bufq_node *node =
-            (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
-        node->idx = 0;
+            calloc(1, sizeof(struct gdrom_bufq_node));
         node->len = len;
         memcpy(&node->dat, dat_out, len);
         fifo_push(&gdrom->bufq, &node->fifo_node);
@@ -1080,13 +1076,11 @@ static void gdrom_input_req_session_packet(struct gdrom_ctxt *gdrom) {
         fad & 0xff
     };
 
-    struct gdrom_bufq_node *node =
-        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+    struct gdrom_bufq_node *node = calloc(1, sizeof(struct gdrom_bufq_node));
     if (!node)
         RAISE_ERROR(ERROR_FAILED_ALLOC);
 
     memcpy(node->dat, reply, sizeof(reply));
-    node->idx = 0;
     node->len = alloc_len < 6 ? alloc_len : 6;
     fifo_push(&gdrom->bufq, &node->fifo_node);
 
@@ -1138,9 +1132,7 @@ static void gdrom_input_packet_71(struct gdrom_ctxt *gdrom) {
 
     bufq_clear(gdrom);
 
-    struct gdrom_bufq_node *node =
-        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
-    node->idx = 0;
+    struct gdrom_bufq_node *node = calloc(1, sizeof(struct gdrom_bufq_node));
     node->len = GDROM_PKT_71_RESP_LEN;
 
     /*
@@ -1201,9 +1193,8 @@ static void gdrom_input_req_mode_packet(struct gdrom_ctxt *gdrom) {
             last_idx = GDROM_REQ_MODE_RESP_LEN - 1;
 
         struct gdrom_bufq_node *node =
-            (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+            calloc(1, sizeof(struct gdrom_bufq_node));
 
-        node->idx = 0;
         node->len = last_idx - first_idx + 1;
         memcpy(&node->dat, gdrom_req_mode_resp + first_idx,
                node->len * sizeof(uint8_t));
@@ -1233,15 +1224,13 @@ static void gdrom_input_read_toc_packet(struct gdrom_ctxt *gdrom) {
     mount_read_toc(&toc, region);
 
     bufq_clear(gdrom);
-    struct gdrom_bufq_node *node =
-        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+    struct gdrom_bufq_node *node = calloc(1, sizeof(struct gdrom_bufq_node));
 
     uint8_t const *ptr = mount_encode_toc(&toc);
 
     if (len > CDROM_TOC_SIZE)
         len = CDROM_TOC_SIZE;
 
-    node->idx = 0;
     node->len = len;
     memcpy(node->dat, ptr, len);
 
@@ -1259,10 +1248,8 @@ static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom) {
 
 
     bufq_clear(gdrom);
-    struct gdrom_bufq_node *node =
-        (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
+    struct gdrom_bufq_node *node = calloc(1, sizeof(struct gdrom_bufq_node));
 
-    node->idx = 0;
     node->len = len;
 
     // TODO: fill in with real data instead of all zeroes
