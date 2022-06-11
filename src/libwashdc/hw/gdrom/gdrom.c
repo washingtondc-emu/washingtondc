@@ -282,6 +282,14 @@ struct gdrom_bufq_node {
     // when idx == len, this buffer is empty and should be removed
     unsigned idx, len;
     unsigned char dat[GDROM_BUFQ_LEN];
+
+    /*
+     * if read_cmd and idx == len, then dat will be reloaded from next_fad
+     * and next_fad will be incremented.  when next_fad > last_fad, this
+     * bufq_node is used up and should be discarded.
+     */
+    bool read_cmd;
+    unsigned next_fad, last_fad;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -532,6 +540,10 @@ static void bufq_clear(struct gdrom_ctxt *gdrom) {
             &FIFO_DEREF(fifo_pop(&gdrom->bufq), struct gdrom_bufq_node, fifo_node);
 
         len += bufq_node->len - bufq_node->idx;
+        if (bufq_node->read_cmd && bufq_node->next_fad <= bufq_node->last_fad) {
+            len += bufq_node->len * (bufq_node->last_fad -
+                                     bufq_node->next_fad + 1);
+        }
 
         free(bufq_node);
     }
@@ -566,20 +578,28 @@ bufq_consume_data(struct gdrom_ctxt *gdrom, unsigned *n_bytes_p) {
         RAISE_ERROR(ERROR_INTEGRITY);
     unsigned bytes_left = bufq_node->len - bufq_node->idx;
     if (!bytes_left) {
-        // free this node and retrieve the next one
-        if (fifo_pop(&gdrom->bufq) != node)
-            RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
-        free(bufq_node);
+        if (bufq_node->read_cmd && bufq_node->next_fad <= bufq_node->last_fad) {
+            if (mount_read_sectors(bufq_node->dat, bufq_node->next_fad++, 1) < 0) {
+                RAISE_ERROR(ERROR_FILE_IO);
+            }
+            bufq_node->idx = 0;
+            bytes_left = bufq_node->len;
+        } else {
+            // free this node and retrieve the next one
+            if (fifo_pop(&gdrom->bufq) != node)
+                RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
+            free(bufq_node);
 
-        node = fifo_peek(&gdrom->bufq);
-        if (!node) {
-            *n_bytes_p = 0;
-            return NULL;
+            node = fifo_peek(&gdrom->bufq);
+            if (!node) {
+                *n_bytes_p = 0;
+                return NULL;
+            }
+            bufq_node = &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
+            bytes_left = bufq_node->len - bufq_node->idx;
+            if (!bytes_left)
+                RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
         }
-        bufq_node = &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
-        bytes_left = bufq_node->len - bufq_node->idx;
-        if (!bytes_left)
-            RAISE_ERROR(ERROR_INTEGRITY); // should be impossible
     }
 
     if (bytes_left > GDROM_BUFQ_LEN)
@@ -588,6 +608,7 @@ bufq_consume_data(struct gdrom_ctxt *gdrom, unsigned *n_bytes_p) {
     unsigned char *ret_ptr = bufq_node->dat + bufq_node->idx;
     if (bytes_left < *n_bytes_p)
         *n_bytes_p = bytes_left;
+    unsigned old_idx = bufq_node->idx;
     bufq_node->idx += *n_bytes_p;
 
     return ret_ptr;
@@ -609,7 +630,8 @@ static bool bufq_empty(struct gdrom_ctxt *gdrom) {
     FIFO_FOREACH(gdrom->bufq, node) {
         struct gdrom_bufq_node *bufq_node =
             &FIFO_DEREF(node, struct gdrom_bufq_node, fifo_node);
-        if (bufq_node->idx < bufq_node->len)
+        if (bufq_node->idx < bufq_node->len ||
+            (bufq_node->read_cmd && bufq_node->next_fad <= bufq_node->last_fad))
             return false;
     }
     return true;
@@ -766,21 +788,18 @@ static void gdrom_input_read_packet(struct gdrom_ctxt *gdrom) {
     if (!gdrom->feat_reg.dma_enable && gdrom->data_byte_count > UINT16_MAX)
         GDROM_WARN("OVERFLOW: Reading %u bytes from gdrom PIO!\n", gdrom->data_byte_count);
 
-    unsigned fad_offs = 0;
-    while (trans_len--) {
-        struct gdrom_bufq_node *node =
-            calloc(1, sizeof(struct gdrom_bufq_node));
+    // allocate new read command bufq_node
+    struct gdrom_bufq_node *node =
+        calloc(1, sizeof(struct gdrom_bufq_node));
+    node->read_cmd = true;
+    node->next_fad = start_addr;
+    node->last_fad = start_addr + trans_len - 1;
+    node->idx = CDROM_FRAME_DATA_SIZE;
+    node->len = CDROM_FRAME_DATA_SIZE;
+    fifo_push(&gdrom->bufq, &node->fifo_node);
 
-        if (!node)
-            RAISE_ERROR(ERROR_FAILED_ALLOC);
-
-        if (mount_read_sectors(node->dat, start_addr + fad_offs++, 1) < 0)
-            GDROM_ERROR("GD-ROM failed to read fad %u\n", fad_offs);
-
-        node->len = CDROM_FRAME_DATA_SIZE;
-
-        fifo_push(&gdrom->bufq, &node->fifo_node);
-    }
+    GDROM_TRACE("%s pushing new read command from FAD %u to FAD %u\n",
+                __func__, node->next_fad, node->last_fad);
 
     if (gdrom->feat_reg.dma_enable) {
         // wait for them to write 1 to GDST before doing something
