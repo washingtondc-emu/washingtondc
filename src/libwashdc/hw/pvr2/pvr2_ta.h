@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -268,7 +268,7 @@ pvr2_hdr_enable_depth_writes(struct pvr2_pkt_hdr const *hdr) {
 #define DEPTH_FUNC_MASK (7 << DEPTH_FUNC_SHIFT)
 static inline enum Pvr2DepthFunc
 pvr2_hdr_depth_func(struct pvr2_pkt_hdr const *hdr) {
-    return (hdr->param[0] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
+    return (hdr->param[1] & DEPTH_FUNC_MASK) >> DEPTH_FUNC_SHIFT;
 }
 
 static inline uint32_t
