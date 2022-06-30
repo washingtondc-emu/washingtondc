@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -286,6 +286,31 @@ void pvr2_ta_fifo_poly_write_double(addr32_t addr, double val, void *ctxt) {
 }
 
 #ifdef PVR2_LOG_VERBOSE
+
+static char const *
+pvr2_depth_func_name(int func) {
+    switch (func) {
+    case PVR2_DEPTH_NEVER:
+        return "NEVER";
+    case PVR2_DEPTH_LESS:
+        return "LESS";
+    case PVR2_DEPTH_EQUAL:
+        return "EQUAL";
+    case PVR2_DEPTH_LEQUAL:
+        return "LEQUAL";
+    case PVR2_DEPTH_GREATER:
+        return "GREATER";
+    case PVR2_DEPTH_NOTEQUAL:
+        return "NOTEQUAL";
+    case PVR2_DEPTH_GEQUAL:
+        return "GEQUAL";
+    case PVR2_DEPTH_ALWAYS:
+        return "ALWAYS";
+    default:
+        return "ERROR/UNKNOWN";
+    }
+}
+
 static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
 #define HDR_BOOL(hdr, mem) PVR2_TRACE("\t"#mem": %s\n", hdr->mem ? "true" : "false")
 #define HDR_BOOL_FUNC(hdr, mem, func) PVR2_TRACE("\t"#mem": %s\n", func(hdr) ? "true" : "false")
@@ -317,7 +342,7 @@ static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
     HDR_INT_FUNC(hdr, src_blend_factor, pvr2_hdr_src_blend_factor);
     HDR_INT_FUNC(hdr, dst_blend_factor, pvr2_hdr_dst_blend_factor);
     HDR_BOOL_FUNC(hdr, enable_depth_writes, pvr2_hdr_enable_depth_writes);
-    HDR_INT_FUNC(hdr, depth_func, pvr2_hdr_depth_func);
+    PVR2_TRACE("\tdepth_func: %s\n", pvr2_depth_func_name(pvr2_hdr_depth_func(hdr)));
     HDR_BOOL_FUNC(hdr, two_volumes_mode, pvr2_hdr_two_volumes_mode);
     HDR_BOOL_FUNC(hdr, offset_color_enable, pvr2_hdr_offset_color_enable);
     HDR_BOOL_FUNC(hdr, gourad_shading_enable, pvr2_hdr_gourad_shading);
@@ -734,6 +759,26 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
         memcpy(vtx_out + GFX_VERT_BASE_COLOR_OFFSET, vtx->base_color, sizeof(float) * 4);
         memcpy(vtx_out + GFX_VERT_OFFS_COLOR_OFFSET, vtx->offs_color, sizeof(float) * 4);
         memcpy(vtx_out + GFX_VERT_TEX_COORD_OFFSET, vtx->uv, sizeof(float) * 2);
+
+#ifdef PVR2_LOG_VERBOSE
+        LOG_DBG("\tposition: (%f, %f, %f)\n",
+                vtx_out[GFX_VERT_POS_OFFSET],
+                vtx_out[GFX_VERT_POS_OFFSET + 1],
+                vtx_out[GFX_VERT_POS_OFFSET + 2]);
+        LOG_DBG("\tbase color: (%f, %f, %f, %f)\n",
+                vtx_out[GFX_VERT_BASE_COLOR_OFFSET],
+                vtx_out[GFX_VERT_BASE_COLOR_OFFSET + 1],
+                vtx_out[GFX_VERT_BASE_COLOR_OFFSET + 2],
+                vtx_out[GFX_VERT_BASE_COLOR_OFFSET + 3]);
+        LOG_DBG("\toffset color: (%f, %f, %f, %f)\n",
+                vtx_out[GFX_VERT_OFFS_COLOR_OFFSET],
+                vtx_out[GFX_VERT_OFFS_COLOR_OFFSET + 1],
+                vtx_out[GFX_VERT_OFFS_COLOR_OFFSET + 2],
+                vtx_out[GFX_VERT_OFFS_COLOR_OFFSET + 3]);
+        LOG_DBG("\ttex_coord: (%f, %f)\n",
+                vtx_out[GFX_VERT_TEX_COORD_OFFSET],
+                vtx_out[GFX_VERT_TEX_COORD_OFFSET + 1]);
+#endif
 
         if (!ta->fifo_state.open_tri_strip) {
             ta->fifo_state.cur_tri_strip_start = cur_list->n_verts - 1;
