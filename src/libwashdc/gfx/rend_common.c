@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -96,6 +96,11 @@ static void gfx_log_il_cmd(struct gfx_il_inst const *cmd) {
                 arg->begin_rend.screen_height);
         LOG_DBG(GFX_IL_TAG "\trend_tgt_obj %d\n",
                 arg->begin_rend.rend_tgt_obj);
+        LOG_DBG(GFX_IL_TAG "\tclip: (%u, %u) to (%u, %u)\n",
+                arg->begin_rend.clip[0],
+                arg->begin_rend.clip[1],
+                arg->begin_rend.clip[2],
+                arg->begin_rend.clip[3]);
         break;
     case GFX_IL_END_REND:
         LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_END_REND\n");
