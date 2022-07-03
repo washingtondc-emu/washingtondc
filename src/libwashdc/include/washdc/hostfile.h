@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019 snickerbockers
+ *    Copyright (C) 2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -37,7 +37,10 @@ enum washdc_hostfile_mode {
     WASHDC_HOSTFILE_WRITE = 2,
     WASHDC_HOSTFILE_BINARY = 4,
     WASHDC_HOSTFILE_DONT_OVERWRITE = 8,
-    WASHDC_HOSTFILE_TEXT = 0
+    WASHDC_HOSTFILE_TEXT = 0,
+
+    WASHDC_HOSTFILE_RB = WASHDC_HOSTFILE_READ | WASHDC_HOSTFILE_BINARY,
+    WASHDC_HOSTFILE_WB = WASHDC_HOSTFILE_WRITE | WASHDC_HOSTFILE_BINARY
 };
 
 enum washdc_hostfile_seek_origin {

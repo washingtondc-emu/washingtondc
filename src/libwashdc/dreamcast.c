@@ -85,6 +85,7 @@
 #include "sound.h"
 #include "washdc/hostfile.h"
 #include "hw/sys/holly_intc.h"
+#include "load_elf.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
@@ -191,6 +192,9 @@ static void dreamcast_enable_serial_server(void);
 static void suspend_loop(void);
 
 static void dc_inject_irq(char const *id);
+
+// returns true if str1 == str2 (case-insensitive)
+static bool streq_case_insensitive(char const* str1, char const* str2);
 
 void washdc_dump_main_memory(char const *path) {
     // TODO: use washdc_hostfile instead of FILE
@@ -604,16 +608,37 @@ dreamcast_init(char const *gdi_path,
 
         long len_1st_read_bin;
         char const *exec_bin_path = config_get_exec_bin_path();
+        char const *ext = strrchr(exec_bin_path, '.');
         if (exec_bin_path && strlen(exec_bin_path)) {
-            void *dat_1st_read_bin = load_file(exec_bin_path, &len_1st_read_bin);
-            if (!dat_1st_read_bin) {
-                error_set_file_path(exec_bin_path);
-                error_set_errno_val(errno);
-                RAISE_ERROR(ERROR_FILE_IO);
+            if (ext && streq_case_insensitive(ext, ".elf")) {
+                washdc_hostfile file = washdc_hostfile_open(exec_bin_path,
+                                                            WASHDC_HOSTFILE_RB);
+                if (file == WASHDC_HOSTFILE_INVALID) {
+                    error_set_file_path(exec_bin_path);
+                    error_set_errno_val(errno);
+                    RAISE_ERROR(ERROR_FILE_IO);
+                }
+                if (load_elf(file, &dc_mem) != 0) {
+                    LOG_ERROR("unable to open %s - not a valid ELF file.\n",
+                              exec_bin_path);
+                    /*
+                     * TODO: need a graceful exit path for errors that happen
+                     * while loading that aren't indicative of a software bug.
+                     */
+                    exit(1);
+                }
+                washdc_hostfile_close(file);
+            } else {
+                void *dat_1st_read_bin = load_file(exec_bin_path, &len_1st_read_bin);
+                if (!dat_1st_read_bin) {
+                    error_set_file_path(exec_bin_path);
+                    error_set_errno_val(errno);
+                    RAISE_ERROR(ERROR_FILE_IO);
+                }
+                memory_write(&dc_mem, dat_1st_read_bin,
+                             ADDR_1ST_READ_BIN & ADDR_AREA3_MASK, len_1st_read_bin);
+                free(dat_1st_read_bin);
             }
-            memory_write(&dc_mem, dat_1st_read_bin,
-                         ADDR_1ST_READ_BIN & ADDR_AREA3_MASK, len_1st_read_bin);
-            free(dat_1st_read_bin);
         }
 
         char const *syscall_path = config_get_syscall_path();
