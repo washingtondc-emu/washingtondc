@@ -642,30 +642,112 @@ dreamcast_init(char const *gdi_path,
         }
 
         char const *syscall_path = config_get_syscall_path();
-        long syscall_len;
-        void *dat_syscall = load_file(syscall_path, &syscall_len);
+        if (syscall_path && strlen(syscall_path)) {
+            long syscall_len;
+            void *dat_syscall;
+            dat_syscall = load_file(syscall_path, &syscall_len);
 
-        if (!dat_syscall) {
-            error_set_file_path(syscall_path);
-            error_set_errno_val(errno);
-            RAISE_ERROR(ERROR_FILE_IO);
+            if (!dat_syscall) {
+                error_set_file_path(syscall_path);
+                error_set_errno_val(errno);
+                RAISE_ERROR(ERROR_FILE_IO);
+            }
+
+            if (syscall_len != LEN_SYSCALLS) {
+                error_set_length(syscall_len);
+                error_set_expected_length(LEN_SYSCALLS);
+                RAISE_ERROR(ERROR_INVALID_FILE_LEN);
+            }
+
+            memory_write(&dc_mem, dat_syscall,
+                         ADDR_SYSCALLS & ADDR_AREA3_MASK, syscall_len);
+            free(dat_syscall);
+        } else {
+            LOG_INFO("%s - HLE the way the boot firmware loads itself into "
+                     "main memory\n", __func__);
+            // HLE the way the boot firmware loads itself into main memory
+            /*
+            * * copy 32 bytes from 0x800000e0 (firmware) to 0x8c0000e0 (main memory)
+            * * the data will be reversed because the writes are in descending
+            *   order but the reads are in ascending order
+            */
+            uint32_t src_addr = 0x800000e0;
+            uint32_t dst_addr = 0x8c000100;
+            unsigned idx ;
+            for (idx = 0; idx < 16; idx++, src_addr -= 2, dst_addr += 2) {
+                uint16_t dat =
+                    boot_rom_intf.read16(src_addr & (BIOS_SZ_EXPECT - 1),
+                                         &firmware);
+                memory_write_16(dst_addr & ADDR_AREA3_MASK, dat, &dc_mem);
+            }
+
+            /*
+            * * copy 0x7ffc0 32-bit words from 0x80000100 (boot rom) to
+            *   0x8c000100 (main memory)
+            * * total of 0x1FFF00 bytes, which is the size of the boot rom - 256
+            * * the source and destination are offset by 256 bytes so this is a
+            *   direct mapping
+            */
+            src_addr = 0x80000100;
+            dst_addr = 0x8c000100;
+            unsigned n_bytes;
+            for (n_bytes = 0; n_bytes < LEN_SYSCALLS; n_bytes += 4, src_addr += 4, dst_addr += 4) {
+                uint32_t dat =
+                    boot_rom_intf.read32(src_addr & (BIOS_SZ_EXPECT - 1),
+                                         &firmware);
+                memory_write_32(dst_addr & ADDR_AREA3_MASK, dat, &dc_mem);
+            }
+
+            /*
+             * important memory addresses to init, not sure if these are needed
+             * but they look important
+             */
+            uint32_t const tbl[][2] = {
+                { 0x8c0000c0, 0x8c0010f0 },
+                { 0x8c0000bc, 0x8c001000 },
+                { 0x8c0000b8, 0x8c003d00 },
+                { 0x8c0000b4, 0x8c003b80 },
+                { 0x8c0000b0, 0x8c003c00 },
+                { 0x8c0000ac, 0xa05f7000 },
+                { 0x8c0000a8, 0xa0200000 },
+                { 0x8c0000a4, 0xa0100000 },
+                { 0x8c0000a0, 0x00000000 },
+                { 0x8c00002e, 0x00000000 },
+                { 0x8c0000e0, 0x8c000800 },
+                { 0x8cfffff8, 0x8c000128 },
+
+                { 0, 0}
+            };
+
+            uint32_t const (*pair)[2] = tbl;
+            while ((*pair)[0]) {
+                memory_write_32((*pair)[0] & ADDR_AREA3_MASK, (*pair)[1], &dc_mem);
+                pair++;
+            }
         }
-
-        if (syscall_len != LEN_SYSCALLS) {
-            error_set_length(syscall_len);
-            error_set_expected_length(LEN_SYSCALLS);
-            RAISE_ERROR(ERROR_INVALID_FILE_LEN);
-        }
-
-        memory_write(&dc_mem, dat_syscall,
-                     ADDR_SYSCALLS & ADDR_AREA3_MASK, syscall_len);
-        free(dat_syscall);
     }
 
     dc_clock_init(&sh4_clock);
     dc_clock_init(&arm7_clock);
     sh4_init(&cpu, &sh4_clock);
     arm7_init(&arm7, &arm7_clock, &aica.mem);
+
+    char const *syscall_path = config_get_syscall_path();
+    if (!(syscall_path || strlen(syscall_path))) {
+        /*
+         * more direct-boot stuff.  I couldn't do this above because the SH4
+         * needed to be initialized first.  this is basically an HLE to get
+         * it to the state it's at after booting.
+         */
+        cpu.reg[SH4_REG_PR] = 0x8c000128;
+        cpu.reg[SH4_REG_GBR] = 0x8c000000;
+        cpu.reg[SH4_REG_VBR] = 0x8c000000;
+        cpu.reg[SH4_REG_SSR] = 0x500000f0;
+        cpu.reg[SH4_REG_SPC] = 0xac000800;
+        cpu.reg[SH4_REG_R15] = 0x8d000000;
+        LOG_INFO("%s - firmware load HLE complete.\n", __func__);
+    }
+
 
 #ifdef ENABLE_JIT_X86_64
     if (config_get_native_jit()) {

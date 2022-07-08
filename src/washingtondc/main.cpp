@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -468,12 +468,6 @@ int main(int argc, char **argv) {
     }
 
     if (skip_ip_bin) {
-        if (!path_syscalls_bin) {
-            fprintf(stderr, "Error: cannot direct-boot without a system call "
-                    "table (-s flag).\n");
-            exit(1);
-        }
-
         if (!path_1st_read_bin) {
             fprintf(stderr, "Error: cannot direct-boot without a "
                     "1ST-READ.BIN\n");
@@ -485,12 +479,6 @@ int main(int argc, char **argv) {
         settings.path_1st_read_bin = path_1st_read_bin;
         settings.path_syscalls_bin = path_syscalls_bin;
     } else if (boot_direct) {
-        if (!path_syscalls_bin) {
-            fprintf(stderr, "Error: cannot direct-boot without a system call "
-                    "table (-s flag).\n");
-            exit(1);
-        }
-
         settings.boot_mode = WASHDC_BOOT_IP_BIN;
         settings.path_ip_bin = path_ip_bin;
         settings.path_syscalls_bin = path_syscalls_bin;
