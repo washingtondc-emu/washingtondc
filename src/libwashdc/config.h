@@ -65,9 +65,6 @@ CONFIG_DECL_STRING(dc_flash_path);
 // path to the rtc image
 CONFIG_DECL_STRING(dc_path_rtc);
 
-// path to the syscalls.bin system call image
-CONFIG_DECL_STRING(syscall_path);
-
 // if true, then direct-boot mode has been enabled
 CONFIG_DECL_INT(boot_mode);
 

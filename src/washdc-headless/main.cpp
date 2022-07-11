@@ -85,7 +85,6 @@ int main(int argc, char **argv) {
     bool enable_washdbg = false;
     bool direct_boot = false;
     char *path_1st_read_bin = NULL;
-    char *path_syscalls_bin = NULL;
     char *path_gdi = NULL;
     bool enable_serial = false;
     bool enable_jit = false, enable_native_jit = false,
@@ -123,8 +122,17 @@ int main(int argc, char **argv) {
             path_1st_read_bin = washdc_optarg;
             break;
         case 's':
-            path_syscalls_bin = washdc_optarg;
-            break;
+            fprintf(stderr,
+                    "*************************************************************\n"
+                    "**\n"
+                    "** EXCELLENT NEWS!!!!!!!!!!!!!!\n"
+                    "** THE OLD '-s syscalls.bin' ARGUMENT IS NO LONGER REQUIRED\n"
+                    "** PLEASE REMOVE THE -s ARGUMENT FROM YOUR INVOCATION OF "
+                    "WASHINGTONDC\n"
+                    "** AND RUN IT AGAIN\n"
+                    "**\n"
+                    "*************************************************************\n");
+            exit(1);
         case 't':
             enable_serial = true;
             break;
@@ -281,12 +289,6 @@ int main(int argc, char **argv) {
     }
 
     if (direct_boot) {
-        if (!path_syscalls_bin) {
-            fprintf(stderr, "Error: cannot direct-boot without a system call "
-                    "table (-s flag).\n");
-            exit(1);
-        }
-
         if (!path_1st_read_bin) {
             fprintf(stderr, "Error: cannot direct-boot without a "
                     "1ST-READ.BIN\n");
@@ -295,7 +297,6 @@ int main(int argc, char **argv) {
 
         settings.boot_mode = WASHDC_BOOT_DIRECT;
         settings.path_1st_read_bin = path_1st_read_bin;
-        settings.path_syscalls_bin = path_syscalls_bin;
     } else {
         settings.boot_mode = WASHDC_BOOT_FIRMWARE;
     }
@@ -369,8 +370,6 @@ static void print_usage(char const *cmd) {
             "\t-g gdb\t\tenable remote GDB backend\n"
             "\t-g washdbg\tenable remote WashDbg backend\n"
             "\t-u\t\tdirect-boot 1ST_READ.BIN\n"
-            "\t-s\t\tpath to dreamcast system call image (only needed for "
-            "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
             "\t-l\t\tdump logs to stdout\n"

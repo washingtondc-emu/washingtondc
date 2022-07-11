@@ -86,7 +86,6 @@ struct washdc_controller_dev {
 
 struct washdc_launch_settings {
     char const *path_1st_read_bin;
-    char const *path_syscalls_bin;
     char const *path_dc_bios;
     char const *path_dc_flash;
     char const *path_gdi;

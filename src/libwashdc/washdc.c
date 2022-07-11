@@ -64,7 +64,6 @@ washdc_init(struct washdc_launch_settings const *settings) {
 #endif
     config_set_boot_mode(translate_boot_mode(settings->boot_mode));
     config_set_exec_bin_path(settings->path_1st_read_bin);
-    config_set_syscall_path(settings->path_syscalls_bin);
     config_set_dc_bios_path(settings->path_dc_bios);
     config_set_dc_flash_path(settings->path_dc_flash);
     config_set_ser_srv_enable(settings->enable_serial);
