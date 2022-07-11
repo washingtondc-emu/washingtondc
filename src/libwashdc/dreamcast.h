@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -39,7 +39,6 @@
 
 extern struct dc_clock sh4_clock;
 
-#define ADDR_IP_BIN        0x8c008000
 #define ADDR_1ST_READ_BIN  0x8c010000
 #define ADDR_BOOTSTRAP     0x8c008300
 #define ADDR_SYSCALLS      0x8c000000
@@ -118,9 +117,6 @@ void dc_state_transition(enum dc_state state_new, enum dc_state state_old);
 enum dc_boot_mode {
     // standard boot into firmware
     DC_BOOT_FIRMWARE,
-
-    // boot directly to IP.BIN and then continue into 1st_read.bin
-    DC_BOOT_IP_BIN,
 
     // skip the firmware and IP.BIN and boot directly into 1st_read.bin
     DC_BOOT_DIRECT

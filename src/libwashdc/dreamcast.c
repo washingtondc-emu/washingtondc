@@ -590,22 +590,7 @@ dreamcast_init(char const *gdi_path,
     boot_rom_init(&firmware, config_get_dc_bios_path());
 
     int boot_mode = config_get_boot_mode();
-    if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
-        long len_ip_bin;
-        char const *ip_bin_path = config_get_ip_bin_path();
-        if (ip_bin_path && strlen(ip_bin_path)) {
-            void *dat_ip_bin = load_file(ip_bin_path, &len_ip_bin);
-            if (!dat_ip_bin) {
-                error_set_file_path(ip_bin_path);
-                error_set_errno_val(errno);
-                RAISE_ERROR(ERROR_FILE_IO);
-            }
-
-            memory_write(&dc_mem, dat_ip_bin, ADDR_IP_BIN & ADDR_AREA3_MASK,
-                         len_ip_bin);
-            free(dat_ip_bin);
-        }
-
+    if (boot_mode == (int)DC_BOOT_DIRECT) {
         long len_1st_read_bin;
         char const *exec_bin_path = config_get_exec_bin_path();
         char const *ext = strrchr(exec_bin_path, '.');
@@ -815,10 +800,8 @@ dreamcast_init(char const *gdi_path,
     /* set the PC to the booststrap code within IP.BIN */
     if (boot_mode == (int)DC_BOOT_DIRECT)
         cpu.reg[SH4_REG_PC] = ADDR_1ST_READ_BIN;
-    else if (boot_mode == (int)DC_BOOT_IP_BIN)
-        cpu.reg[SH4_REG_PC] = ADDR_BOOTSTRAP;
 
-    if (boot_mode == (int)DC_BOOT_IP_BIN || boot_mode == (int)DC_BOOT_DIRECT) {
+    if (boot_mode == (int)DC_BOOT_DIRECT) {
         /*
          * set the VBR to what it would have been after a BIOS boot.
          * This was obtained empirically on a real Dreamcast.

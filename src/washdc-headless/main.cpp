@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019, 2020 snickerbockers
+ *    Copyright (C) 2019, 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -83,8 +83,8 @@ int main(int argc, char **argv) {
     char const *cmd = argv[0];
     bool enable_debugger = false;
     bool enable_washdbg = false;
-    bool boot_direct = false, skip_ip_bin = false;
-    char *path_1st_read_bin = NULL, *path_ip_bin = NULL;
+    bool direct_boot = false;
+    char *path_1st_read_bin = NULL;
     char *path_syscalls_bin = NULL;
     char *path_gdi = NULL;
     bool enable_serial = false;
@@ -111,11 +111,15 @@ int main(int argc, char **argv) {
             }
             break;
         case 'd':
-            boot_direct = true;
-            path_ip_bin = washdc_optarg;
-            break;
+            fprintf(stderr,
+                    "*************************************************************\n"
+                    "**\n"
+                    "** SUPPORT FOR THE '-d IP.BIN' OPTION HAS BEEN REMOVED\n"
+                    "**\n"
+                    "*************************************************************\n");
+            exit(1);
         case 'u':
-            skip_ip_bin = true;
+            direct_boot = true;
             path_1st_read_bin = washdc_optarg;
             break;
         case 's':
@@ -276,7 +280,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (skip_ip_bin) {
+    if (direct_boot) {
         if (!path_syscalls_bin) {
             fprintf(stderr, "Error: cannot direct-boot without a system call "
                     "table (-s flag).\n");
@@ -290,18 +294,7 @@ int main(int argc, char **argv) {
         }
 
         settings.boot_mode = WASHDC_BOOT_DIRECT;
-        settings.path_ip_bin = path_ip_bin;
         settings.path_1st_read_bin = path_1st_read_bin;
-        settings.path_syscalls_bin = path_syscalls_bin;
-    } else if (boot_direct) {
-        if (!path_syscalls_bin) {
-            fprintf(stderr, "Error: cannot direct-boot without a system call "
-                    "table (-s flag).\n");
-            exit(1);
-        }
-
-        settings.boot_mode = WASHDC_BOOT_IP_BIN;
-        settings.path_ip_bin = path_ip_bin;
         settings.path_syscalls_bin = path_syscalls_bin;
     } else {
         settings.boot_mode = WASHDC_BOOT_FIRMWARE;
@@ -365,7 +358,7 @@ int main(int argc, char **argv) {
 }
 
 static void print_usage(char const *cmd) {
-    fprintf(stderr, "USAGE: %s [options] [-d IP.BIN] [-u 1ST_READ.BIN]\n\n", cmd);
+    fprintf(stderr, "USAGE: %s [options] [-u 1ST_READ.BIN]\n\n", cmd);
 
     fprintf(stderr, "WashingtonDC Dreamcast Emulator\n\n");
 
@@ -375,8 +368,7 @@ static void print_usage(char const *cmd) {
             "\t-f <flash_path>\tpath to dreamcast flash ROM image\n"
             "\t-g gdb\t\tenable remote GDB backend\n"
             "\t-g washdbg\tenable remote WashDbg backend\n"
-            "\t-d\t\tenable direct boot (skip BIOS)\n"
-            "\t-u\t\tskip IP.BIN and boot straight to 1ST_READ.BIN\n"
+            "\t-u\t\tdirect-boot 1ST_READ.BIN\n"
             "\t-s\t\tpath to dreamcast system call image (only needed for "
             "direct boot)\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"

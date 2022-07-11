@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019, 2020 snickerbockers
+ *    Copyright (C) 2019, 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -41,13 +41,11 @@ static struct washdc_hostfile_api const *hostfile_api;
 
 static enum dc_boot_mode translate_boot_mode(enum washdc_boot_mode mode) {
     switch (mode) {
-    case WASHDC_BOOT_FIRMWARE:
-        return DC_BOOT_FIRMWARE;
     case WASHDC_BOOT_DIRECT:
         return DC_BOOT_DIRECT;
     default:
-    case WASHDC_BOOT_IP_BIN:
-        return DC_BOOT_IP_BIN;
+    case WASHDC_BOOT_FIRMWARE:
+        return DC_BOOT_FIRMWARE;
     }
 }
 
@@ -65,7 +63,6 @@ washdc_init(struct washdc_launch_settings const *settings) {
     config_set_native_jit(settings->enable_native_jit);
 #endif
     config_set_boot_mode(translate_boot_mode(settings->boot_mode));
-    config_set_ip_bin_path(settings->path_ip_bin);
     config_set_exec_bin_path(settings->path_1st_read_bin);
     config_set_syscall_path(settings->path_syscalls_bin);
     config_set_dc_bios_path(settings->path_dc_bios);

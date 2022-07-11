@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -76,8 +76,6 @@ CONFIG_DEF_STRING(syscall_path);
 CONFIG_DEF_INT(boot_mode, 0);
 
 CONFIG_DEF_STRING(gdi_image);
-
-CONFIG_DEF_STRING(ip_bin_path);
 
 CONFIG_DEF_STRING(exec_bin_path);
 
