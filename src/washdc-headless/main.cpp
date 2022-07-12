@@ -74,6 +74,16 @@ static int null_win_get_width(void);
 static int null_win_get_height(void);
 static void null_win_update_title(void);
 
+static bool strieq(char const *str1, char const *str2) {
+    if (strlen(str1) != strlen(str2))
+        return false;
+    while (*str1 && *str2) {
+        if (toupper(*str1++) != toupper(*str2++))
+            return false;
+    }
+    return true;
+}
+
 // for washdc_getopt
 char *washdc_optarg;
 int washdc_optind = 1, washdc_opterr, washdc_optopt;
@@ -84,8 +94,7 @@ int main(int argc, char **argv) {
     bool enable_debugger = false;
     bool enable_washdbg = false;
     bool direct_boot = false;
-    char *path_1st_read_bin = NULL;
-    char *path_gdi = NULL;
+    char *path_game = NULL;
     bool enable_serial = false;
     bool enable_jit = false, enable_native_jit = false,
         enable_interpreter = false, inline_mem = true;
@@ -118,9 +127,16 @@ int main(int argc, char **argv) {
                     "*************************************************************\n");
             exit(1);
         case 'u':
-            direct_boot = true;
-            path_1st_read_bin = washdc_optarg;
-            break;
+            fprintf(stderr,
+                    "*************************************************************\n"
+                    "**\n"
+                    "** DUE TO RECENT CHANGES, THE -u OPTION HAS BEEN MERGED "
+                    "INTO THE -m OPTION.\n"
+                    "** PLEASE RUN WASHINGTONDC WITH \"-m %s\"\n"
+                    "**\n"
+                    "*************************************************************\n",
+                    washdc_optarg);
+            exit(1);
         case 's':
             fprintf(stderr,
                     "*************************************************************\n"
@@ -137,7 +153,7 @@ int main(int argc, char **argv) {
             enable_serial = true;
             break;
         case 'm':
-            path_gdi = washdc_optarg;
+            path_game = washdc_optarg;
             break;
         case 'h':
             print_usage(cmd);
@@ -288,15 +304,18 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (direct_boot) {
-        if (!path_1st_read_bin) {
-            fprintf(stderr, "Error: cannot direct-boot without a "
-                    "1ST-READ.BIN\n");
-            exit(1);
+    direct_boot = false;
+    if (path_game) {
+        char const *ext = strrchr(path_game, '.');
+        if (ext && (strieq(ext, ".bin") || strieq(ext, ".elf"))) {
+            direct_boot = true;
+            printf(".BIN OR .ELF FILE DETECTED; DIRECT-BOOT MODE ENABLED\n");
         }
+    }
 
+    if (direct_boot) {
         settings.boot_mode = WASHDC_BOOT_DIRECT;
-        settings.path_1st_read_bin = path_1st_read_bin;
+        settings.path_1st_read_bin = path_game;
     } else {
         settings.boot_mode = WASHDC_BOOT_FIRMWARE;
     }
@@ -312,7 +331,7 @@ int main(int argc, char **argv) {
     if (have_console_name)
         settings.path_rtc = console_get_rtc_path(console_name);
     settings.enable_serial = enable_serial;
-    settings.path_gdi = path_gdi;
+    settings.path_gdi = direct_boot ? NULL : path_game;
 
     null_win_intf.check_events = null_win_check_events;
     null_win_intf.run_once_on_suspend = null_win_run_once_on_suspend;
@@ -359,7 +378,8 @@ int main(int argc, char **argv) {
 }
 
 static void print_usage(char const *cmd) {
-    fprintf(stderr, "USAGE: %s [options] [-u 1ST_READ.BIN]\n\n", cmd);
+    fprintf(stderr, "USAGE: %s [options] -b <dc_bios.bin> -f <dc_flash.bin> -m "
+            "<path_to_game>\n\n", cmd);
 
     fprintf(stderr, "WashingtonDC Dreamcast Emulator\n\n");
 
