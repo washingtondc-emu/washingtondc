@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2020 snickerbockers
+ *    Copyright (C) 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,50 +35,16 @@ extern "C" {
  * copmilers (by which I mean Micro$oft Visual C++) don't support it or any
  * comparable alternatives.
  *
- * This is missing the --, the non-option argument shifting that GNU does, and
- * (most importantly) the ability to have multiple options share a single
- * hyphen (ie -pv as a shorthand for -p -v).
+ * This is missing the --, the non-option argument shifting that GNU does
+ *
+ * to reset the state of washdc_getopt, set washdc_optind to 0.  This is also
+ * how you reset GNU getopt.  posix getopt requires you to set it to 1.
  */
 
-/*
- * frontend programs have to define these themselves.
- * optind must be initialized to 1.
- */
 extern char *washdc_optarg;
 extern int washdc_optind, washdc_opterr, washdc_optopt;
 
-static int washdc_getopt(int argc, char **argv, char const *optstring) {
-    if (washdc_optind < 1 || washdc_optind >= argc)
-        return -1;
-
-    int src_idx = washdc_optind;
-
-    if (argv[src_idx][0] != '-')
-        return -1;
-
-    char optch = argv[src_idx][1];
-    char const *optptr;
-    if (optch && (optptr = strchr(optstring, optch))) {
-        if (optptr[1] == ':') {
-            if (washdc_optind >= argc - 1) {
-                // there's nothing after the arg...
-                washdc_optopt = optch;
-                washdc_optind++;
-                return '?';
-            }
-            washdc_optarg = argv[washdc_optind + 1];
-            washdc_optind += 2;
-        } else {
-            washdc_optind++;
-        }
-
-        return  (int)optch;
-    } else {
-        washdc_optind++;
-        washdc_optopt = optch;
-        return '?';
-    }
-}
+int washdc_getopt(int argc, char **argv, char const *optstring);
 
 #ifdef __cplusplus
 }

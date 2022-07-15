@@ -234,10 +234,6 @@ static bool strieq(char const *str1, char const *str2) {
     return true;
 }
 
-// for washdc_getopt
-char* washdc_optarg;
-int washdc_optind = 1, washdc_opterr, washdc_optopt;
-
 int main(int argc, char **argv) {
     int opt;
     char const *cmd = argv[0];

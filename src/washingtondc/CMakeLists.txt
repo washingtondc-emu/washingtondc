@@ -64,7 +64,8 @@ set(imgui_sources "${IMGUI_SOURCE_DIR}/imgui.cpp"
                   "${IMGUI_SOURCE_DIR}/imstb_textedit.h"
                   "${IMGUI_SOURCE_DIR}/imstb_truetype.h")
 
-set(IO_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/common/frontend_io")
+set(COMMON_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/common")
+set(IO_SOURCE_DIR "${COMMON_SOURCE_DIR}/frontend_io")
 set(io_sources "${IO_SOURCE_DIR}/io_thread.hpp"
                "${IO_SOURCE_DIR}/io_thread.cpp")
 
@@ -126,6 +127,7 @@ set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/config_file.h"
                          "${PROJECT_SOURCE_DIR}/config_file.c"
                          "${PROJECT_SOURCE_DIR}/sdl_gamecontrollerdb.h"
+                         "${COMMON_SOURCE_DIR}/washdc_getopt.c"
                          "${gfxgl3_sources}"
                          "${gfxgl4_sources}"
                          "${soft_gfx_sources}")

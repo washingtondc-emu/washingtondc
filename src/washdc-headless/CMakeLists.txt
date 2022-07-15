@@ -25,7 +25,8 @@ project(washdc_headless CXX)
 set(washdc_headless_VERSION_MAJOR 0)
 set(washdc_headless_VERSION_MINOR 1)
 
-set(IO_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/common/frontend_io")
+set(COMMON_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/common")
+set(IO_SOURCE_DIR "${COMMON_SOURCE_DIR}/frontend_io")
 set(io_sources "${IO_SOURCE_DIR}/io_thread.hpp"
                "${IO_SOURCE_DIR}/io_thread.cpp")
 
@@ -56,10 +57,11 @@ set(serial_sources "${IO_SOURCE_DIR}/serial_server.hpp"
 set(washdc_headless_sources "main.cpp"
                             "console_config.hpp"
                             "console_config.cpp"
-			    "gfx_null.hpp"
-			    "gfx_null.cpp"
-			    "gfx_obj.h"
-			    "gfx_obj.c")
+                            "gfx_null.hpp"
+                            "gfx_null.cpp"
+                            "gfx_obj.h"
+                            "gfx_obj.c"
+                            "${COMMON_SOURCE_DIR}/washdc_getopt.c")
 
 if (ENABLE_TCP_SERIAL)
     add_definitions(-DENABLE_TCP_SERIAL)
