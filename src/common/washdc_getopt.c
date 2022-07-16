@@ -27,7 +27,7 @@ char *washdc_optarg;
 int washdc_optind, washdc_opterr, washdc_optopt;
 
 int washdc_getopt(int argc, char **argv, char const *optstring) {
-    static char const *nextch;
+    static char *nextch;
 
     if (washdc_optind == 0) {
         nextch = NULL;
@@ -46,16 +46,22 @@ int washdc_getopt(int argc, char **argv, char const *optstring) {
     char const *optptr;
     if (optch && (optptr = strchr(optstring, optch))) {
         if (optptr[1] == ':') {
-            if (washdc_optind >= argc - 1) {
-                // there's nothing after the arg...
-                washdc_optopt = optch;
-                nextch = NULL;
+            if (nextch[1]) {
+                washdc_optarg = ++nextch;
                 washdc_optind++;
-                return '?';
+                nextch=NULL;
+            } else {
+                if (washdc_optind >= argc - 1) {
+                    // there's nothing after the arg...
+                    washdc_optopt = optch;
+                    nextch = NULL;
+                    washdc_optind++;
+                    return '?';
+                }
+                washdc_optarg = argv[washdc_optind + 1];
+                washdc_optind += 2;
+                nextch = NULL;
             }
-            washdc_optarg = argv[washdc_optind + 1];
-            washdc_optind += 2;
-            nextch = NULL;
         } else {
             if (nextch[1]) {
                 nextch++;
