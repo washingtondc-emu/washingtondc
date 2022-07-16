@@ -126,9 +126,10 @@ int main(int argc, char **argv) {
             fprintf(stderr,
                     "*************************************************************\n"
                     "**\n"
-                    "** DUE TO RECENT CHANGES, THE -u OPTION HAS BEEN MERGED "
-                    "INTO THE -m OPTION.\n"
-                    "** PLEASE RUN WASHINGTONDC WITH \"-m %s\"\n"
+                    "** DUE TO RECENT CHANGES, THE -u OPTION HAS BEEN REMOVED\n"
+                    "** AND ELF FILES ARE SPECIFIED AS NON-OPTIONS AT THE END OF "
+                    "THE COMMAND LINE.\n"
+                    "** PLEASE RUN WASHINGTONDC WITH \"-- %s\"\n"
                     "**\n"
                     "*************************************************************\n",
                     washdc_optarg);
@@ -190,6 +191,11 @@ int main(int argc, char **argv) {
         }
     }
 
+    argv += washdc_optind;
+    argc -= washdc_optind;
+
+    if (argc)
+        path_game = *argv;
     bool have_console_name = console_name;
 
     if (!dc_flash_path) {
@@ -374,7 +380,7 @@ int main(int argc, char **argv) {
 }
 
 static void print_usage(char const *cmd) {
-    fprintf(stderr, "USAGE: %s [options] -b <dc_bios.bin> -f <dc_flash.bin> -m "
+    fprintf(stderr, "USAGE: %s [options] -b <dc_bios.bin> -f <dc_flash.bin> -- "
             "<path_to_game>\n\n", cmd);
 
     fprintf(stderr, "WashingtonDC Dreamcast Emulator\n\n");
@@ -385,11 +391,9 @@ static void print_usage(char const *cmd) {
             "\t-f <flash_path>\tpath to dreamcast flash ROM image\n"
             "\t-g gdb\t\tenable remote GDB backend\n"
             "\t-g washdbg\tenable remote WashDbg backend\n"
-            "\t-u\t\tdirect-boot 1ST_READ.BIN\n"
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
             "\t-l\t\tdump logs to stdout\n"
-            "\t-m\t\tmount the given image in the GD-ROM drive\n"
             "\t-n\t\tdon't inline memory reads/writes into the jit\n"
             "\t-p\t\tdisable the dynarec and enable the interpreter instead\n"
             "\t-j\t\tenable dynamic recompiler (as opposed to interpreter)\n"
