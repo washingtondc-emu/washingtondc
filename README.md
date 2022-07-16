@@ -31,22 +31,33 @@ INVARIANTS=On(default)/Off - runtime sanity checks that should never fail
 DEEP_SYSCALL_TRACE=On/Off(default) - log system calls made by guest software.
 ```
 ## USAGE
-```
-src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin [options] [-d IP.BIN] [-u 1ST_READ.BIN]
 
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin [options] -- [game]
+
+[game] should be the path to a file of one of the below types:
+
+|extension|type|
+----------|----------------------------------|
+| .gdi    | GDI-format GD-ROM image |
+| .chd    | MAME CHD format GD-ROM image |
+| .cdi    | DiscJuggler CD-ROM image representing a MIL-CD homebrew |
+| .elf    | SH-4 executable program loaded to 8c010000 |
+| .bin    | raw SH-4 binary loaded to 8c010000 |
+
+If the game is a .elf or a .bin, then the emulator will automatically
+load it to 8c010000 and begin execution from there.  The other three
+types will be loaded into the emulated GD-ROM drive and the emulator
+will begin executing the firmware at a0000000 just like a real
+Dreamcast would.  In either case, the firmware image (-b option) and
+flash image (-f option) are mandatory.
+
+```
 OPTIONS:
 -b <bios_path>           path to dreamcast boot ROM
 -f <flash_path>          path to dreamcast flash ROM image
 -g gdb                   enable remote GDB backend on tcp port 1999
--g                       washdbg enable remote WashDbg backend on tcp port 1999
--d                       enable direct boot <IP.BIN path>
--u                       skip IP.BIN and boot straight to
-                             1ST_READ.BIN <1ST_READ.BIN>
--m                       <gdi path> path to .gdi file which will be mounted in
-                             the GD-ROM drive
+-g washdbg               enable remote WashDbg backend on tcp port 1999
 -n                       don't do native memory inlining when the jit is enabled
--s                       path to dreamcast system call image (only needed for
-                             direct boot)
 -t                       establish serial server over TCP port 1998
 -h                       display this message and exit
 -p                       disable the dynamic recompiler and enable the
@@ -57,15 +68,10 @@ OPTIONS:
                              enabled by default)
 -w                       enable the experimental WashDbg debugger via text
                              stream over TCP port 1999
-
 ```
-The emulator currently only supports one controller, and the controls cannot be
-rebinded yet.  It must be controlled using a keyboard with a number pad.
 
-The -b and -f options are mandatory because we need a firmware to boot.  To do a
-direct-boot, the -s option is also needed to provide a system call image since
-the firmware won't have had a chance to load one itself.
-
+By default, only one controller will be supported.  You can enable
+additional controllers by editing $HOME/.config/washdc/wash.cfg .
 
 ## CONTROLS
 
@@ -106,11 +112,11 @@ src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin
 ```
 load the firmware with a .gdi disc image mounted:
 ```
-src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -m /path/to/disc.gdi
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -- /path/to/disc.gdi
 ```
-direct-boot a homebrew program (requires a system call table dump):
+direct-boot a homebrew program:
 ```
-src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -s syscalls.bin -u 1st_read.bin
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -- my_game.elf
 ```
 ## LICENSE
 WashingtonDC is licensed under the terms of the GNU GPLv3.  The
