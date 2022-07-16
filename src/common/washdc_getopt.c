@@ -20,6 +20,7 @@
  ******************************************************************************/
 
 #include <stdio.h>
+#include <string.h>
 
 #include "washdc_getopt.h"
 
@@ -39,6 +40,11 @@ int washdc_getopt(int argc, char **argv, char const *optstring) {
 
     if (argv[washdc_optind][0] != '-')
         return -1;
+
+    if (strcmp(argv[washdc_optind], "--") == 0) {
+        washdc_optind++;
+        return -1;
+    }
 
     if (!nextch)
         nextch = argv[washdc_optind] + 1;
