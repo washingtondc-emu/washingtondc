@@ -35,7 +35,10 @@ extern "C" {
  * copmilers (by which I mean Micro$oft Visual C++) don't support it or any
  * comparable alternatives.
  *
- * This is missing the -- and the non-option argument shifting that GNU does.
+ * Like GNU's getopt, this function will shift non-option arguments to the
+ * right.  Users can optionally use -- to separate options from non-options,
+ * which is useful in cases where non-options have names that make them look
+ * like options (eg, a chd file that begins with '-').
  *
  * to reset the state of washdc_getopt, set washdc_optind to 0.  This is also
  * how you reset GNU getopt.  posix getopt requires you to set it to 1.
