@@ -1,0 +1,228 @@
+#+CAPTION: WashingtonDC
+[[./media/washingtondc_logo_640x320.png]]
+
+* WashingtonDC Dreamcast Emulator
+
+http://washemu.org
+
+snickerbockers@washemu.org
+
+Discord Server: https://discord.gg/2vmxMCd
+
+WashingtonDC is an open-source SEGA Dreamcast emulator for Linux and
+Microsoft Windows.
+
+** COMPILING
+
+WashingtonDC uses CMake as its build system.  The below commands can
+be used to compil WashingtonDC.  Note that there are several git
+submodules used, and these will need to be
+
+#+BEGIN_SRC sh
+  git submodule init --update --recursive
+  mkdir build
+  cd build
+  cmake [OPTIONS] ..
+  make
+#+END_SRC
+
+The program executable will be at src/washingtondc/washingtondc (relative to
+the root of the build directory)
+
+Available options for the cmake generation are:
+
+| setting                      | values | description                                    | default value |
+|------------------------------+--------+------------------------------------------------+---------------|
+| ENABLE_SH4_MMU               | On,Off | emulate the sh4's Memory Management Unit (MMU) | Off           |
+| ENABLE_DEBUGGER              | On,Off | enable or disable compilation of debuggers     | On            |
+| DENABLE_DIRECT_BOOT          | On,Off | enable compilation of direct-boot mode         | On            |
+| DBG_EXIT_ON_UNDEFINED_OPCODE | On,Off | whether to abort on unrecognized SH4 opcodes   | Off           |
+| INVARIANTS                   | On,Off | optional runtime sanity checks                 | On            |
+| DEEP_SYSCALL_TRACE           | On,Off | log system calls made by guest software        | Off           |
+
+** USAGE
+
+*** SYNOPSIS
+
+src/washingtondc/washingtondc -b <dc_bios> -f <dc_flash> [options] [--] [<game>]
+
+*** SUPPORTED GAME IMAGE FORMATS
+
+| file extension | type                                                    |
+|----------------+---------------------------------------------------------|
+| .gdi           | GDI-format GD-ROM image                                 |
+| .chd           | MAME CHD format GD-ROM image                            |
+| .cdi           | DiscJuggler CD-ROM image representing a MIL-CD homebrew |
+| .elf           | SH-4 executable program loaded to 8c010000              |
+| .bin           | raw SH-4 binary loaded to 8c010000                      |
+
+If the game is a .elf or a .bin, then the emulator will automatically
+load it to 8c010000 and begin execution from there.  The other three
+types will be loaded into the emulated GD-ROM drive and the emulator
+will begin executing the firmware at a0000000 just like a real
+Dreamcast would.  In either case, the firmware image (-b option) and
+flash image (-f option) are mandatory.
+
+*** RUNTIME LAUNCH OPTIONS
+
+| Option | argument   | description                                                             |
+|--------+------------+-------------------------------------------------------------------------|
+| -b     | <dc_bios>  | path to firmware image                                                  |
+| -f     | <dc_flash> | path to flashrom image                                                  |
+| -g     | gdb        | enable remote GDB stub via TCPport 1999                                 |
+| -g     | washdbg    | enable WashDbg text debugger via TCP port 1999                          |
+| -n     | N/A        | disable native memory inlining                                          |
+| -t     | N/A        | establish serial server via TCP port 1998                               |
+| -h     | N/A        | display help message                                                    |
+| -p     | N/A        | disable the JIT and enable interpreter mode                             |
+| -j     | N/A        | disable the x86_64 JIT backend and use the JIT's IL interpreter backend |
+| -x     | N/A        | enable the x86_64 JIT backend (this is enabled by default)              |
+
+*** EXAMPLES
+
+**** load the firmware (dc_bios.bin) with no .gdi disc image mounted
+#+BEGIN_SRC sh
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin
+#+END_SRC
+
+**** load the firmware with a .gdi disc image mounted
+#+BEGIN_SRC sh
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -- /path/to/disc.gdi
+#+END_SRC
+
+**** direct-boot a homebrew program
+#+BEGIN_SRC sh
+src/washingtondc/washingtondc -b dc_bios.bin -f dc_flash.bin -- my_game.elf
+#+END_SRC
+
+** CONTROLS
+
+*** GAMEPAD CONTROLS
+
+By default, WashingtonDC will use up to four gamepad controllers connected to
+your PC.  This is implemented using the GLFW library.  By default the
+order and mapping suggested by GLFW is used.  The gamepads can be
+re-ordered and re-mapped by editing wash.cfg; see [[#reconfiguring]].
+
+*** KEYBOARD CONTROLS
+
+In addition to controlling Dreamcast games with a gamepad, you can
+also use a keyboard.  The default keyboard controls are listed below.
+
+By default, only player 1's controller is mapped to the keyboard.  You
+can create bindings for other controllers or change player 1's
+bindings by editing wash.cfg; see [[#reconfiguring]].
+
+| keyboard   | Dreamcast            |
+|------------+----------------------|
+| W          | UP (ANALOG STICK)    |
+| S          | DOWN (ANALOG STICK)  |
+| A          | LEFT (ANALOG STICK)  |
+| D          | RIGHT (ANALOG STICK) |
+| Q          | LEFT TRIGGER         |
+| E          | RIGHT TRIGGER        |
+| UP         | UP (D-PAD)           |
+| LEFT       | LEFT (D-PAD)         |
+| DOWN       | DOWN (D-PAD)         |
+| RIGHT      | RIGHT (DPAD)         |
+| 2 (NUMPAD) | A                    |
+| 6 (NUMPAD) | B                    |
+| 4 (NUMPAD) | X                    |
+| 8 (NUMPAD) | Y                    |
+| SPACE      | START                |
+
+*** RECONFIGURING CONTROLLER BINDINGS
+:PROPERTIES:
+:CUSTOM_ID: reconfiguring
+:END:
+Control bindings are stored in $HOME/.config/washdc/wash.cfg.  This file is
+automatically created the first time WashingtonDC is run.  Controls can be
+edited by editing this file.
+
+** LICENSES
+
+*** WashingtonDC
+WashingtonDC is licensed under the terms of the GNU GPLv3.  The
+terms of this license can be found in COPYING.
+
+*** third-party software
+WashingtonDC also makes use of several third-party libraries available under
+various different licenses.
+
+**** stb_image_write
+WashingtonDC makes use of nothings' stb_image_write, which is included in
+src/libwashdc/stb_image_write.h .  The license can be found at the bottom of
+that file.
+
+**** glfw
+WashingtonDC also makes use of the glfw library.  This is not included in this
+source distribution, and is instead distributed using a git submodule.  The
+license for this software can be found in external/glfw/LICENSE.md in the
+source, or at LICENSE_glfw.txt in packaged builds.
+
+**** capstone
+WashingtonDC also makes use of the Capstone library.  This is not included in
+this source distribution, and is instead distributed using a git submodule.  The
+licenses for this software can be found in external/capstone/LICENSE.txt and
+external/capstone/LICENSE_LLVM.txt in the source, or at LICENSE_capstone.txt and
+LICENSE_llvm.txt in packaged builds.
+
+**** libevent
+WashingtonDC also makes use of the libevent library.  This is not included in
+this source distribution, and is instead automatically downloaded by the build
+system as a tarball.  The license for this software can be found in the tarball
+at libevent-2.1.8-stable/LICENSE in the source, or at LICENSE_libevent.txt in
+packaged builds.
+
+**** glew
+WashingtonDC also makes use of version 2.1.0 of the glew library.  A copy of
+this software with some unnecessary components removed is included in
+external/glew.  The license for this software can be found at
+external/glew/LICENSE.txt in the source, or at LICENSE_glew.txt in packaged
+builds.
+
+**** imgui
+WashingtonDC uses the imgui library.  This software is included via a git
+submodule.  The license for this software can be found at
+external/imgui/LICENSE.txt in the source, or at LICENSE_imgui.txt in packaged
+builds.
+
+**** portaudio
+WashingtonDC uses the portaudio library.  This software is included via a git
+submodule.  The license for this software can be found at
+external/portaudio/LICENSE.txt in the source, or at LICENSE_portaudio.txt in
+packaged builds.
+
+**** libchdr
+WashingtonDC uses the libchdr library; this software is included via a git submodule.
+The license for this software can be found at external/libchdr/LICENSE.txt.  Libchdr
+is based upon source code from the MAME project; this license can be found in the
+libchdr source in a comment line at the top of most source files, or alternatively
+in external/external_licenses/libchdr_aaron_giles.
+
+**** zlib
+WashingtonDC uses the zlib library, which is included in the libchdr sources.
+The license for this library can be found at external/libchdr/deps/zlib-1.2.11/README.
+
+**** LZMA
+WashingtonDC uses the LZMA SDK, which is included in the libchdr sources.
+The license for this library can be found at external/libchdr/deps/lzma-19.00/LICENSE.
+
+**** FFmpeg
+Some code from FFmpeg was used to implement Yamaha's ADPCM format.  This code is
+part of the FFmpeg library and is licensed under version 2.1 or greater of the
+GNU Lesser General Public License (LGPL).  The GNU LGPL allows licensees to
+optionally accept code under the terms of the GPL instead; I have chosen to do
+that and accept it under the terms of the GNU GPL version 3.
+
+**** SDL_gamecontrollerdb
+WashingtonDC uses a processed version of the SDL gamecontrollerdb; the license
+for this can be found in its source at src/washingtondc/sdl_gamecontrollerdb.h.
+
+** CONTACT
+You can reach me at my public-facing e-mail address, snickerbockers@washemu.org.
+
+My twitter account is @sbockers, and I also maintain a Fediverse
+account @snickerbockers@freeradical.zone
+
+WashingtonDC's official website can be found at http://www.washemu.org.
