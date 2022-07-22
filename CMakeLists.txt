@@ -18,6 +18,12 @@
 #
 ################################################################################
 
+cmake_minimum_required(VERSION 3.6)
+
+project(washdc C)
+set(washdc_VERSION_MAJOR 0)
+set(washdc_VERSION_MINOR 1)
+
 if (UNIX)
    include (GNUInstallDirs)
    set(README_DIR "${CMAKE_INSTALL_DOCDIR}")
@@ -26,7 +32,6 @@ else()
    set(LICENSE_DIR "licenses")
    set(README_DIR ".")
 endif()
-
 
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.org")
@@ -39,8 +44,6 @@ set(CPACK_PACKAGE_VERSION_MINOR 0)
 set(CPACK_PACKAGE_VERSION_PATCH 0)
 
 include(CPack)
-
-cmake_minimum_required(VERSION 2.8.4)
 
 set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 

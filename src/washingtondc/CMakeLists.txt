@@ -19,7 +19,7 @@
 ################################################################################
 
 #set(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.6)
 
 # for std::filesystem in the overlay.  Otherwise, we would not need this
 set(CMAKE_CXX_STANDARD 17)

@@ -1,7 +1,7 @@
 ################################################################################
 #
 #    WashingtonDC Dreamcast Emulator
-#    Copyright (C) 2016-2020  snickerbockers
+#    Copyright (C) 2016-2020, 2022  snickerbockers
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #
 ################################################################################
 
-cmake_minimum_required(VERSION 2.8.4)
+cmake_minimum_required(VERSION 3.6)
 include(ExternalProject)
 
 set (LIBEVENT_LIB_PATH ${CMAKE_CURRENT_BINARY_DIR})
