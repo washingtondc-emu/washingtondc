@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2020 snickerbockers
+ *    Copyright (C) 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -418,6 +418,25 @@ display_list_exec_header(struct pvr2 *pvr2,
         cmd_hdr->enable_depth_writes;
     gfx_cmd.arg.set_rend_param.param.depth_func = cmd_hdr->depth_func;
 
+    switch (cmd_hdr->cull_mode) {
+    case 1:
+        gfx_cmd.arg.set_rend_param.param.cull_mode = GFX_CULL_SMALL;
+        break;
+    case 2:
+        gfx_cmd.arg.set_rend_param.param.cull_mode = GFX_CULL_NEGATIVE;
+        break;
+    case 3:
+        gfx_cmd.arg.set_rend_param.param.cull_mode = GFX_CULL_POSITIVE;
+        break;
+    default:
+    case 0:
+        gfx_cmd.arg.set_rend_param.param.cull_mode = GFX_CULL_DISABLE;
+        break;
+    }
+    memcpy(&gfx_cmd.arg.set_rend_param.param.cull_bias,
+           pvr2->reg_backing + PVR2_FPU_CULL_VAL,
+           sizeof(gfx_cmd.arg.set_rend_param.param.cull_bias));
+
     gfx_cmd.arg.set_rend_param.param.tex_inst = cmd_hdr->tex_inst;
     gfx_cmd.arg.set_rend_param.param.tex_filter = cmd_hdr->tex_filter;
 
@@ -491,6 +510,8 @@ display_list_exec_tri_strip(struct pvr2 *pvr2,
 static inline void
 pvr2_core_push_gfx_il(struct pvr2 *pvr2, struct gfx_il_inst inst) {
     struct pvr2_core *core = &pvr2->core;
+
+    PVR2_TRACE("%s - ENQUEUE %s\n", __func__, gfx_il_op_name(inst.op));
 
     if (core->gfx_il_inst_buf_count >= PVR2_GFX_IL_INST_BUF_LEN)
         RAISE_ERROR(ERROR_OVERFLOW);

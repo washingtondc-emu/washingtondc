@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2020 snickerbockers
+ *    Copyright (C) 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -119,6 +119,8 @@ struct pvr2_display_list_command_header {
 
     bool enable_depth_writes;
     enum Pvr2DepthFunc depth_func;
+
+    int cull_mode;
 };
 
 struct pvr2_display_list_quad {

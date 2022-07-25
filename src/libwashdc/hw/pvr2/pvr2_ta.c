@@ -311,6 +311,22 @@ pvr2_depth_func_name(int func) {
     }
 }
 
+static char const *
+pvr2_cull_mode_name(int func) {
+    switch (func) {
+    case 0:
+        return "DISABLED";
+    case 1:
+        return "SMALL";
+    case 2:
+        return "NEGATIVE";
+    case 3:
+        return "POSITIVE";
+    default:
+        return "ERROR/UNKNOWN";
+    }
+}
+
 static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
 #define HDR_BOOL(hdr, mem) PVR2_TRACE("\t"#mem": %s\n", hdr->mem ? "true" : "false")
 #define HDR_BOOL_FUNC(hdr, mem, func) PVR2_TRACE("\t"#mem": %s\n", func(hdr) ? "true" : "false")
@@ -343,6 +359,7 @@ static void dump_pkt_hdr(struct pvr2_pkt_hdr const *hdr) {
     HDR_INT_FUNC(hdr, dst_blend_factor, pvr2_hdr_dst_blend_factor);
     HDR_BOOL_FUNC(hdr, enable_depth_writes, pvr2_hdr_enable_depth_writes);
     PVR2_TRACE("\tdepth_func: %s\n", pvr2_depth_func_name(pvr2_hdr_depth_func(hdr)));
+    PVR2_TRACE("\tcull_mode: %s\n", pvr2_cull_mode_name(pvr2_hdr_cull_mode(hdr)));
     HDR_BOOL_FUNC(hdr, two_volumes_mode, pvr2_hdr_two_volumes_mode);
     HDR_BOOL_FUNC(hdr, offset_color_enable, pvr2_hdr_offset_color_enable);
     HDR_BOOL_FUNC(hdr, gourad_shading_enable, pvr2_hdr_gourad_shading);
@@ -414,6 +431,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     ta->fifo_state.tex_wrap_mode[1] = pvr2_hdr_tex_wrap_mode_t(hdr);
     ta->fifo_state.enable_depth_writes = pvr2_hdr_enable_depth_writes(hdr);
     ta->fifo_state.depth_func = pvr2_hdr_depth_func(hdr);
+    ta->fifo_state.cull_mode = pvr2_hdr_cull_mode(hdr);
     ta->fifo_state.tex_inst = pvr2_hdr_tex_inst(hdr);
     ta->fifo_state.tex_filter = pvr2_hdr_tex_filter(hdr);
 
@@ -440,6 +458,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
     cmd_hdr->dst_blend_factor = ta->fifo_state.dst_blend_factor;
     cmd_hdr->enable_depth_writes = ta->fifo_state.enable_depth_writes;
     cmd_hdr->depth_func = ta->fifo_state.depth_func;
+    cmd_hdr->cull_mode = ta->fifo_state.cull_mode;
 
     cmd_hdr->tex_width_shift = pvr2_hdr_tex_width_shift(hdr);
     cmd_hdr->tex_height_shift = pvr2_hdr_tex_height_shift(hdr);

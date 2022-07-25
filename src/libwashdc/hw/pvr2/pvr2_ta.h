@@ -264,6 +264,13 @@ pvr2_hdr_enable_depth_writes(struct pvr2_pkt_hdr const *hdr) {
              DEPTH_WRITE_DISABLE_SHIFT);
 }
 
+#define CULL_MODE_SHIFT 27
+#define CULL_MODE_MASK (3 << 27)
+static inline unsigned
+pvr2_hdr_cull_mode(struct pvr2_pkt_hdr const *hdr) {
+    return (hdr->param[1] & CULL_MODE_MASK) >> CULL_MODE_SHIFT;
+}
+
 #define DEPTH_FUNC_SHIFT 29
 #define DEPTH_FUNC_MASK (7 << DEPTH_FUNC_SHIFT)
 static inline enum Pvr2DepthFunc
@@ -498,6 +505,7 @@ struct pvr2_fifo_state {
     bool open_tri_strip;
     unsigned cur_tri_strip_start, cur_tri_strip_len;
 
+    unsigned cull_mode;
 
     /**************************************************************************
      *

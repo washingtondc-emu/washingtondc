@@ -54,12 +54,69 @@ void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd) {
     unsigned n_cmd_tmp = n_cmd;
 
 #ifdef ENABLE_LOG_DEBUG
+    LOG_DBG(GFX_IL_TAG" %s EXECUTING %u %s\n", __func__, n_cmd,
+            n_cmd == 1 ? "COMMAND" : "COMMANDS");
     while (n_cmd--)
         gfx_log_il_cmd(cmd++);
 #endif
 
     gfx_rend_ifp->exec_gfx_il(cmd_tmp, n_cmd_tmp);
 }
+
+char const *gfx_il_op_name(enum gfx_il op) {
+    static char unknown_str[32];
+
+    switch (op) {
+    case GFX_IL_BIND_TEX:
+        return "GFX_IL_BIND_TEX";
+    case GFX_IL_UNBIND_TEX:
+        return "GFX_IL_UNBIND_TEX";
+    case GFX_IL_BIND_RENDER_TARGET:
+        return "GFX_IL_BIND_RENDER_TARGET";
+    case GFX_IL_UNBIND_RENDER_TARGET:
+        return "GFX_IL_UNBIND_RENDER_TARGET";
+    case GFX_IL_BEGIN_REND:
+        return "GFX_IL_BEGIN_REND";
+    case GFX_IL_END_REND:
+        return "GFX_IL_END_REND";
+    case GFX_IL_CLEAR:
+        return "GFX_IL_CLEAR";
+    case GFX_IL_SET_BLEND_ENABLE:
+        return "GFX_IL_SET_BLEND_ENABLE";
+    case GFX_IL_SET_REND_PARAM:
+        return "GFX_IL_SET_REND_PARAM";
+    case GFX_IL_SET_CLIP_RANGE:
+        return "GFX_IL_SET_CLIP_RANGE";
+    case GFX_IL_SET_USER_CLIP:
+        return "GFX_IL_SET_USER_CLIP";
+    case GFX_IL_SET_VERT_ARRAY:
+        return "GFX_IL_SET_VERT_ARRAY";
+    case GFX_IL_DRAW_VERT_ARRAY:
+        return "GFX_IL_DRAW_VERT_ARRAY";
+    case GFX_IL_INIT_OBJ:
+        return "GFX_IL_INIT_OBJ";
+    case GFX_IL_WRITE_OBJ:
+        return "GFX_IL_WRITE_OBJ";
+    case GFX_IL_READ_OBJ:
+        return "GFX_IL_READ_OBJ";
+    case GFX_IL_FREE_OBJ:
+        return "GFX_IL_FREE_OBJ";
+    case GFX_IL_POST_FRAMEBUFFER:
+        return "GFX_IL_POST_FRAMEBUFFER";
+    case GFX_IL_GRAB_FRAMEBUFFER:
+        return "GFX_IL_GRAB_FRAMEBUFFER";
+    case GFX_IL_BEGIN_DEPTH_SORT:
+        return "GFX_IL_BEGIN_DEPTH_SORT";
+    case GFX_IL_END_DEPTH_SORT:
+        return "GFX_IL_END_DEPTH_SORT";
+    default:
+        snprintf(unknown_str, sizeof(unknown_str),
+                 "UNKNOWN GFX_IL OP 0x%x", (int)op);
+        unknown_str[sizeof(unknown_str) - 1] = '\0';
+        return unknown_str;
+    }
+}
+
 
 #ifdef ENABLE_LOG_DEBUG
 #define GFX_IL_TAG "GFX_IL"
@@ -276,6 +333,24 @@ static void gfx_log_il_cmd(struct gfx_il_inst const *cmd) {
                 depth_func = "ERROR/UNKNOWN";
             }
 
+            char const *cull_mode;
+            switch (param->cull_mode) {
+            case GFX_CULL_DISABLE:
+                cull_mode = "DISABLED";
+                break;
+            case GFX_CULL_SMALL:
+                cull_mode = "SMALL";
+                break;
+            case GFX_CULL_NEGATIVE:
+                cull_mode = "NEGATIVE";
+                break;
+            case GFX_CULL_POSITIVE:
+                cull_mode = "POSITIVE";
+                break;
+            default:
+                cull_mode = "ERROR/UNKNOWN";
+            }
+
             LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_SET_REND_PARAM\n");
             LOG_DBG(GFX_IL_TAG "\tparam.tex_enable %s\n",
                     param->tex_enable ? "true" : "false");
@@ -293,6 +368,8 @@ static void gfx_log_il_cmd(struct gfx_il_inst const *cmd) {
             LOG_DBG(GFX_IL_TAG "\tparam.enable_depth_writes %s\n",
                     param->enable_depth_writes ? "true" : "false");
             LOG_DBG(GFX_IL_TAG "\tparam.depth_func %s\n", depth_func);
+            LOG_DBG(GFX_IL_TAG "\tparam.cull_mode %s\n", cull_mode);
+            LOG_DBG(GFX_IL_TAG "\tparam.cull_bias %f\n", (double)param->cull_bias);
             LOG_DBG(GFX_IL_TAG "\tparam.pt_mode %s\n",
                     param->pt_mode ? "true" : "false");
             LOG_DBG(GFX_IL_TAG "\tparam.pt_ref %u\n", param->pt_ref);

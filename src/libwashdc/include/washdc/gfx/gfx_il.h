@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -235,6 +235,9 @@ struct gfx_il_inst {
     enum gfx_il op;
     union gfx_il_arg arg;
 };
+
+// return string representation of given op, useful for debug/logging purposes
+char const *gfx_il_op_name(enum gfx_il op);
 
 void rend_exec_il(struct gfx_il_inst *cmd, unsigned n_cmd);
 

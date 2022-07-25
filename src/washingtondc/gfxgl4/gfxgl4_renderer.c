@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #ifndef _WIN32
 #include <dlfcn.h> // for loading renderdoc API
@@ -104,6 +105,12 @@ static GLint oit_sort_shader_color_accum_slot;
  * shader execution.
  */
 static GLuint oit_quad_vao, oit_quad_vbo;
+
+// for backface culling
+static float *vert_array_cp;
+static unsigned vert_array_len;
+static enum gfx_cull_mode cull_mode;
+static float cull_bias;
 
 // size of each struct oit_node in the GLSL fragment shader
 #define OIT_NODE_SIZE (4 * sizeof(GLfloat) + sizeof(GLfloat) + sizeof(GLuint))
@@ -768,6 +775,8 @@ static bool is_renderdoc_enabled(void) {
 
 static void opengl_render_init(void) {
     user_clip_slot = -1;
+    vert_array_cp = NULL;
+    vert_array_len = 0;
 
     init_renderdoc_api();
 
@@ -873,6 +882,10 @@ static void opengl_render_cleanup(void) {
     cleanup_renderdoc_api();
 
     user_clip_slot = -1;
+
+    free(vert_array_cp);
+    vert_array_cp = NULL;
+    vert_array_len = 0;
 }
 
 static DEF_ERROR_INT_ATTR(max_length);
@@ -1198,16 +1211,52 @@ static void do_set_rend_param(struct gfx_rend_param const *param) {
     else
         glDepthFunc(depth_funcs[param->depth_func]);
 
+    /*
+     * we don't use OpenGL for backface culling; that's implemented in software
+     * because OpenGL doesn't have any way to use the cull_bias.
+     *
+     * However, it may be possible to move the culling into a geometry shader.
+     */
+    glDisable(GL_CULL_FACE);
+    cull_mode = param->cull_mode;
+    cull_bias = param->cull_bias;
+
     tex_enable = param->tex_enable;
 }
 
 static void gfxgl4_renderer_set_vert_array(struct gfx_il_inst *cmd) {
     unsigned n_verts = cmd->arg.set_vert_array.n_verts;
     float const *verts = cmd->arg.set_vert_array.verts;
+    size_t buffer_size = sizeof(float) * n_verts * GFX_VERT_LEN;
+
+    /*
+     * here we make an in-memory copy of the vertex array so that when it's
+     * drawn, the cross product needed to get the triangle area can be
+     * calculated.
+     *
+     * TODO: there has got to be a better way
+     *       (and if not then at the very least it shouldn't need to keep
+     *        calling realloc every time)
+     */
+    float *new_vert_array_cp = realloc(vert_array_cp, n_verts * 4 * sizeof(float));
+    if (new_vert_array_cp || !buffer_size) {
+        vert_array_len = n_verts;
+        vert_array_cp = new_vert_array_cp;
+        unsigned vert_no = 0;
+        for (vert_no = 0; vert_no < n_verts; vert_no++) {
+            memcpy(vert_array_cp + vert_no * 4,
+                   verts + vert_no * GFX_VERT_LEN + GFX_VERT_POS_OFFSET,
+                   sizeof(float) * 4);
+        }
+    } else {
+        vert_array_len = 0;
+        free(vert_array_cp);
+        vert_array_cp = NULL;
+        fprintf(stderr, "*** ERROR: %s unable to alloc vert_array\n", __func__);
+    }
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * n_verts * GFX_VERT_LEN,
-                 verts, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, buffer_size, verts, GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -1276,7 +1325,62 @@ gfxgl4_renderer_draw_vert_array(struct gfx_il_inst *cmd) {
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT |
                         GL_ATOMIC_COUNTER_BARRIER_BIT);
     }
-    glDrawArrays(GL_TRIANGLE_STRIP, first_idx, n_verts);
+
+    unsigned vert_no;
+    if (n_verts) {
+        if (vert_array_cp && vert_array_len >= 3 && n_verts >= 3) {
+            // backface culling
+            unsigned vert_no;
+            bool even;
+            for (vert_no = first_idx, even = true;
+                 vert_no <= first_idx + (n_verts - 3);
+                 vert_no++, even = !even) {
+                float const *v0, *v1, *v2;
+                /*
+                 * use different winding orders for every other polygon in
+                 * the triangle strip
+                 */
+                if (even) {
+                    v0 = vert_array_cp + vert_no * 4;
+                    v1 = vert_array_cp + (vert_no + 1) * 4;
+                    v2 = vert_array_cp + (vert_no + 2) * 4;
+                } else {
+                    v1 = vert_array_cp + vert_no * 4;
+                    v0 = vert_array_cp + (vert_no + 1) * 4;
+                    v2 = vert_array_cp + (vert_no + 2) * 4;
+                }
+                float det = v0[0] * (v1[1] - v2[1]) +
+                    v1[0] * (v2[1] - v0[1]) +
+                    v2[0] * (v0[1] - v1[1]);
+
+                bool is_culled = false;
+                switch (cull_mode) {
+                case GFX_CULL_SMALL:
+                    is_culled = fabsf(det) < fabsf(cull_bias);
+                    break;
+                case GFX_CULL_NEGATIVE:
+                    // TODO: is `|| det < 0.0f` redundant here?
+                    is_culled = det < fabsf(cull_bias) || det < 0.0f;
+                    break;
+                case GFX_CULL_POSITIVE:
+                    // TODO: is `|| det > 0.0f` redundant here?
+                    is_culled = det > -fabsf(cull_bias) || det > 0.0f;
+                    break;
+                default:
+                    fprintf(stderr, "*** ERROR: BAD CULL VALUE\n");
+                    // intentional fall-through
+                case GFX_CULL_DISABLE:
+                    is_culled = false;
+                    break;
+                }
+                if (!is_culled)
+                    glDrawArrays(GL_TRIANGLES, vert_no, 3);
+            }
+        } else if (n_verts >= 3) {
+            for (vert_no = 0; vert_no <= n_verts - 3; vert_no++)
+                glDrawArrays(GL_TRIANGLES, first_idx + vert_no, 3);
+        }
+    }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }

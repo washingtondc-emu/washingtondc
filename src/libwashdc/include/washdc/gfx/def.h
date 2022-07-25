@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2019, 2020 snickerbockers
+ *    Copyright (C) 2019, 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -112,6 +112,13 @@ enum gfx_user_clip_mode {
     GFX_USER_CLIP_OUTSIDE
 };
 
+enum gfx_cull_mode {
+    GFX_CULL_DISABLE,
+    GFX_CULL_SMALL,
+    GFX_CULL_NEGATIVE,
+    GFX_CULL_POSITIVE
+};
+
 struct gfx_rend_param {
     bool tex_enable;
     unsigned tex_idx;
@@ -134,6 +141,9 @@ struct gfx_rend_param {
 
     // 2x2 texture matrix, row-major
     float tex_transform[4];
+
+    enum gfx_cull_mode cull_mode;
+    float cull_bias;
 };
 
 #ifdef __cplusplus
