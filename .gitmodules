@@ -21,4 +21,4 @@
 	url = https://github.com/AirGuanZ/imgui-filebrowser
 [submodule "external/libchdr"]
 	path = external/libchdr
-	url = https://github.com/snickerbockers/libchdr
+	url = https://github.com/rtissera/libchdr
