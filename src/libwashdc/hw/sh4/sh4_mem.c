@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -938,7 +938,7 @@ uint32_t sh4_utlb_ent_translate_addr(struct sh4_utlb_ent const *ent, uint32_t vp
 #endif
 
 void sh4_mmu_invalidate_tlb(struct Sh4 *sh4) {
-    LOG_WARN("%s is invalidating the entire SH4 TLB\n", __func__);
+    LOG_DBG("%s is invalidating the entire SH4 TLB\n", __func__);
 
     unsigned idx;
     for (idx = 0; idx < SH4_UTLB_LEN; idx++)
