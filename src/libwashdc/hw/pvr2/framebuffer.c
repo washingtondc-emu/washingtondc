@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 #include "washdc/gfx/obj.h"
 #include "log.h"
 #include "title.h"
+#include "intmath.h"
 
 #include "framebuffer.h"
 
@@ -73,6 +74,30 @@ static unsigned bytes_per_pix(uint32_t fb_r_ctrl) {
     default:
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
     }
+}
+
+static inline uint32_t fb_x_clip_min(struct framebuffer const *fb) {
+    return fb->fb_x_clip & BIT_RANGE(0, 10);
+}
+
+static inline uint32_t fb_x_clip_max(struct framebuffer const *fb) {
+    return (fb->fb_x_clip >> 16) & BIT_RANGE(0, 10);
+}
+
+static inline uint32_t fb_y_clip_min(struct framebuffer const *fb) {
+    return fb->fb_y_clip & BIT_RANGE(0, 9);
+}
+
+static inline uint32_t fb_y_clip_max(struct framebuffer const *fb) {
+    return (fb->fb_x_clip >> 16) & BIT_RANGE(0, 9);
+}
+
+static inline uint32_t fb_tile_w(struct framebuffer const *fb) {
+    return (fb->glob_tile_clip & BIT_RANGE(0, 5)) * 32;
+}
+
+static inline uint32_t fb_tile_h(struct framebuffer const *fb) {
+    return ((fb->glob_tile_clip >> 16) & BIT_RANGE(0, 3)) * 32;
 }
 
 /*
@@ -753,12 +778,9 @@ static void fb_reset(struct framebuffer *fb) {
     fb->addr_last[1] = 0;
     fb->addr_key = 0;
     fb->stamp = 0;
-    fb->tile_w = 0;
-    fb->tile_h = 0;
-    fb->x_clip_min = 0;
-    fb->x_clip_max = 0;
-    fb->y_clip_min = 0;
-    fb->y_clip_max = 0;
+    fb->glob_tile_clip = 0;
+    fb->fb_x_clip = 0;
+    fb->fb_y_clip = 0;
     fb->flags.state = FB_STATE_INVALID;
     fb->flags.fmt = FB_PIX_FMT_RGB_555;
     fb->flags.vert_flip = false;
@@ -891,12 +913,12 @@ submit_the_fb:
 
 static void
 fb_sync_from_host_0565_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
-    unsigned x_min = fb->x_clip_min;
-    unsigned y_min = fb->y_clip_min;
-    unsigned width = fb->tile_w;
-    unsigned height = fb->tile_h;
-    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
-    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
+    unsigned x_min = fb_x_clip_min(fb);
+    unsigned y_min = fb_y_clip_min(fb);
+    unsigned width = fb_tile_w(fb);
+    unsigned height = fb_tile_h(fb);
+    unsigned x_max = width < fb_x_clip_max(fb) ? width : fb_x_clip_max(fb);
+    unsigned y_max = height < fb_y_clip_max(fb) ? height : fb_y_clip_max(fb);
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
@@ -925,12 +947,12 @@ fb_sync_from_host_0565_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
 
 static void
 fb_sync_from_host_0555_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
-    unsigned x_min = fb->x_clip_min;
-    unsigned y_min = fb->y_clip_min;
-    unsigned width = fb->tile_w;
-    unsigned height = fb->tile_h;
-    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
-    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
+    unsigned x_min = fb_x_clip_min(fb);
+    unsigned y_min = fb_y_clip_min(fb);
+    unsigned width = fb_tile_w(fb);
+    unsigned height = fb_tile_h(fb);
+    unsigned x_max = width < fb_x_clip_max(fb) ? width : fb_x_clip_max(fb);
+    unsigned y_max = height < fb_y_clip_max(fb) ? height : fb_y_clip_max(fb);
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
@@ -960,12 +982,12 @@ fb_sync_from_host_0555_krgb(struct pvr2 *pvr2, struct framebuffer *fb) {
 
 static void
 fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
-    unsigned x_min = fb->x_clip_min;
-    unsigned y_min = fb->y_clip_min;
-    unsigned width = fb->tile_w;
-    unsigned height = fb->tile_h;
-    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
-    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
+    unsigned x_min = fb_x_clip_min(fb);
+    unsigned y_min = fb_y_clip_min(fb);
+    unsigned width = fb_tile_w(fb);
+    unsigned height = fb_tile_h(fb);
+    unsigned x_max = width < fb_x_clip_max(fb) ? width : fb_x_clip_max(fb);
+    unsigned y_max = height < fb_y_clip_max(fb) ? height : fb_y_clip_max(fb);
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
@@ -1008,12 +1030,12 @@ fb_sync_from_host_1555_argb(struct pvr2 *pvr2, struct framebuffer *fb) {
 
 static void fb_sync_from_host_rgb0888(struct pvr2 *pvr2, struct framebuffer *fb) {
     // TODO: this code is untested lol
-    unsigned x_min = fb->x_clip_min;
-    unsigned y_min = fb->y_clip_min;
-    unsigned width = fb->tile_w;
-    unsigned height = fb->tile_h;
-    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
-    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
+    unsigned x_min = fb_x_clip_min(fb);
+    unsigned y_min = fb_y_clip_min(fb);
+    unsigned width = fb_tile_w(fb);
+    unsigned height = fb_tile_h(fb);
+    unsigned x_max = width < fb_x_clip_max(fb) ? width : fb_x_clip_max(fb);
+    unsigned y_max = height < fb_y_clip_max(fb) ? height : fb_y_clip_max(fb);
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
@@ -1040,12 +1062,12 @@ static void fb_sync_from_host_rgb0888(struct pvr2 *pvr2, struct framebuffer *fb)
 
 static void fb_sync_from_host_argb8888(struct pvr2 *pvr2, struct framebuffer *fb) {
     // TODO: this code is untested lol
-    unsigned x_min = fb->x_clip_min;
-    unsigned y_min = fb->y_clip_min;
-    unsigned width = fb->tile_w;
-    unsigned height = fb->tile_h;
-    unsigned x_max = width < fb->x_clip_max ? width : fb->x_clip_max;
-    unsigned y_max = height < fb->y_clip_max ? height : fb->y_clip_max;
+    unsigned x_min = fb_x_clip_min(fb);
+    unsigned y_min = fb_y_clip_min(fb);
+    unsigned width = fb_tile_w(fb);
+    unsigned height = fb_tile_h(fb);
+    unsigned x_max = width < fb_x_clip_max(fb) ? width : fb_x_clip_max(fb);
+    unsigned y_max = height < fb_y_clip_max(fb) ? height : fb_y_clip_max(fb);
 
     unsigned stride = fb->linestride;
     uint32_t const *addr = fb->addr_first;
@@ -1352,12 +1374,9 @@ int framebuffer_set_render_target(struct pvr2 *pvr2) {
         break;
     }
 
-    fb->tile_w = get_glob_tile_clip_x(pvr2) << 5;
-    fb->tile_h = get_glob_tile_clip_y(pvr2) << 5;
-    fb->x_clip_min = get_fb_x_clip_min(pvr2);
-    fb->x_clip_max = get_fb_x_clip_max(pvr2);
-    fb->y_clip_min = get_fb_y_clip_min(pvr2);
-    fb->y_clip_max = get_fb_y_clip_max(pvr2);
+    fb->glob_tile_clip = get_glob_tile_clip(pvr2);
+    fb->fb_x_clip = get_fb_x_clip(pvr2);
+    fb->fb_y_clip = get_fb_y_clip(pvr2);
 
     /*
      * It's safe to re-bind an object that is already bound as a render target

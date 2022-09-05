@@ -106,8 +106,8 @@ struct framebuffer {
     unsigned stamp;
 
     // These variables are only valid if flags.state == FB_STATE_GFX
-    unsigned tile_w, tile_h, x_clip_min, x_clip_max,
-        y_clip_min, y_clip_max;
+    uint32_t glob_tile_clip;
+    uint32_t fb_x_clip, fb_y_clip;
 
     struct fb_flags flags;
 };
