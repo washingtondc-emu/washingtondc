@@ -595,21 +595,12 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
                   (unsigned)key);
     }
 
-    /*
-     * XXX glob_tile_clip is supposed to apply to TA display list creation
-     * and not core rendering, so it's definitely not correct to be referencing
-     * it here but IDK how else to get framebuffer dimensions so we do it
-     * anyways.
-     *
-     * Note that if this ever gets fixed, then framebuffer.c may need to be
-     * updated as well
-     */
-    unsigned screen_width = get_glob_tile_clip_x(pvr2) << 5;
-    unsigned screen_height = get_glob_tile_clip_y(pvr2) << 5;
     unsigned x_clip_min = get_fb_x_clip_min(pvr2);
     unsigned x_clip_max = get_fb_x_clip_max(pvr2);
     unsigned y_clip_min = get_fb_y_clip_min(pvr2);
     unsigned y_clip_max = get_fb_y_clip_max(pvr2);
+    unsigned screen_width = x_clip_max - x_clip_min + 1;
+    unsigned screen_height = y_clip_max - y_clip_min + 1;
 
     if (x_clip_max >= screen_width)
         x_clip_max = screen_width - 1;
