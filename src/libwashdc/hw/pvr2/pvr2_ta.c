@@ -183,6 +183,7 @@ void pvr2_ta_init(struct pvr2 *pvr2) {
     ta->pvr2_pt_complete_int_event.arg_ptr = pvr2;
 
     ta->cur_list_idx = 0;
+    ta->fifo_state.vtx_len = 8;
 }
 
 void pvr2_ta_cleanup(struct pvr2 *pvr2) {
