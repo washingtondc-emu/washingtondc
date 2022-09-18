@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -114,9 +114,26 @@
 
 /*
  * texture memory.
- * I don't yet understand the 32-bit/64-bit access area dichotomy, so I'm
- * keeping them separated for now.  They might both map th the same memory, I'm
- * just not sure yet.
+ *
+ * VRAM can be accessed through one of two areas: the 64-bit area or
+ * the 32-bit area. Both areas are backed by the same physical
+ * memory.  Physical VRAM consists of two separate 4MB modules, and
+ * the difference between the 32-bit and 64-bit areas is in how those
+ * two modules are mapped to addresses. The 32-bit area is used to
+ * store the framebuffer, and the 64-bit area is used to store textures.
+ *
+ * Although these two areas are referred to as "32-bit" and "64-bit"
+ * areas, there is no restriction on what sizes may be used for read and
+ * write operations. The names reflect the fact that the 64-bit area's
+ * interleaving allows it to be accessed faster than the 32-bit area
+ * since each consecutive set of four bytes comes from alternating RAM modules.
+ *
+ * The 32-bit area allows for sequential access across all 8MB of VRAM,
+ * with the entirety of the second 4MB module placed after the first 4MB
+ * module. The 64-bit memory interleaves the first 4MB module with the
+ * second 4MB module, alternating between the two modules every four
+ * bytes. So, every second set of four bytes in 64-bit area is offset
+ * by 4MB in the 32-bit area as illustrated in the table below.
  */
 #define ADDR_TEX64_FIRST       0x04000000
 #define ADDR_TEX64_LAST        0x047fffff
