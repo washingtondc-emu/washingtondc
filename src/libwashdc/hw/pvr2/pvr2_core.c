@@ -540,7 +540,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
      * sure why exactly that is but these sorts of issues are to be expected
      * with HLE.
      */
-    uint32_t key = pvr2->reg_backing[PVR2_PARAM_BASE];
+    uint32_t key = pvr2->reg_backing[PVR2_PARAM_BASE] & PVR2_DISPLAY_LIST_KEY_MASK;
     PVR2_TRACE("STARTRENDER requested!  key is %08X\n", (unsigned)key);
     struct pvr2_display_list *listp = NULL;
     unsigned list_no;

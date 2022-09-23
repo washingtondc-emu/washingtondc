@@ -160,7 +160,9 @@ struct pvr2_display_list_group {
     struct pvr2_display_list_command *cmds;
 };
 
+#define PVR2_DISPLAY_LIST_KEY_MASK 0x00ffffff
 typedef uint32_t pvr2_display_list_key;
+
 struct pvr2_display_list {
     pvr2_display_list_key key;
     unsigned age_counter; // used for determining the least-recently used list

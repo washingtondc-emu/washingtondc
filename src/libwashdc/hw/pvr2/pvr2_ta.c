@@ -1485,7 +1485,8 @@ void pvr2_ta_reinit(struct pvr2 *pvr2) {
     ta->fifo_state.open_group = false;
     ta->fifo_state.cur_poly_type = PVR2_POLY_TYPE_NONE;
 
-    pvr2_display_list_key key = pvr2->reg_backing[PVR2_TA_VERTBUF_POS];
+    pvr2_display_list_key key = pvr2->reg_backing[PVR2_TA_VERTBUF_POS] &
+        PVR2_DISPLAY_LIST_KEY_MASK;
     struct pvr2_display_list *cur_list = NULL;
     unsigned disp_list_idx;
 

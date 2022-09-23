@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -158,8 +158,9 @@ sync_fb_from_tex_mem_rgb565_intl(struct pvr2 *pvr2, struct framebuffer *fb,
                                 addr_row2, fb_width, concat);
     }
 
-    fb->addr_key = first_addr_field1  < first_addr_field2 ?
-        first_addr_field1 : first_addr_field2;
+    fb->addr_key = (first_addr_field1  < first_addr_field2 ?
+                    first_addr_field1 : first_addr_field2) &
+        PVR2_DISPLAY_LIST_KEY_MASK;
 
     fb->addr_first[0] = first_addr_field1;
     fb->addr_first[1] = first_addr_field2;
@@ -227,7 +228,7 @@ sync_fb_from_tex_mem_rgb565_prog(struct pvr2 *pvr2, struct framebuffer *fb,
 
     fb->fb_read_width = fb_width;
     fb->fb_read_height = fb_height;
-    fb->addr_key = first_byte;
+    fb->addr_key = first_byte & PVR2_DISPLAY_LIST_KEY_MASK;
     fb->addr_first[0] = first_byte;
     fb->addr_first[1] = first_byte;
     fb->addr_last[0] = last_byte;
@@ -303,8 +304,9 @@ sync_fb_from_tex_mem_rgb555_intl(struct pvr2 *pvr2, struct framebuffer *fb,
                                 addr_row2, fb_width, concat);
     }
 
-    fb->addr_key = first_addr_field1  < first_addr_field2 ?
-        first_addr_field1 : first_addr_field2;
+    fb->addr_key = (first_addr_field1  < first_addr_field2 ?
+                    first_addr_field1 : first_addr_field2) &
+        PVR2_DISPLAY_LIST_KEY_MASK;
 
     fb->addr_first[0] = first_addr_field1;
     fb->addr_first[1] = first_addr_field2;
@@ -384,8 +386,9 @@ sync_fb_from_tex_mem_rgb888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
                                 addr_row2, fb_width);
     }
 
-    fb->addr_key = first_addr_field1  < first_addr_field2 ?
-        first_addr_field1 : first_addr_field2;
+    fb->addr_key = (first_addr_field1  < first_addr_field2 ?
+                    first_addr_field1 : first_addr_field2) &
+        PVR2_DISPLAY_LIST_KEY_MASK;
 
     fb->addr_first[0] = first_addr_field1;
     fb->addr_first[1] = first_addr_field2;
@@ -453,7 +456,7 @@ sync_fb_from_tex_mem_rgb555_prog(struct pvr2 *pvr2, struct framebuffer *fb,
 
     fb->fb_read_width = fb_width;
     fb->fb_read_height = fb_height;
-    fb->addr_key = first_byte;
+    fb->addr_key = first_byte & PVR2_DISPLAY_LIST_KEY_MASK;
     fb->addr_first[0] = first_byte;
     fb->addr_first[1] = first_byte;
     fb->addr_last[0] = last_byte;
@@ -533,8 +536,9 @@ sync_fb_from_tex_mem_rgb0888_intl(struct pvr2 *pvr2, struct framebuffer *fb,
     fb->fb_read_width = fb_width;
     fb->fb_read_height = fb_height;
 
-    fb->addr_key = first_addr_field1 < first_addr_field2 ?
-        first_addr_field1 : first_addr_field2;
+    fb->addr_key = (first_addr_field1 < first_addr_field2 ?
+                    first_addr_field1 : first_addr_field2) &
+        PVR2_DISPLAY_LIST_KEY_MASK;
 
     fb->addr_first[0] = first_addr_field1;
     fb->addr_first[1] = first_addr_field2;
@@ -596,7 +600,7 @@ sync_fb_from_tex_mem_rgb0888_prog(struct pvr2 *pvr2, struct framebuffer *fb,
 
     fb->fb_read_width = fb_width;
     fb->fb_read_height = fb_height;
-    fb->addr_key = first_byte;
+    fb->addr_key = first_byte & PVR2_DISPLAY_LIST_KEY_MASK;
     fb->addr_first[0] = first_byte;
     fb->addr_first[1] = first_byte;
     fb->addr_last[0] = last_byte;
@@ -828,7 +832,7 @@ void framebuffer_render(struct pvr2 *pvr2) {
         struct framebuffer *fb = fb_heap + fb_idx;
         if (fb->fb_read_width == width &&
             fb->fb_read_height == height &&
-            fb->addr_key == addr_first &&
+            fb->addr_key == (addr_first & PVR2_DISPLAY_LIST_KEY_MASK) &&
             fb->flags.state != FB_STATE_INVALID) {
 
             if (!(fb_heap[fb_idx].flags.state & FB_STATE_GFX)) {
@@ -1165,7 +1169,7 @@ pick_fb(struct pvr2 *pvr2, unsigned width, unsigned height, uint32_t addr) {
         if (fb_heap[idx].flags.state != FB_STATE_INVALID) {
             if (fb_heap[idx].fb_read_width == width &&
                 fb_heap[idx].fb_read_height == height &&
-                fb_heap[idx].addr_key == addr) {
+                fb_heap[idx].addr_key == (addr & PVR2_DISPLAY_LIST_KEY_MASK)) {
                 return idx;
             }
             if (fb_heap[idx].stamp <= oldest_stamp) {
@@ -1226,7 +1230,7 @@ int framebuffer_set_render_target(struct pvr2 *pvr2) {
     width /= pix_sz;
     unsigned height = ((fb_r_size >> 10) & 0x3ff) + 1;
     uint32_t sof1 = get_fb_w_sof1(pvr2) & ~3;
-    uint32_t addr_key = sof1;
+    uint32_t addr_key = sof1 & PVR2_DISPLAY_LIST_KEY_MASK;
 
     int idx = pick_fb(pvr2, width, height, addr_key);
 
