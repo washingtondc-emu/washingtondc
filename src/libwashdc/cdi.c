@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2020 snickerbockers
+ *    Copyright (C) 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -136,6 +136,7 @@ void mount_cdi(char const *path) {
 
     switch (ver) {
     case 0x80000004:
+    case 0x80000005:
         if (washdc_hostfile_seek(stream, type_and_header_pos[1],
                                  WASHDC_HOSTFILE_SEEK_BEG) != 0) {
             error_set_file_path(path);
@@ -205,7 +206,8 @@ static void read_session(washdc_hostfile stream,
         error_set_cdi_version(ver);
         RAISE_ERROR(ERROR_FILE_IO);
     }
-    if (washdc_hostfile_seek(stream, 10, WASHDC_HOSTFILE_SEEK_CUR) != 0) {
+    unsigned skip = (ver == 0x80000005 ? 18 : 10);
+    if (washdc_hostfile_seek(stream, skip, WASHDC_HOSTFILE_SEEK_CUR) != 0) {
         error_set_errno_val(errno);
         error_set_cdi_version(ver);
         RAISE_ERROR(ERROR_FILE_IO);
@@ -259,7 +261,7 @@ static void read_track(washdc_hostfile stream,
     unsigned seek_amt = path_len;
     if (ver == 0x80000006) {
         seek_amt += 33;
-    } else if (ver == 0x80000004) {
+    } else if (ver == 0x80000004 || ver == 0x80000005) {
         seek_amt += 25;
     } else {
         error_set_cdi_version(ver);
@@ -361,7 +363,7 @@ static void read_track(washdc_hostfile stream,
 
     if (ver == 0x80000004)
         seek_amt = 38;
-    else if (ver == 0x80000006)
+    else
         seek_amt = 128;
 
     if (washdc_hostfile_seek(stream, seek_amt, WASHDC_HOSTFILE_SEEK_CUR) != 0) {
