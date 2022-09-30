@@ -710,6 +710,7 @@ dreamcast_init(char const *gdi_path,
         cpu.reg[SH4_REG_SPC] = 0xac000800;
         cpu.reg[SH4_REG_R15] = 0x8d000000;
         cpu.reg[SH4_REG_PC] = ADDR_1ST_READ_BIN;
+        cpu.reg[SH4_REG_SR] &= ~SH4_SR_RB_MASK;
 
         LOG_INFO("%s - firmware load HLE complete.\n", __func__);
     }
