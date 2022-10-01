@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018, 2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -227,6 +227,22 @@ static void washdbg_attach(void* argptr) {
     listener_lock();
 
     event_active(request_listen_event, 0, 0);
+
+    std::cout << std::endl << "*************************************************"
+        "*******************************" << std::endl <<
+        "**" << std::endl <<
+        "** AWAITING REMOTE TELNET CONNECTION ON PORT 1999" << std::endl <<
+        "** to connect, run the following command from the shell:" <<
+        std::endl <<
+        "**     telnet localhost 1999" << std::endl <<
+        "**" << std::endl <<
+        "** from there you will be able to control WashDbg " <<
+        "with your telnet client." << std::endl <<
+        "** use the 'help' command in WashDbg for more " <<
+        " information." << std::endl <<
+        "**" << std::endl <<
+        "******************************************************************"
+        "**************" << std::endl << std::endl;
 
     listener_wait();
 

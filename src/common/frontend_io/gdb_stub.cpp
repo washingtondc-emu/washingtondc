@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -334,6 +334,25 @@ void gdb_cleanup(void) {
 static void gdb_callback_attach(void *argptr) {
     washdc_log_info("Awaiting remote GDB connection on port %d...\n",
                     GDB_PORT_NO);
+
+    printf("\n****************************************************************"
+           "****************\n"
+           "**\n"
+           "** AWAITING REMOTE GDB CONNECTION ON PORT 1999\n"
+           "** to connect, open your gdb client and run the following "
+           "commands:\n"
+           "**     set arch sh4\n"
+           "**     set step-mode on\n"
+           "**     target remote localhost:1999\n"
+           "**\n"
+           "** note that your gdb client must support the SuperH ISA.\n"
+           "** Depending on your platform, this may mean you need to look for\n"
+           "** a different package named \"gdb-multiarch\" or something "
+           "similar.\n"
+           "**\n"
+           "******************************************************************"
+           "**************\n\n");
+
 
     gdb_stub_lock();
 

@@ -219,7 +219,8 @@ static void washdbg_print_banner(void) {
         "WashingtonDC Copyright (C) 2016-2020 snickerbockers\n"
         "This program comes with ABSOLUTELY NO WARRANTY;\n"
         "This is free software, and you are welcome to redistribute it\n"
-        "under the terms of the GNU GPL version 3.\n\n";
+        "under the terms of the GNU GPL version 3.\n\n"
+        "enter 'help' for built-in command documentation\n\n";
 
     print_banner_state.txt.txt = login_banner;
     print_banner_state.txt.pos = 0;
