@@ -93,6 +93,13 @@ struct washdc_launch_settings {
 
     struct washdc_hostfile_api const *hostfile_api;
 
+    /*
+     * if this is not WASHDC_HOSTFILE_INVALID, then proxies will be inserted
+     * between the CPU and the PowerVR2 to monitor all memory and register
+     * writes and log them to this file.
+     */
+    washdc_hostfile pvr2_trace_file;
+
     struct win_intf const *win_intf;
 
     // only valid if dbg_enable is true

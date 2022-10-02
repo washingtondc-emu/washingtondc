@@ -97,7 +97,9 @@ static void print_usage(char const *cmd) {
             "\t-x\t\tenable native x86_64 dynamic recompiler backend "
             "(default)\n"
             "\t-r opengl|soft\tselect renderer (default is opengl))\n"
-            "\t-w\t\tcreate a new console (you must also supply -b, -f, and -c)\n");
+            "\t-w\t\tcreate a new console (you must also supply -b, -f, and -c)\n"
+            "\t-i <file_path>\tintercept and log PowerVR2 interactions for "
+            "future replay and analysis\n");
 }
 
 struct washdc_gameconsole const *console;
@@ -249,13 +251,14 @@ int main(int argc, char **argv) {
     char const *dc_bios_path = NULL, *dc_flash_path = NULL;
     bool write_to_flash_mem = false;
     char const *gfx_backend = "opengl";
+    washdc_hostfile cap_file = WASHDC_HOSTFILE_INVALID;
 
     create_cfg_dir();
     create_data_dir();
     create_screenshot_dir();
     create_vmu_dir();
 
-    while ((opt = washdc_getopt(argc, argv, "wb:f:c:s:m:d:u:g:r:htjxpnlv")) != -1) {
+    while ((opt = washdc_getopt(argc, argv, "wb:f:c:s:m:d:u:g:r:htjxpnlvi:")) != -1) {
         switch (opt) {
         case 'g':
             enable_debugger = true;
@@ -311,6 +314,20 @@ int main(int argc, char **argv) {
                     "*************************************************************\n",
                     washdc_optarg);
             exit(1);
+        case 'i': {
+            printf("LOGGING DATA TO %s\n", washdc_optarg);
+            cap_file = file_stdio_open(washdc_optarg,
+                                       (enum washdc_hostfile_mode)
+                                       (WASHDC_HOSTFILE_BINARY |
+                                        WASHDC_HOSTFILE_WRITE));
+            if (cap_file == WASHDC_HOSTFILE_INVALID) {
+                fprintf(stderr, "ERROR: UNABLE TO OPEN %s FOR WRITING\n",
+                        washdc_optarg);
+                exit(1);
+            }
+            settings.pvr2_trace_file = cap_file;
+            break;
+        }
         case 'h':
             print_usage(cmd);
             exit(0);
@@ -673,6 +690,9 @@ int main(int argc, char **argv) {
     win_glfw_cleanup();
 
     cfg_cleanup();
+
+    if (cap_file != WASHDC_HOSTFILE_INVALID)
+        file_stdio_close(cap_file);
 
     exit(0);
 }

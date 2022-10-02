@@ -251,7 +251,9 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/serial_server.c"
                       "${WASHDC_SOURCE_DIR}/include/washdc/sound_intf.h"
                       "${WASHDC_SOURCE_DIR}/sound.h"
-                      "${WASHDC_SOURCE_DIR}/sound.c")
+                      "${WASHDC_SOURCE_DIR}/sound.c"
+                      "${WASHDC_SOURCE_DIR}/trace_proxy.h"
+                      "${WASHDC_SOURCE_DIR}/trace_proxy.c")
 
 if (JIT_PROFILE)
     add_definitions(-DJIT_PROFILE)

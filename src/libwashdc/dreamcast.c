@@ -86,6 +86,7 @@
 #include "washdc/hostfile.h"
 #include "hw/sys/holly_intc.h"
 #include "load_elf.h"
+#include "trace_proxy.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
@@ -156,7 +157,8 @@ static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
 
-static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map);
+static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
+                                  washdc_hostfile pvr2_trace_file);
 static void construct_arm7_mem_map(struct memory_map *map);
 
 // Run until the next scheduled event (in dc_sched) should occur
@@ -516,6 +518,7 @@ dreamcast_init(char const *gdi_path,
                struct serial_server_intf const *ser_intf,
                struct washdc_sound_intf const *snd_intf,
                bool flash_mem_writeable,
+               washdc_hostfile pvr2_trace_file,
                struct washdc_controller_dev const controllers[4][3]) {
 
     frame_count = 0;
@@ -768,7 +771,7 @@ dreamcast_init(char const *gdi_path,
     sh4_register_pdtra_read_handler(&cpu, on_pdtra_read);
     sh4_register_pdtra_write_handler(&cpu, on_pdtra_write);
 
-    construct_sh4_mem_map(&cpu, &mem_map);
+    construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file);
     sh4_set_mem_map(&cpu, &mem_map);
 
     construct_arm7_mem_map(&arm7_mem_map);
@@ -1442,7 +1445,8 @@ static void construct_arm7_mem_map(struct memory_map *map) {
     map->unmap = &arm7_unmapped_mem;
 }
 
-static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
+static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
+                                  washdc_hostfile pvr2_trace_file) {
     /*
      * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
      * but this absolutely needs to be at the front of the list because the
@@ -1504,15 +1508,33 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map) {
                    &pvr2_tex_mem_area32_intf, &dc_pvr2);
 
 
-    memory_map_add(map, 0x10000000, 0x107fffff,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_ta_fifo_intf, &dc_pvr2);
+    static struct trace_proxy ta_fifo_traceproxy;
+    if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
+        trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
+                           &pvr2_ta_fifo_intf, &dc_pvr2);
+    }
+
+    if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
+        memory_map_add(map, 0x10000000, 0x107fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
+    } else {
+        memory_map_add(map, 0x10000000, 0x107fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_ta_fifo_intf, &dc_pvr2);
+    }
     memory_map_add(map, 0x10800000, 0x10ffffff,
                    0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                    &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
-    memory_map_add(map, 0x11000000, 0x117fffff,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_ta_fifo_intf, &dc_pvr2);
+    if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
+        memory_map_add(map, 0x11000000, 0x117fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
+    } else {
+        memory_map_add(map, 0x11000000, 0x117fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_ta_fifo_intf, &dc_pvr2);
+    }
 
     /*
      * TODO: YUV FIFO - apparently I made it a special case in the DMAC code
