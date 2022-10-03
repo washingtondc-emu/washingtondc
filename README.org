@@ -15,11 +15,11 @@ Microsoft Windows.
 ** COMPILING
 
 WashingtonDC uses CMake as its build system.  The below commands can
-be used to compil WashingtonDC.  Note that there are several git
-submodules used, and these will need to be
+be used to compile WashingtonDC.  Note that there are several git
+submodules used, and these will need to be initialized.
 
 #+BEGIN_SRC sh
-  git submodule init --update --recursive
+  git submodule update --init --recursive
   mkdir build
   cd build
   cmake [OPTIONS] ..
