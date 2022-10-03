@@ -153,6 +153,8 @@ struct dc_clock sh4_clock;
 
 static unsigned frame_count;
 
+static washdc_hostfile pvr2_tracefile;
+
 static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
@@ -771,6 +773,7 @@ dreamcast_init(char const *gdi_path,
     sh4_register_pdtra_read_handler(&cpu, on_pdtra_read);
     sh4_register_pdtra_write_handler(&cpu, on_pdtra_write);
 
+    pvr2_tracefile = pvr2_trace_file;
     construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file);
     sh4_set_mem_map(&cpu, &mem_map);
 
@@ -1697,6 +1700,8 @@ dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
 
         if ((dst >= ADDR_TA_FIFO_POLY_FIRST) &&
             (dst <= ADDR_TA_FIFO_POLY_LAST)) {
+            if (pvr2_tracefile)
+                trace_memory_write(pvr2_tracefile, dst, 4, &val);
             pvr2_ta_fifo_poly_write_32(dst, val, &dc_pvr2);
         } else if ((dst >= ADDR_AREA4_TEX_REGION_0_FIRST) &&
                    (dst <= ADDR_AREA4_TEX_REGION_0_LAST)) {
@@ -1755,6 +1760,8 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         (xfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
         while (n_words--) {
             uint32_t buf = read32(xfer_src & mask, ctxt);
+            if (pvr2_tracefile)
+                trace_memory_write(pvr2_tracefile, xfer_dst, 4, &buf);
             pvr2_ta_fifo_poly_write_32(xfer_dst, buf, &dc_pvr2);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);

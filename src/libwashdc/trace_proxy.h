@@ -47,4 +47,34 @@ trace_proxy_create(struct trace_proxy *ctxt, washdc_hostfile outfile,
 
 extern struct memory_interface trace_proxy_memory_interface;
 
+/*
+ * TRACE_PROXY PACKET FORMAT
+ *
+ * All data is in little-endian format since that is the byte-order
+ * used by Dreamcast.
+ *
+ * 4 bytes - packet type; this is always 1
+ *     later there will be other packet types to represent things like
+ *     VBLANK interrupt but for now all we log are writes to proxied
+ *     memory
+ * 4 bytes - the address that the data was written to
+ * 4 bytes - length of the write in bytes
+ *     this is 4 bytes because stuff like DMA transactions can
+ *     transfer lots of data at once.  There will be an "optimizer"
+ *     program that will combine adjacent writes to adjacent memory
+ *     locations into larger blocks to handle things like writes to
+ *     texture memory
+ * VARIABLE-NUMBER bytes: the data
+ *     the length of this is set by the previous field.
+ * UP TO 3 BYTES of padding.  this should all be zero.  This way each
+ *     packet will be aligned to a 4-byte boundary.  the lenght field
+ *     above should not include this padding.  the program reading the
+ *     capture will assume the padding is there if the length of the
+ *     data is not a multiple of 4.
+ */
+
+void
+trace_memory_write(washdc_hostfile outfile, uint32_t addr,
+                   unsigned n_bytes, void const *data);
+
 #endif
