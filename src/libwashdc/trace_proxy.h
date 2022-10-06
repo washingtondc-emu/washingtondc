@@ -73,8 +73,4 @@ extern struct memory_interface trace_proxy_memory_interface;
  *     data is not a multiple of 4.
  */
 
-void
-trace_memory_write(washdc_hostfile outfile, uint32_t addr,
-                   unsigned n_bytes, void const *data);
-
 #endif

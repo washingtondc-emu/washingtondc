@@ -55,6 +55,10 @@ trace_proxy_try_write16(uint32_t addr, uint16_t val, void *ctxt);
 static int
 trace_proxy_try_write8(uint32_t addr, uint8_t val, void *ctxt);
 
+static void
+trace_memory_write(washdc_hostfile outfile, uint32_t addr,
+                   unsigned n_bytes, void const *data);
+
 struct memory_interface trace_proxy_memory_interface = {
     .readfloat = trace_proxy_readfloat,
     .readdouble = trace_proxy_readdouble,
@@ -81,7 +85,7 @@ struct memory_interface trace_proxy_memory_interface = {
     .try_write8 = trace_proxy_try_write8
 };
 
-void
+static void
 trace_memory_write(washdc_hostfile outfile, uint32_t addr,
                    unsigned n_bytes, void const *data) {
     uint32_t pkt_tp = 1;

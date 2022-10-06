@@ -1700,9 +1700,7 @@ dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
 
         if ((dst >= ADDR_TA_FIFO_POLY_FIRST) &&
             (dst <= ADDR_TA_FIFO_POLY_LAST)) {
-            if (pvr2_tracefile)
-                trace_memory_write(pvr2_tracefile, dst, 4, &val);
-            pvr2_ta_fifo_poly_write_32(dst, val, &dc_pvr2);
+            memory_map_write_32(&mem_map, dst, val);
         } else if ((dst >= ADDR_AREA4_TEX_REGION_0_FIRST) &&
                    (dst <= ADDR_AREA4_TEX_REGION_0_LAST)) {
             uint32_t dst_offs = dst - ADDR_AREA4_TEX_REGION_0_FIRST;
@@ -1754,15 +1752,18 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     }
 
     memory_map_read32_func read32 = src_region->intf->read32;
-    void *ctxt = src_region->ctxt;
+    void *src_ctxt = src_region->ctxt;
     uint32_t mask = src_region->mask;
     if ((xfer_dst >= ADDR_TA_FIFO_POLY_FIRST) &&
         (xfer_dst <= ADDR_TA_FIFO_POLY_LAST)) {
+        struct memory_map_region *dst_region =
+            memory_map_get_region(&mem_map, xfer_dst, n_words * 4);
+        memory_map_write32_func write32 = dst_region->intf->write32;
+        void *dst_ctxt = dst_region->ctxt;
+        uint32_t dst_mask = dst_region->mask;
         while (n_words--) {
-            uint32_t buf = read32(xfer_src & mask, ctxt);
-            if (pvr2_tracefile)
-                trace_memory_write(pvr2_tracefile, xfer_dst, 4, &buf);
-            pvr2_ta_fifo_poly_write_32(xfer_dst, buf, &dc_pvr2);
+            uint32_t buf = read32(xfer_src & mask, src_ctxt);
+            write32(xfer_dst & dst_mask, buf, dst_ctxt);
             xfer_dst += sizeof(buf);
             xfer_src += sizeof(buf);
         }
@@ -1772,14 +1773,14 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         xfer_dst -= ADDR_AREA4_TEX_REGION_0_FIRST;
         if (dc_get_lmmode0() == 0) {
             while (n_words--) {
-                uint32_t buf = read32(xfer_src & mask, ctxt);
+                uint32_t buf = read32(xfer_src & mask, src_ctxt);
                 pvr2_tex_mem_64bit_write32(&dc_pvr2, xfer_dst, buf);
                 xfer_dst += sizeof(buf);
                 xfer_src += sizeof(buf);
             }
         } else {
             while (n_words--) {
-                uint32_t buf = read32(xfer_src & mask, ctxt);
+                uint32_t buf = read32(xfer_src & mask, src_ctxt);
                 pvr2_tex_mem_32bit_write32(&dc_pvr2, xfer_dst, buf);
                 xfer_dst += sizeof(buf);
                 xfer_src += sizeof(buf);
@@ -1791,14 +1792,14 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         xfer_dst -= ADDR_AREA4_TEX_REGION_1_FIRST;
         if (dc_get_lmmode1() == 0) {
             while (n_words--) {
-                uint32_t buf = read32(xfer_src & mask, ctxt);
+                uint32_t buf = read32(xfer_src & mask, src_ctxt);
                 pvr2_tex_mem_64bit_write32(&dc_pvr2, xfer_dst, buf);
                 xfer_dst += sizeof(buf);
                 xfer_src += sizeof(buf);
             }
         } else {
             while (n_words--) {
-                uint32_t buf = read32(xfer_src & mask, ctxt);
+                uint32_t buf = read32(xfer_src & mask, src_ctxt);
                 pvr2_tex_mem_32bit_write32(&dc_pvr2, xfer_dst, buf);
                 xfer_dst += sizeof(buf);
                 xfer_src += sizeof(buf);
@@ -1807,7 +1808,7 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
     } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
         while (n_words--) {
-            uint32_t in = read32(xfer_src & mask, ctxt);
+            uint32_t in = read32(xfer_src & mask, src_ctxt);
             xfer_src += sizeof(in);
             pvr2_yuv_input_data(&dc_pvr2, &in, sizeof(in));
         }
