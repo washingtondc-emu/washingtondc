@@ -1480,7 +1480,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                    &ram_intf, &dc_mem);
 
     static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy,
-        pvr2_mem_32bit_traceproxy, pvr2_mem_64bit_traceproxy;
+        pvr2_mem_32bit_traceproxy, pvr2_mem_64bit_traceproxy, pvr2_reg_traceproxy;
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
         trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
                            &pvr2_ta_fifo_intf, &dc_pvr2);
@@ -1490,6 +1490,8 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                            &pvr2_tex_mem_area32_intf, &dc_pvr2);
         trace_proxy_create(&pvr2_mem_64bit_traceproxy, pvr2_trace_file, (8<<20)-1,
                            &pvr2_tex_mem_area64_intf, &dc_pvr2);
+        trace_proxy_create(&pvr2_reg_traceproxy, pvr2_trace_file, ADDR_AREA0_MASK,
+                           &pvr2_reg_intf, &dc_pvr2);
 
         memory_map_add(map, 0x04000000, 0x047fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
@@ -1512,6 +1514,12 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
         memory_map_add(map, 0x11000000, 0x117fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
+        memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &pvr2_reg_traceproxy);
+        memory_map_add(map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &pvr2_reg_traceproxy);
     } else {
         memory_map_add(map, 0x04000000, 0x047fffff,
                        0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
@@ -1534,6 +1542,12 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
         memory_map_add(map, 0x11000000, 0x117fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_fifo_intf, &dc_pvr2);
+        memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
+                       0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_reg_intf, &dc_pvr2);
+        memory_map_add(map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
+                       0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_reg_intf, &dc_pvr2);
     }
 
     /*
@@ -1564,15 +1578,9 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
     memory_map_add(map, ADDR_G2_FIRST, ADDR_G2_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g2_intf, NULL);
-    memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_reg_intf, &dc_pvr2);
     memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
-    /* memory_map_add(map, ADDR_PVR2_CORE_FIRST, ADDR_PVR2_CORE_LAST, */
-    /*                0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN, */
-    /*                &pvr2_core_reg_intf, NULL); */
     memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
                    0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
@@ -1607,15 +1615,9 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
     memory_map_add(map, ADDR_G2_FIRST + 0x02000000, ADDR_G2_LAST + 0x02000000,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g2_intf, NULL);
-    memory_map_add(map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_reg_intf, &dc_pvr2);
     memory_map_add(map, ADDR_MODEM_FIRST + 0x02000000, ADDR_MODEM_LAST + 0x02000000,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
-    /* memory_map_add(map, ADDR_PVR2_CORE_FIRST + 0x02000000, ADDR_PVR2_CORE_LAST + 0x02000000, */
-    /*                0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN, */
-    /*                &pvr2_core_reg_intf, NULL); */
     memory_map_add(map, ADDR_AICA_WAVE_FIRST + 0x02000000, ADDR_AICA_WAVE_LAST + 0x02000000,
                    0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
