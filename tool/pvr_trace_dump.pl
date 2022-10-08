@@ -20,6 +20,7 @@
 ################################################################################
 
 use v5.20;
+use PerlIO::gzip;
 
 my %regmap = (
     # device
@@ -149,8 +150,14 @@ if (scalar(@ARGV) != 1) {
     die "usage: $0 <dump_file>";
 }
 
-open my $dump, '<', $ARGV[0] or die;
-binmode $dump;
+my $dump;
+if ($ARGV[0] =~ /.*\.gz$/) {
+    open $dump, "<:gzip", $ARGV[0] or die "cannot open $ARGV[0] as gzip file";
+} else {
+    open $dump, '<', $ARGV[0] or die "cannot open $ARGV[0]";
+    binmode $dump;
+}
+
 
 my $hdr;
 while (read $dump, $hdr, 12) {
