@@ -1479,9 +1479,10 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                    0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
 
-    static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy,
-        pvr2_mem_32bit_traceproxy, pvr2_mem_64bit_traceproxy, pvr2_reg_traceproxy;
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
+        static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy,
+            pvr2_mem_32bit_traceproxy, pvr2_mem_64bit_traceproxy, pvr2_reg_traceproxy;
+
         trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
                            &pvr2_ta_fifo_intf, &dc_pvr2);
         trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
