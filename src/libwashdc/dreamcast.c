@@ -1511,29 +1511,29 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                    &pvr2_tex_mem_area32_intf, &dc_pvr2);
 
 
-    static struct trace_proxy ta_fifo_traceproxy;
+    static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy;
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
         trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
                            &pvr2_ta_fifo_intf, &dc_pvr2);
-    }
+        trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
+                           &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
 
-    if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
         memory_map_add(map, 0x10000000, 0x107fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
+        memory_map_add(map, 0x10800000, 0x10ffffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &ta_yuv_fifo_traceproxy);
+        memory_map_add(map, 0x11000000, 0x117fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
     } else {
         memory_map_add(map, 0x10000000, 0x107fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_fifo_intf, &dc_pvr2);
-    }
-    memory_map_add(map, 0x10800000, 0x10ffffff,
-                   0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
-    if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
-        memory_map_add(map, 0x11000000, 0x117fffff,
+        memory_map_add(map, 0x10800000, 0x10ffffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
-    } else {
+                       &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
         memory_map_add(map, 0x11000000, 0x117fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_fifo_intf, &dc_pvr2);
@@ -1716,8 +1716,8 @@ dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
             else
                 pvr2_tex_mem_32bit_write32(&dc_pvr2, dst_offs, val);
         } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
-               xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
-            pvr2_yuv_input_data(&dc_pvr2, &val, sizeof(val));
+                   xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
+            memory_map_write_32(&mem_map, dst, val);
         } else {
             error_set_ch2_dma_xfer_src_last(xfer_src_last);
             error_set_ch2_dma_xfer_src_first(xfer_src_first);
@@ -1807,10 +1807,16 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
         }
     } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
+        struct memory_map_region *dst_region =
+            memory_map_get_region(&mem_map, xfer_dst, n_words * 4);
+        memory_map_write32_func write32 = dst_region->intf->write32;
+        void *dst_ctxt = dst_region->ctxt;
+        uint32_t dst_mask = dst_region->mask;
         while (n_words--) {
             uint32_t in = read32(xfer_src & mask, src_ctxt);
+            write32(xfer_dst & dst_mask, in, dst_ctxt);
             xfer_src += sizeof(in);
-            pvr2_yuv_input_data(&dc_pvr2, &in, sizeof(in));
+            xfer_dst += sizeof(in);
         }
     } else {
         error_set_address(xfer_dst);
