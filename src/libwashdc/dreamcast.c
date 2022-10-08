@@ -1479,45 +1479,30 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                    0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
 
-
-    /*
-     * 64-bit and 32-bit texture memory.  I think these are actually supposed
-     * to share the same backing, but with the data stored separately.  For now
-     * they're implemented as two separate regions because I'm not sure how that
-     * works.
-     *
-     * TODO: each of these has at least three additional mirrors.
-     *
-     * The 64-bit area has mirrors at 0x04800000-0x04ffffff,
-     * 0x06000000-0x067fffff, and 0x06800000-0x06ffffff
-     *
-     * The 32-bit area has mirrors at 0x05800000-0x05ffffff,
-     * 0x07000000-0x077fffff, and 0x07800000-0x07ffffff.
-     *
-     * There might be even more mirrors at 0x11000000-0x11ffffff and
-     * 0x13000000-0x13ffffff, but I'm not sure.
-     */
-    memory_map_add(map, 0x04000000, 0x047fffff,
-                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area64_intf, &dc_pvr2);
-    memory_map_add(map, 0x05000000, 0x057fffff,
-                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area32_intf, &dc_pvr2);
-    memory_map_add(map, 0x06000000, 0x067fffff,
-                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area64_intf, &dc_pvr2);
-    memory_map_add(map, 0x07000000, 0x077fffff,
-                   0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
-                   &pvr2_tex_mem_area32_intf, &dc_pvr2);
-
-
-    static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy;
+    static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy,
+        pvr2_mem_32bit_traceproxy, pvr2_mem_64bit_traceproxy;
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
         trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
                            &pvr2_ta_fifo_intf, &dc_pvr2);
         trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
                            &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
+        trace_proxy_create(&pvr2_mem_32bit_traceproxy, pvr2_trace_file, (8<<20)-1,
+                           &pvr2_tex_mem_area32_intf, &dc_pvr2);
+        trace_proxy_create(&pvr2_mem_64bit_traceproxy, pvr2_trace_file, (8<<20)-1,
+                           &pvr2_tex_mem_area64_intf, &dc_pvr2);
 
+        memory_map_add(map, 0x04000000, 0x047fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
+        memory_map_add(map, 0x05000000, 0x057fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
+        memory_map_add(map, 0x06000000, 0x067fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
+        memory_map_add(map, 0x07000000, 0x077fffff,
+                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
         memory_map_add(map, 0x10000000, 0x107fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
@@ -1528,6 +1513,18 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
     } else {
+        memory_map_add(map, 0x04000000, 0x047fffff,
+                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_tex_mem_area64_intf, &dc_pvr2);
+        memory_map_add(map, 0x05000000, 0x057fffff,
+                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_tex_mem_area32_intf, &dc_pvr2);
+        memory_map_add(map, 0x06000000, 0x067fffff,
+                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_tex_mem_area64_intf, &dc_pvr2);
+        memory_map_add(map, 0x07000000, 0x077fffff,
+                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       &pvr2_tex_mem_area32_intf, &dc_pvr2);
         memory_map_add(map, 0x10000000, 0x107fffff,
                        0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_fifo_intf, &dc_pvr2);
@@ -1703,18 +1700,20 @@ dc_ch2_dma_xfer_slow(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
             memory_map_write_32(&mem_map, dst, val);
         } else if ((dst >= ADDR_AREA4_TEX_REGION_0_FIRST) &&
                    (dst <= ADDR_AREA4_TEX_REGION_0_LAST)) {
-            uint32_t dst_offs = dst - ADDR_AREA4_TEX_REGION_0_FIRST;
+            uint32_t addr = dst - ADDR_AREA4_TEX_REGION_0_FIRST;
             if (dc_get_lmmode0() == 0)
-                pvr2_tex_mem_64bit_write32(&dc_pvr2, dst_offs, val);
+                addr += ADDR_TEX64_FIRST;
             else
-                pvr2_tex_mem_32bit_write32(&dc_pvr2, dst_offs, val);
+                addr += ADDR_TEX32_FIRST;
+            memory_map_write_32(&mem_map, addr, val);
         } else if ((xfer_dst >= ADDR_AREA4_TEX_REGION_1_FIRST) &&
                    (xfer_dst <= ADDR_AREA4_TEX_REGION_1_LAST)) {
-            uint32_t dst_offs = dst - ADDR_AREA4_TEX_REGION_1_FIRST;
+            uint32_t addr = dst - ADDR_AREA4_TEX_REGION_1_FIRST;
             if (dc_get_lmmode1() == 0)
-                pvr2_tex_mem_64bit_write32(&dc_pvr2, dst_offs, val);
+                addr += ADDR_TEX64_FIRST;
             else
-                pvr2_tex_mem_32bit_write32(&dc_pvr2, dst_offs, val);
+                addr += ADDR_TEX32_FIRST;
+            memory_map_write_32(&mem_map, addr, val);
         } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                    xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
             memory_map_write_32(&mem_map, dst, val);
@@ -1771,39 +1770,41 @@ dc_ch2_dma_xfer(addr32_t xfer_src, addr32_t xfer_dst, unsigned n_words) {
                (xfer_dst <= ADDR_AREA4_TEX_REGION_0_LAST)) {
         // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
         xfer_dst -= ADDR_AREA4_TEX_REGION_0_FIRST;
-        if (dc_get_lmmode0() == 0) {
-            while (n_words--) {
+        if (dc_get_lmmode0() == 0)
+            xfer_dst += ADDR_TEX64_FIRST;
+        else
+            xfer_dst += ADDR_TEX32_FIRST;
+
+        struct memory_map_region *dst_region =
+            memory_map_get_region(&mem_map, xfer_dst, n_words * 4);
+        memory_map_write32_func write32 = dst_region->intf->write32;
+        void *dst_ctxt = dst_region->ctxt;
+        uint32_t dst_mask = dst_region->mask;
+        while (n_words--) {
                 uint32_t buf = read32(xfer_src & mask, src_ctxt);
-                pvr2_tex_mem_64bit_write32(&dc_pvr2, xfer_dst, buf);
+                write32(xfer_dst & dst_mask, buf, dst_ctxt);
                 xfer_dst += sizeof(buf);
                 xfer_src += sizeof(buf);
-            }
-        } else {
-            while (n_words--) {
-                uint32_t buf = read32(xfer_src & mask, src_ctxt);
-                pvr2_tex_mem_32bit_write32(&dc_pvr2, xfer_dst, buf);
-                xfer_dst += sizeof(buf);
-                xfer_src += sizeof(buf);
-            }
         }
     } else if ((xfer_dst >= ADDR_AREA4_TEX_REGION_1_FIRST) &&
                (xfer_dst <= ADDR_AREA4_TEX_REGION_1_LAST)) {
         // TODO: do tex DMA transfers in large chuks instead of 4-byte increments
         xfer_dst -= ADDR_AREA4_TEX_REGION_1_FIRST;
-        if (dc_get_lmmode1() == 0) {
-            while (n_words--) {
+        if (dc_get_lmmode1() == 0)
+            xfer_dst += ADDR_TEX64_FIRST;
+        else
+            xfer_dst += ADDR_TEX32_FIRST;
+
+        struct memory_map_region *dst_region =
+            memory_map_get_region(&mem_map, xfer_dst, n_words * 4);
+        memory_map_write32_func write32 = dst_region->intf->write32;
+        void *dst_ctxt = dst_region->ctxt;
+        uint32_t dst_mask = dst_region->mask;
+        while (n_words--) {
                 uint32_t buf = read32(xfer_src & mask, src_ctxt);
-                pvr2_tex_mem_64bit_write32(&dc_pvr2, xfer_dst, buf);
+                write32(xfer_dst & dst_mask, buf, dst_ctxt);
                 xfer_dst += sizeof(buf);
                 xfer_src += sizeof(buf);
-            }
-        } else {
-            while (n_words--) {
-                uint32_t buf = read32(xfer_src & mask, src_ctxt);
-                pvr2_tex_mem_32bit_write32(&dc_pvr2, xfer_dst, buf);
-                xfer_dst += sizeof(buf);
-                xfer_src += sizeof(buf);
-            }
         }
     } else if (xfer_dst >= ADDR_TA_FIFO_YUV_FIRST &&
                xfer_dst <= ADDR_TA_FIFO_YUV_LAST) {
