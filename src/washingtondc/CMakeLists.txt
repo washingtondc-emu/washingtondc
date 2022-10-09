@@ -98,29 +98,18 @@ set(gfxgl3_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "gfxgl3_final_vert.h"
                    "gfxgl3_final_frag.h")
 
-add_custom_command(OUTPUT "gfxgl3_render_vs.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_vs.glsl > gfxgl3_render_vs.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_vs.glsl"
-  COMMENT "generating gfxgl3_render_vs.h..."
+function(glsl_to_cstring infile outfile)
+add_custom_command(OUTPUT ${outfile}
+  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${infile} > ${outfile}
+  MAIN_DEPENDENCY ${infile}
+  COMMENT "generating ${outfile} from ${infile}..."
   VERBATIM)
+endfunction()
 
-add_custom_command(OUTPUT "gfxgl3_render_fs.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_fs.glsl > gfxgl3_render_fs.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_fs.glsl"
-  COMMENT "generating gfxgl3_render_fs.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl3_final_vert.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_vert.glsl > gfxgl3_final_vert.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_vert.glsl"
-  COMMENT "generating gfxgl3_final_vert.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl3_final_frag.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_frag.glsl > gfxgl3_final_frag.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_frag.glsl"
-  COMMENT "generating gfxgl3_final_frag.h..."
-  VERBATIM)
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_vs.glsl" "gfxgl3_render_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_fs.glsl" "gfxgl3_render_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_vert.glsl" "gfxgl3_final_vert.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_frag.glsl" "gfxgl3_final_frag.h")
 
 set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "${PROJECT_SOURCE_DIR}/renderdoc_app.h"
@@ -140,47 +129,13 @@ set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "gfxgl4_final_frag.h"
                    "gfxgl4_final_vert.h")
 
-add_custom_command(OUTPUT "gfxgl4_render_vs.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_vs.glsl > gfxgl4_render_vs.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_vs.glsl"
-  COMMENT "generating gfxgl4_render_vs.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl4_render_fs.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_fs.glsl > gfxgl4_render_fs.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_fs.glsl"
-  COMMENT "generating gfxgl4_render_fs.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl4_oit_node_def.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl4/oit_node_def.glsl > gfxgl4_oit_node_def.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl4/oit_node_def.glsl"
-  COMMENT "generating gfxgl4_oit_node_def.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl4_oit_sort_vs.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_vs.glsl > gfxgl4_oit_sort_vs.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_vs.glsl"
-  COMMENT "generating gfxgl4_oit_sort_vs.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl4_oit_sort_fs.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_fs.glsl > gfxgl4_oit_sort_fs.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_fs.glsl"
-  COMMENT "generating gfxgl4_oit_sort_fs.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl4_final_vert.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl4/final_vert.glsl > gfxgl4_final_vert.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl4/final_vert.glsl"
-  COMMENT "generating gfxgl4_final_vert.h..."
-  VERBATIM)
-
-add_custom_command(OUTPUT "gfxgl4_final_frag.h"
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${PROJECT_SOURCE_DIR}/gfxgl4/final_frag.glsl > gfxgl4_final_frag.h
-  MAIN_DEPENDENCY "${PROJECT_SOURCE_DIR}/gfxgl4/final_frag.glsl"
-  COMMENT "generating gfxgl4_final_frag.h..."
-  VERBATIM)
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_vs.glsl" "gfxgl4_render_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_fs.glsl" "gfxgl4_render_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_node_def.glsl" "gfxgl4_oit_node_def.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_vs.glsl" "gfxgl4_oit_sort_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_fs.glsl" "gfxgl4_oit_sort_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final_vert.glsl" "gfxgl4_final_vert.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final_frag.glsl" "gfxgl4_final_frag.h")
 
 set(soft_gfx_sources "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.c"
                      "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h")
