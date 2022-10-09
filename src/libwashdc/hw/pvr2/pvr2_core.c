@@ -749,7 +749,7 @@ unsigned get_cur_frame_stamp(struct pvr2 *pvr2) {
 }
 
 static void pvr2_render_complete_int_event_handler(struct SchedEvent *event) {
-    struct pvr2_core *core = &((struct pvr2*)event->arg_ptr)->core;
-    core->pvr2_render_complete_int_event_scheduled = false;
-    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
+    struct pvr2 *pvr2 = (struct pvr2*)event->arg_ptr;
+    pvr2->core.pvr2_render_complete_int_event_scheduled = false;
+    pvr2->irq_callback(HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE);
 }

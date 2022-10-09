@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@
 #include "pvr2_tex_mem.h"
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
+#include "hw/sys/holly_intc.h"
 
 #define N_PVR2_REGS (ADDR_PVR2_LAST - ADDR_PVR2_FIRST + 1)
 
@@ -101,10 +102,13 @@ struct pvr2 {
     struct pvr2_tex_cache tex_cache;
 
     struct pvr2_stat stat;
+
+    void(*irq_callback)(HollyNrmInt);
 };
 
 struct maple;
-void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk, struct maple *maple);
+void pvr2_init(struct pvr2 *pvr2, struct dc_clock *clk, struct maple *maple,
+               void(*irq_callback)(HollyNrmInt));
 void pvr2_cleanup(struct pvr2 *pvr2);
 
 #endif

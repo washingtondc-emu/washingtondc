@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ static void
 pvr2_yuv_complete_int_event_handler(struct SchedEvent *event) {
     struct pvr2 *pvr2 = (struct pvr2*)event->arg_ptr;
     pvr2->yuv.yuv_complete_event_scheduled = false;
-    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_YUV_COMPLETE);
+    pvr2->irq_callback(HOLLY_REG_ISTNRM_PVR_YUV_COMPLETE);
     pvr2_yuv_set_base(pvr2, pvr2->reg_backing[PVR2_TA_YUV_TEX_BASE]);
 }
 

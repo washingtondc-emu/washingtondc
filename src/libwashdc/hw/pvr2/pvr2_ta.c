@@ -1442,37 +1442,37 @@ static void unpack_rgba_8888(uint32_t const *ta_fifo32, float *rgba, uint32_t in
 
 static void
 pvr2_op_complete_int_event_handler(struct SchedEvent *event) {
-    struct pvr2_ta *ta = &((struct pvr2*)event->arg_ptr)->ta;
-    ta->pvr2_op_complete_int_event_scheduled = false;
-    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE);
+    struct pvr2 *pvr2 = event->arg_ptr;
+    pvr2->ta.pvr2_op_complete_int_event_scheduled = false;
+    pvr2->irq_callback(HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE);
 }
 
 static void
 pvr2_op_mod_complete_int_event_handler(struct SchedEvent *event) {
-    struct pvr2_ta *ta = &((struct pvr2*)event->arg_ptr)->ta;
-    ta->pvr2_op_mod_complete_int_event_scheduled = false;
-    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE);
+    struct pvr2 *pvr2 = event->arg_ptr;
+    pvr2->ta.pvr2_op_mod_complete_int_event_scheduled = false;
+    pvr2->irq_callback(HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE);
 }
 
 static void
 pvr2_trans_complete_int_event_handler(struct SchedEvent *event) {
-    struct pvr2_ta *ta = &((struct pvr2*)event->arg_ptr)->ta;
-    ta->pvr2_trans_complete_int_event_scheduled = false;
-    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE);
+    struct pvr2 *pvr2 = event->arg_ptr;
+    pvr2->ta.pvr2_trans_complete_int_event_scheduled = false;
+    pvr2->irq_callback(HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE);
 }
 
 static void
 pvr2_trans_mod_complete_int_event_handler(struct SchedEvent *event) {
-    struct pvr2_ta *ta = &((struct pvr2*)event->arg_ptr)->ta;
-    ta->pvr2_trans_mod_complete_int_event_scheduled = false;
-    holly_raise_nrm_int(HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE);
+    struct pvr2 *pvr2 = event->arg_ptr;
+    pvr2->ta.pvr2_trans_mod_complete_int_event_scheduled = false;
+    pvr2->irq_callback(HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE);
 }
 
 static void
 pvr2_pt_complete_int_event_handler(struct SchedEvent *event) {
-    struct pvr2_ta *ta = &((struct pvr2*)event->arg_ptr)->ta;
-    ta->pvr2_pt_complete_int_event_scheduled = false;
-    holly_raise_nrm_int(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
+    struct pvr2 *pvr2 = event->arg_ptr;
+    pvr2->ta.pvr2_pt_complete_int_event_scheduled = false;
+    pvr2->irq_callback(HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE);
 }
 
 void pvr2_ta_reinit(struct pvr2 *pvr2) {

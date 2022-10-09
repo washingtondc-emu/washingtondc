@@ -736,7 +736,7 @@ dreamcast_init(char const *gdi_path,
     g1_init();
     g2_init();
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
-    pvr2_init(&dc_pvr2, &sh4_clock, &maple);
+    pvr2_init(&dc_pvr2, &sh4_clock, &maple, holly_raise_nrm_int);
     sys_block_init(&sys_block, &sh4_clock, &cpu, &dc_mem, &dc_pvr2);
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&maple, &sh4_clock);

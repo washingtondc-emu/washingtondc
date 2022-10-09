@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -242,7 +242,7 @@ static void spg_handle_hblank(SchedEvent *event) {
     }
 #endif
 
-    holly_raise_nrm_int(HOLLY_NRM_INT_HBLANK);
+    pvr2->irq_callback(HOLLY_NRM_INT_HBLANK);
 
     sched_next_hblank_event(pvr2);
 }
@@ -251,7 +251,7 @@ static void spg_handle_vblank_in(SchedEvent *event) {
     struct pvr2 *pvr2 = (struct pvr2*)event->arg_ptr;
 
     spg_sync(pvr2);
-    holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_IN);
+    pvr2->irq_callback(HOLLY_NRM_INT_VBLANK_IN);
     sched_next_vblank_in_event(pvr2);
 
     LOG_DBG("vcount is %u\n", get_vcount(pvr2));
@@ -262,7 +262,7 @@ static void spg_handle_vblank_out(SchedEvent *event) {
     struct pvr2 *pvr2 = (struct pvr2*)event->arg_ptr;
 
     spg_sync(pvr2);
-    holly_raise_nrm_int(HOLLY_NRM_INT_VBLANK_OUT);
+    pvr2->irq_callback(HOLLY_NRM_INT_VBLANK_OUT);
     sched_next_vblank_out_event(pvr2);
 }
 
