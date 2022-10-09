@@ -259,166 +259,12 @@ static void cleanup_renderdoc_api(void);
 static bool is_renderdoc_enabled(void);
 
 static char const * const pvr2_ta_vert_glsl =
-    "layout (location = 0) in vec4 vert_pos;\n"
-    "layout (location = 1) in vec4 base_color;\n"
-    "layout (location = 2) in vec4 offs_color;\n"
-
-    "#ifdef TEX_ENABLE\n"
-    "layout (location = 3) in vec2 tex_coord_in;\n"
-    "uniform mat2 tex_matrix;\n"
-    "#endif\n"
-
-    "uniform mat4 trans_mat;\n"
-
-    "out float w_coord;\n"
-
-    "out vec4 vert_base_color, vert_offs_color;\n"
-    "#ifdef TEX_ENABLE\n"
-    "out vec2 st;\n"
-    "#endif\n"
-
-    /*
-     * This function performs texture coordinate transformations if textures are\n"
-     * enabled.\n"
-     */
-    "void tex_transform() {\n"
-    "#ifdef TEX_ENABLE\n"
-    "    st = tex_matrix * tex_coord_in * vert_pos.z;\n"
-    "#endif\n"
-    "}\n"
-    "\n"
-    /*
-     * translate coordinates from the Dreamcast's coordinate system (which is\n"
-     * screen-coordinates with an origin in the upper-left) to OpenGL\n"
-     * coordinates (which are bounded from -1.0 to 1.0, with the upper-left\n"
-     * coordinate being at (-1.0, 1.0)\n"
-     */
-    "void modelview_project_transform() {\n"
-    "    /*\n"
-    "     * trans_mat is an orthographic transformation, so the z-coordinate\n"
-    "     * passed through to the fragment shader is the original 1/z value\n"
-    "     * from the Dreamcast game.\n"
-    "     */\n"
-    "    w_coord = vert_pos.z;\n"
-    "    gl_Position = trans_mat * vert_pos;\n"
-    "}\n"
-
-    "void color_transform() {\n"
-    "#ifdef COLOR_ENABLE\n"
-    "    vert_base_color = base_color * vert_pos.z;\n"
-    "    vert_offs_color = offs_color * vert_pos.z;\n"
-    "#else\n"
-    "    vert_base_color = vec4(vert_pos.z);\n"
-    "    vert_offs_color = vec4(0.0);\n"
-    "#endif\n"
-    "}\n"
-
-    "void main() {\n"
-    "    modelview_project_transform();\n"
-    "    color_transform();\n"
-    "    tex_transform();\n"
-    "}\n";
+#include "gfxgl3_render_vs.h"
+    ;
 
 static char const * const pvr2_ta_frag_glsl =
-    "#define TEX_INST_DECAL 0\n"
-    "#define TEX_INST_MOD 1\n"
-    "#define TEX_INST_DECAL_ALPHA 2\n"
-    "#define TEX_INST_MOD_ALPHA 3\n"
-
-    "in vec4 vert_base_color, vert_offs_color;\n"
-    "out vec4 out_color;\n"
-
-    "in float w_coord;\n"
-
-    "#ifdef TEX_ENABLE\n"
-    "in vec2 st;\n"
-    "uniform sampler2D bound_tex;\n"
-    "#endif\n"
-
-    "#ifdef USER_CLIP_ENABLE\n"
-    /*
-     * user_clip.x - x_min
-     * user_clip.y - y_min
-     * user_clip.z - x_max
-     * user_clip.w - y_max
-     */
-    "uniform vec4 user_clip;\n"
-
-    "void user_clip_test() {\n"
-    "    bool in_rect = gl_FragCoord.x >= user_clip[0] &&\n"
-    "        gl_FragCoord.x <= user_clip[2] &&\n"
-    "        gl_FragCoord.y >= user_clip[1] &&\n"
-    "        gl_FragCoord.y <= user_clip[3];\n"
-    "#ifdef USER_CLIP_INVERT\n"
-    "    if (in_rect)\n"
-    "        discard;\n"
-    "#else\n"
-    "    if (!in_rect)\n"
-    "        discard;\n"
-    "#endif\n"
-    "}\n"
-    "#endif\n"
-
-    "#ifdef PUNCH_THROUGH_ENABLE\n"
-    "uniform int pt_alpha_ref;\n"
-
-    "void punch_through_test(float alpha) {\n"
-    "    if (int(alpha * 255) < pt_alpha_ref)\n"
-    "        discard;\n"
-    "}\n"
-    "#endif\n"
-
-    "#ifdef TEX_ENABLE\n"
-    "vec4 eval_tex_inst() {\n"
-    "    /*\n"
-    "     * division by w_coord makes it perspective-correct when combined\n"
-    "     * with multiplication by vert_pos.z in the vertex shader.\n"
-    "     */\n"
-    "    vec4 base_color = vert_base_color / w_coord;\n"
-    "    vec4 offs_color = vert_offs_color / w_coord;\n"
-    "    vec4 tex_color = texture(bound_tex, st / w_coord);\n"
-    "    vec4 color;\n"
-    // TODO: is the offset alpha color supposed to be used for anything?
-    "#if TEX_INST == TEX_INST_DECAL\n"
-    "        color.rgb = tex_color.rgb + offs_color.rgb;\n"
-    "        color.a = tex_color.a;\n"
-    "#elif TEX_INST == TEX_INST_MOD\n"
-    "        color.rgb = tex_color.rgb * base_color.rgb + offs_color.rgb;\n"
-    "        color.a = tex_color.a;\n"
-    "#elif TEX_INST == TEX_INST_DECAL_ALPHA\n"
-    "        color.rgb = tex_color.rgb * tex_color.a +\n"
-    "            base_color.rgb * (1.0 - tex_color.a) + offs_color.rgb;\n"
-    "        color.a = base_color.a;\n"
-    "#elif TEX_INST == TEX_INST_MOD_ALPHA\n"
-    "        color.rgb = tex_color.rgb * base_color.rgb + offs_color.rgb;\n"
-    "        color.a = tex_color.a * base_color.a;\n"
-    "#else\n"
-    "#error unknown TEX_INST\n"
-    "#endif\n"
-    "    return color;\n"
-    "}\n"
-    "#endif\n"
-
-    "void main() {\n"
-
-    "#ifdef USER_CLIP_ENABLE\n"
-    "    user_clip_test();\n"
-    "#endif\n"
-
-    "    vec4 color;\n"
-    "#ifdef TEX_ENABLE\n"
-    "    color = eval_tex_inst();\n"
-    "#else\n"
-    "    // divide by w_coord for perspective correction\n"
-    "    color = vert_base_color / w_coord;\n"
-    "#endif\n"
-
-    "#ifdef PUNCH_THROUGH_ENABLE\n"
-    "    punch_through_test(color.a);\n"
-    "#endif\n"
-
-    "    out_color = color;\n"
-    "}\n";
+#include "gfxgl3_render_fs.h"
+    ;
 
 static struct shader_cache_ent* create_shader(shader_key key) {
     #define PREAMBLE_LEN 256
@@ -473,9 +319,9 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     }
 
     shader_load_vert_with_preamble(&ent->shader, SHADER_VER_330,
-                                   pvr2_ta_vert_glsl, preamble);
+                                   pvr2_ta_vert_glsl, preamble, NULL);
     shader_load_frag_with_preamble(&ent->shader, SHADER_VER_330,
-                                   pvr2_ta_frag_glsl, preamble);
+                                   pvr2_ta_frag_glsl, preamble, NULL);
     shader_link(&ent->shader);
 
     /*

@@ -298,333 +298,23 @@ static void cleanup_renderdoc_api(void);
 static bool is_renderdoc_enabled(void);
 
 static char const * const pvr2_ta_vert_glsl =
-    "layout (location = 0) in vec4 vert_pos;\n"
-    "layout (location = 1) in vec4 base_color;\n"
-    "layout (location = 2) in vec4 offs_color;\n"
+#include "gfxgl4_render_vs.h"
+    ;
 
-    "#ifdef TEX_ENABLE\n"
-    "layout (location = 3) in vec2 tex_coord_in;\n"
-    "uniform mat2 tex_matrix;\n"
-    "#endif\n"
-
-    "uniform mat4 trans_mat;\n"
-
-    "out float w_coord;\n"
-
-    "out vec4 vert_base_color, vert_offs_color;\n"
-    "#ifdef TEX_ENABLE\n"
-    "out vec2 st;\n"
-    "#endif\n"
-
-    /*
-     * This function performs texture coordinate transformations if textures are\n"
-     * enabled.\n"
-     */
-    "void tex_transform() {\n"
-    "#ifdef TEX_ENABLE\n"
-    "    st = tex_matrix * tex_coord_in * vert_pos.z;\n"
-    "#endif\n"
-    "}\n"
-    "\n"
-    /*
-     * translate coordinates from the Dreamcast's coordinate system (which is\n"
-     * screen-coordinates with an origin in the upper-left) to OpenGL\n"
-     * coordinates (which are bounded from -1.0 to 1.0, with the upper-left\n"
-     * coordinate being at (-1.0, 1.0)\n"
-     */
-    "void modelview_project_transform() {\n"
-    "    /*\n"
-    "     * trans_mat is an orthographic transformation, so the z-coordinate\n"
-    "     * passed through to the fragment shader is the original 1/z value\n"
-    "     * from the Dreamcast game.\n"
-    "     */\n"
-    "    w_coord = vert_pos.z;\n"
-    "    gl_Position = trans_mat * vert_pos;\n"
-    "}\n"
-
-    "void color_transform() {\n"
-    "#ifdef COLOR_ENABLE\n"
-    "    vert_base_color = base_color * vert_pos.z;\n"
-    "    vert_offs_color = offs_color * vert_pos.z;\n"
-    "#else\n"
-    "    vert_base_color = vec4(vert_pos.z);\n"
-    "    vert_offs_color = vec4(0.0);\n"
-    "#endif\n"
-    "}\n"
-
-    "void main() {\n"
-    "    modelview_project_transform();\n"
-    "    color_transform();\n"
-    "    tex_transform();\n"
-    "}\n";
-
-#define OIT_NODE_GLSL_DEF                                               \
-    "#define OIT_NODE_INVALID 0xffffffff\n"                             \
-                                                                        \
-    "struct oit_pixel {\n"                                              \
-    "    vec4 color;\n"                                                 \
-    "    float depth;\n"                                                \
-    "    unsigned int src_blend_factor, dst_blend_factor;\n"            \
-    "};\n"                                                              \
-                                                                        \
-    "struct oit_node {\n"                                               \
-    "    struct oit_pixel pix;\n"                                       \
-    "    unsigned int next_node;\n"                                     \
-    "};\n"                                                              \
-                                                                        \
-    "layout (binding = 0) uniform atomic_uint node_count;\n"            \
-    "layout(std430, binding = 0) coherent buffer oit_shared_data {\n"   \
-    "    oit_node oit_nodes[];\n"                                       \
-    "};\n"
+static char const * const oit_node_def =
+#include "gfxgl4_oit_node_def.h"
+    ;
 
 static char const * const pvr2_ta_frag_glsl =
-    "#define TEX_INST_DECAL 0\n"
-    "#define TEX_INST_MOD 1\n"
-    "#define TEX_INST_DECAL_ALPHA 2\n"
-    "#define TEX_INST_MOD_ALPHA 3\n"
-
-    "in vec4 vert_base_color, vert_offs_color;\n"
-    "out vec4 out_color;\n"
-
-    "in float w_coord;\n"
-
-    "#ifdef OIT_ENABLE\n"
-
-    "layout(early_fragment_tests) in;\n"
-    "uniform int MAX_OIT_NODES;\n"
-    "uniform int src_blend_factor, dst_blend_factor;\n"
-
-    OIT_NODE_GLSL_DEF
-
-    /*
-     * each pixel in oit_heads >= 0 points to an index in oit_node that is the
-     * beginning of that pixel's linked-list.
-     */
-    "layout(r32ui, binding = 0) uniform coherent uimage2D oit_heads;\n"
-
-    "#endif\n"
-
-    "#ifdef TEX_ENABLE\n"
-    "in vec2 st;\n"
-    "uniform sampler2D bound_tex;\n"
-    "#endif\n"
-
-    "#ifdef USER_CLIP_ENABLE\n"
-    /*
-     * user_clip.x - x_min
-     * user_clip.y - y_min
-     * user_clip.z - x_max
-     * user_clip.w - y_max
-     */
-    "uniform vec4 user_clip;\n"
-
-    "void user_clip_test() {\n"
-    "    bool in_rect = gl_FragCoord.x >= user_clip[0] &&\n"
-    "        gl_FragCoord.x <= user_clip[2] &&\n"
-    "        gl_FragCoord.y >= user_clip[1] &&\n"
-    "        gl_FragCoord.y <= user_clip[3];\n"
-    "#ifdef USER_CLIP_INVERT\n"
-    "    if (in_rect)\n"
-    "        discard;\n"
-    "#else\n"
-    "    if (!in_rect)\n"
-    "        discard;\n"
-    "#endif\n"
-    "}\n"
-    "#endif\n"
-
-    "#ifdef PUNCH_THROUGH_ENABLE\n"
-    "uniform int pt_alpha_ref;\n"
-
-    "void punch_through_test(float alpha) {\n"
-    "    if (int(alpha * 255) < pt_alpha_ref)\n"
-    "        discard;\n"
-    "}\n"
-    "#endif\n"
-
-    "#ifdef TEX_ENABLE\n"
-    "vec4 eval_tex_inst() {\n"
-    "    /*\n"
-    "     * division by w_coord makes it perspective-correct when combined\n"
-    "     * with multiplication by vert_pos.z in the vertex shader.\n"
-    "     */\n"
-    "    vec4 base_color = vert_base_color / w_coord;\n"
-    "    vec4 offs_color = vert_offs_color / w_coord;\n"
-    "    vec4 tex_color = texture(bound_tex, st / w_coord);\n"
-    "    vec4 color;\n"
-    // TODO: is the offset alpha color supposed to be used for anything?
-    "#if TEX_INST == TEX_INST_DECAL\n"
-    "        color.rgb = tex_color.rgb + offs_color.rgb;\n"
-    "        color.a = tex_color.a;\n"
-    "#elif TEX_INST == TEX_INST_MOD\n"
-    "        color.rgb = tex_color.rgb * base_color.rgb + offs_color.rgb;\n"
-    "        color.a = tex_color.a;\n"
-    "#elif TEX_INST == TEX_INST_DECAL_ALPHA\n"
-    "        color.rgb = tex_color.rgb * tex_color.a +\n"
-    "            base_color.rgb * (1.0 - tex_color.a) + offs_color.rgb;\n"
-    "        color.a = base_color.a;\n"
-    "#elif TEX_INST == TEX_INST_MOD_ALPHA\n"
-    "        color.rgb = tex_color.rgb * base_color.rgb + offs_color.rgb;\n"
-    "        color.a = tex_color.a * base_color.a;\n"
-    "#else\n"
-    "#error unknown TEX_INST\n"
-    "#endif\n"
-    "    return color;\n"
-    "}\n"
-    "#endif\n"
-
-    "void main() {\n"
-
-    "#ifdef USER_CLIP_ENABLE\n"
-    "    user_clip_test();\n"
-    "#endif\n"
-
-    "    vec4 color;\n"
-    "#ifdef TEX_ENABLE\n"
-    "    color = eval_tex_inst();\n"
-    "#else\n"
-    "    // divide by w_coord for perspective correction\n"
-    "    color = vert_base_color / w_coord;\n"
-    "#endif\n"
-
-    /*
-     * adding the vertex offset color can cause color to become out-of-bounds
-     * we need to correct it here so it's right later on when we blend the
-     * pixels together during the sorting pass.
-     */
-    "color = clamp(color, 0.0, 1.0);\n"
-
-    "#ifdef PUNCH_THROUGH_ENABLE\n"
-    "    punch_through_test(color.a);\n"
-    "#endif\n"
-
-    "#ifdef OIT_ENABLE\n"
-    "    unsigned int node_idx = atomicCounterIncrement(node_count);\n"
-    "    if (node_idx < MAX_OIT_NODES) {\n"
-    "        oit_nodes[node_idx].pix.color = color;\n"
-    "        oit_nodes[node_idx].pix.depth = gl_FragCoord.z;\n"
-    "        oit_nodes[node_idx].pix.src_blend_factor = src_blend_factor;\n"
-    "        oit_nodes[node_idx].pix.dst_blend_factor = dst_blend_factor;\n"
-
-    "        oit_nodes[node_idx].next_node =\n"
-    "            imageAtomicExchange(oit_heads, ivec2(gl_FragCoord.xy), node_idx);\n"
-    "    }\n"
-    "#endif\n"
-
-    "    // when OIT_ENABLE is true, color and depth writes\n"
-    "    // are both masked so this does nothing.\n"
-    "    out_color = color;\n"
-    "}\n";
+#include "gfxgl4_render_fs.h"
+    ;
 
 static char const * const oit_sort_vert_shader =
-    "#extension GL_ARB_explicit_uniform_location : enable\n"
-    "layout (location = 0) in vec4 vert_pos;\n"
-    "void main() { gl_Position = vert_pos; }\n";
+#include "gfxgl4_oit_sort_vs.h"
+    ;
 
 static char const * const oit_sort_frag_shader =
-    OIT_NODE_GLSL_DEF
-
-    "out vec4 out_color;\n"
-
-    "layout(r32ui, binding = 0) uniform coherent uimage2D oit_heads;\n"
-    "uniform sampler2D color_accum;\n"
-
-    "vec4 eval_src_blend_factor(unsigned int factor, vec4 src, vec4 dst) {\n"
-    "    switch (factor) {\n"
-    "    default:\n"
-    "    case 0:\n"
-    "        return vec4(0, 0, 0, 0);\n"
-    "    case 1:\n"
-    "        return vec4(1, 1, 1, 1);\n"
-    "    case 2:\n"
-    "        return dst;\n"
-    "    case 3:\n"
-    "        return vec4(1.0 - dst.r, 1.0 - dst.g, 1.0 - dst.b, 1.0 - dst.a);\n"
-    "    case 4:\n"
-    "        return vec4(src.a, src.a, src.a, src.a);\n"
-    "    case 5:\n"
-    "        return vec4(1.0 - src.a, 1.0 - src.a, 1.0 - src.a, 1.0 - src.a);\n"
-    "    case 6:\n"
-    "        return vec4(dst.a, dst.a, dst.a, dst.a);\n"
-    "    case 7:\n"
-    "        return vec4(1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a);\n"
-    "    }\n"
-    "}\n"
-
-    "vec4 eval_dst_blend_factor(unsigned int factor, vec4 src, vec4 dst) {\n"
-    "    switch (factor) {\n"
-    "    default:\n"
-    "    case 0:\n"
-    "        return vec4(0, 0, 0, 0);\n"
-    "    case 1:\n"
-    "        return vec4(1, 1, 1, 1);\n"
-    "    case 2:\n"
-    "        return src;\n"
-    "    case 3:\n"
-    "        return vec4(1.0 - src.r, 1.0 - src.g, 1.0 - src.b, 1.0 - src.a);\n"
-    "    case 4:\n"
-    "        return vec4(src.a, src.a, src.a, src.a);\n"
-    "    case 5:\n"
-    "        return vec4(1.0 - src.a, 1.0 - src.a, 1.0 - src.a, 1.0 - src.a);\n"
-    "    case 6:\n"
-    "        return vec4(dst.a, dst.a, dst.a, dst.a);\n"
-    "    case 7:\n"
-    "        return vec4(1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a, 1.0 - dst.a);\n"
-    "    }\n"
-    "}\n"
-
-    "void swap_oit_nodes(uint node1, uint node2) {\n"
-    "    oit_pixel pix_tmp = oit_nodes[node1].pix;\n"
-    "    oit_nodes[node1].pix = oit_nodes[node2].pix;\n"
-    "    oit_nodes[node2].pix = pix_tmp;\n"
-    "}\n"
-
-
-    "// it's my favorite algorithm, the insertion sort!\n"
-    "void sort_list(unsigned int index) {\n"
-    "    unsigned int src_idx = index;"
-    "    while (src_idx != OIT_NODE_INVALID) {\n"
-    "        unsigned int cmp_idx = oit_nodes[src_idx].next_node;\n"
-    "        while (cmp_idx != OIT_NODE_INVALID) {\n"
-    "            if (oit_nodes[cmp_idx].pix.depth <= oit_nodes[src_idx].pix.depth)\n"
-    "                swap_oit_nodes(src_idx, cmp_idx);\n"
-    "            cmp_idx = oit_nodes[cmp_idx].next_node;\n"
-    "        }\n"
-    "        src_idx = oit_nodes[src_idx].next_node;\n"
-    "    }\n"
-    "}\n"
-
-    "void main() {\n"
-    "    unsigned int head = imageLoad(oit_heads, ivec2(gl_FragCoord.xy))[0];\n"
-    "    sort_list(head);\n"
-
-    "    unsigned int cur_node = head;\n"
-    "    vec4 color = texture(color_accum, gl_FragCoord.xy / textureSize(color_accum, 0));\n"
-
-    /*
-     * XXX this is actually wrong because gl_FragCoord.z samples from  the
-     * fullscreen quad, *not* the original fragment value.  The reason why that
-     * doesn't matter is because we discard when there are no transparent pixels
-     * to render, which will preserve the original depth value.
-     */
-    "    float depth = gl_FragCoord.z;\n"
-
-    "    // skip fragments that have no transparent pixels to render\n"
-    "    if (cur_node == OIT_NODE_INVALID)\n"
-    "        discard;\n"
-
-    "    while (cur_node != OIT_NODE_INVALID) {\n"
-    "        oit_pixel pix_in = oit_nodes[cur_node].pix;\n"
-    "        vec4 color_in = pix_in.color;\n"
-    "        vec4 src_factor = eval_src_blend_factor(pix_in.src_blend_factor, color_in, color);\n"
-    "        vec4 dst_factor = eval_dst_blend_factor(pix_in.dst_blend_factor, color_in, color);\n"
-    "        color = clamp(src_factor * color_in + dst_factor * color, 0, 1);\n"
-    "        depth = oit_nodes[cur_node].pix.depth;\n"
-    "        cur_node = oit_nodes[cur_node].next_node;\n"
-    "    }\n"
-    "    gl_FragDepth = depth;\n"
-    "    out_color = color;\n"
-    "}"
+#include "gfxgl4_oit_sort_fs.h"
     ;
 
 static struct shader_cache_ent* create_shader(shader_key key) {
@@ -682,9 +372,9 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     }
 
     shader_load_vert_with_preamble(&ent->shader, SHADER_VER_430,
-                                   pvr2_ta_vert_glsl, preamble);
+                                   pvr2_ta_vert_glsl, preamble, NULL);
     shader_load_frag_with_preamble(&ent->shader, SHADER_VER_430,
-                                   pvr2_ta_frag_glsl, preamble);
+                                   pvr2_ta_frag_glsl, preamble, oit_node_def, NULL);
     shader_link(&ent->shader);
 
     /*
@@ -834,7 +524,8 @@ static void opengl_render_init(void) {
     glGenTextures(1, &oit_color_tex);
 
     shader_load_vert(&oit_sort_shader, SHADER_VER_430, oit_sort_vert_shader);
-    shader_load_frag(&oit_sort_shader, SHADER_VER_430, oit_sort_frag_shader);
+    shader_load_frag_with_preamble(&oit_sort_shader, SHADER_VER_430,
+                                   oit_sort_frag_shader, oit_node_def, NULL);
     shader_link(&oit_sort_shader);
     oit_sort_shader_color_accum_slot =
         glGetUniformLocation(oit_sort_shader.shader_prog_obj, "color_accum");

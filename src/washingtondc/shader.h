@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019 snickerbockers
+ *    Copyright (C) 2017, 2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -42,19 +42,21 @@ struct shader {
 #define SHADER_VER_430 "#version 430\n"
 
 /*
- * the preamble is a string that will get prepended to the beginning of the
- * shader.  The intended purpose of this is to define preprocessor macros.
+ * the preamble is a string or strings that will get prepended to the
+ * beginning of the shader.  The intended purpose of this is to
+ * define preprocessor macros.
  *
- * it is safe to send NULL if no preamble is needed.
+ * the last preamble should be NULL to signal the end.
+ * if there are no preambles needed then just send NULL as the final parameter
  */
 void shader_load_vert_with_preamble(struct shader *out,
                                     char const *verstr,
                                     char const *vert_shader_src,
-                                    char const *preamble);
+                                    ... /* preambles go here */);
 void shader_load_frag_with_preamble(struct shader *out,
                                     char const *verstr,
                                     char const *frag_shader_src,
-                                    char const *preamble);
+                                    ... /* preambles go here */);
 
 /*
  * In these versions, the preamble is expected to be a string, not a path to

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2019, 2020 snickerbockers
+ *    Copyright (C) 2017, 2019, 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -28,10 +28,13 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #define GL3_PROTOTYPES 1
 #include <GL/glew.h>
 #include <GL/gl.h>
+
+#include "washdc/error.h"
 
 #include "shader.h"
 
@@ -55,21 +58,22 @@ shader_load_frag(struct shader *out, char const *verstr,
 void shader_load_vert_with_preamble(struct shader *out,
                                     char const *verstr,
                                     char const *vert_shader_src,
-                                    char const *preamble) {
-    int n_shader_strings;
-    char const *shader_strings[3];
+                                    ...) {
+#define MAX_SHADER_STRINGS 32
+    va_list arg_ptr;
+    int n_shader_strings = 1;
+    char const *shader_strings[MAX_SHADER_STRINGS] = { verstr };
 
-    if (preamble) {
-        shader_strings[0] = verstr;
-        shader_strings[1] = preamble;
-        shader_strings[2] = vert_shader_src;
-        n_shader_strings = 3;
-    } else {
-        shader_strings[0] = verstr;
-        shader_strings[1] = vert_shader_src;
-        shader_strings[2] = NULL;
-        n_shader_strings = 2;
-    }
+    va_start(arg_ptr, vert_shader_src);
+    char const *next_str;
+    while ((next_str = va_arg(arg_ptr, char const *)))
+        if (n_shader_strings < MAX_SHADER_STRINGS - 1)
+            shader_strings[n_shader_strings++] = next_str;
+        else
+            RAISE_ERROR(ERROR_OVERFLOW);
+    va_end(arg_ptr);
+
+    shader_strings[n_shader_strings++] = vert_shader_src;
 
     GLuint vert_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vert_shader, n_shader_strings, shader_strings, NULL);
@@ -92,20 +96,22 @@ void shader_load_vert_with_preamble(struct shader *out,
 void shader_load_frag_with_preamble(struct shader *out,
                                     char const *verstr,
                                     char const *frag_shader_src,
-                                    char const *preamble) {
-    int n_shader_strings;
-    char const *shader_strings[3];
+                                    ...) {
+#define MAX_SHADER_STRINGS 32
+    va_list arg_ptr;
+    int n_shader_strings = 1;
+    char const *shader_strings[MAX_SHADER_STRINGS] = { verstr };
 
-    if (preamble) {
-        shader_strings[0] = verstr;
-        shader_strings[1] = preamble;
-        shader_strings[2] = frag_shader_src;
-        n_shader_strings = 3;
-    } else {
-        shader_strings[0] = verstr;
-        shader_strings[1] = frag_shader_src;
-        n_shader_strings = 2;
-    }
+    va_start(arg_ptr, frag_shader_src);
+    char const *next_str;
+    while ((next_str = va_arg(arg_ptr, char const *)))
+        if (n_shader_strings < MAX_SHADER_STRINGS - 1)
+            shader_strings[n_shader_strings++] = next_str;
+        else
+            RAISE_ERROR(ERROR_OVERFLOW);
+    va_end(arg_ptr);
+
+    shader_strings[n_shader_strings++] = frag_shader_src;
 
     GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(frag_shader, n_shader_strings, shader_strings, NULL);
@@ -131,7 +137,7 @@ void shader_load_vert_from_file_with_preamble(struct shader *out,
 
     vert_shader_src = read_txt(vert_shader_path);
 
-    shader_load_vert_with_preamble(out, verstr, vert_shader_src, preamble);
+    shader_load_vert_with_preamble(out, verstr, vert_shader_src, preamble, NULL);
 
     free(vert_shader_src);
 }
@@ -144,7 +150,8 @@ void shader_load_frag_from_file_with_preamble(struct shader *out,
 
     frag_shader_src = read_txt(frag_shader_path);
 
-    shader_load_frag_with_preamble(out, verstr, frag_shader_src, preamble);
+    shader_load_frag_with_preamble(out, verstr,
+                                   frag_shader_src, preamble, NULL);
 
     free(frag_shader_src);
 }

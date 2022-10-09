@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -134,29 +134,12 @@ void gfxgl4_video_output_init(void) {
     }
 
     static char const * const final_vert_glsl =
-        "#extension GL_ARB_explicit_uniform_location : enable\n"
-
-        "layout (location = 0) in vec3 vert_pos;\n"
-        "layout (location = 1) in vec2 tex_coord;\n"
-        "layout (location = 2) uniform mat4 trans_mat;\n"
-        "layout (location = 3) uniform mat3 tex_mat;\n"
-
-        "out vec2 st;\n"
-
-        "void main() {\n"
-        "    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);\n"
-        "    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;\n"
-        "}\n";
+#include "gfxgl4_final_vert.h"
+        ;
 
     static char const * const final_frag_glsl =
-        "in vec2 st;\n"
-        "out vec4 color;\n"
-
-        "uniform sampler2D fb_tex;\n"
-
-        "void main() {\n"
-        "    color = texture(fb_tex, st);\n"
-        "}\n";
+#include "gfxgl4_final_frag.h"
+        ;
 
     int rgb[3];
     if (cfg_get_rgb("ui.bgcolor", rgb, rgb + 1, rgb + 2) == 0) {
