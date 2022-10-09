@@ -161,14 +161,17 @@ if ($ARGV[0] =~ /.*\.gz$/) {
 
 my $hdr;
 while (read $dump, $hdr, 12) {
-    my ($pkt_tp, $addr, $n_bytes) = unpack "L3", $hdr;
+    my ($pkt_tp_and_unit_sz, $addr, $n_units) = unpack "L3", $hdr;
+    my $pkt_tp = $pkt_tp_and_unit_sz & 0xffff;
+    my $unit_sz = $pkt_tp_and_unit_sz >> 16;
     $pkt_tp == 1 or die "unrecognized packet type $pkt_tp";
+    my $n_bytes = $n_units * $unit_sz;
 
     my $name = identify_addr($addr);
     if ($name) {
-        printf "write %u bytes to %08x <%s>\n", $n_bytes, $addr, $name;
+        printf "write %u bytes to %08x <%s> in units of %u\n", $n_bytes, $addr, $name, $unit_sz;
     } else {
-        printf "write %u bytes to %08x\n", $n_bytes, $addr;
+        printf "write %u bytes to %08x in units of %u\n", $n_bytes, $addr, $unit_sz;
     }
 
     if ($n_bytes % 4 == 0) {

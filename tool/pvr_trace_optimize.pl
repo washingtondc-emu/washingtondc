@@ -35,8 +35,9 @@ my $hdr;
 my %pkt;
 while (read $infile, $hdr, 12) {
     (my $tp, my $addr, my $len) = unpack "L3", $hdr;
-    $tp == 1 or die 'unrecognized packet type';
-#    say "$pkt{'len'} bytes to $pkt{'addr'}";
+    ($tp & 0xffff) == 1 or die 'unrecognized packet type';
+    my $unit_sz = $tp >> 16;
+    $len *= $unit_sz;
 
     my $extra_bytes;
     if ($len % 4) {
@@ -56,13 +57,13 @@ while (read $infile, $hdr, 12) {
         $n_bytes--;
     }
 
-    if (keys %pkt && $addr == $pkt{'len'} + $pkt{'addr'}) {
+    if (keys %pkt && $addr == $pkt{'len'} + $pkt{'addr'} && $tp == $pkt{'tp'}) {
         $pkt{'len'} += $len;
         push @{$pkt{'data'}}, @data;
     } else {
         # save previous packet
         if (keys %pkt) {
-            my $hdr = pack "L3", ($pkt{'tp'}, $pkt{'addr'}, $pkt{'len'});
+            my $hdr = pack "L3", ($pkt{'tp'}, $pkt{'addr'}, $pkt{'len'} / ($pkt{'tp'} >> 16));
             print $outfile $hdr;
             for (@{$pkt{'data'}}) {
                 my $dat = pack "C", $_;
