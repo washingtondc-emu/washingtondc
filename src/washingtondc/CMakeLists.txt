@@ -100,7 +100,7 @@ set(gfxgl3_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
 
 function(glsl_to_cstring infile outfile)
 add_custom_command(OUTPUT ${outfile}
-  COMMAND sed -E "s_(.*)_\"\\1\\\\n\"_" < ${infile} > ${outfile}
+  COMMAND perl -pe "s/^(.*)$/\\\"\\1\\\\n\\\"/" < ${infile} > ${outfile}
   MAIN_DEPENDENCY ${infile}
   COMMENT "generating ${outfile} from ${infile}..."
   VERBATIM)
