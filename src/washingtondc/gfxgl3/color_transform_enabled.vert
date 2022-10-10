@@ -19,19 +19,10 @@
  *
  ******************************************************************************/
 
-void punch_through_test(float alpha);
-vec4 eval_tex_inst(vec4 vert_base_color, vec4 vert_offs_color, float w_coord);
+vec4 compute_vert_base_color(vec4 vert, vec4 base_color) {
+    return base_color * vert.z;
+}
 
-in vec4 vert_base_color, vert_offs_color;
-out vec4 out_color;
-
-in float w_coord;
-
-void user_clip_test();
-
-void main() {
-    user_clip_test();
-    vec4 color = eval_tex_inst(vert_base_color, vert_offs_color, w_coord);
-    punch_through_test(color.a);
-    out_color = color;
+vec4 compute_vert_offs_color(vec4 vert, vec4 offs_color) {
+    return offs_color * vert.z;
 }

@@ -19,19 +19,9 @@
  *
  ******************************************************************************/
 
-void punch_through_test(float alpha);
-vec4 eval_tex_inst(vec4 vert_base_color, vec4 vert_offs_color, float w_coord);
+uniform int pt_alpha_ref;
 
-in vec4 vert_base_color, vert_offs_color;
-out vec4 out_color;
-
-in float w_coord;
-
-void user_clip_test();
-
-void main() {
-    user_clip_test();
-    vec4 color = eval_tex_inst(vert_base_color, vert_offs_color, w_coord);
-    punch_through_test(color.a);
-    out_color = color;
+void punch_through_test(float alpha) {
+    if (int(alpha * 255) < pt_alpha_ref)
+        discard;
 }

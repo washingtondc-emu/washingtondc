@@ -28,13 +28,19 @@ extern "C" {
 #endif
 
 /*
- * intentionally avoid including OpenGL headers to make sure that this header
- * does not get included by code which is not OpenGL-specific.
+ * intentionally avoid including OpenGL headers to make sure that
+ * opengl headers do not get included by code which is not OpenGL-specific.
  */
 
+/*
+ * TODO: there's one thing I don't like about this API, which is that
+ * it does not allow multiple programs to share shader objects.
+ */
+#define SHADER_MAX 32
 struct shader {
-    GLuint vert_shader;
-    GLuint frag_shader;
+    unsigned vs_count, fs_count;
+    GLuint vert_shader[SHADER_MAX];
+    GLuint frag_shader[SHADER_MAX];
     GLuint shader_prog_obj;
 };
 

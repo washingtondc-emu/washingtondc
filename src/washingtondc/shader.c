@@ -90,7 +90,9 @@ void shader_load_vert_with_preamble(struct shader *out,
         exit(1);
     }
 
-    out->vert_shader = vert_shader;
+    if (out->vs_count >= SHADER_MAX)
+        RAISE_ERROR(ERROR_OVERFLOW);
+    out->vert_shader[out->vs_count++] = vert_shader;
 }
 
 void shader_load_frag_with_preamble(struct shader *out,
@@ -126,7 +128,9 @@ void shader_load_frag_with_preamble(struct shader *out,
         exit(1);
     }
 
-    out->frag_shader = frag_shader;
+    if (out->fs_count >= SHADER_MAX)
+        RAISE_ERROR(ERROR_OVERFLOW);
+    out->frag_shader[out->fs_count++] = frag_shader;
 }
 
 void shader_load_vert_from_file_with_preamble(struct shader *out,
@@ -168,8 +172,11 @@ void shader_load_frag_from_file(struct shader *out, char const *verstr,
 
 void shader_link(struct shader *out) {
     GLuint shader_obj = glCreateProgram();
-    glAttachShader(shader_obj, out->vert_shader);
-    glAttachShader(shader_obj, out->frag_shader);
+    int idx;
+    for (idx = 0; idx < out->vs_count; idx++)
+        glAttachShader(shader_obj, out->vert_shader[idx]);
+    for (idx = 0; idx < out->fs_count; idx++)
+        glAttachShader(shader_obj, out->frag_shader[idx]);
     glLinkProgram(shader_obj);
 
     GLint shader_success;
@@ -177,13 +184,16 @@ void shader_link(struct shader *out) {
     if (!shader_success) {
         glGetProgramInfoLog(shader_obj, LOG_LEN_GLSL, NULL, shader_log);
 
-        glDeleteShader(out->vert_shader);
-        glDeleteShader(out->frag_shader);
+        for (idx = 0; idx < out->vs_count; idx++)
+            glDeleteShader(out->vert_shader[idx]);
+        for (idx = 0; idx < out->fs_count; idx++)
+            glDeleteShader(out->frag_shader[idx]);
         glDeleteProgram(shader_obj);
 
-        out->vert_shader = out->frag_shader = 0;
+        memset(out->vert_shader, 0, sizeof(out->vert_shader));
+        memset(out->frag_shader, 0, sizeof(out->frag_shader));
 
-        fprintf(stderr, "Error compiling shader: %s\n", shader_log);
+        fprintf(stderr, "Error linking shader.\n%s\n", shader_log);
         exit(1);
     }
 
@@ -228,9 +238,12 @@ static char *read_txt(char const *path) {
 }
 
 void shader_cleanup(struct shader *shader) {
+    unsigned idx;
     glDeleteProgram(shader->shader_prog_obj);
-    glDeleteShader(shader->frag_shader);
-    glDeleteShader(shader->vert_shader);
+    for (idx = 0; idx < shader->fs_count; idx++)
+        glDeleteShader(shader->frag_shader[idx]);
+    for (idx = 0; idx < shader->vs_count; idx++)
+        glDeleteShader(shader->vert_shader[idx]);
 
     memset(shader, 0, sizeof(*shader));
 }

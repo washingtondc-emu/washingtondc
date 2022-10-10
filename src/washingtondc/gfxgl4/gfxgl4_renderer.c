@@ -318,8 +318,6 @@ static char const * const oit_sort_frag_shader =
     ;
 
 static struct shader_cache_ent* create_shader(shader_key key) {
-    #define PREAMBLE_LEN 256
-    static char preamble[PREAMBLE_LEN];
     bool tex_en = key & SHADER_KEY_TEX_ENABLE_BIT;
     bool color_en = key & SHADER_KEY_COLOR_ENABLE_BIT;
     bool punchthrough = key & SHADER_KEY_PUNCH_THROUGH_BIT;
@@ -327,41 +325,6 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     bool user_clip_en = key & SHADER_KEY_USER_CLIP_ENABLE_BIT;
     bool user_clip_invert = key & SHADER_KEY_USER_CLIP_INVERT_BIT;
     bool oit_en = key & SHADER_KEY_OIT_BIT;
-
-    char const *tex_inst_str = "";
-    if (tex_en) {
-        switch (tex_inst) {
-        case SHADER_KEY_TEX_INST_DECAL_BIT:
-            tex_inst_str = "#define TEX_INST TEX_INST_DECAL\n";
-            break;
-        case SHADER_KEY_TEX_INST_MOD_BIT:
-            tex_inst_str = "#define TEX_INST TEX_INST_MOD\n";
-            break;
-        case SHADER_KEY_TEX_INST_DECAL_ALPHA_BIT:
-            tex_inst_str = "#define TEX_INST TEX_INST_DECAL_ALPHA\n";
-            break;
-        case SHADER_KEY_TEX_INST_MOD_ALPHA_BIT:
-            tex_inst_str = "#define TEX_INST TEX_INST_MOD_ALPHA\n";
-            break;
-        default:
-            /*
-             * this ought to be impossible since SHADER_KEY_TEX_INST_MASK
-             * is two bits
-             */
-            fprintf(stderr, "Unknown tex_inst %d\n", tex_inst);
-            tex_en = false;
-        }
-    }
-
-    snprintf(preamble, PREAMBLE_LEN, "%s%s%s%s%s%s%s",
-             tex_en ? "#define TEX_ENABLE\n" : "",
-             color_en ? "#define COLOR_ENABLE\n" : "",
-             punchthrough ? "#define PUNCH_THROUGH_ENABLE\n" : "",
-             user_clip_en ? "#define USER_CLIP_ENABLE\n" : "",
-             user_clip_invert ? "#define USER_CLIP_INVERT\n" : "",
-             oit_en ? "#define OIT_ENABLE\n" : "",
-             tex_inst_str);
-    preamble[PREAMBLE_LEN - 1] = '\0';
 
     struct shader_cache_ent *ent = shader_cache_add_ent(&shader_cache, key);
 
@@ -371,10 +334,91 @@ static struct shader_cache_ent* create_shader(shader_key key) {
         return NULL;
     }
 
-    shader_load_vert_with_preamble(&ent->shader, SHADER_VER_430,
-                                   pvr2_ta_vert_glsl, preamble, NULL);
-    shader_load_frag_with_preamble(&ent->shader, SHADER_VER_430,
-                                   pvr2_ta_frag_glsl, preamble, oit_node_def, NULL);
+    if (color_en) {
+        shader_load_vert(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_color_transform_enabled_vs.h"
+                         );
+    } else {
+        shader_load_vert(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_color_transform_disabled_vs.h"
+                         );
+    }
+
+    if (tex_en) {
+        shader_load_vert(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_tex_transform_enabled_vs.h"
+                         );
+        switch (tex_inst) {
+        case SHADER_KEY_TEX_INST_DECAL_BIT:
+        shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_tex_inst_decal_fs.h"
+                         );
+        break;
+        case SHADER_KEY_TEX_INST_MOD_BIT:
+        shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_tex_inst_mod_fs.h"
+                         );
+        break;
+        case SHADER_KEY_TEX_INST_DECAL_ALPHA_BIT:
+        shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_tex_inst_decal_alpha_fs.h"
+                         );
+        break;
+        case SHADER_KEY_TEX_INST_MOD_ALPHA_BIT:
+        shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_tex_inst_mod_alpha_fs.h"
+                         );
+        break;
+        }
+    } else {
+        shader_load_vert(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_tex_transform_disabled_vs.h"
+                         );
+        shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_tex_inst_disabled_fs.h"
+                         );
+    }
+
+    if (user_clip_en) {
+        if (user_clip_invert) {
+            shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_user_clip_inverted_fs.h"
+                             );
+        } else {
+            shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_user_clip_enabled_fs.h"
+                             );
+        }
+    } else {
+        shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_user_clip_disabled_fs.h"
+                         );
+    }
+
+    if (oit_en) {
+        shader_load_frag_with_preamble(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_oit_first_pass_fs.h"
+                                       , oit_node_def, NULL);
+    } else {
+        shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_oit_disabled_fs.h"
+                              );
+    }
+
+    if (punchthrough) {
+            shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_punch_through_enabled_fs.h"
+                             );
+    } else {
+            shader_load_frag(&ent->shader, SHADER_VER_430,
+#include "gfxgl4_punch_through_disabled_fs.h"
+                             );
+    }
+
+    shader_load_vert(&ent->shader, SHADER_VER_430,
+                                   pvr2_ta_vert_glsl);
+    shader_load_frag(&ent->shader, SHADER_VER_430,
+                     pvr2_ta_frag_glsl);
     shader_link(&ent->shader);
 
     /*

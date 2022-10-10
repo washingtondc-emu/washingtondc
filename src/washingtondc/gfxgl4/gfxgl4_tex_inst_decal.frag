@@ -19,19 +19,20 @@
  *
  ******************************************************************************/
 
-void punch_through_test(float alpha);
-vec4 eval_tex_inst(vec4 vert_base_color, vec4 vert_offs_color, float w_coord);
+in vec2 st;
+uniform sampler2D bound_tex;
 
-in vec4 vert_base_color, vert_offs_color;
-out vec4 out_color;
+vec4 eval_tex_inst(vec4 vert_base_color, vec4 vert_offs_color, float w_coord) {
+    /*
+     * division by w_coord makes it perspective-correct when combined
+     * with multiplication by vert_pos.z in the vertex shader.
+     */
+    vec4 offs_color = vert_offs_color / w_coord;
+    vec4 tex_color = texture(bound_tex, st / w_coord);
+    vec4 color;
 
-in float w_coord;
+    color.rgb = tex_color.rgb + offs_color.rgb;
+    color.a = tex_color.a;
 
-void user_clip_test();
-
-void main() {
-    user_clip_test();
-    vec4 color = eval_tex_inst(vert_base_color, vert_offs_color, w_coord);
-    punch_through_test(color.a);
-    out_color = color;
+    return color;
 }

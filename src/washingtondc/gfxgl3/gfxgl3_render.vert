@@ -22,29 +22,11 @@ layout (location = 0) in vec4 vert_pos;
 layout (location = 1) in vec4 base_color;
 layout (location = 2) in vec4 offs_color;
 
-#ifdef TEX_ENABLE
-layout (location = 3) in vec2 tex_coord_in;
-uniform mat2 tex_matrix;
-#endif
-
 uniform mat4 trans_mat;
 
 out float w_coord;
 
 out vec4 vert_base_color, vert_offs_color;
-#ifdef TEX_ENABLE
-out vec2 st;
-#endif
-
-/*
- * This function performs texture coordinate transformations if textures are
- * enabled.
- */
-void tex_transform() {
-#ifdef TEX_ENABLE
-    st = tex_matrix * tex_coord_in * vert_pos.z;
-#endif
-}
 
 /*
  * translate coordinates from the Dreamcast's coordinate system (which is
@@ -62,18 +44,13 @@ void modelview_project_transform() {
     gl_Position = trans_mat * vert_pos;
 }
 
-void color_transform() {
-#ifdef COLOR_ENABLE
-    vert_base_color = base_color * vert_pos.z;
-    vert_offs_color = offs_color * vert_pos.z;
-#else
-    vert_base_color = vec4(vert_pos.z);
-    vert_offs_color = vec4(0.0);
-#endif
-}
+void tex_transform(vec4 vert_pos);
+vec4 compute_vert_base_color(vec4 vert, vec4 base_color);
+vec4 compute_vert_offs_color(vec4 vert, vec4 offs_color);
 
 void main() {
     modelview_project_transform();
-    color_transform();
-    tex_transform();
+    vert_base_color = compute_vert_base_color(vert_pos, base_color);
+    vert_offs_color = compute_vert_offs_color(vert_pos, offs_color);
+    tex_transform(vert_pos);
 }

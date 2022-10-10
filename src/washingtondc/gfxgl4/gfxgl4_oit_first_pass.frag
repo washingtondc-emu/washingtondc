@@ -19,19 +19,28 @@
  *
  ******************************************************************************/
 
-void punch_through_test(float alpha);
-vec4 eval_tex_inst(vec4 vert_base_color, vec4 vert_offs_color, float w_coord);
 
-in vec4 vert_base_color, vert_offs_color;
-out vec4 out_color;
+layout(early_fragment_tests) in;
+uniform int MAX_OIT_NODES;
+uniform int src_blend_factor, dst_blend_factor;
 
-in float w_coord;
+// OIT_NODE_GLSL_DEF
 
-void user_clip_test();
+/*
+ * each pixel in oit_heads >= 0 points to an index in oit_node that is the
+ * beginning of that pixel's linked-list.
+ */
+layout(r32ui, binding = 0) uniform coherent uimage2D oit_heads;
 
-void main() {
-    user_clip_test();
-    vec4 color = eval_tex_inst(vert_base_color, vert_offs_color, w_coord);
-    punch_through_test(color.a);
-    out_color = color;
+void add_pixel_to_oit_list(vec4 color, float depth) {
+    unsigned int node_idx = atomicCounterIncrement(node_count);
+    if (node_idx < MAX_OIT_NODES) {
+        oit_nodes[node_idx].pix.color = color;
+        oit_nodes[node_idx].pix.depth = depth;
+        oit_nodes[node_idx].pix.src_blend_factor = src_blend_factor;
+        oit_nodes[node_idx].pix.dst_blend_factor = dst_blend_factor;
+
+        oit_nodes[node_idx].next_node =
+            imageAtomicExchange(oit_heads, ivec2(gl_FragCoord.xy), node_idx);
+    }
 }

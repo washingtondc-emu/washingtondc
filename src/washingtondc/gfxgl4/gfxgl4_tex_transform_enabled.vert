@@ -19,19 +19,11 @@
  *
  ******************************************************************************/
 
-void punch_through_test(float alpha);
-vec4 eval_tex_inst(vec4 vert_base_color, vec4 vert_offs_color, float w_coord);
+layout (location = 3) in vec2 tex_coord_in;
+uniform mat2 tex_matrix;
 
-in vec4 vert_base_color, vert_offs_color;
-out vec4 out_color;
+out vec2 st;
 
-in float w_coord;
-
-void user_clip_test();
-
-void main() {
-    user_clip_test();
-    vec4 color = eval_tex_inst(vert_base_color, vert_offs_color, w_coord);
-    punch_through_test(color.a);
-    out_color = color;
+void tex_transform(vec4 vert_pos) {
+    st = tex_matrix * tex_coord_in * vert_pos.z;
 }
