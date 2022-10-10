@@ -106,10 +106,10 @@ add_custom_command(OUTPUT ${outfile}
   VERBATIM)
 endfunction()
 
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_vs.glsl" "gfxgl3_render_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render_fs.glsl" "gfxgl3_render_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_vert.glsl" "gfxgl3_final_vert.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final_frag.glsl" "gfxgl3_final_frag.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render.vert" "gfxgl3_render_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render.frag" "gfxgl3_render_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final.vert" "gfxgl3_final_vert.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final.frag" "gfxgl3_final_frag.h")
 
 set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "${PROJECT_SOURCE_DIR}/renderdoc_app.h"
@@ -129,13 +129,13 @@ set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "gfxgl4_final_frag.h"
                    "gfxgl4_final_vert.h")
 
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_vs.glsl" "gfxgl4_render_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render_fs.glsl" "gfxgl4_render_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render.vert" "gfxgl4_render_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render.frag" "gfxgl4_render_fs.h")
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_node_def.glsl" "gfxgl4_oit_node_def.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_vs.glsl" "gfxgl4_oit_sort_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort_fs.glsl" "gfxgl4_oit_sort_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final_vert.glsl" "gfxgl4_final_vert.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final_frag.glsl" "gfxgl4_final_frag.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort.vert" "gfxgl4_oit_sort_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort.frag" "gfxgl4_oit_sort_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final.vert" "gfxgl4_final_vert.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final.frag" "gfxgl4_final_frag.h")
 
 set(soft_gfx_sources "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.c"
                      "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h")
