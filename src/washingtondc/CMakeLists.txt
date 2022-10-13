@@ -118,13 +118,14 @@ set(gfxgl3_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "gfxgl3_user_clip_enabled_fs.h"
                    "gfxgl3_user_clip_disabled_fs.h")
 
-function(glsl_to_cstring infile outfile)
-add_custom_command(OUTPUT ${outfile}
-  COMMAND perl -pe "s/^(.*)$/\\\"\\1\\\\n\\\"/" < ${infile} > ${outfile}
-  MAIN_DEPENDENCY ${infile}
-  COMMENT "generating ${outfile} from ${infile}..."
-  VERBATIM)
-endfunction()
+macro(glsl_to_cstring infile outfile)
+  add_custom_command(OUTPUT ${outfile}
+    COMMAND perl -pe "s/^(.*)$/\\\"\\1\\\\n\\\"/" < ${infile} > ${outfile}
+    MAIN_DEPENDENCY ${infile}
+    COMMENT "generating ${outfile} from ${infile}..."
+    VERBATIM)
+  set(glsl_files "${glsl_files}" "${infile}")
+endmacro()
 
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_render.vert" "gfxgl3_render_vs.h")
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/color_transform_enabled.vert"
@@ -260,6 +261,8 @@ glsl_to_cstring("${PROJECT_SOURCE_DIR}/soft_gfx/shaders/final.frag"
                 "soft_gfx_final_fs.h")
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/soft_gfx/shaders/final.vert"
                 "soft_gfx_final_vs.h")
+
+add_custom_target(validate-glsl COMMAND ${CMAKE_COMMAND} -E env -- glslangValidator ${glsl_files})
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/washingtondc.hpp"

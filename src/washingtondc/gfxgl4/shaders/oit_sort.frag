@@ -39,12 +39,12 @@
 struct oit_pixel {
     vec4 color;
     float depth;
-    unsigned int src_blend_factor, dst_blend_factor;
+    uint src_blend_factor, dst_blend_factor;
 };
 
 struct oit_node {
-    struct oit_pixel pix;
-    unsigned int next_node;
+    oit_pixel pix;
+    uint next_node;
 };
 
 layout (binding = 0) uniform atomic_uint node_count;
@@ -58,7 +58,7 @@ out vec4 out_color;
 layout(r32ui, binding = 0) uniform coherent uimage2D oit_heads;
 uniform sampler2D color_accum;
 
-vec4 eval_src_blend_factor(unsigned int factor, vec4 src, vec4 dst) {
+vec4 eval_src_blend_factor(uint factor, vec4 src, vec4 dst) {
     switch (factor) {
     default:
     case 0:
@@ -80,7 +80,7 @@ vec4 eval_src_blend_factor(unsigned int factor, vec4 src, vec4 dst) {
     }
 }
 
-vec4 eval_dst_blend_factor(unsigned int factor, vec4 src, vec4 dst) {
+vec4 eval_dst_blend_factor(uint factor, vec4 src, vec4 dst) {
     switch (factor) {
     default:
     case 0:
@@ -110,10 +110,10 @@ void swap_oit_nodes(uint node1, uint node2) {
 
 
 // it's my favorite algorithm, the insertion sort!
-void sort_list(unsigned int index) {
-    unsigned int src_idx = index;
+void sort_list(uint index) {
+    uint src_idx = index;
     while (src_idx != OIT_NODE_INVALID) {
-        unsigned int cmp_idx = oit_nodes[src_idx].next_node;
+        uint cmp_idx = oit_nodes[src_idx].next_node;
         while (cmp_idx != OIT_NODE_INVALID) {
             if (oit_nodes[cmp_idx].pix.depth <= oit_nodes[src_idx].pix.depth)
                 swap_oit_nodes(src_idx, cmp_idx);
@@ -124,10 +124,10 @@ void sort_list(unsigned int index) {
 }
 
 void main() {
-    unsigned int head = imageLoad(oit_heads, ivec2(gl_FragCoord.xy))[0];
+    uint head = imageLoad(oit_heads, ivec2(gl_FragCoord.xy))[0];
     sort_list(head);
 
-    unsigned int cur_node = head;
+    uint cur_node = head;
     vec4 color = texture(color_accum, gl_FragCoord.xy / textureSize(color_accum, 0));
 
 /*

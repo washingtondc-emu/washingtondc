@@ -45,12 +45,12 @@ uniform int src_blend_factor, dst_blend_factor;
 struct oit_pixel {
     vec4 color;
     float depth;
-    unsigned int src_blend_factor, dst_blend_factor;
+    uint src_blend_factor, dst_blend_factor;
 };
 
 struct oit_node {
-    struct oit_pixel pix;
-    unsigned int next_node;
+    oit_pixel pix;
+    uint next_node;
 };
 
 layout (binding = 0) uniform atomic_uint node_count;
@@ -66,7 +66,7 @@ layout(std430, binding = 0) coherent buffer oit_shared_data {
 layout(r32ui, binding = 0) uniform coherent uimage2D oit_heads;
 
 void add_pixel_to_oit_list(vec4 color, float depth) {
-    unsigned int node_idx = atomicCounterIncrement(node_count);
+    uint node_idx = atomicCounterIncrement(node_count);
     if (node_idx < MAX_OIT_NODES) {
         oit_nodes[node_idx].pix.color = color;
         oit_nodes[node_idx].pix.depth = depth;
