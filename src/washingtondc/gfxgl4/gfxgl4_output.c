@@ -133,14 +133,6 @@ void gfxgl4_video_output_init(void) {
         mag_filter = GL_LINEAR;
     }
 
-    static char const * const final_vert_glsl =
-#include "gfxgl4_final_vert.h"
-        ;
-
-    static char const * const final_frag_glsl =
-#include "gfxgl4_final_frag.h"
-        ;
-
     int rgb[3];
     if (cfg_get_rgb("ui.bgcolor", rgb, rgb + 1, rgb + 2) == 0) {
         bgcolor[0] = rgb[0] / 255.0f;
@@ -148,8 +140,12 @@ void gfxgl4_video_output_init(void) {
         bgcolor[2] = rgb[2] / 255.0f;
     }
 
-    shader_load_vert(&fb_shader, SHADER_VER_430, final_vert_glsl);
-    shader_load_frag(&fb_shader, SHADER_VER_430, final_frag_glsl);
+    shader_load_vert(&fb_shader, "final_vert",
+#include "gfxgl4_final_vert.h"
+                     );
+    shader_load_frag(&fb_shader, "final_frag",
+#include "gfxgl4_final_frag.h"
+                     );
     shader_link(&fb_shader);
 
     init_poly();

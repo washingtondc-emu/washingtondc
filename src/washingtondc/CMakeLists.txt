@@ -178,7 +178,6 @@ set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "${PROJECT_SOURCE_DIR}/gfxgl4/tex_cache.c"
                    "gfxgl4_render_vs.h"
                    "gfxgl4_render_fs.h"
-                   "gfxgl4_oit_node_def.h"
                    "gfxgl4_oit_sort_vs.h"
                    "gfxgl4_oit_sort_fs.h"
                    "gfxgl4_final_frag.h"
@@ -202,7 +201,6 @@ set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
 
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_render.vert" "gfxgl4_render_vs.h")
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_render.frag" "gfxgl4_render_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/oit_node_def.glsl" "gfxgl4_oit_node_def.h")
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/oit_sort.vert" "gfxgl4_oit_sort_vs.h")
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/oit_sort.frag" "gfxgl4_oit_sort_fs.h")
 glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/final.vert" "gfxgl4_final_vert.h")
@@ -254,7 +252,14 @@ glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_punch_through_enabl
 
 
 set(soft_gfx_sources "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.c"
-                     "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h")
+                     "${PROJECT_SOURCE_DIR}/soft_gfx/soft_gfx.h"
+                     "soft_gfx_final_fs.h"
+                     "soft_gfx_final_vs.h")
+
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/soft_gfx/shaders/final.frag"
+                "soft_gfx_final_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/soft_gfx/shaders/final.vert"
+                "soft_gfx_final_vs.h")
 
 set(washingtondc_sources "${PROJECT_SOURCE_DIR}/main.cpp"
                          "${PROJECT_SOURCE_DIR}/washingtondc.hpp"

@@ -1,3 +1,4 @@
+#version 430
 /*******************************************************************************
  *
  *
@@ -18,6 +19,39 @@
  *
  *
  ******************************************************************************/
+
+/*
+  * BEGINNING OF COPY/PASTED SEGMENT
+  * i need this to be in both gfxgl4_oit_first_pass.frag and
+  * oit_sort.frag, however glsl lacks a #include statement which
+  * necessitates that I copy/paste the code between these two files.
+  *
+  * i could paste the two strings together at run-time and that is
+  * what WashingtonDC used to do, but then I wouldn't be able to
+  * validate the shaders with glslangValidator.
+  *
+  * needless to say, the versions of this in
+  * gfxgl4_oit_first_pass.frag and oit_sort.frag need to be consistent
+  * with each other.
+  */
+#define OIT_NODE_INVALID 0xffffffff
+
+struct oit_pixel {
+    vec4 color;
+    float depth;
+    unsigned int src_blend_factor, dst_blend_factor;
+};
+
+struct oit_node {
+    struct oit_pixel pix;
+    unsigned int next_node;
+};
+
+layout (binding = 0) uniform atomic_uint node_count;
+layout(std430, binding = 0) coherent buffer oit_shared_data {
+    oit_node oit_nodes[];
+};
+// END OF COPY/PASTED SEGMENT
 
 out vec4 out_color;
 

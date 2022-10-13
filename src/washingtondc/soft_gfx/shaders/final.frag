@@ -1,7 +1,8 @@
+#version 330
+
 /*******************************************************************************
  *
  *
- *    WashingtonDC Dreamcast Emulator
  *    Copyright (C) 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
@@ -19,21 +20,11 @@
  *
  *
  ******************************************************************************/
+in vec2 st;
+out vec4 color;
 
-#define OIT_NODE_INVALID 0xffffffff
+uniform sampler2D fb_tex;
 
-struct oit_pixel {
-    vec4 color;
-    float depth;
-    unsigned int src_blend_factor, dst_blend_factor;
-};
-
-struct oit_node {
-    struct oit_pixel pix;
-    unsigned int next_node;
-};
-
-layout (binding = 0) uniform atomic_uint node_count;
-layout(std430, binding = 0) coherent buffer oit_shared_data {
-    oit_node oit_nodes[];
-};
+void main() {
+    color = texture(fb_tex, st);
+}

@@ -21,5 +21,16 @@
  *
  ******************************************************************************/
 
-void punch_through_test(float alpha) {
+#extension GL_ARB_explicit_uniform_location : enable
+
+layout (location = 0) in vec3 vert_pos;
+layout (location = 1) in vec2 tex_coord;
+layout (location = 2) uniform mat4 trans_mat;
+layout (location = 3) uniform mat3 tex_mat;
+
+out vec2 st;
+
+void main() {
+    gl_Position = trans_mat * vec4(vert_pos.x, vert_pos.y, vert_pos.z, 1.0);
+    st = (tex_mat * vec3(tex_coord.x, tex_coord.y, 1.0)).xy;
 }

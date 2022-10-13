@@ -297,26 +297,6 @@ static void init_renderdoc_api(void);
 static void cleanup_renderdoc_api(void);
 static bool is_renderdoc_enabled(void);
 
-static char const * const pvr2_ta_vert_glsl =
-#include "gfxgl4_render_vs.h"
-    ;
-
-static char const * const oit_node_def =
-#include "gfxgl4_oit_node_def.h"
-    ;
-
-static char const * const pvr2_ta_frag_glsl =
-#include "gfxgl4_render_fs.h"
-    ;
-
-static char const * const oit_sort_vert_shader =
-#include "gfxgl4_oit_sort_vs.h"
-    ;
-
-static char const * const oit_sort_frag_shader =
-#include "gfxgl4_oit_sort_fs.h"
-    ;
-
 static struct shader_cache_ent* create_shader(shader_key key) {
     bool tex_en = key & SHADER_KEY_TEX_ENABLE_BIT;
     bool color_en = key & SHADER_KEY_COLOR_ENABLE_BIT;
@@ -335,90 +315,92 @@ static struct shader_cache_ent* create_shader(shader_key key) {
     }
 
     if (color_en) {
-        shader_load_vert(&ent->shader, SHADER_VER_430,
+        shader_load_vert(&ent->shader, "gfxgl4_color_transform_enabled_vs",
 #include "gfxgl4_color_transform_enabled_vs.h"
                          );
     } else {
-        shader_load_vert(&ent->shader, SHADER_VER_430,
+        shader_load_vert(&ent->shader, "gfxgl4_color_transform_disabled_vs",
 #include "gfxgl4_color_transform_disabled_vs.h"
                          );
     }
 
     if (tex_en) {
-        shader_load_vert(&ent->shader, SHADER_VER_430,
+        shader_load_vert(&ent->shader, "gfxgl4_tex_transform_enabled_vs",
 #include "gfxgl4_tex_transform_enabled_vs.h"
                          );
         switch (tex_inst) {
         case SHADER_KEY_TEX_INST_DECAL_BIT:
-        shader_load_frag(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_tex_inst_decal_fs",
 #include "gfxgl4_tex_inst_decal_fs.h"
                          );
         break;
         case SHADER_KEY_TEX_INST_MOD_BIT:
-        shader_load_frag(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_tex_inst_mod_fs",
 #include "gfxgl4_tex_inst_mod_fs.h"
                          );
         break;
         case SHADER_KEY_TEX_INST_DECAL_ALPHA_BIT:
-        shader_load_frag(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_tex_inst_decal_alpha_fs",
 #include "gfxgl4_tex_inst_decal_alpha_fs.h"
                          );
         break;
         case SHADER_KEY_TEX_INST_MOD_ALPHA_BIT:
-        shader_load_frag(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_tex_inst_mod_alpha_fs",
 #include "gfxgl4_tex_inst_mod_alpha_fs.h"
                          );
         break;
         }
     } else {
-        shader_load_vert(&ent->shader, SHADER_VER_430,
+        shader_load_vert(&ent->shader, "gfxgl4_tex_transform_disabled_vs",
 #include "gfxgl4_tex_transform_disabled_vs.h"
                          );
-        shader_load_frag(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_tex_inst_disabled_fs",
 #include "gfxgl4_tex_inst_disabled_fs.h"
                          );
     }
 
     if (user_clip_en) {
         if (user_clip_invert) {
-            shader_load_frag(&ent->shader, SHADER_VER_430,
+            shader_load_frag(&ent->shader, "gfxgl4_user_clip_inverted_fs",
 #include "gfxgl4_user_clip_inverted_fs.h"
                              );
         } else {
-            shader_load_frag(&ent->shader, SHADER_VER_430,
+            shader_load_frag(&ent->shader, "gfxgl4_user_clip_enabled_fs",
 #include "gfxgl4_user_clip_enabled_fs.h"
                              );
         }
     } else {
-        shader_load_frag(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_user_clip_disabled_fs",
 #include "gfxgl4_user_clip_disabled_fs.h"
                          );
     }
 
     if (oit_en) {
-        shader_load_frag_with_preamble(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_oit_first_pass_fs",
 #include "gfxgl4_oit_first_pass_fs.h"
-                                       , oit_node_def, NULL);
+                         );
     } else {
-        shader_load_frag(&ent->shader, SHADER_VER_430,
+        shader_load_frag(&ent->shader, "gfxgl4_oit_disabled_fs",
 #include "gfxgl4_oit_disabled_fs.h"
                               );
     }
 
     if (punchthrough) {
-            shader_load_frag(&ent->shader, SHADER_VER_430,
+            shader_load_frag(&ent->shader, "gfxgl4_punch_through_enabled_fs",
 #include "gfxgl4_punch_through_enabled_fs.h"
                              );
     } else {
-            shader_load_frag(&ent->shader, SHADER_VER_430,
+            shader_load_frag(&ent->shader, "gfxgl4_punch_through_disabled_fs",
 #include "gfxgl4_punch_through_disabled_fs.h"
                              );
     }
 
-    shader_load_vert(&ent->shader, SHADER_VER_430,
-                                   pvr2_ta_vert_glsl);
-    shader_load_frag(&ent->shader, SHADER_VER_430,
-                     pvr2_ta_frag_glsl);
+    shader_load_vert(&ent->shader, "gfxgl4_render_vs",
+#include "gfxgl4_render_vs.h"
+                     );
+    shader_load_frag(&ent->shader, "gfxgl4_render_fs",
+#include "gfxgl4_render_fs.h"
+                     );
     shader_link(&ent->shader);
 
     /*
@@ -567,9 +549,12 @@ static void opengl_render_init(void) {
     glGenTextures(1, &oit_heads_tex);
     glGenTextures(1, &oit_color_tex);
 
-    shader_load_vert(&oit_sort_shader, SHADER_VER_430, oit_sort_vert_shader);
-    shader_load_frag_with_preamble(&oit_sort_shader, SHADER_VER_430,
-                                   oit_sort_frag_shader, oit_node_def, NULL);
+    shader_load_vert(&oit_sort_shader, "gfxgl4_oit_sort_vs",
+#include "gfxgl4_oit_sort_vs.h"
+                     );
+    shader_load_frag(&oit_sort_shader, "gfxgl4_oit_sort_fs",
+#include "gfxgl4_oit_sort_fs.h"
+                     );
     shader_link(&oit_sort_shader);
     oit_sort_shader_color_accum_slot =
         glGetUniformLocation(oit_sort_shader.shader_prog_obj, "color_accum");

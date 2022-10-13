@@ -148,8 +148,8 @@ void gfxgl3_video_output_init(void) {
         bgcolor[2] = rgb[2] / 255.0f;
     }
 
-    shader_load_vert(&fb_shader, SHADER_VER_330, final_vert_glsl);
-    shader_load_frag(&fb_shader, SHADER_VER_330, final_frag_glsl);
+    shader_load_vert(&fb_shader, "", final_vert_glsl);
+    shader_load_frag(&fb_shader, "", final_frag_glsl);
     shader_link(&fb_shader);
 
     init_poly();

@@ -44,25 +44,25 @@ static char *read_txt(char const *path);
 GLchar shader_log[LOG_LEN_GLSL];
 
 void
-shader_load_vert(struct shader *out, char const *verstr,
+shader_load_vert(struct shader *out, char const *name,
                  char const *vert_shader_src) {
-    shader_load_vert_with_preamble(out, verstr, vert_shader_src, NULL);
+    shader_load_vert_with_preamble(out, name, vert_shader_src, NULL);
 }
 
 void
-shader_load_frag(struct shader *out, char const *verstr,
+shader_load_frag(struct shader *out, char const *name,
                  char const *frag_shader_src) {
-    shader_load_frag_with_preamble(out, verstr, frag_shader_src, NULL);
+    shader_load_frag_with_preamble(out, name, frag_shader_src, NULL);
 }
 
 void shader_load_vert_with_preamble(struct shader *out,
-                                    char const *verstr,
+                                    char const *name,
                                     char const *vert_shader_src,
                                     ...) {
 #define MAX_SHADER_STRINGS 32
     va_list arg_ptr;
-    int n_shader_strings = 1;
-    char const *shader_strings[MAX_SHADER_STRINGS] = { verstr };
+    int n_shader_strings = 0;
+    char const *shader_strings[MAX_SHADER_STRINGS] = { };
 
     va_start(arg_ptr, vert_shader_src);
     char const *next_str;
@@ -86,7 +86,8 @@ void shader_load_vert_with_preamble(struct shader *out,
 
         glDeleteShader(vert_shader);
 
-        fprintf(stderr, "Error compiling vertex shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling vertex shader \"%s\": %s\n",
+                name, shader_log);
         exit(1);
     }
 
@@ -96,13 +97,13 @@ void shader_load_vert_with_preamble(struct shader *out,
 }
 
 void shader_load_frag_with_preamble(struct shader *out,
-                                    char const *verstr,
+                                    char const *name,
                                     char const *frag_shader_src,
                                     ...) {
 #define MAX_SHADER_STRINGS 32
     va_list arg_ptr;
-    int n_shader_strings = 1;
-    char const *shader_strings[MAX_SHADER_STRINGS] = { verstr };
+    int n_shader_strings = 0;
+    char const *shader_strings[MAX_SHADER_STRINGS] = { };
 
     va_start(arg_ptr, frag_shader_src);
     char const *next_str;
@@ -124,7 +125,8 @@ void shader_load_frag_with_preamble(struct shader *out,
     if (!shader_success) {
         glGetShaderInfoLog(frag_shader, LOG_LEN_GLSL, NULL, shader_log);
 
-        fprintf(stderr, "Error compiling fragment shader: %s\n", shader_log);
+        fprintf(stderr, "Error compiling fragment shader \"%s\": %s\n",
+                name, shader_log);
         exit(1);
     }
 
@@ -134,40 +136,40 @@ void shader_load_frag_with_preamble(struct shader *out,
 }
 
 void shader_load_vert_from_file_with_preamble(struct shader *out,
-                                              char const *verstr,
+                                              char const *name,
                                               char const *vert_shader_path,
                                               char const *preamble) {
     char *vert_shader_src;
 
     vert_shader_src = read_txt(vert_shader_path);
 
-    shader_load_vert_with_preamble(out, verstr, vert_shader_src, preamble, NULL);
+    shader_load_vert_with_preamble(out, name, vert_shader_src, preamble, NULL);
 
     free(vert_shader_src);
 }
 
 void shader_load_frag_from_file_with_preamble(struct shader *out,
-                                              char const *verstr,
+                                              char const *name,
                                               char const *frag_shader_path,
                                               char const *preamble) {
     char *frag_shader_src;
 
     frag_shader_src = read_txt(frag_shader_path);
 
-    shader_load_frag_with_preamble(out, verstr,
+    shader_load_frag_with_preamble(out, name,
                                    frag_shader_src, preamble, NULL);
 
     free(frag_shader_src);
 }
 
-void shader_load_vert_from_file(struct shader *out, char const *verstr,
+void shader_load_vert_from_file(struct shader *out, char const *name,
                                 char const *vert_shader_path) {
-    shader_load_vert_from_file_with_preamble(out, verstr, vert_shader_path, NULL);
+    shader_load_vert_from_file_with_preamble(out, name, vert_shader_path, NULL);
 }
 
-void shader_load_frag_from_file(struct shader *out, char const *verstr,
+void shader_load_frag_from_file(struct shader *out, char const *name,
                                 char const *frag_shader_path) {
-    shader_load_frag_from_file_with_preamble(out, verstr, frag_shader_path, NULL);
+    shader_load_frag_from_file_with_preamble(out, name, frag_shader_path, NULL);
 }
 
 void shader_link(struct shader *out) {

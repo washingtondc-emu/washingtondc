@@ -298,37 +298,37 @@ static struct shader_cache_ent* create_shader(shader_key key) {
         return NULL;
     }
 
-    shader_load_vert(&ent->shader, SHADER_VER_330,
+    shader_load_vert(&ent->shader, "",
                      pvr2_ta_vert_glsl);
     if (color_en) {
-        shader_load_vert(&ent->shader, SHADER_VER_330,
+        shader_load_vert(&ent->shader, "",
                                        pvr2_vert_color_transform_glsl);
     } else {
-        shader_load_vert(&ent->shader, SHADER_VER_330,
+        shader_load_vert(&ent->shader, "",
                          pvr2_vert_color_transform_disabled_glsl);
     }
 
     if (tex_en) {
-        shader_load_vert(&ent->shader, SHADER_VER_330,
+        shader_load_vert(&ent->shader, "",
                          pvr2_vert_tex_transform_glsl);
         switch (tex_inst) {
         case SHADER_KEY_TEX_INST_DECAL_BIT:
-            shader_load_frag(&ent->shader, SHADER_VER_330,
+            shader_load_frag(&ent->shader, "",
 #include "gfxgl3_text_inst_decal_fs.h"
                              );
             break;
         case SHADER_KEY_TEX_INST_MOD_BIT:
-            shader_load_frag(&ent->shader, SHADER_VER_330,
+            shader_load_frag(&ent->shader, "",
 #include "gfxgl3_text_inst_mod_fs.h"
                              );
             break;
         case SHADER_KEY_TEX_INST_DECAL_ALPHA_BIT:
-            shader_load_frag(&ent->shader, SHADER_VER_330,
+            shader_load_frag(&ent->shader, "",
 #include "gfxgl3_text_inst_decal_alpha_fs.h"
                              );
             break;
         case SHADER_KEY_TEX_INST_MOD_ALPHA_BIT:
-            shader_load_frag(&ent->shader, SHADER_VER_330,
+            shader_load_frag(&ent->shader, "",
 #include "gfxgl3_text_inst_mod_alpha_fs.h"
                              );
             break;
@@ -340,40 +340,40 @@ static struct shader_cache_ent* create_shader(shader_key key) {
             RAISE_ERROR(ERROR_INTEGRITY);
         }
     } else {
-        shader_load_vert(&ent->shader, SHADER_VER_330,
+        shader_load_vert(&ent->shader, "",
                          pvr2_vert_tex_transform_disabled_glsl);
-        shader_load_frag(&ent->shader, SHADER_VER_330,
+        shader_load_frag(&ent->shader, "",
 #include "gfxgl3_tex_inst_disabled_fs.h"
                          );
     }
 
     if (punchthrough) {
-        shader_load_frag(&ent->shader, SHADER_VER_330,
+        shader_load_frag(&ent->shader, "",
 #include "gfxgl3_punch_through_test_enabled.h"
                          );
     } else {
-        shader_load_frag(&ent->shader, SHADER_VER_330,
+        shader_load_frag(&ent->shader, "",
 #include "gfxgl3_punch_through_test_disabled.h"
                          );
     }
 
     if (user_clip_en) {
         if (user_clip_invert) {
-            shader_load_frag(&ent->shader, SHADER_VER_330,
+            shader_load_frag(&ent->shader, "",
 #include "gfxgl3_user_clip_inverted_fs.h"
                              );
         } else {
-            shader_load_frag(&ent->shader, SHADER_VER_330,
+            shader_load_frag(&ent->shader, "",
 #include "gfxgl3_user_clip_enabled_fs.h"
                              );
         }
     } else {
-        shader_load_frag(&ent->shader, SHADER_VER_330,
+        shader_load_frag(&ent->shader, "",
 #include "gfxgl3_user_clip_disabled_fs.h"
                          );
     }
 
-    shader_load_frag(&ent->shader, SHADER_VER_330,
+    shader_load_frag(&ent->shader, "",
                      pvr2_ta_frag_glsl);
     shader_link(&ent->shader);
 

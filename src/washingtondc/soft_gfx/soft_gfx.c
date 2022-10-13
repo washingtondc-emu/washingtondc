@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2020 snickerbockers
+ *    Copyright (C) 2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -181,6 +181,7 @@ static void soft_gfx_init(void) {
     glewInit();
 
     static char const * const final_vert_glsl =
+        "#version 330\n"
         "#extension GL_ARB_explicit_uniform_location : enable\n"
 
         "layout (location = 0) in vec3 vert_pos;\n"
@@ -196,6 +197,7 @@ static void soft_gfx_init(void) {
         "}\n";
 
     static char const * const final_frag_glsl =
+        "#version 330\n"
         "in vec2 st;\n"
         "out vec4 color;\n"
 
@@ -205,8 +207,8 @@ static void soft_gfx_init(void) {
         "    color = texture(fb_tex, st);\n"
         "}\n";
 
-    shader_load_vert(&fb_shader, SHADER_VER_330, final_vert_glsl);
-    shader_load_frag(&fb_shader, SHADER_VER_330, final_frag_glsl);
+    shader_load_vert(&fb_shader, "final_vert_glsl", final_vert_glsl);
+    shader_load_frag(&fb_shader, "final_frag_glsl", final_frag_glsl);
     shader_link(&fb_shader);
 
     glGenTextures(1, &fb_tex);
