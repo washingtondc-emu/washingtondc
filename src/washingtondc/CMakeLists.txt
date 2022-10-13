@@ -126,43 +126,43 @@ add_custom_command(OUTPUT ${outfile}
   VERBATIM)
 endfunction()
 
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render.vert" "gfxgl3_render_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/color_transform_enabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_render.vert" "gfxgl3_render_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/color_transform_enabled.vert"
                 "gfxgl3_color_transform_enabled_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/color_transform_disabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/color_transform_disabled.vert"
                 "gfxgl3_color_transform_disabled_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/tex_transform_enabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/tex_transform_enabled.vert"
                 "gfxgl3_tex_transform_enabled_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/tex_transform_disabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/tex_transform_disabled.vert"
                 "gfxgl3_tex_transform_disabled_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_render.frag" "gfxgl3_render_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final.vert" "gfxgl3_final_vert.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_final.frag" "gfxgl3_final_frag.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_render.frag" "gfxgl3_render_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_final.vert" "gfxgl3_final_vert.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_final.frag" "gfxgl3_final_frag.h")
 
 # gfxgl3 texture instructions
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_tex_inst_disabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_tex_inst_disabled.frag"
                 "gfxgl3_tex_inst_disabled_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_tex_inst_decal.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_tex_inst_decal.frag"
                 "gfxgl3_text_inst_decal_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_tex_inst_mod.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_tex_inst_mod.frag"
                 "gfxgl3_text_inst_mod_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_tex_inst_decal_alpha.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_tex_inst_decal_alpha.frag"
                 "gfxgl3_text_inst_decal_alpha_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_tex_inst_mod_alpha.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_tex_inst_mod_alpha.frag"
                 "gfxgl3_text_inst_mod_alpha_fs.h")
 
 # gfxgl3 punch-through polygons
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_punch_through_test_disabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_punch_through_test_disabled.frag"
                 "gfxgl3_punch_through_test_disabled.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_punch_through_test_enabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_punch_through_test_enabled.frag"
                 "gfxgl3_punch_through_test_enabled.h")
 
 # gfxgl3 user clip test
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_user_clip_inverted.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_user_clip_inverted.frag"
                 "gfxgl3_user_clip_inverted_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_user_clip_enabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_user_clip_enabled.frag"
                 "gfxgl3_user_clip_enabled_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/gfxgl3_user_clip_disabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl3/shaders/gfxgl3_user_clip_disabled.frag"
                 "gfxgl3_user_clip_disabled_fs.h")
 
 
@@ -200,56 +200,56 @@ set(gfxgl4_sources "${PROJECT_SOURCE_DIR}/shader_cache.h"
                    "gfxgl4_punch_through_disabled_fs.h"
                    "gfxgl4_punch_through_enabled_fs.h")
 
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render.vert" "gfxgl4_render_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_render.frag" "gfxgl4_render_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_node_def.glsl" "gfxgl4_oit_node_def.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort.vert" "gfxgl4_oit_sort_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/oit_sort.frag" "gfxgl4_oit_sort_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final.vert" "gfxgl4_final_vert.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/final.frag" "gfxgl4_final_frag.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_render.vert" "gfxgl4_render_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_render.frag" "gfxgl4_render_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/oit_node_def.glsl" "gfxgl4_oit_node_def.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/oit_sort.vert" "gfxgl4_oit_sort_vs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/oit_sort.frag" "gfxgl4_oit_sort_fs.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/final.vert" "gfxgl4_final_vert.h")
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/final.frag" "gfxgl4_final_frag.h")
 
 # gfxgl4 vertex color transform
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_color_transform_enabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_color_transform_enabled.vert"
                 "gfxgl4_color_transform_enabled_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_color_transform_disabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_color_transform_disabled.vert"
                 "gfxgl4_color_transform_disabled_vs.h")
 
 # gfxgl4 vertex texture transform
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_tex_transform_enabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_tex_transform_enabled.vert"
                 "gfxgl4_tex_transform_enabled_vs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_tex_transform_disabled.vert"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_tex_transform_disabled.vert"
                 "gfxgl4_tex_transform_disabled_vs.h")
 
 # gfxgl4 fragment texture instruction
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_tex_inst_disabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_tex_inst_disabled.frag"
                 "gfxgl4_tex_inst_disabled_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_tex_inst_decal.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_tex_inst_decal.frag"
                 "gfxgl4_tex_inst_decal_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_tex_inst_mod.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_tex_inst_mod.frag"
                 "gfxgl4_tex_inst_mod_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_tex_inst_decal_alpha.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_tex_inst_decal_alpha.frag"
                 "gfxgl4_tex_inst_decal_alpha_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_tex_inst_mod_alpha.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_tex_inst_mod_alpha.frag"
                 "gfxgl4_tex_inst_mod_alpha_fs.h")
 
 #gfxgl4 user clip test
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_user_clip_disabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_user_clip_disabled.frag"
                 "gfxgl4_user_clip_disabled_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_user_clip_enabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_user_clip_enabled.frag"
                 "gfxgl4_user_clip_enabled_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_user_clip_inverted.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_user_clip_inverted.frag"
                 "gfxgl4_user_clip_inverted_fs.h")
 
 # gfxgl4 OIT first pass
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_oit_disabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_oit_disabled.frag"
                 "gfxgl4_oit_disabled_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_oit_first_pass.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_oit_first_pass.frag"
                 "gfxgl4_oit_first_pass_fs.h")
 
 # gfxgl4 punch-through test
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_punch_through_disabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_punch_through_disabled.frag"
                 "gfxgl4_punch_through_disabled_fs.h")
-glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/gfxgl4_punch_through_enabled.frag"
+glsl_to_cstring("${PROJECT_SOURCE_DIR}/gfxgl4/shaders/gfxgl4_punch_through_enabled.frag"
                 "gfxgl4_punch_through_enabled_fs.h")
 
 
