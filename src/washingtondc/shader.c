@@ -62,7 +62,7 @@ void shader_load_vert_with_preamble(struct shader *out,
 #define MAX_SHADER_STRINGS 32
     va_list arg_ptr;
     int n_shader_strings = 0;
-    char const *shader_strings[MAX_SHADER_STRINGS] = { };
+    char const *shader_strings[MAX_SHADER_STRINGS] = { NULL };
 
     va_start(arg_ptr, vert_shader_src);
     char const *next_str;
@@ -103,7 +103,7 @@ void shader_load_frag_with_preamble(struct shader *out,
 #define MAX_SHADER_STRINGS 32
     va_list arg_ptr;
     int n_shader_strings = 0;
-    char const *shader_strings[MAX_SHADER_STRINGS] = { };
+    char const *shader_strings[MAX_SHADER_STRINGS] = { NULL };
 
     va_start(arg_ptr, frag_shader_src);
     char const *next_str;
