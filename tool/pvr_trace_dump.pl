@@ -158,42 +158,64 @@ if ($ARGV[0] =~ /.*\.gz$/) {
     binmode $dump;
 }
 
-
 my $hdr;
-while (read $dump, $hdr, 12) {
-    my ($pkt_tp_and_unit_sz, $addr, $n_units) = unpack "L3", $hdr;
+while (read $dump, $hdr, 4) {
+    my ($pkt_tp_and_unit_sz) = unpack "L", $hdr;
     my $pkt_tp = $pkt_tp_and_unit_sz & 0xffff;
-    my $unit_sz = $pkt_tp_and_unit_sz >> 16;
-    $pkt_tp == 1 or die "unrecognized packet type $pkt_tp";
-    my $n_bytes = $n_units * $unit_sz;
 
-    my $name = identify_addr($addr);
-    if ($name) {
-        printf "write %u bytes to %08x <%s> in units of %u\n", $n_bytes, $addr, $name, $unit_sz;
-    } else {
-        printf "write %u bytes to %08x in units of %u\n", $n_bytes, $addr, $unit_sz;
-    }
+    if ($pkt_tp == 1) {
+        read $dump, $hdr, 8 or die;
+        my ($addr, $n_units) = unpack "L2", $hdr;
+        my $unit_sz = $pkt_tp_and_unit_sz >> 16;
+        my $n_bytes = $n_units * $unit_sz;
 
-    if ($n_bytes % 4 == 0) {
-        # do four bytes at a time
-        while ($n_bytes != 0) {
-            my $bin;
-            read $dump, $bin, 4 or die "incomplete packet data";
-            my ($val) = unpack "L", $bin;
-            printf "\t%08x\n", $val;
-            $n_bytes -= 4;
+        my $name = identify_addr($addr);
+        if ($name) {
+            printf "write %u bytes to %08x <%s> in units of %u\n", $n_bytes, $addr, $name, $unit_sz;
+        } else {
+            printf "write %u bytes to %08x in units of %u\n", $n_bytes, $addr, $unit_sz;
+        }
+
+        if ($n_bytes % 4 == 0) {
+            # do four bytes at a time
+            while ($n_bytes != 0) {
+                my $bin;
+                read $dump, $bin, 4 or die "incomplete packet data";
+                my ($val) = unpack "L", $bin;
+                printf "\t%08x\n", $val;
+                $n_bytes -= 4;
+            }
+        } else {
+            my $extra_bytes = 4 - ($n_bytes % 4); # padding length
+            # do one byte at a time
+            while ($n_bytes != 0) {
+                my $bin;
+                read $dump, $bin, 1 or die "incomplete packet data";
+                my ($val) = unpack "L", $bin;
+                printf "\t%02x\n", $val;
+                $n_bytes--;
+            }
+            # read padding
+            read $dump, $_, $extra_bytes or die "missing padding";
+        }
+    } elsif ($pkt_tp == 2) {
+        my $irq_tp = $pkt_tp_and_unit_sz >> 16;
+        my %irq_names = (
+            0 => 'VBLANK IN',
+            1 => 'VBLANK OUT',
+            2 => 'HBLANK',
+            3 => 'TA OPAQUE LIST COMPLETE',
+            4 => 'TA OPAQUE MODIFIER LIST COMPLETE',
+            5 => 'TA TRANSPARENT LIST COMPLETE',
+            6 => 'TA TRANSPARENT MODIFIER LIST COMPLETE',
+            7 => 'TA PUNCH-THROUGH LIST COMPLETE',
+            8 => 'TA RENDER COMPLETE');
+        if (exists($irq_names{$irq_tp})) {
+            say "IRQ $irq_names{$irq_tp}";
+        } else {
+            say "IRQ (unrecognized type $irq_tp)";
         }
     } else {
-        my $extra_bytes = 4 - ($n_bytes % 4); # padding length
-        # do one byte at a time
-        while ($n_bytes != 0) {
-            my $bin;
-            read $dump, $bin, 1 or die "incomplete packet data";
-            my ($val) = unpack "L", $bin;
-            printf "\t%02x\n", $val;
-            $n_bytes--;
-        }
-        # read padding
-        read $dump, $_, $extra_bytes or die "missing padding";
+        die "unrecognized packet type $pkt_tp";
     }
 }

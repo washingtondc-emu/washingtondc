@@ -513,6 +513,52 @@ static bool streq_case_insensitive(char const* str1, char const* str2) {
     return true;
 }
 
+static void trace_pvr2_irq_callback(HollyNrmInt int_type) {
+    holly_raise_nrm_int(int_type);
+
+    /* TODO: make sure this gets logged even if it's possible to
+     * disablke on the PVR2-side (i can't remember if that's possible
+     * or not)
+     */
+
+    if (pvr2_tracefile != WASHDC_HOSTFILE_INVALID) {
+        uint32_t pkt = 2;
+        switch (int_type) {
+        case HOLLY_NRM_INT_VBLANK_IN:
+            pkt |= 0 << 16;
+            break;
+        case HOLLY_NRM_INT_VBLANK_OUT:
+            pkt |= 1 << 16;
+            break;
+        case HOLLY_NRM_INT_HBLANK:
+            pkt |= 2 << 16;
+            break;
+        case HOLLY_REG_ISTNRM_PVR_OPAQUE_COMPLETE:
+            pkt |= 3 << 16;
+            break;
+        case HOLLY_REG_ISTNRM_PVR_OPAQUE_MOD_COMPLETE:
+            pkt |= 4 << 16;
+            break;
+        case HOLLY_REG_ISTNRM_PVR_TRANS_COMPLETE:
+            pkt |= 5 << 16;
+            break;
+        case HOLLY_REG_ISTNRM_PVR_TRANS_MOD_COMPLETE:
+            pkt |= 6 << 16;
+            break;
+        case HOLLY_NRM_INT_ISTNRM_PVR_PUNCH_THROUGH_COMPLETE:
+            pkt |= 7 << 16;
+            break;
+        case HOLLY_REG_ISTNRM_PVR_RENDER_COMPLETE:
+            pkt |= 8 << 16;
+            break;
+        default:
+            return;
+        }
+
+        washdc_hostfile_write(pvr2_tracefile, &pkt, sizeof(pkt));
+    }
+}
+
 struct washdc_gameconsole const*
 dreamcast_init(char const *gdi_path,
                struct gfx_rend_if const *gfx_if,
@@ -523,6 +569,7 @@ dreamcast_init(char const *gdi_path,
                washdc_hostfile pvr2_trace_file,
                struct washdc_controller_dev const controllers[4][3]) {
 
+    pvr2_tracefile = pvr2_trace_file;
     frame_count = 0;
 
     dbg_intf = dbg_frontend;
@@ -736,7 +783,12 @@ dreamcast_init(char const *gdi_path,
     g1_init();
     g2_init();
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
-    pvr2_init(&dc_pvr2, &sh4_clock, &maple, holly_raise_nrm_int);
+    void(*pvr2_int_cb)(HollyNrmInt);
+    if (pvr2_tracefile)
+        pvr2_int_cb = trace_pvr2_irq_callback;
+    else
+        pvr2_int_cb = holly_raise_nrm_int;
+    pvr2_init(&dc_pvr2, &sh4_clock, &maple, pvr2_int_cb);
     sys_block_init(&sys_block, &sh4_clock, &cpu, &dc_mem, &dc_pvr2);
     gdrom_init(&gdrom, &sh4_clock);
     maple_init(&maple, &sh4_clock);
@@ -773,7 +825,6 @@ dreamcast_init(char const *gdi_path,
     sh4_register_pdtra_read_handler(&cpu, on_pdtra_read);
     sh4_register_pdtra_write_handler(&cpu, on_pdtra_write);
 
-    pvr2_tracefile = pvr2_trace_file;
     construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file);
     sh4_set_mem_map(&cpu, &mem_map);
 
