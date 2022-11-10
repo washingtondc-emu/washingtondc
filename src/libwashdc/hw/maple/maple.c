@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -323,7 +323,8 @@ static void maple_handle_bwrite(struct maple *ctxt, struct maple_frame *frame) {
  */
 static void
 maple_handle_setcond(struct maple *ctxt, struct maple_frame *frame) {
-    MAPLE_TRACE("SETCOND maplebus frame received\n");
+    MAPLE_TRACE("SETCOND maplebus frame received address %08x\n",
+                (unsigned)frame->maple_addr);
 
     struct maple_device *dev = maple_device_get(ctxt, frame->maple_addr);
 
@@ -352,9 +353,8 @@ maple_handle_setcond(struct maple *ctxt, struct maple_frame *frame) {
 
         free(setcond.dat);
     } else {
-        error_set_feature("proper response for when the guest tries to send "
-                          "the BWRITE command to an empty maple port");
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        LOG_WARN("SETCOND frame sent to maplebus address %08x, "
+                 "which is empty!\n", (unsigned)frame->maple_addr);
     }
 
     maple_dma_complete(ctxt);
