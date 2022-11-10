@@ -55,10 +55,11 @@ extern struct memory_interface trace_proxy_memory_interface;
  * All data is in little-endian format since that is the byte-order
  * used by Dreamcast.
  *
- * 4 bytes - packet type
+ * 2 bytes - packet type
  *
  * IF PACKET TYPE IS 1 (memory write packet)
  *
+ *     2 bytes - the unit-length (ie how many bytes to write at once - 1/2/4)
  *     4 bytes - the address that the data was written to
  *     4 bytes - length of the write in bytes
  *         this is 4 bytes because stuff like DMA transactions can
@@ -75,7 +76,7 @@ extern struct memory_interface trace_proxy_memory_interface;
  *         data is not a multiple of 4.
  *
  * IF PACKET TYPE IS 2 (interrupt packet)
- *    4 bytes - packet type & (irq_type << 16)
+ *    2 bytes - irq_type
  *    irq_type values:
  *        type 0 - VBLANK IN
  *        type 1 - VBLANK OUT
