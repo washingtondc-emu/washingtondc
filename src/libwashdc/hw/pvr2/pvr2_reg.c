@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -594,4 +594,8 @@ uint32_t get_ta_yuv_tex_ctrl(struct pvr2 *pvr2) {
 
 uint8_t *pvr2_get_palette_ram(struct pvr2 *pvr2) {
     return (uint8_t*)(pvr2->reg_backing + PVR2_PAL_RAM_FIRST);
+}
+
+bool pvr2_horizontal_scale(struct pvr2 *pvr2) {
+    return pvr2->reg_backing[PVR2_SCALER_CTL] & (1 << 16);
 }

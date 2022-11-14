@@ -158,6 +158,7 @@ static void gfx_log_il_cmd(struct gfx_il_inst const *cmd) {
                 arg->begin_rend.clip[1],
                 arg->begin_rend.clip[2],
                 arg->begin_rend.clip[3]);
+        LOG_DBG(GFX_IL_TAG "\thor_scale_factor: %u\n", arg->begin_rend.hor_scale_factor);
         break;
     case GFX_IL_END_REND:
         LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_END_REND\n");

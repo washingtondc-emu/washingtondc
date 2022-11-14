@@ -205,6 +205,8 @@ static struct oit_state {
     unsigned vert_array_len;
 } oit_state;
 
+static unsigned hor_scale_factor;
+
 // converts pixels from ARGB 4444 to RGBA 4444
 static void render_conv_argb_4444(uint16_t *pixels, size_t n_pixels);
 
@@ -466,6 +468,8 @@ static void opengl_render_init(void) {
     oit_state.group_count = 0;
     oit_state.vert_array = NULL;
     oit_state.vert_array_len = 0;
+
+    hor_scale_factor = 1;
 
     init_renderdoc_api();
 
@@ -965,7 +969,7 @@ static void do_draw_array(GLint first_idx, GLsizei n_verts) {
 
     GLfloat clip_delta = clip_max_actual - clip_min_actual;
     GLfloat trans_mat[16] = {
-        1.0 / half_screen_dims[0], 0, 0, -1,
+        1.0 / (half_screen_dims[0] * hor_scale_factor), 0, 0, -1,
         0, -1.0 / half_screen_dims[1], 0, 1,
         0, 0, 2.0 / clip_delta, -2.0 * clip_min_actual / clip_delta - 1,
         0, 0, 0, 1
@@ -1297,6 +1301,12 @@ static void gfxgl3_renderer_begin_rend(struct gfx_il_inst *cmd) {
         }
         renderdoc_capture_requested = false;
     }
+    if (cmd->arg.begin_rend.hor_scale_factor != 1 &&
+        cmd->arg.begin_rend.hor_scale_factor != 2) {
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    hor_scale_factor = cmd->arg.begin_rend.hor_scale_factor;
 
     gfxgl3_target_begin(cmd->arg.begin_rend.screen_width,
                         cmd->arg.begin_rend.screen_height,

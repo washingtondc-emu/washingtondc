@@ -650,6 +650,9 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     unsigned y_clip_min = get_fb_y_clip_min(pvr2);
     unsigned y_clip_max = get_fb_y_clip_max(pvr2);
 
+    if (pvr2_horizontal_scale(pvr2))
+        screen_width /= 2;
+
     if (x_clip_max >= screen_width)
         x_clip_max = screen_width - 1;
     if (y_clip_max >= screen_height)
@@ -690,6 +693,7 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
 
     // set up rendering context
     cmd.op = GFX_IL_BEGIN_REND;
+    cmd.arg.begin_rend.hor_scale_factor = 1 + pvr2_horizontal_scale(pvr2);
     cmd.arg.begin_rend.screen_width = screen_width;
     cmd.arg.begin_rend.screen_height = screen_height;
     cmd.arg.begin_rend.clip[0] = x_clip_min;

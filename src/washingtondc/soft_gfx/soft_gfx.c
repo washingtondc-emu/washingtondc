@@ -111,6 +111,8 @@ static struct fb_poly {
     GLuint ebo; // element buffer object
 } fb_poly;
 
+static unsigned hor_scale_factor;
+
 static uint32_t fb[FB_WIDTH * FB_HEIGHT];
 
 static float *w_buffer = NULL;
@@ -177,6 +179,8 @@ struct renderer const soft_gfx_renderer = {
 };
 
 static void soft_gfx_init(void) {
+    hor_scale_factor = 1;
+
     glewExperimental = GL_TRUE;
     glewInit();
 
@@ -437,6 +441,14 @@ static void soft_gfx_begin_rend(struct gfx_il_inst *cmd) {
 
     screen_width = cmd->arg.begin_rend.screen_width;
     screen_height = cmd->arg.begin_rend.screen_height;
+
+    if (cmd->arg.begin_rend.hor_scale_factor != 1 &&
+        cmd->arg.begin_rend.hor_scale_factor != 2) {
+        RAISE_ERROR(ERROR_INTEGRITY);
+    }
+
+    hor_scale_factor = cmd->arg.begin_rend.hor_scale_factor;
+
 
     memcpy(clip, cmd->arg.begin_rend.clip, sizeof(clip));
 
@@ -1795,7 +1807,7 @@ static void soft_gfx_draw_vert_array(struct gfx_il_inst *cmd) {
 
     struct gfx_obj *obj = gfx_obj_get(render_tgt);
     unsigned cur_idx;
-    float const *tri_buf[2];
+    float tri_buf[2][GFX_VERT_LEN];
     unsigned tri_buf_len = 0;
 
     if (wireframe_mode) {
@@ -1805,16 +1817,20 @@ static void soft_gfx_draw_vert_array(struct gfx_il_inst *cmd) {
          */
         for (cur_idx = first_idx; cur_idx <= last_idx; cur_idx++) {
             if (tri_buf_len == 2) {
-                float const *newvert = vert_array + cur_idx * GFX_VERT_LEN;
+                float newvert[GFX_VERT_LEN];
+                memcpy(newvert, vert_array + cur_idx * GFX_VERT_LEN, GFX_VERT_LEN * sizeof(float));
+                newvert[0] /= hor_scale_factor;
 
                 draw_line(obj, tri_buf[0][0], tri_buf[0][1], tri_buf[1][0], tri_buf[1][1], 0xffffffff);
                 draw_line(obj, tri_buf[1][0], tri_buf[1][1], newvert[0], newvert[1], 0xffffffff);
                 draw_line(obj, newvert[0], newvert[1], tri_buf[0][0], tri_buf[0][1], 0xffffffff);
 
-                tri_buf[0] = tri_buf[1];
-                tri_buf[1] = newvert;
+                memcpy(tri_buf[0], tri_buf[1], sizeof(tri_buf[0]));
+                memcpy(tri_buf[1], newvert, sizeof(tri_buf[1]));
             } else {
-                tri_buf[tri_buf_len++] = vert_array + cur_idx * GFX_VERT_LEN;
+                memcpy(tri_buf[tri_buf_len], vert_array + cur_idx * GFX_VERT_LEN, sizeof(tri_buf[tri_buf_len]));
+                tri_buf[tri_buf_len][0] /= hor_scale_factor;
+                tri_buf_len++;
             }
         }
     } else {
@@ -1829,17 +1845,22 @@ static void soft_gfx_draw_vert_array(struct gfx_il_inst *cmd) {
                  * winding order but I want to keep things consistent for when I
                  * eventually implement culling.
                  */
-                float const *newvert = vert_array + cur_idx * GFX_VERT_LEN;
+                float newvert[GFX_VERT_LEN];
+                memcpy(newvert, vert_array + cur_idx * GFX_VERT_LEN, sizeof(newvert));
+                newvert[0] /= hor_scale_factor;
+
                 if (odd)
                     draw_tri(obj, tri_buf[1], tri_buf[0], newvert);
                 else
                     draw_tri(obj, tri_buf[0], tri_buf[1], newvert);
                 odd = !odd;
 
-                tri_buf[0] = tri_buf[1];
-                tri_buf[1] = newvert;
+                memcpy(tri_buf[0], tri_buf[1], sizeof(tri_buf[0]));
+                memcpy(tri_buf[1], newvert, sizeof(tri_buf[1]));
             } else {
-                tri_buf[tri_buf_len++] = vert_array + cur_idx * GFX_VERT_LEN;
+                memcpy(tri_buf[tri_buf_len], vert_array + cur_idx * GFX_VERT_LEN, sizeof(tri_buf[tri_buf_len]));
+                tri_buf[tri_buf_len][0] /= hor_scale_factor;
+                tri_buf_len++;
             }
         }
     }

@@ -155,6 +155,15 @@ union gfx_il_arg {
         unsigned clip[4];
 
         int rend_tgt_obj;
+
+        /*
+         * the texture will be drawn at the given scale factor (ie N times
+         * larger) in the x-direction, then downsampled down by that factor
+         * so that it is the width required by screen_width.
+         *
+         * cannot be 0
+         */
+        unsigned hor_scale_factor;
     } begin_rend;
 
     struct {
