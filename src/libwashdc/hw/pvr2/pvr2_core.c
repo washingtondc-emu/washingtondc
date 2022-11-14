@@ -596,27 +596,6 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     }
 
     /*
-     * XXX glob_tile_clip is supposed to apply to TA display list creation
-     * and not core rendering, so it's definitely not correct to be referencing
-     * it here but IDK how else to get framebuffer dimensions so we do it
-     * anyways.
-     *
-     * Note that if this ever gets fixed, then framebuffer.c may need to be
-     * updated as well
-     */
-    unsigned screen_width = get_glob_tile_clip_x(pvr2) << 5;
-    unsigned screen_height = get_glob_tile_clip_y(pvr2) << 5;
-    unsigned x_clip_min = get_fb_x_clip_min(pvr2);
-    unsigned x_clip_max = get_fb_x_clip_max(pvr2);
-    unsigned y_clip_min = get_fb_y_clip_min(pvr2);
-    unsigned y_clip_max = get_fb_y_clip_max(pvr2);
-
-    if (x_clip_max >= screen_width)
-        x_clip_max = screen_width - 1;
-    if (y_clip_max >= screen_height)
-        y_clip_max = screen_height - 1;
-
-    /*
      * backgnd_info points to a structure containing some ISP/TSP parameters
      * and three vertices (potentially including texture coordinate and
      * color data).  These are used to draw a background plane.  isp_backgnd_d
@@ -654,6 +633,27 @@ void pvr2_ta_startrender(struct pvr2 *pvr2) {
     core->pvr2_bgcolor[1] = bg_color_g;
     core->pvr2_bgcolor[2] = bg_color_b;
     core->pvr2_bgcolor[3] = bg_color_a;
+
+    /*
+     * XXX glob_tile_clip is supposed to apply to TA display list creation
+     * and not core rendering, so it's definitely not correct to be referencing
+     * it here but IDK how else to get framebuffer dimensions so we do it
+     * anyways.
+     *
+     * Note that if this ever gets fixed, then framebuffer.c may need to be
+     * updated as well
+     */
+    unsigned screen_width = get_glob_tile_clip_x(pvr2) << 5;
+    unsigned screen_height = get_glob_tile_clip_y(pvr2) << 5;
+    unsigned x_clip_min = get_fb_x_clip_min(pvr2);
+    unsigned x_clip_max = get_fb_x_clip_max(pvr2);
+    unsigned y_clip_min = get_fb_y_clip_min(pvr2);
+    unsigned y_clip_max = get_fb_y_clip_max(pvr2);
+
+    if (x_clip_max >= screen_width)
+        x_clip_max = screen_width - 1;
+    if (y_clip_max >= screen_height)
+        y_clip_max = screen_height - 1;
 
     /* uint32_t backgnd_depth_as_int = get_isp_backgnd_d(); */
     /* memcpy(&geo->bgdepth, &backgnd_depth_as_int, sizeof(float)); */
