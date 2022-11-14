@@ -437,8 +437,16 @@ static void gfx_log_il_cmd(struct gfx_il_inst const *cmd) {
     case GFX_IL_END_DEPTH_SORT:
         LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_END_DEPTH_SORT\n");
         break;
+    case GFX_IL_SET_USER_CLIP:
+        LOG_DBG(GFX_IL_TAG " COMMAND GFX_IL_SET_USER_CLIP\n");
+        LOG_DBG(GFX_IL_TAG " (%u, %u) to (%u, %u)\n",
+                cmd->arg.set_user_clip.x_min,
+                cmd->arg.set_user_clip.y_min,
+                cmd->arg.set_user_clip.x_max,
+                cmd->arg.set_user_clip.y_max);
+        break;
     default:
-        LOG_DBG(GFX_IL_TAG "UNKNOWN COMMAND %d\n", (int)cmd->op);
+        LOG_DBG(GFX_IL_TAG " UNKNOWN COMMAND %d\n", (int)cmd->op);
     }
 }
 #endif
