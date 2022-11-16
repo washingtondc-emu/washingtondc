@@ -146,6 +146,186 @@ sub identify_addr {
     }
 }
 
+our $hdr_tp = -1;
+our $vtx_tp = -1;
+
+# returns true if it needs 32 more bytes, else false
+sub try_decode_tafifo_packet {
+    (my $pkt_ref) = @_;
+    my @pkt = @{$pkt_ref};
+    my $cmd_tp = ($pkt[0] >> 29) & 7;
+    if ($cmd_tp == 0) {
+        # end of list
+        say "\tPVR2 TA END OF LIST PACKET";
+    } elsif ($cmd_tp == 1) {
+        # user clip
+        say "\tPVR2 TA USER CLIP PACKET";
+    } elsif ($cmd_tp == 2) {
+        # input list
+        say "\tPVR2 TA INPUT LIST PACKET";
+    } elsif ($cmd_tp == 4) {
+        # polygon header
+        say "\tPVR2 TA POLYGON HEADER PACKET";
+
+        my $key = $pkt[0];
+        my @poly_types = (
+            #    mask       value     header type      vertex type
+            [     0x78 ,      0x00 ,           0 ,           0 ],
+            [     0x78 ,      0x10 ,           0 ,           1 ],
+            [     0x78 ,      0x20 ,           1 ,           2 ],
+            [     0x78 ,      0x30 ,           0 ,           2 ],
+            [     0x78 ,      0x40 ,           3 ,           9 ],
+            [     0x78 ,      0x60 ,           4 ,          10 ],
+            [     0x78 ,      0x70 ,           3 ,          10 ],
+            [     0x79 ,      0x08 ,           0 ,           3 ],
+            [     0x79 ,      0x09 ,           0 ,           4 ],
+            [     0x79 ,      0x18 ,           0 ,           5 ],
+            [     0x79 ,      0x19 ,           0 ,           6 ],
+            [     0x7d ,      0x28 ,           1 ,           7 ],
+            [     0x7d ,      0x2c ,           2 ,           7 ],
+            [     0x7d ,      0x29 ,           1 ,           8 ],
+            [     0x7d ,      0x2d ,           2 ,           8 ],
+            [     0x79 ,      0x38 ,           0 ,           7 ],
+            [     0x79 ,      0x39 ,           0 ,           8 ],
+            [     0x79 ,      0x48 ,           3 ,          11 ],
+            [     0x79 ,      0x49 ,           3 ,          12 ],
+            [     0x79 ,      0x68 ,           4 ,          13 ],
+            [     0x78 ,      0x69 ,           4 ,          14 ],
+            [     0x79 ,      0x78 ,           3 ,          13 ],
+            [     0x79 ,      0x79 ,           3 ,          14 ]);
+        $hdr_tp = -1;
+        $vtx_tp = -1;
+        for (@poly_types) {
+            my @row = @{$_};
+            if (($pkt[0] & $row[0]) == $row[1]) {
+                $hdr_tp = $row[2];
+                $vtx_tp = $row[3];
+                last;
+            }
+        }
+
+        if (($hdr_tp == 2 || $hdr_tp == 4) && ((scalar @pkt) != 16)) {
+            return 1;
+        }
+
+        if ($hdr_tp == -1) {
+            say "\tUNKNOWN HEADER TYPE";
+        } else {
+            say "HEADER TYPE $hdr_tp";
+        }
+
+        if ($vtx_tp == -1) {
+            say "\tUNKNOWN VERTEX TYPE";
+        } else {
+            say "VERTEX TYPE $vtx_tp";
+        }
+
+        my $poly_tp = ($pkt[0] >> 24) & 7;
+        my @poly_tp_names = ( "OPAQUE", "OPAQUE MODIFIER", "TRANSPARENT",
+                              "TRANSPARENT MODIFIER", "PUNCH-THROUGH",
+                              "INVALID 5", "INVALID 6", "INVALID 7" );
+        say "\t\tpolygon type: $poly_tp_names[$poly_tp]";
+
+        if (($pkt[0] >> 6) & 1) {
+            say "\t\ttwo-volumes mode: enabled";
+        } else {
+            say "\t\ttwo-volumes mode: disabled";
+        }
+
+        my $color_type;
+        if (($pkt[0] >> 4) & 3 == 0) {
+            $color_type = "packed";
+        } elsif (($pkt[0] >> 4) & 3 == 1) {
+            $color_type = "floating-point";
+        } elsif (($pkt[0] >> 4) & 3 == 2) {
+            $color_type = "intensity mode 1";
+        } else {
+            $color_type = "intensity mode 2";
+        }
+        say "\t\tcolor type: $color_type";
+
+        if (($pkt[0] >> 3) & 1) {
+            say "\t\ttextures: enabled";
+            my $wshift = 3 + (($pkt[2] >> 3) & 7);
+            my $hshift = 3 + ($pkt[2] & 7);
+            printf "\t\ttexture resolution: (%u, %u)\n", 1 << $wshift, 1 << $hshift;
+            printf "\t\ttexture pointer: %08x\n", ($pkt[3] & 0x1fffff) << 3;
+        } else {
+            say "\t\ttextures: disabled";
+        }
+    } elsif ($cmd_tp == 5) {
+        # sprite header
+        say "\tPVR2 TA SPRITE HEADER PACKET";
+        if ($pkt[0] & (1 << 3)) {
+            $hdr_tp = 6;
+            $vtx_tp = 15;
+        } else {
+            $hdr_tp = 5;
+            $vtx_tp = 16;
+        }
+    } elsif ($cmd_tp == 6) {
+        # IDK
+        say "\tPVR2 TA UNKNOWN PACKET TYPE 6";
+    } elsif ($cmd_tp == 7) {
+        # vertex header
+        if (($vtx_tp == 5 || $vtx_tp == 6 || $vtx_tp == 11 ||
+             $vtx_tp == 12 || $vtx_tp == 13 || $vtx_tp == 14 ||
+             $vtx_tp == 15 || $vtx_tp == 16) &&
+            ((scalar @pkt) != 16)) {
+            return 1;
+        }
+
+        if ($vtx_tp == 15 || $vtx_tp == 16) {
+            # sprite
+
+            say "\tPVR2 TA VERTEX PACKET (SPRITE)";
+
+            my $packedverts = pack "LLLLLLLLLLL", @pkt[1..11];
+            my @verts = unpack "fffffffffff", $packedverts;
+            say "\tpos[0]: ($verts[0], $verts[1], $verts[2])";
+            say "\tpos[1]: ($verts[3], $verts[4], $verts[5])";
+            say "\tpos[2]: ($verts[6], $verts[7], $verts[8])";
+            say "\tpos[3]: ($verts[9], $verts[10])";
+
+            if ($vtx_tp == 15) {
+                printf "\ttexture coordinates[0]: %08x\n", $pkt[13];
+                printf "\ttexture coordinates[1]: %08x\n", $pkt[14];
+                printf "\ttexture coordinates[2]: %08x\n", $pkt[15];
+            }
+        } else {
+            say "\tPVR2 TA VERTEX PACKET";
+            my $packedpos = pack "LLL", ($pkt[1], $pkt[2], $pkt[3]);
+            my @pos = unpack "fff", $packedpos;
+            say "\tpos: ($pos[0], $pos[1], $pos[2])";
+            if ($vtx_tp == 3 || $vtx_tp == 4 || $vtx_tp == 7) {
+                my $packeduv = pack "LL", @pkt[4..5];
+                my @uv = unpack "ff", $packeduv;
+                say "\ttexture coordinates: ($uv[0], $uv[1])";
+            } elsif ($vtx_tp == 4 || $vtx_tp == 6 || $vtx_tp == 8) {
+                printf "\ttexture coordinates: %08x\n", $pkt[4];
+            } elsif ($vtx_tp == 11 || $vtx_tp == 13) {
+                my $packeduv0 = pack "LL", @pkt[4..5];
+                my $packeduv1 = pack "LL", @pkt[8..9];
+                my @uv0 = unpack "ff", $packeduv0;
+                my @uv1 = unpack "ff", $packeduv1;
+                say "\ttexture coordinates (vol 0): ($uv0[0], $uv0[1])";
+                say "\ttexture coordinates (vol 1): ($uv1[0], $uv1[1])";
+            } elsif ($vtx_tp == 12 || $vtx_tp == 14) {
+                printf "\ttexture coordinates (vol 0): %08x\n", $pkt[4];
+                printf "\ttexture coordinates (vol 1): %08x\n", $pkt[8];
+            }
+        }
+    } else {
+        say "\tUnknown TA FIFO packet type $cmd_tp";
+    }
+
+    for (@pkt) {
+        printf "\t\t%08x\n", $_;
+    }
+
+    return 0;
+}
+
 if (scalar(@ARGV) != 1) {
     die "usage: $0 <dump_file>";
 }
@@ -157,6 +337,8 @@ if ($ARGV[0] =~ /.*\.gz$/) {
     open $dump, '<', $ARGV[0] or die "cannot open $ARGV[0]";
     binmode $dump;
 }
+
+our $frameno = 0;
 
 my $hdr;
 while (read $dump, $hdr, 4) {
@@ -176,7 +358,21 @@ while (read $dump, $hdr, 4) {
             printf "write %u bytes to %08x in units of %u\n", $n_bytes, $addr, $unit_sz;
         }
 
-        if ($n_bytes % 4 == 0) {
+        if ($name eq "TA FIFO") {
+            my @pkt;
+            while ($n_bytes != 0) {
+                my $bin;
+                read $dump, $bin, 4 or die "incomplete packet data";
+                my ($val) = unpack "L", $bin;
+                push @pkt, $val;
+                if ((scalar @pkt) % 8 == 0) {
+                    if (!try_decode_tafifo_packet(\@pkt)) {
+                        @pkt = ();
+                    }
+                }
+                $n_bytes -= 4;
+            }
+        } elsif ($n_bytes % 4 == 0) {
             # do four bytes at a time
             while ($n_bytes != 0) {
                 my $bin;
@@ -214,6 +410,10 @@ while (read $dump, $hdr, 4) {
             say "IRQ $irq_names{$irq_tp}";
         } else {
             say "IRQ (unrecognized type $irq_tp)";
+        }
+        if ($irq_tp == 1) {
+            say "\tBEGIN FRAME $frameno";
+            $frameno++;
         }
     } else {
         die "unrecognized packet type $pkt_tp";
