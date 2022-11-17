@@ -226,6 +226,11 @@ sub try_decode_tafifo_packet {
                               "INVALID 5", "INVALID 6", "INVALID 7" );
         say "\t\tpolygon type: $poly_tp_names[$poly_tp]";
 
+        my $depth_func = ($pkt[1] >> 29) & 7;
+        my @depth_func_names = ( "NEVER", "LESS", "EQUAL", "LEQUAL", "GREATER",
+                                 "NOTEQUAL", "GEQUAL", "ALWAYS" );
+        say "\t\tdepth function: $depth_func_names[$depth_func]";
+
         if (($pkt[0] >> 6) & 1) {
             say "\t\ttwo-volumes mode: enabled";
         } else {
