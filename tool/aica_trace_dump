@@ -1,0 +1,219 @@
+#!/usr/bin/env perl
+
+################################################################################
+#
+#    Copyright (C) 2022 snickerbockers
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
+
+use v5.20;
+use PerlIO::gzip;
+use Getopt::Std;
+
+# truncate long memory writes
+our $opt_t = 0;
+
+my @sys_regmap = (
+    # addr => name,
+    [ 0x2800, 'MASTER_VOLUME' ],
+    [ 0x2804, 'RINGBUFFER_ADDRESS' ],
+    [ 0x2808, 'MIDI_INPUT' ],
+    [ 0x280c, 'CHANINFOREQ' ],
+    [ 0x2810, 'PLAY_STATUS' ],
+    [ 0x2814, 'PLAY_POS' ],
+    [ 0x2890, 'TIMER_A_CTRL' ],
+    [ 0x2894, 'TIMER_B_CTRL' ],
+    [ 0x2898, 'TIMER_C_CTRL' ],
+    [ 0x289c, 'SCIEB' ],
+    [ 0x28a0, 'SCPD' ],
+    [ 0x28a4, 'SCIRE' ],
+    [ 0x28a8, 'SCILV0' ],
+    [ 0x28ac, 'SCILV1' ],
+    [ 0x28b0, 'SCILV2' ],
+    [ 0x28b4, 'MCIEB' ],
+    [ 0x28b8, 'MCIPD' ],
+    [ 0x28bc, 'MCIRE' ],
+    [ 0x2c00, 'ARM_RESET' ],
+    [ 0x2d00, 'INTREQ' ],
+    [ 0x2d04, 'INTCLEAR' ],
+    [ 0x2e00, 'RTC_HI' ],
+    [ 0x2e04, 'RTC_LOW' ]
+    );
+
+my @chan_regmap = (
+    [ 0x00, 'PLAY_CONTROL' ],
+    [ 0x04, 'SAMPLE_ADDR_LOW' ],
+    [ 0x08, 'LOOP_START' ],
+    [ 0x0c, 'LOOP_END' ],
+    [ 0x10, 'AMP_ENV_1' ],
+    [ 0x14, 'AMP_ENV_2' ],
+    [ 0x18, 'SAMPLE_RATE_PITCH' ],
+    [ 0x1c, 'LFO_CONTROL' ],
+    [ 0x20, 'DSP_CHANNEL_SEND' ],
+    [ 0x24, 'DIRECT_PAN_VOL_SEND' ],
+    [ 0x28, 'LPF1_VOLUME' ],
+    [ 0x2c, 'LPF2' ],
+    [ 0x30, 'LPF3' ],
+    [ 0x34, 'LPF4' ],
+    [ 0x38, 'LPF5' ],
+    [ 0x3c, 'LPF6' ],
+    [ 0x40, 'LPF7' ],
+    [ 0x44, 'LPF8' ]
+    );
+
+sub identify_sh4_addr {
+    (my $addr) = @_;
+
+    if ($addr >= 0x00700000 && $addr <= 0x00707fff) {
+        $addr &= 0xffff;
+        if ($addr <= 0x1fff) {
+            my $chan = $addr / 0x80;
+            $addr = $addr % 0x80;
+            for (@chan_regmap) {
+                if ($addr >= ${$_}[0] && $addr <= ${$_}[0] + 3) {
+                    return sprintf "CHAN_%u_%s", $chan, ${$_}[1];
+                }
+            }
+        } else {
+            for (@sys_regmap) {
+                if ($addr >= ${$_}[0] && $addr <= ${$_}[0] + 3) {
+                    return ${$_}[1];
+                }
+            }
+        }
+    } elsif ($addr >= 0x00800000 && $addr <= 0x00ffffff) {
+        return "AICA MEMORY";
+    }
+
+    return "";
+}
+
+sub identify_arm_addr {
+=begin
+        accepts as its sole parameter an address
+        returns a string identifying what that address represents; the string
+        will be empty if the address could not be identified
+=cut
+    (my $addr) = @_;
+
+    if ($addr >= 0x00800000 && $addr <= 0x00807fff) {
+        $addr &= 0xffff;
+        for (@sys_regmap) {
+            if ($addr >= ${$_}[0] && $addr <= ${$_}[0] + 3) {
+                return ${$_}[1];
+            }
+        }
+    }
+
+    return "";
+}
+
+our $hdr_tp = -1;
+our $vtx_tp = -1;
+
+(getopts('t') && (scalar(@ARGV) == 1)) or die "usage: $0 [-t] <dump_file>";
+
+my $dump;
+if ($ARGV[0] =~ /.*\.gz$/) {
+    open $dump, "<:gzip", $ARGV[0] or die "cannot open $ARGV[0] as gzip file";
+} else {
+    open $dump, '<', $ARGV[0] or die "cannot open $ARGV[0]";
+    binmode $dump;
+}
+
+our $frameno = 0;
+
+my $hdr;
+while (read $dump, $hdr, 4) {
+    my ($pkt_tp_and_unit_sz) = unpack "L", $hdr;
+    my $pkt_tp = $pkt_tp_and_unit_sz & 0xffff;
+
+    if ($pkt_tp == 1) {
+        read $dump, $hdr, 8 or die;
+        my ($addr, $n_units) = unpack "L2", $hdr;
+        my $unit_sz = ($pkt_tp_and_unit_sz >> 16) & 0xff;
+        my $n_bytes = $n_units * $unit_sz;
+        my $src = ($pkt_tp_and_unit_sz >> 24) & 0xff;
+
+        die "invalid unit size $unit_sz" if ($unit_sz != 1 && $unit_sz != 2 &&
+                                             $unit_sz != 4 && $unit_sz != 8);
+        ($src == 0 || $src == 1) or die "invalid source $src";
+
+        my $name;
+        my $srcstr;
+        if ($src == 0) {
+            $srcstr = "SH4";
+            $name = identify_sh4_addr($addr & 0x1fffffff);
+        } else {
+            $srcstr = "ARM";
+            $name = identify_arm_addr($addr);
+        }
+
+        if ($name) {
+            printf "$srcstr write %u bytes to %08x <%s> in units of %u\n", $n_bytes, $addr, $name, $unit_sz;
+        } else {
+            printf "$srcstr write %u bytes to %08x in units of %u\n", $n_bytes, $addr, $unit_sz;
+        }
+
+        if ($n_bytes % 4 == 0) {
+            # do four bytes at a time
+            while ($n_bytes != 0) {
+                my $bin;
+                read $dump, $bin, 4 or die "incomplete packet data";
+                my ($val) = unpack "L", $bin;
+                if (!$opt_t || !($name eq 'AICA MEMORY')) {
+                    printf "\t%08x\n", $val;
+                }
+                $n_bytes -= 4;
+            }
+        } else {
+            my $extra_bytes = 4 - ($n_bytes % 4); # padding length
+            # do one byte at a time
+            while ($n_bytes != 0) {
+                my $bin;
+                read $dump, $bin, 1 or die "incomplete packet data";
+                my ($val) = unpack "L", $bin;
+                printf "\t%02x\n", $val;
+                $n_bytes--;
+            }
+            # read padding
+            read $dump, $_, $extra_bytes or die "missing padding";
+        }
+    } elsif ($pkt_tp == 2) {
+        my $irq_tp = $pkt_tp_and_unit_sz >> 16;
+        my %irq_names = (
+            0 => 'VBLANK IN',
+            1 => 'VBLANK OUT',
+            2 => 'HBLANK',
+            3 => 'TA OPAQUE LIST COMPLETE',
+            4 => 'TA OPAQUE MODIFIER LIST COMPLETE',
+            5 => 'TA TRANSPARENT LIST COMPLETE',
+            6 => 'TA TRANSPARENT MODIFIER LIST COMPLETE',
+            7 => 'TA PUNCH-THROUGH LIST COMPLETE',
+            8 => 'TA RENDER COMPLETE');
+        if (exists($irq_names{$irq_tp})) {
+            say "IRQ $irq_names{$irq_tp}";
+        } else {
+            say "IRQ (unrecognized type $irq_tp)";
+        }
+        if ($irq_tp == 1) {
+            say "\tBEGIN FRAME $frameno";
+            $frameno++;
+        }
+    } else {
+        die "unrecognized packet type $pkt_tp";
+    }
+}

@@ -98,7 +98,7 @@ struct washdc_launch_settings {
      * between the CPU and the PowerVR2 to monitor all memory and register
      * writes and log them to this file.
      */
-    washdc_hostfile pvr2_trace_file;
+    washdc_hostfile pvr2_trace_file, aica_trace_file;
 
     struct win_intf const *win_intf;
 

@@ -28,7 +28,8 @@ sub save_pkt {
 
     if (($pkt{'tp'} & 0xffff) == 1) {
         # address-write packet
-        my $hdr = pack "L3", ($pkt{'tp'}, $pkt{'addr'}, $pkt{'len'} / $pkt{'unit_sz'});
+        my $hdr = pack "SCCL2", ($pkt{'tp'}, $pkt{'unit_sz'}, $pkt{'source'},
+                                 $pkt{'addr'}, $pkt{'len'} / $pkt{'unit_sz'});
         print $outfile $hdr;
         for (@{$pkt{'data'}}) {
             my $dat = pack "C", $_;

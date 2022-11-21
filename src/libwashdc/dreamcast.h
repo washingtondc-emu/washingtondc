@@ -60,6 +60,7 @@ dreamcast_init(char const *gdi_path,
                struct washdc_sound_intf const *snd_intf,
                bool flash_mem_writeable,
                washdc_hostfile pvr2_trace_file,
+               washdc_hostfile aica_trace_file,
                struct washdc_controller_dev const controllers[4][3]);
 
 void dreamcast_cleanup();

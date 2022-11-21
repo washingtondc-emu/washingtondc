@@ -80,6 +80,7 @@ washdc_init(struct washdc_launch_settings const *settings) {
                           settings->sersrv, settings->sndsrv,
                           settings->write_to_flash,
                           settings->pvr2_trace_file,
+                          settings->aica_trace_file,
                           settings->controllers);
 }
 

@@ -153,15 +153,17 @@ struct dc_clock sh4_clock;
 
 static unsigned frame_count;
 
-static washdc_hostfile pvr2_tracefile;
+static washdc_hostfile pvr2_tracefile, aica_tracefile;
 
 static void dc_sigint_handler(int param);
 
 static void *load_file(char const *path, long *len);
 
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
-                                  washdc_hostfile pvr2_trace_file);
-static void construct_arm7_mem_map(struct memory_map *map);
+                                  washdc_hostfile pvr2_trace_file,
+                                  washdc_hostfile aica_trace_file);
+static void construct_arm7_mem_map(struct memory_map *map,
+                                   washdc_hostfile aica_trace_file);
 
 // Run until the next scheduled event (in dc_sched) should occur
 static bool run_to_next_sh4_event(void *ctxt);
@@ -567,9 +569,11 @@ dreamcast_init(char const *gdi_path,
                struct washdc_sound_intf const *snd_intf,
                bool flash_mem_writeable,
                washdc_hostfile pvr2_trace_file,
+               washdc_hostfile aica_trace_file,
                struct washdc_controller_dev const controllers[4][3]) {
 
     pvr2_tracefile = pvr2_trace_file;
+    aica_tracefile = aica_trace_file;
     frame_count = 0;
 
     dbg_intf = dbg_frontend;
@@ -825,10 +829,10 @@ dreamcast_init(char const *gdi_path,
     sh4_register_pdtra_read_handler(&cpu, on_pdtra_read);
     sh4_register_pdtra_write_handler(&cpu, on_pdtra_write);
 
-    construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file);
+    construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file, aica_trace_file);
     sh4_set_mem_map(&cpu, &mem_map);
 
-    construct_arm7_mem_map(&arm7_mem_map);
+    construct_arm7_mem_map(&arm7_mem_map, aica_trace_file);
     arm7_set_mem_map(&arm7, &arm7_mem_map);
 
 #ifdef ENABLE_JIT_X86_64
@@ -1483,24 +1487,42 @@ void dc_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
     pvr2_tex_cache_read(&dc_pvr2, tex_dat_out, n_bytes_out, meta);
 }
 
-static void construct_arm7_mem_map(struct memory_map *map) {
-    /*
-     * TODO: I'm not actually 100% sure that the aica wave mem should be
-     * mirrored four times over here, but it is mirrored on the sh4-side of
-     * things.
-     */
-    memory_map_add(map, 0x00000000, 0x007fffff,
-                   0xffffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_wave_mem_intf, &aica.mem);
-    memory_map_add(map, 0x00800000, 0x00807fff,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_sys_intf, &aica);
+static void construct_arm7_mem_map(struct memory_map *map,
+                                   washdc_hostfile aica_trace_file) {
+
+    if (aica_trace_file != WASHDC_HOSTFILE_INVALID) {
+        static struct trace_proxy aica_wave_mem_trace_proxy,
+            aica_sys_trace_proxy;
+        trace_proxy_create(&aica_wave_mem_trace_proxy, aica_trace_file, TRACE_SOURCE_ARM7,
+                           ADDR_AICA_WAVE_MASK, &aica_wave_mem_intf, &aica.mem);
+        trace_proxy_create(&aica_sys_trace_proxy, aica_trace_file, TRACE_SOURCE_ARM7,
+                           0xffffffff, &aica_sys_intf, &aica);
+        memory_map_add(map, 0x00000000, 0x007fffff,
+                       ~0, ~0, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &aica_wave_mem_trace_proxy);
+        memory_map_add(map, 0x00800000, 0x00807fff,
+                       ~0, ~0, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &aica_sys_trace_proxy);
+    } else {
+        /*
+         * TODO: I'm not actually 100% sure that the aica wave mem should be
+         * mirrored four times over here, but it is mirrored on the sh4-side of
+         * things.
+         */
+        memory_map_add(map, 0x00000000, 0x007fffff,
+                       0xffffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       &aica_wave_mem_intf, &aica.mem);
+        memory_map_add(map, 0x00800000, 0x00807fff,
+                       0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &aica_sys_intf, &aica);
+    }
 
     map->unmap = &arm7_unmapped_mem;
 }
 
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
-                                  washdc_hostfile pvr2_trace_file) {
+                                  washdc_hostfile pvr2_trace_file,
+                                  washdc_hostfile aica_trace_file) {
     /*
      * I don't like the idea of putting SH4_AREA_P4 ahead of AREA3 (memory),
      * but this absolutely needs to be at the front of the list because the
@@ -1638,15 +1660,34 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
     memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
-    memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
-                   0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_wave_mem_intf, &aica.mem);
-    memory_map_add(map, 0x00700000, 0x00707fff,
-                   0x1fffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_sys_intf, &aica);
+
+    if (aica_trace_file != WASHDC_HOSTFILE_INVALID) {
+        static struct trace_proxy aica_wave_mem_trace_proxy,
+            aica_sys_trace_proxy;
+
+        trace_proxy_create(&aica_wave_mem_trace_proxy, aica_trace_file, TRACE_SOURCE_SH4,
+                           ADDR_AICA_WAVE_MASK, &aica_wave_mem_intf, &aica.mem);
+        trace_proxy_create(&aica_sys_trace_proxy, aica_trace_file, TRACE_SOURCE_SH4,
+                           0xffffffff, &aica_sys_intf, &aica);
+
+        memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
+                       0x1fffffff, ~0, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &aica_wave_mem_trace_proxy);
+        memory_map_add(map, 0x00700000, 0x00707fff,
+                       0x1fffffff, ~0, MEMORY_MAP_REGION_UNKNOWN,
+                       &trace_proxy_memory_interface, &aica_sys_trace_proxy);
+    } else {
+        memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
+                       0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       &aica_wave_mem_intf, &aica.mem);
+        memory_map_add(map, 0x00700000, 0x00707fff,
+                       0x1fffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       &aica_sys_intf, &aica);
+    }
     memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_rtc_intf, &rtc);
+
     memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
                    0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &gdrom_reg_intf, &gdrom);

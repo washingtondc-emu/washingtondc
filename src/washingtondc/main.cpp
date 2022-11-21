@@ -251,14 +251,15 @@ int main(int argc, char **argv) {
     char const *dc_bios_path = NULL, *dc_flash_path = NULL;
     bool write_to_flash_mem = false;
     char const *gfx_backend = "opengl";
-    washdc_hostfile cap_file = WASHDC_HOSTFILE_INVALID;
+    washdc_hostfile pvr2_cap_file = WASHDC_HOSTFILE_INVALID,
+        aica_cap_file = WASHDC_HOSTFILE_INVALID;
 
     create_cfg_dir();
     create_data_dir();
     create_screenshot_dir();
     create_vmu_dir();
 
-    while ((opt = washdc_getopt(argc, argv, "wb:f:c:s:m:d:u:g:r:htjxpnlvi:")) != -1) {
+    while ((opt = washdc_getopt(argc, argv, "wb:f:c:s:m:d:u:g:r:htjxpnlvi:a:")) != -1) {
         switch (opt) {
         case 'g':
             enable_debugger = true;
@@ -315,17 +316,31 @@ int main(int argc, char **argv) {
                     washdc_optarg);
             exit(1);
         case 'i': {
-            printf("LOGGING DATA TO %s\n", washdc_optarg);
-            cap_file = file_stdio_open(washdc_optarg,
-                                       (enum washdc_hostfile_mode)
-                                       (WASHDC_HOSTFILE_BINARY |
-                                        WASHDC_HOSTFILE_WRITE));
-            if (cap_file == WASHDC_HOSTFILE_INVALID) {
+            printf("LOGGING POWERVR2 ACCESS TRAFFIC TO %s\n", washdc_optarg);
+            pvr2_cap_file = file_stdio_open(washdc_optarg,
+                                            (enum washdc_hostfile_mode)
+                                            (WASHDC_HOSTFILE_BINARY |
+                                             WASHDC_HOSTFILE_WRITE));
+            if (pvr2_cap_file == WASHDC_HOSTFILE_INVALID) {
                 fprintf(stderr, "ERROR: UNABLE TO OPEN %s FOR WRITING\n",
                         washdc_optarg);
                 exit(1);
             }
-            settings.pvr2_trace_file = cap_file;
+            settings.pvr2_trace_file = pvr2_cap_file;
+            break;
+        }
+        case 'a': {
+            printf("LOGGING AICA ACCESS TRAFFIC TO %s\n", washdc_optarg);
+            aica_cap_file = file_stdio_open(washdc_optarg,
+                                            (enum washdc_hostfile_mode)
+                                            (WASHDC_HOSTFILE_BINARY |
+                                             WASHDC_HOSTFILE_WRITE));
+            if (aica_cap_file == WASHDC_HOSTFILE_INVALID) {
+                fprintf(stderr, "ERROR: UNABLE TO OPEN %s FOR WRITING\n",
+                        washdc_optarg);
+                exit(1);
+            }
+            settings.aica_trace_file = aica_cap_file;
             break;
         }
         case 'h':
@@ -691,8 +706,11 @@ int main(int argc, char **argv) {
 
     cfg_cleanup();
 
-    if (cap_file != WASHDC_HOSTFILE_INVALID)
-        file_stdio_close(cap_file);
+    if (pvr2_cap_file != WASHDC_HOSTFILE_INVALID)
+        file_stdio_close(pvr2_cap_file);
+
+    if (aica_cap_file != WASHDC_HOSTFILE_INVALID)
+        file_stdio_close(aica_cap_file);
 
     exit(0);
 }
