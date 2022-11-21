@@ -28,7 +28,7 @@ sub save_pkt {
 
     if (($pkt{'tp'} & 0xffff) == 1) {
         # address-write packet
-        my $hdr = pack "L3", ($pkt{'tp'}, $pkt{'addr'}, $pkt{'len'} / ($pkt{'tp'} >> 16));
+        my $hdr = pack "L3", ($pkt{'tp'}, $pkt{'addr'}, $pkt{'len'} / $pkt{'unit_sz'});
         print $outfile $hdr;
         for (@{$pkt{'data'}}) {
             my $dat = pack "C", $_;
@@ -64,13 +64,19 @@ binmode $outfile;
 my $tp_bin;
 my %pkt;
 while (read $infile, $tp_bin, 4) {
-    (my $tp) = unpack "L", $tp_bin;
-    if (($tp & 0xffff) == 1) {
+    my ($tp, $unit_sz, $source) = unpack "SCC", $tp_bin;
+
+    $tp == 1 || $tp == 2 || die "invalid type $tp";
+
+    if ($tp == 1) {
+        $unit_sz == 1 || $unit_sz == 2 || $unit_sz == 4 || $unit_sz == 8 ||
+            die "invalid unit size $unit_sz";
+        $source == 0 || $source == 1 || die "invalud source $source";
+
         my $hdr;
         read $infile, $hdr, 8 or die;
         (my $addr, my $len) = unpack "L2", $hdr;
         ($tp & 0xffff) == 1 or die 'unrecognized packet type';
-        my $unit_sz = $tp >> 16;
         $len *= $unit_sz;
 
         my $extra_bytes;
@@ -91,7 +97,8 @@ while (read $infile, $tp_bin, 4) {
             $n_bytes--;
         }
 
-        if (keys %pkt && $addr == $pkt{'len'} + $pkt{'addr'} && $tp == $pkt{'tp'}) {
+        if (keys %pkt && $addr == $pkt{'len'} + $pkt{'addr'} &&
+            $tp == $pkt{'tp'} && $unit_sz == $pkt{'unit_sz'} && $source == $pkt{'src'}) {
             $pkt{'len'} += $len;
             push @{$pkt{'data'}}, @data;
         } else {
@@ -105,6 +112,8 @@ while (read $infile, $tp_bin, 4) {
             $pkt{'tp'} = $tp;
             $pkt{'addr'} = $addr;
             $pkt{'len'} = $len;
+            $pkt{'unit_sz'} = $unit_sz;
+            $pkt{'src'} = $source;
         }
         # read padding
         if ($extra_bytes) {
