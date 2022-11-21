@@ -57,7 +57,7 @@ trace_proxy_try_write8(uint32_t addr, uint8_t val, void *ctxt);
 
 static void
 trace_memory_write(washdc_hostfile outfile, uint32_t addr,
-                   unsigned unit_sz, unsigned n_units,
+                   unsigned unit_sz, unsigned n_units, unsigned source,
                    void const *data);
 
 struct memory_interface trace_proxy_memory_interface = {
@@ -89,8 +89,8 @@ struct memory_interface trace_proxy_memory_interface = {
 static void
 trace_memory_write(washdc_hostfile outfile, uint32_t addr,
                    unsigned unit_sz, unsigned n_units,
-                   void const *data) {
-    uint32_t pkt_tp = 1 | (unit_sz << 16);
+                   unsigned source, void const *data) {
+    uint32_t pkt_tp = 1 | (unit_sz << 16) | (source << 24);
     uint32_t len = n_units;
     unsigned n_bytes = n_units * unit_sz;
     washdc_hostfile_write(outfile, &pkt_tp, sizeof(pkt_tp));
@@ -107,12 +107,14 @@ trace_memory_write(washdc_hostfile outfile, uint32_t addr,
 
 void
 trace_proxy_create(struct trace_proxy *ctxt, washdc_hostfile outfile,
+                   unsigned source,
                    uint32_t mask, struct memory_interface const *intf,
                    void *proxied_ctxt) {
     ctxt->mask = mask;
     ctxt->proxied_intf = intf;
     ctxt->proxied_ctxt = proxied_ctxt;
     ctxt->outfile = outfile;
+    ctxt->source = source;
 }
 
 static float trace_proxy_readfloat(uint32_t addr, void *ctxt) {
@@ -147,35 +149,35 @@ static uint8_t trace_proxy_read8(uint32_t addr, void *ctxt) {
 
 static void trace_proxy_writefloat(uint32_t addr, float val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     return proxy->proxied_intf->writefloat(addr & proxy->mask, val,
                                            proxy->proxied_ctxt);
 }
 
 static void trace_proxy_writedouble(uint32_t addr, double val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     return proxy->proxied_intf->writedouble(addr & proxy->mask, val,
                                             proxy->proxied_ctxt);
 }
 
 static void trace_proxy_write32(uint32_t addr, uint32_t val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     return proxy->proxied_intf->write32(addr & proxy->mask, val,
                                         proxy->proxied_ctxt);
 }
 
 static void trace_proxy_write16(uint32_t addr, uint16_t val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     return proxy->proxied_intf->write16(addr & proxy->mask, val,
                                         proxy->proxied_ctxt);
 }
 
 static void trace_proxy_write8(uint32_t addr, uint8_t val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     return proxy->proxied_intf->write8(addr & proxy->mask, val,
                                        proxy->proxied_ctxt);
 }
@@ -247,7 +249,7 @@ trace_proxy_try_read8(uint32_t addr, uint8_t *val, void *ctxt) {
 static int
 trace_proxy_try_writefloat(uint32_t addr, float val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     if (proxy->proxied_intf->try_writefloat) {
         return proxy->proxied_intf->try_writefloat(addr & proxy->mask,
                                                    val, proxy->proxied_ctxt);
@@ -261,7 +263,7 @@ trace_proxy_try_writefloat(uint32_t addr, float val, void *ctxt) {
 static int
 trace_proxy_try_writedouble(uint32_t addr, double val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     if (proxy->proxied_intf->try_writedouble) {
         return proxy->proxied_intf->try_writedouble(addr & proxy->mask,
                                                     val, proxy->proxied_ctxt);
@@ -275,7 +277,7 @@ trace_proxy_try_writedouble(uint32_t addr, double val, void *ctxt) {
 static int
 trace_proxy_try_write32(uint32_t addr, uint32_t val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     if (proxy->proxied_intf->try_write32) {
         return proxy->proxied_intf->try_write32(addr, val, proxy->proxied_ctxt);
     } else {
@@ -287,7 +289,7 @@ trace_proxy_try_write32(uint32_t addr, uint32_t val, void *ctxt) {
 static int
 trace_proxy_try_write16(uint32_t addr, uint16_t val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     if (proxy->proxied_intf->try_write16) {
         return proxy->proxied_intf->try_write16(addr & proxy->mask,
                                                 val, proxy->proxied_ctxt);
@@ -301,7 +303,7 @@ trace_proxy_try_write16(uint32_t addr, uint16_t val, void *ctxt) {
 static int
 trace_proxy_try_write8(uint32_t addr, uint8_t val, void *ctxt) {
     struct trace_proxy *proxy = ctxt;
-    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, &val);
+    trace_memory_write(proxy->outfile, addr, sizeof(val), 1, proxy->source, &val);
     if (proxy->proxied_intf->try_write8) {
         return proxy->proxied_intf->try_write8(addr & proxy->mask, val,
                                                proxy->proxied_ctxt);

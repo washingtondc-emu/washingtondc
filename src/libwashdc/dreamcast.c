@@ -1534,15 +1534,20 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
         static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy,
             pvr2_mem_32bit_traceproxy, pvr2_mem_64bit_traceproxy, pvr2_reg_traceproxy;
 
-        trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
+        trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file,
+                           TRACE_SOURCE_SH4, 0x1fffffff,
                            &pvr2_ta_fifo_intf, &dc_pvr2);
-        trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file, 0x1fffffff,
+        trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file,
+                           TRACE_SOURCE_SH4, 0x1fffffff,
                            &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
-        trace_proxy_create(&pvr2_mem_32bit_traceproxy, pvr2_trace_file, (8<<20)-1,
+        trace_proxy_create(&pvr2_mem_32bit_traceproxy, pvr2_trace_file,
+                           TRACE_SOURCE_SH4, (8<<20)-1,
                            &pvr2_tex_mem_area32_intf, &dc_pvr2);
-        trace_proxy_create(&pvr2_mem_64bit_traceproxy, pvr2_trace_file, (8<<20)-1,
+        trace_proxy_create(&pvr2_mem_64bit_traceproxy, pvr2_trace_file,
+                           TRACE_SOURCE_SH4, (8<<20)-1,
                            &pvr2_tex_mem_area64_intf, &dc_pvr2);
-        trace_proxy_create(&pvr2_reg_traceproxy, pvr2_trace_file, ADDR_AREA0_MASK,
+        trace_proxy_create(&pvr2_reg_traceproxy, pvr2_trace_file,
+                           TRACE_SOURCE_SH4, ADDR_AREA0_MASK,
                            &pvr2_reg_intf, &dc_pvr2);
 
         memory_map_add(map, 0x04000000, 0x047fffff,

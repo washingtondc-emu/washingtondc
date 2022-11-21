@@ -33,17 +33,22 @@
 #include "washdc/MemoryMap.h"
 #include "washdc/hostfile.h"
 
+#define TRACE_SOURCE_SH4 0
+#define TRACE_SOURCE_ARM7 1
+
 struct trace_proxy {
     washdc_hostfile outfile;
     uint32_t mask; // address mask used when we're writing to the backing
     struct memory_interface const *proxied_intf;
     void *proxied_ctxt;
+    unsigned source;
 };
 
 // TODO: consider proxying sort-dma
 
 void
 trace_proxy_create(struct trace_proxy *ctxt, washdc_hostfile outfile,
+                   unsigned source,
                    uint32_t mask, struct memory_interface const *intf,
                    void *proxied_ctxt);
 
@@ -59,7 +64,9 @@ extern struct memory_interface trace_proxy_memory_interface;
  *
  * IF PACKET TYPE IS 1 (memory write packet)
  *
- *     2 bytes - the unit-length (ie how many bytes to write at once - 1/2/4)
+ *     1 bytes - the unit-length (ie how many bytes to write at once -
+ *               1/2/4)
+ *     1 bytes - the source of the write - 0 for sh4, 1 for arm7
  *     4 bytes - the address that the data was written to
  *     4 bytes - length of the write in bytes
  *         this is 4 bytes because stuff like DMA transactions can
