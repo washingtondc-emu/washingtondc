@@ -41,6 +41,7 @@ sub save_pkt {
             while ($extra_bytes) {
                 my $dat = pack "C", 0;
                 print $outfile $dat;
+                $extra_bytes--;
             }
         }
     } elsif (($pkt{'tp'} & 0xffff) == 2) {
