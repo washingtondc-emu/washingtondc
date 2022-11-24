@@ -336,11 +336,11 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_B BIT_RANGE(25, 27)
 #define VAL_B  0x0a000000
 
-#define MASK_LDR_STR BIT_RANGE(26, 27)
-#define VAL_LDR_STR  0x04000000
+#define MASK_LDR (BIT_RANGE(26, 27) | (1 << 20))
+#define VAL_LDR ((1 << 20) | 0x04000000)
 
 #define MASK_STR (BIT_RANGE(26, 27) | (1 << 20))
-#define VAL_STR  0x04000000
+#define VAL_STR 0x04000000
 
 #define MASK_MRS (BIT_RANGE(23, 27) | BIT_RANGE(16, 21) | BIT_RANGE(0, 11))
 #define VAL_MRS  0x010f0000
@@ -719,9 +719,9 @@ DEF_BRANCH_INST(le)
 DEF_BRANCH_INST(al)
 DEF_BRANCH_INST(nv)
 
-#define DEF_LDR_STR_INST(cond)                                          \
+#define DEF_LDR_INST(cond)                                              \
     static unsigned                                                     \
-    arm7_inst_ldr_str_##cond(struct arm7 *arm7, arm7_inst inst) {       \
+    arm7_inst_ldr_##cond(struct arm7 *arm7, arm7_inst inst) {           \
         EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
@@ -731,7 +731,6 @@ DEF_BRANCH_INST(nv)
         int sign = (inst & (1 << 23)) ? 1 : -1;                         \
         bool pre = inst & (1 << 24);                                    \
         bool offs_reg = inst & (1 << 25);                               \
-        bool to_mem = !(inst & (1 << 20));                              \
         bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
                                                                         \
         uint32_t offs;                                                  \
@@ -762,47 +761,31 @@ DEF_BRANCH_INST(nv)
                 /* tread carefully; this would not be the first time I */ \
                 /* misinterpreted an obscure corner-case in ARM7DI's */ \
                 /* CPU manual.*/                                        \
-                LOG_DBG("ARM7 Unaligned memory %s at PC=0x%08x\n",      \
-                        to_mem ? "store" : "load",                      \
+                LOG_DBG("ARM7 Unaligned memory load at PC=0x%08x\n",      \
                         (unsigned)arm7->reg[ARM7_REG_PC]);              \
             }                                                           \
-            if (to_mem) {                                               \
-                uint32_t val = *arm7_gen_reg(arm7, rd);                 \
-                if (rd == 15)                                           \
-                    val += 4;                                           \
-                addr &= ~3;                                             \
-                memory_map_write_32(arm7->map, addr, val);              \
-            } else {                                                    \
-                uint32_t addr_read = addr & ~3;                         \
-                uint32_t val = memory_map_read_32(arm7->map, addr_read); \
+            uint32_t addr_read = addr & ~3;                             \
+            uint32_t val = memory_map_read_32(arm7->map, addr_read);    \
                                                                         \
-                /* Deal with unaligned offsets.  It does the load */    \
-                /* from the aligned address (ie address with bits */    \
-                /* 0 and 1 cleared) and then right-rotates so that */   \
-                /* the LSB corresponds to the original unalgined address */ \
-                switch (addr % 4) {                                     \
-                case 3:                                                 \
-                    val = ((val >> 24) & 0xffffff) | (val << 8);        \
-                    break;                                              \
-                case 2:                                                 \
-                    val = ((val >> 16) & 0xffffff) | (val << 16);       \
-                    break;                                              \
-                case 1:                                                 \
-                    val = ((val >> 8) & 0xffffff) | (val << 24);        \
-                    break;                                              \
-                }                                                       \
-                *arm7_gen_reg(arm7, rd) = val;                          \
+            /* Deal with unaligned offsets.  It does the load */        \
+            /* from the aligned address (ie address with bits */        \
+            /* 0 and 1 cleared) and then right-rotates so that */       \
+            /* the LSB corresponds to the original unalgined address */ \
+            switch (addr % 4) {                                         \
+            case 3:                                                     \
+                val = ((val >> 24) & 0xffffff) | (val << 8);            \
+                break;                                                  \
+            case 2:                                                     \
+                val = ((val >> 16) & 0xffffff) | (val << 16);           \
+                break;                                                  \
+            case 1:                                                     \
+                val = ((val >> 8) & 0xffffff) | (val << 24);            \
+                break;                                                  \
             }                                                           \
+            *arm7_gen_reg(arm7, rd) = val;                              \
         } else {                                                        \
-            if (to_mem) {                                               \
-                uint32_t val = *arm7_gen_reg(arm7, rd);                 \
-                if (rd == 15)                                           \
-                    val += 4;                                           \
-                memory_map_write_8(arm7->map, addr, val);               \
-            } else {                                                    \
-                *arm7_gen_reg(arm7, rd) =                               \
-                    (uint32_t)memory_map_read_8(arm7->map, addr);       \
-            }                                                           \
+            *arm7_gen_reg(arm7, rd) =                                   \
+                (uint32_t)memory_map_read_8(arm7->map, addr);           \
         }                                                               \
                                                                         \
         if (!pre) {                                                     \
@@ -822,13 +805,13 @@ DEF_BRANCH_INST(nv)
                                                                         \
         /* ldr ignores writeback when rn == rd because the */           \
         /* writeback happens before the load is complete */             \
-        if (writeback && (to_mem || rn != rd)) {                        \
+        if (writeback && rn != rd) {                                    \
             if (rn == 15)                                               \
                 RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
             *arm7_gen_reg(arm7, rn) = addr;                             \
         }                                                               \
                                                                         \
-        if (!to_mem && rd == 15) {                                      \
+        if (rd == 15) {                                                 \
             arm7_reset_pipeline(arm7);                                  \
             goto the_end;                                               \
         }                                                               \
@@ -838,25 +821,129 @@ DEF_BRANCH_INST(nv)
         return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
     }
 
-DEF_LDR_STR_INST(eq)
-DEF_LDR_STR_INST(ne)
-DEF_LDR_STR_INST(cs)
-DEF_LDR_STR_INST(cc)
-DEF_LDR_STR_INST(mi)
-DEF_LDR_STR_INST(pl)
-DEF_LDR_STR_INST(vs)
-DEF_LDR_STR_INST(vc)
-DEF_LDR_STR_INST(hi)
-DEF_LDR_STR_INST(ls)
-DEF_LDR_STR_INST(ge)
-DEF_LDR_STR_INST(lt)
-DEF_LDR_STR_INST(gt)
-DEF_LDR_STR_INST(le)
-DEF_LDR_STR_INST(al)
-DEF_LDR_STR_INST(nv)
+DEF_LDR_INST(eq)
+DEF_LDR_INST(ne)
+DEF_LDR_INST(cs)
+DEF_LDR_INST(cc)
+DEF_LDR_INST(mi)
+DEF_LDR_INST(pl)
+DEF_LDR_INST(vs)
+DEF_LDR_INST(vc)
+DEF_LDR_INST(hi)
+DEF_LDR_INST(ls)
+DEF_LDR_INST(ge)
+DEF_LDR_INST(lt)
+DEF_LDR_INST(gt)
+DEF_LDR_INST(le)
+DEF_LDR_INST(al)
+DEF_LDR_INST(nv)
+
+#define DEF_STR_INST(cond)                                              \
+    static unsigned                                                     \
+    arm7_inst_str_##cond(struct arm7 *arm7, arm7_inst inst) {           \
+        EVAL_COND(cond);                                                \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool writeback = inst & (1 << 21);                              \
+        int len = (inst & (1 << 22)) ? 1 : 4;                           \
+        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
+        bool pre = inst & (1 << 24);                                    \
+        bool offs_reg = inst & (1 << 25);                               \
+        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
+                                                                        \
+        uint32_t offs;                                                  \
+                                                                        \
+        if (offs_reg) {                                                 \
+            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
+        } else {                                                        \
+            offs = inst & ((1 << 12) - 1);                              \
+        }                                                               \
+                                                                        \
+        /* TODO: should this instruction update the carry flag? */      \
+                                                                        \
+        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
+                                                                        \
+        if (pre) {                                                      \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+                                                                        \
+        if (len == 4) {                                                 \
+            if (addr % 4) {                                             \
+                /* Log this case, it's got some pretty fucked up */     \
+                /* handling for loads (see below).  Stores appear */    \
+                /* to only clear the lower two bits, but Imust */       \
+                /* tread carefully; this would not be the first time I */ \
+                /* misinterpreted an obscure corner-case in ARM7DI's */ \
+                /* CPU manual.*/                                        \
+                LOG_DBG("ARM7 Unaligned memory store at PC=0x%08x\n",   \
+                        (unsigned)arm7->reg[ARM7_REG_PC]);              \
+            }                                                           \
+            uint32_t val = *arm7_gen_reg(arm7, rd);                     \
+            if (rd == 15)                                               \
+                val += 4;                                               \
+            addr &= ~3;                                                 \
+            memory_map_write_32(arm7->map, addr, val);                  \
+        } else {                                                        \
+            uint32_t val = *arm7_gen_reg(arm7, rd);                     \
+            if (rd == 15)                                               \
+                val += 4;                                               \
+            memory_map_write_8(arm7->map, addr, val);                   \
+        }                                                               \
+                                                                        \
+        if (!pre) {                                                     \
+            if (writeback) {                                            \
+                /* docs say the writeback is implied when the */        \
+                /* pre bit is not set, and that the writeback */        \
+                /* bit should be zero in this case. */                  \
+                error_set_arm7_inst(inst);                              \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            }                                                           \
+            writeback = true;                                           \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        /* ldr ignores writeback when rn == rd because the */           \
+        /* writeback happens before the load is complete */             \
+        if (writeback) {                                                \
+            if (rn == 15)                                               \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            *arm7_gen_reg(arm7, rn) = addr;                             \
+        }                                                               \
+                                                                        \
+    cond_fail:                                                          \
+        next_inst(arm7);                                                \
+        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
+    }
+
+
+DEF_STR_INST(eq)
+DEF_STR_INST(ne)
+DEF_STR_INST(cs)
+DEF_STR_INST(cc)
+DEF_STR_INST(mi)
+DEF_STR_INST(pl)
+DEF_STR_INST(vs)
+DEF_STR_INST(vc)
+DEF_STR_INST(hi)
+DEF_STR_INST(ls)
+DEF_STR_INST(ge)
+DEF_STR_INST(lt)
+DEF_STR_INST(gt)
+DEF_STR_INST(le)
+DEF_STR_INST(al)
+DEF_STR_INST(nv)
+
 
 #ifdef INVARIANTS
-#define BASEPTR_SANITY_OPEN do {                                    \
+#define BASEPTR_SANITY_OPEN do {                \
     uint32_t baseptr_orig = *baseptr
 
 #define BASEPTR_SANITY_CLOSE                                            \
@@ -1549,7 +1636,8 @@ DEF_SWAP_INST(nv)
 
 arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(branch);
-    DEF_COND_TBL(ldr_str);
+    DEF_COND_TBL(ldr);
+    DEF_COND_TBL(str);
     DEF_COND_TBL(block_xfer);
     DEF_COND_TBL(mrs);
     DEF_COND_TBL(msr);
@@ -1575,8 +1663,10 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
 
     if ((inst & MASK_B) == VAL_B) {
         return arm7_branch_cond_tbl[(inst >> 28) & 0xf];
-    } else if ((inst & MASK_LDR_STR) == VAL_LDR_STR) {
-        return arm7_ldr_str_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_LDR) == VAL_LDR) {
+        return arm7_ldr_cond_tbl[(inst >> 28) & 0xf];
+    } else if ((inst & MASK_STR) == VAL_STR) {
+        return arm7_str_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_BLOCK_XFER) == VAL_BLOCK_XFER) {
         return arm7_block_xfer_cond_tbl[(inst >> 28) & 0xf];
     } else if ((inst & MASK_MRS) == VAL_MRS) {
