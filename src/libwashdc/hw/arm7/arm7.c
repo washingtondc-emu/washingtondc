@@ -343,7 +343,7 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_SWI BIT_RANGE(24, 27)
 #define VAL_SWI BIT_RANGE(24, 27)
 
-#define MASK_SWAP (BIT_RANGE(4, 11) | BIT_RANGE(20,21) | BIT_RANGE(23, 27))
+#define MASK_SWAP (BIT_RANGE(4, 7) | BIT_RANGE(20,21) | BIT_RANGE(23, 27))
 #define VAL_SWAP ((9 << 4) | (2 << 23))
 
 /* #define MASK_TEQ_IMMED BIT_RANGE(20, 27) */
