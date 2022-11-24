@@ -382,6 +382,7 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
 
     enum pvr2_poly_type poly_type = pvr2_hdr_poly_type(hdr);
     if (ta->fifo_state.cur_poly_type != poly_type) {
+#ifdef PVR2_LOG_VERBOSE
         if (get_poly_type_state(ta, poly_type) ==
             PVR2_POLY_TYPE_STATE_SUBMITTED) {
             /*
