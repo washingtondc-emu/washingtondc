@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018, 2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -219,5 +219,111 @@ static inline arm7_inst arm7_fetch_inst(struct arm7 *arm7, int *extra_cycles) {
 
     return ret;
 }
+
+static inline bool arm7_cond_eq(struct arm7 const *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
+}
+
+static inline bool arm7_cond_ne(struct arm7 const *arm7) {
+    return !arm7_cond_eq(arm7);
+}
+
+static inline bool arm7_cond_cs(struct arm7 const *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
+}
+
+static inline bool arm7_cond_cc(struct arm7 const *arm7) {
+    return !arm7_cond_cs(arm7);
+}
+
+static inline bool arm7_cond_mi(struct arm7 const *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_N_MASK);
+}
+
+static inline bool arm7_cond_pl(struct arm7 const *arm7) {
+    return !arm7_cond_mi(arm7);
+}
+
+static inline bool arm7_cond_vs(struct arm7 const *arm7) {
+    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_V_MASK);
+}
+
+static inline bool arm7_cond_vc(struct arm7 const *arm7) {
+    return !arm7_cond_vs(arm7);
+}
+
+static inline bool arm7_cond_hi(struct arm7 const *arm7) {
+    return arm7_cond_ne(arm7) && arm7_cond_cs(arm7);
+}
+
+static inline bool arm7_cond_ls(struct arm7 const *arm7) {
+    return arm7_cond_cc(arm7) || arm7_cond_eq(arm7);
+}
+
+static inline bool arm7_cond_ge(struct arm7 const *arm7) {
+    return arm7_cond_mi(arm7) == arm7_cond_vs(arm7);
+}
+
+static inline bool arm7_cond_lt(struct arm7 const *arm7) {
+    return !arm7_cond_ge(arm7);
+}
+
+static inline bool arm7_cond_gt(struct arm7 const *arm7) {
+    return arm7_cond_ne(arm7) && arm7_cond_ge(arm7);
+}
+
+static inline bool arm7_cond_le(struct arm7 const *arm7) {
+    return !arm7_cond_gt(arm7);
+}
+
+static inline bool arm7_cond_al(struct arm7 const *arm7) {
+    return true;
+}
+
+static inline bool arm7_cond_nv(struct arm7 const *arm7) {
+    return false;
+}
+
+static inline bool arm7_cond(struct arm7 const *arm7, uint32_t inst) {
+    switch (inst >> 28) {
+    case 0:
+        return arm7_cond_eq(arm7);
+    case 1:
+        return arm7_cond_ne(arm7);
+    case 2:
+        return arm7_cond_cs(arm7);
+    case 3:
+        return arm7_cond_cc(arm7);
+    case 4:
+        return arm7_cond_mi(arm7);
+    case 5:
+        return arm7_cond_pl(arm7);
+    case 6:
+        return arm7_cond_vs(arm7);
+    case 7:
+        return arm7_cond_vc(arm7);
+    case 8:
+        return arm7_cond_hi(arm7);
+    case 9:
+        return arm7_cond_ls(arm7);
+    case 10:
+        return arm7_cond_ge(arm7);
+    case 11:
+        return arm7_cond_lt(arm7);
+    case 12:
+        return arm7_cond_gt(arm7);
+    case 13:
+        return arm7_cond_le(arm7);
+    case 14:
+        return arm7_cond_al(arm7);
+    default:
+        return arm7_cond_nv(arm7);
+    }
+}
+
+static inline void arm7_next_inst(struct arm7 *arm7) {
+    arm7->reg[ARM7_REG_PC] += 4;
+}
+
 
 #endif

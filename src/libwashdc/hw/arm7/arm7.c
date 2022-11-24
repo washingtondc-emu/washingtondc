@@ -53,15 +53,9 @@ DEF_ERROR_INT_ATTR(arm7_execution_mode)
 
 static uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr);
 
-static bool arm7_cond_eq(struct arm7 *arm7);
-static bool arm7_cond_ne(struct arm7 *arm7);
-static bool arm7_cond_cs(struct arm7 *arm7);
-static bool arm7_cond_cc(struct arm7 *arm7);
-
 static unsigned arm7_spsr_idx(struct arm7 *arm7);
 
 static uint32_t decode_immed(arm7_inst inst);
-static void next_inst(struct arm7 *arm7);
 
 static uint32_t decode_shift(struct arm7 *arm7, arm7_inst inst, bool *carry);
 
@@ -230,70 +224,6 @@ static void arm7_cpsr_mode_change(struct arm7 *arm7, uint32_t new_val) {
 
  the_end:
     arm7->reg[ARM7_REG_CPSR] = new_val;
-}
-
-static inline bool arm7_cond_eq(struct arm7 *arm7) {
-    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_Z_MASK);
-}
-
-static inline bool arm7_cond_ne(struct arm7 *arm7) {
-    return !arm7_cond_eq(arm7);
-}
-
-static inline bool arm7_cond_cs(struct arm7 *arm7) {
-    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
-}
-
-static inline bool arm7_cond_cc(struct arm7 *arm7) {
-    return !arm7_cond_cs(arm7);
-}
-
-static inline bool arm7_cond_mi(struct arm7 *arm7) {
-    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_N_MASK);
-}
-
-static inline bool arm7_cond_pl(struct arm7 *arm7) {
-    return !arm7_cond_mi(arm7);
-}
-
-static inline bool arm7_cond_vs(struct arm7 *arm7) {
-    return (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_V_MASK);
-}
-
-static inline bool arm7_cond_vc(struct arm7 *arm7) {
-    return !arm7_cond_vs(arm7);
-}
-
-static inline bool arm7_cond_hi(struct arm7 *arm7) {
-    return arm7_cond_ne(arm7) && arm7_cond_cs(arm7);
-}
-
-static inline bool arm7_cond_ls(struct arm7 *arm7) {
-    return arm7_cond_cc(arm7) || arm7_cond_eq(arm7);
-}
-
-static inline bool arm7_cond_ge(struct arm7 *arm7) {
-    return arm7_cond_mi(arm7) == arm7_cond_vs(arm7);
-}
-
-static inline bool arm7_cond_lt(struct arm7 *arm7) {
-    return !arm7_cond_ge(arm7);
-}
-
-static inline bool arm7_cond_gt(struct arm7 *arm7) {
-    return arm7_cond_ne(arm7) && arm7_cond_ge(arm7);
-}
-
-static inline bool arm7_cond_le(struct arm7 *arm7) {
-    return !arm7_cond_gt(arm7);
-}
-
-static inline bool arm7_cond_al(struct arm7 *arm7) {
-    return true;
-}
-
-static inline bool arm7_cond_nv(struct arm7 *arm7) {
-    return false;
 }
 
 static struct error_callback arm7_error_callback;
@@ -644,7 +574,7 @@ DEF_DATA_OP(bic) {
             }                                                           \
         }                                                               \
                                                                         \
-        next_inst(arm7);                                                \
+        arm7_next_inst(arm7);                                                \
     }
 
 DEF_INST_FN(orr, true, false, true)
@@ -665,21 +595,14 @@ DEF_INST_FN(cmn, false, true, false)
 
 typedef void(*arm7_opcode_fn)(struct arm7*, arm7_inst);
 
-static void next_inst(struct arm7 *arm7) {
-    arm7->reg[ARM7_REG_PC] += 4;
-}
-
 uint32_t arm7_pc_next(struct arm7 *arm7) {
     return arm7->pipeline_pc[1];
 }
-
-#define EVAL_COND(cond) if (!arm7_cond_##cond(arm7)) goto cond_fail;
 
 // branch (with or without link)
 #define DEF_BRANCH_INST(cond)                                           \
     static unsigned                                                     \
     arm7_inst_branch_##cond(struct arm7 *arm7, arm7_inst inst) {        \
-        EVAL_COND(cond)                                                 \
         uint32_t offs = inst & ((1 << 24) - 1);                         \
         if (offs & (1 << 23))                                           \
             offs |= 0xff000000;                                         \
@@ -696,33 +619,18 @@ uint32_t arm7_pc_next(struct arm7 *arm7) {
         arm7_reset_pipeline(arm7);                                      \
                                                                         \
         goto the_end;                                                   \
-    cond_fail:                                                          \
-        next_inst(arm7);                                                \
+                                                              \
+        arm7_next_inst(arm7);                                                \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
-DEF_BRANCH_INST(eq)
-DEF_BRANCH_INST(ne)
-DEF_BRANCH_INST(cs)
-DEF_BRANCH_INST(cc)
-DEF_BRANCH_INST(mi)
-DEF_BRANCH_INST(pl)
-DEF_BRANCH_INST(vs)
-DEF_BRANCH_INST(vc)
-DEF_BRANCH_INST(hi)
-DEF_BRANCH_INST(ls)
-DEF_BRANCH_INST(ge)
-DEF_BRANCH_INST(lt)
-DEF_BRANCH_INST(gt)
-DEF_BRANCH_INST(le)
 DEF_BRANCH_INST(al)
-DEF_BRANCH_INST(nv)
+
 
 #define DEF_LDR_INST(cond)                                              \
     static unsigned                                                     \
     arm7_inst_ldr_##cond(struct arm7 *arm7, arm7_inst inst) {           \
-        EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
                                                                         \
@@ -815,33 +723,17 @@ DEF_BRANCH_INST(nv)
             arm7_reset_pipeline(arm7);                                  \
             goto the_end;                                               \
         }                                                               \
-    cond_fail:                                                          \
-        next_inst(arm7);                                                \
+                                                              \
+        arm7_next_inst(arm7);                                                \
     the_end:                                                            \
         return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
     }
 
-DEF_LDR_INST(eq)
-DEF_LDR_INST(ne)
-DEF_LDR_INST(cs)
-DEF_LDR_INST(cc)
-DEF_LDR_INST(mi)
-DEF_LDR_INST(pl)
-DEF_LDR_INST(vs)
-DEF_LDR_INST(vc)
-DEF_LDR_INST(hi)
-DEF_LDR_INST(ls)
-DEF_LDR_INST(ge)
-DEF_LDR_INST(lt)
-DEF_LDR_INST(gt)
-DEF_LDR_INST(le)
 DEF_LDR_INST(al)
-DEF_LDR_INST(nv)
 
 #define DEF_STR_INST(cond)                                              \
     static unsigned                                                     \
     arm7_inst_str_##cond(struct arm7 *arm7, arm7_inst inst) {           \
-        EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
                                                                         \
@@ -918,29 +810,12 @@ DEF_LDR_INST(nv)
             *arm7_gen_reg(arm7, rn) = addr;                             \
         }                                                               \
                                                                         \
-    cond_fail:                                                          \
-        next_inst(arm7);                                                \
+                                                              \
+        arm7_next_inst(arm7);                                                \
         return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
     }
 
-
-DEF_STR_INST(eq)
-DEF_STR_INST(ne)
-DEF_STR_INST(cs)
-DEF_STR_INST(cc)
-DEF_STR_INST(mi)
-DEF_STR_INST(pl)
-DEF_STR_INST(vs)
-DEF_STR_INST(vc)
-DEF_STR_INST(hi)
-DEF_STR_INST(ls)
-DEF_STR_INST(ge)
-DEF_STR_INST(lt)
-DEF_STR_INST(gt)
-DEF_STR_INST(le)
 DEF_STR_INST(al)
-DEF_STR_INST(nv)
-
 
 #ifdef INVARIANTS
 #define BASEPTR_SANITY_OPEN do {                \
@@ -962,7 +837,6 @@ DEF_STR_INST(nv)
 #define DEF_BLOCK_XFER_INST(cond)                                       \
     static unsigned                                                     \
     arm7_inst_block_xfer_##cond(struct arm7 *arm7, arm7_inst inst) {    \
-        EVAL_COND(cond);                                                \
         unsigned rn = (inst & BIT_RANGE(16, 19)) >> 16;                 \
         unsigned reg_list = inst & 0xffff;                              \
         bool pre = (bool)(inst & (1 << 24));                            \
@@ -1199,28 +1073,13 @@ DEF_STR_INST(nv)
             arm7_reset_pipeline(arm7);                                  \
             goto the_end;                                               \
         }                                                               \
-    cond_fail:                                                          \
-        next_inst(arm7);                                                \
+                                                              \
+        arm7_next_inst(arm7);                                                \
     the_end:                                                            \
         return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
     }
 
-DEF_BLOCK_XFER_INST(eq)
-DEF_BLOCK_XFER_INST(ne)
-DEF_BLOCK_XFER_INST(cs)
-DEF_BLOCK_XFER_INST(cc)
-DEF_BLOCK_XFER_INST(mi)
-DEF_BLOCK_XFER_INST(pl)
-DEF_BLOCK_XFER_INST(vs)
-DEF_BLOCK_XFER_INST(vc)
-DEF_BLOCK_XFER_INST(hi)
-DEF_BLOCK_XFER_INST(ls)
-DEF_BLOCK_XFER_INST(ge)
-DEF_BLOCK_XFER_INST(lt)
-DEF_BLOCK_XFER_INST(gt)
-DEF_BLOCK_XFER_INST(le)
 DEF_BLOCK_XFER_INST(al)
-DEF_BLOCK_XFER_INST(nv)
 
 /*
  * MRS
@@ -1229,7 +1088,6 @@ DEF_BLOCK_XFER_INST(nv)
 #define DEF_MRS_INST(cond)                                      \
     static unsigned                                             \
     arm7_inst_mrs_##cond(struct arm7 *arm7, arm7_inst inst) {   \
-        EVAL_COND(cond);                                        \
         bool src_psr = (1 << 22) & inst;                        \
         unsigned dst_reg = (inst >> 12) & 0xf;                  \
                                                                 \
@@ -1241,27 +1099,12 @@ DEF_BLOCK_XFER_INST(nv)
                                                                 \
         *arm7_gen_reg(arm7, dst_reg) = *src_p;                  \
                                                                 \
-    cond_fail:                                                  \
-        next_inst(arm7);                                        \
+                                                      \
+        arm7_next_inst(arm7);                                        \
         return 1 * S_CYCLE;                                     \
     }                                                           \
 
-DEF_MRS_INST(eq)
-DEF_MRS_INST(ne)
-DEF_MRS_INST(cs)
-DEF_MRS_INST(cc)
-DEF_MRS_INST(mi)
-DEF_MRS_INST(pl)
-DEF_MRS_INST(vs)
-DEF_MRS_INST(vc)
-DEF_MRS_INST(hi)
-DEF_MRS_INST(ls)
-DEF_MRS_INST(ge)
-DEF_MRS_INST(lt)
-DEF_MRS_INST(gt)
-DEF_MRS_INST(le)
 DEF_MRS_INST(al)
-DEF_MRS_INST(nv)
 
 /*
  * MSR
@@ -1270,7 +1113,6 @@ DEF_MRS_INST(nv)
 #define DEF_MSR_INST(cond)                                      \
     static unsigned                                             \
     arm7_inst_msr_##cond(struct arm7 *arm7, arm7_inst inst) {   \
-        EVAL_COND(cond);                                        \
         bool dst_psr = (1 << 22) & inst;                        \
                                                                 \
         unsigned src_reg = inst & 0xff;                         \
@@ -1282,27 +1124,12 @@ DEF_MRS_INST(nv)
         }                                                       \
                                                                 \
                                                                 \
-    cond_fail:                                                  \
-        next_inst(arm7);                                        \
+                                                      \
+        arm7_next_inst(arm7);                                        \
         return 1 * S_CYCLE;                                     \
     }
 
-DEF_MSR_INST(eq)
-DEF_MSR_INST(ne)
-DEF_MSR_INST(cs)
-DEF_MSR_INST(cc)
-DEF_MSR_INST(mi)
-DEF_MSR_INST(pl)
-DEF_MSR_INST(vs)
-DEF_MSR_INST(vc)
-DEF_MSR_INST(hi)
-DEF_MSR_INST(ls)
-DEF_MSR_INST(ge)
-DEF_MSR_INST(lt)
-DEF_MSR_INST(gt)
-DEF_MSR_INST(le)
 DEF_MSR_INST(al)
-DEF_MSR_INST(nv)
 
 /*
  * MSR_FLAGS
@@ -1312,7 +1139,6 @@ DEF_MSR_INST(nv)
 #define DEF_MSR_FLAGS_INST(cond)                                    \
     static unsigned                                                 \
     arm7_inst_msr_flags_##cond(struct arm7 *arm7, arm7_inst inst) { \
-        EVAL_COND(cond);                                            \
         bool immed = (inst >> 25) & 1;                              \
         bool dst_psr = (1 << 22) & inst;                            \
         if (!immed && (inst & BIT_RANGE(4, 11)))                    \
@@ -1330,27 +1156,12 @@ DEF_MSR_INST(nv)
         *dst_p = ((*dst_p) & (~ARM7_CPSR_NZCV_MASK)) |              \
             (val &ARM7_CPSR_NZCV_MASK);                             \
                                                                     \
-cond_fail:                                                          \
-        next_inst(arm7);                                            \
+                                                          \
+        arm7_next_inst(arm7);                                            \
         return 1 * S_CYCLE;                                         \
     }
 
-DEF_MSR_FLAGS_INST(eq)
-DEF_MSR_FLAGS_INST(ne)
-DEF_MSR_FLAGS_INST(cs)
-DEF_MSR_FLAGS_INST(cc)
-DEF_MSR_FLAGS_INST(mi)
-DEF_MSR_FLAGS_INST(pl)
-DEF_MSR_FLAGS_INST(vs)
-DEF_MSR_FLAGS_INST(vc)
-DEF_MSR_FLAGS_INST(hi)
-DEF_MSR_FLAGS_INST(ls)
-DEF_MSR_FLAGS_INST(ge)
-DEF_MSR_FLAGS_INST(lt)
-DEF_MSR_FLAGS_INST(gt)
-DEF_MSR_FLAGS_INST(le)
 DEF_MSR_FLAGS_INST(al)
-DEF_MSR_FLAGS_INST(nv)
 
 #ifdef INVARIANTS
 #define MUL_INVARIANTS_CHECK                                            \
@@ -1363,7 +1174,6 @@ DEF_MSR_FLAGS_INST(nv)
 #define DEF_MUL_INST(cond)                                      \
     static unsigned                                             \
     arm7_inst_mul_##cond(struct arm7 *arm7, arm7_inst inst) {   \
-        EVAL_COND(cond);                                        \
         bool accum = (bool)(inst & (1 << 21));                  \
         bool set_flags = (bool)(inst & (1 << 20));              \
         unsigned rd = (BIT_RANGE(16, 19) & inst) >> 16;         \
@@ -1407,52 +1217,16 @@ DEF_MSR_FLAGS_INST(nv)
             arm7->reg[ARM7_REG_CPSR] = cpsr;                            \
         }                                                               \
                                                                         \
-    cond_fail:                                                          \
-        next_inst(arm7);                                                \
+                                                              \
+        arm7_next_inst(arm7);                                                \
         return 4 * S_CYCLE;                                             \
     }
 
-DEF_MUL_INST(eq)
-DEF_MUL_INST(ne)
-DEF_MUL_INST(cs)
-DEF_MUL_INST(cc)
-DEF_MUL_INST(mi)
-DEF_MUL_INST(pl)
-DEF_MUL_INST(vs)
-DEF_MUL_INST(vc)
-DEF_MUL_INST(hi)
-DEF_MUL_INST(ls)
-DEF_MUL_INST(ge)
-DEF_MUL_INST(lt)
-DEF_MUL_INST(gt)
-DEF_MUL_INST(le)
 DEF_MUL_INST(al)
-DEF_MUL_INST(nv)
-
-#define DEF_COND_TBL(opcode)                                        \
-    static arm7_op_fn const arm7_##opcode##_cond_tbl[16] = {        \
-        arm7_inst_##opcode##_eq,                                    \
-        arm7_inst_##opcode##_ne,                                    \
-        arm7_inst_##opcode##_cs,                                    \
-        arm7_inst_##opcode##_cc,                                    \
-        arm7_inst_##opcode##_mi,                                    \
-        arm7_inst_##opcode##_pl,                                    \
-        arm7_inst_##opcode##_vs,                                    \
-        arm7_inst_##opcode##_vc,                                    \
-        arm7_inst_##opcode##_hi,                                    \
-        arm7_inst_##opcode##_ls,                                    \
-        arm7_inst_##opcode##_ge,                                    \
-        arm7_inst_##opcode##_lt,                                    \
-        arm7_inst_##opcode##_gt,                                    \
-        arm7_inst_##opcode##_le,                                    \
-        arm7_inst_##opcode##_al,                                    \
-        arm7_inst_##opcode##_nv                                     \
-    }
 
 #define DEF_DATA_OP_INST(op_name, cond, is_logic, require_s, write_result) \
     static unsigned                                                     \
     arm7_inst_##op_name##_##cond(struct arm7 *arm7, arm7_inst inst) {   \
-        EVAL_COND(cond);                                                \
         bool s_flag = inst & (1 << 20);                                 \
         bool i_flag = inst & (1 << 25);                                 \
         unsigned rn = (inst >> 16) & 0xf;                               \
@@ -1511,29 +1285,14 @@ DEF_MUL_INST(nv)
             }                                                           \
         }                                                               \
                                                                         \
-    cond_fail:                                                          \
-        next_inst(arm7);                                                \
+                                                              \
+        arm7_next_inst(arm7);                                                \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
 #define DEF_DATA_OP_INST_ALL_CONDS(op_name, is_logic, require_s, write_result) \
-    DEF_DATA_OP_INST(op_name, eq, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, ne, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, cs, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, cc, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, mi, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, pl, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, vs, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, vc, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, hi, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, ls, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, ge, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, lt, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, gt, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, le, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST(op_name, nv, is_logic, require_s, write_result)
+    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)
 
 DEF_DATA_OP_INST_ALL_CONDS(orr, true, false, true)
 DEF_DATA_OP_INST_ALL_CONDS(eor, true, false, true)
@@ -1554,40 +1313,23 @@ DEF_DATA_OP_INST_ALL_CONDS(cmn, false, true, false)
 #define DEF_SWI_INST(cond)                                              \
     static unsigned                                                     \
     arm7_inst_swi_##cond(struct arm7 *arm7, arm7_inst inst) {           \
-        EVAL_COND(cond);                                                \
         LOG_WARN("Untested ARM7 SWI instruction used\n");               \
         arm7->excp |= ARM7_EXCP_SWI;                                    \
         arm7_excp_refresh(arm7);                                        \
         /* it is not a mistake that I have chosen */                    \
         /* to not call next_inst here */                                \
         goto the_end;                                                   \
-    cond_fail:                                                          \
-        next_inst(arm7);                                                \
+                                                              \
+        arm7_next_inst(arm7);                                                \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
-DEF_SWI_INST(eq)
-DEF_SWI_INST(ne)
-DEF_SWI_INST(cs)
-DEF_SWI_INST(cc)
-DEF_SWI_INST(mi)
-DEF_SWI_INST(pl)
-DEF_SWI_INST(vs)
-DEF_SWI_INST(vc)
-DEF_SWI_INST(hi)
-DEF_SWI_INST(ls)
-DEF_SWI_INST(ge)
-DEF_SWI_INST(lt)
-DEF_SWI_INST(gt)
-DEF_SWI_INST(le)
 DEF_SWI_INST(al)
-DEF_SWI_INST(nv)
 
 #define DEF_SWAP_INST(cond)                                     \
     static unsigned                                             \
     arm7_inst_swap_##cond(struct arm7 *arm7, arm7_inst inst) {  \
-        EVAL_COND(cond);                                        \
         unsigned n_bytes = ((inst >> 22) & 1) ? 1 : 4;          \
         unsigned src_reg = inst & 0xf;                          \
         unsigned dst_reg = (inst >> 12) & 0xf;                  \
@@ -1612,105 +1354,64 @@ DEF_SWI_INST(nv)
             memory_map_write_8(arm7->map, addr, dat_out);           \
             *arm7_gen_reg(arm7, dst_reg) = dat_in;                  \
         }                                                           \
-    cond_fail:                                                      \
-        next_inst(arm7);                                            \
+                                                          \
+        arm7_next_inst(arm7);                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                           \
     }
 
-DEF_SWAP_INST(eq)
-DEF_SWAP_INST(ne)
-DEF_SWAP_INST(cs)
-DEF_SWAP_INST(cc)
-DEF_SWAP_INST(mi)
-DEF_SWAP_INST(pl)
-DEF_SWAP_INST(vs)
-DEF_SWAP_INST(vc)
-DEF_SWAP_INST(hi)
-DEF_SWAP_INST(ls)
-DEF_SWAP_INST(ge)
-DEF_SWAP_INST(lt)
-DEF_SWAP_INST(gt)
-DEF_SWAP_INST(le)
 DEF_SWAP_INST(al)
-DEF_SWAP_INST(nv)
 
 arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
-    DEF_COND_TBL(branch);
-    DEF_COND_TBL(ldr);
-    DEF_COND_TBL(str);
-    DEF_COND_TBL(block_xfer);
-    DEF_COND_TBL(mrs);
-    DEF_COND_TBL(msr);
-    DEF_COND_TBL(msr_flags);
-    DEF_COND_TBL(mul);
-    DEF_COND_TBL(orr);
-    DEF_COND_TBL(eor);
-    DEF_COND_TBL(and);
-    DEF_COND_TBL(bic);
-    DEF_COND_TBL(mov);
-    DEF_COND_TBL(add);
-    DEF_COND_TBL(adc);
-    DEF_COND_TBL(sub);
-    DEF_COND_TBL(sbc);
-    DEF_COND_TBL(rsb);
-    DEF_COND_TBL(rsc);
-    DEF_COND_TBL(cmp);
-    DEF_COND_TBL(tst);
-    DEF_COND_TBL(mvn);
-    DEF_COND_TBL(cmn);
-    DEF_COND_TBL(swi);
-    DEF_COND_TBL(swap);
-
     if ((inst & MASK_B) == VAL_B) {
-        return arm7_branch_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_branch_al;
     } else if ((inst & MASK_LDR) == VAL_LDR) {
-        return arm7_ldr_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_ldr_al;
     } else if ((inst & MASK_STR) == VAL_STR) {
-        return arm7_str_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_str_al;
     } else if ((inst & MASK_BLOCK_XFER) == VAL_BLOCK_XFER) {
-        return arm7_block_xfer_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_block_xfer_al;
     } else if ((inst & MASK_MRS) == VAL_MRS) {
-        return arm7_mrs_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_mrs_al;
     } else if ((inst & MASK_MSR) == VAL_MSR) {
-        return arm7_msr_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_msr_al;
     } else if ((inst & MASK_MSR_FLAGS) == VAL_MSR_FLAGS) {
-        return arm7_msr_flags_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_msr_flags_al;
     } else if ((inst & MASK_MUL) == VAL_MUL) {
-        return arm7_mul_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_mul_al;
     } else if ((inst & MASK_ORR) == VAL_ORR) {
-        return arm7_orr_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_orr_al;
     } else if ((inst & MASK_EOR) == VAL_EOR) {
-        return arm7_eor_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_eor_al;
     } else if ((inst & MASK_AND) == VAL_AND) {
-        return arm7_and_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_and_al;
     } else if ((inst & MASK_BIC) == VAL_BIC) {
-        return arm7_bic_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_bic_al;
     } else if ((inst & MASK_MOV) == VAL_MOV) {
-        return arm7_mov_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_mov_al;
     } else if ((inst & MASK_ADD) == VAL_ADD) {
-        return arm7_add_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_add_al;
     } else if ((inst & MASK_ADC) == VAL_ADC) {
-        return arm7_adc_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_adc_al;
     } else if ((inst & MASK_SUB) == VAL_SUB) {
-        return arm7_sub_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_sub_al;
     } else if ((inst & MASK_SBC) == VAL_SBC) {
-        return arm7_sbc_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_sbc_al;
     } else if ((inst & MASK_RSB) == VAL_RSB) {
-        return arm7_rsb_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_rsb_al;
     } else if ((inst & MASK_RSC) == VAL_RSC) {
-        return arm7_rsc_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_rsc_al;
     } else if ((inst & MASK_CMP) == VAL_CMP) {
-        return arm7_cmp_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_cmp_al;
     } else if ((inst & MASK_TST) == VAL_TST) {
-        return arm7_tst_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_tst_al;
     } else if ((inst & MASK_MVN) == VAL_MVN) {
-        return arm7_mvn_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_mvn_al;
     } else if ((inst & MASK_CMN) == VAL_CMN) {
-        return arm7_cmn_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_cmn_al;
     } else if ((inst & MASK_SWI) == VAL_SWI) {
-        return arm7_swi_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_swi_al;
     } else if ((inst & MASK_SWAP) == VAL_SWAP) {
-        return arm7_swap_cond_tbl[(inst >> 28) & 0xf];
+        return arm7_inst_swap_al;
     }
 
     error_set_arm7_inst(inst);
