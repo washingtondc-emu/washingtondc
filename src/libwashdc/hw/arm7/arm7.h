@@ -167,7 +167,16 @@ void arm7_excp_refresh(struct arm7 *arm7);
 ERROR_INT_ATTR(arm7_execution_mode);
 
 typedef unsigned(*arm7_op_fn)(struct arm7*,arm7_inst);
-arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst);
+
+static inline unsigned arm7_inst_hash(arm7_inst inst) {
+    return (((inst >> 20) & 0xff) << 4) |
+        ((inst >> 4) & 0xf);
+}
+
+extern arm7_op_fn arm7_inst_lut[1<<12];
+static inline arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
+    return arm7_inst_lut[arm7_inst_hash(inst)];
+}
 
 static inline uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr);
 
