@@ -390,9 +390,10 @@ static void on_pkt_hdr_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
              * games do it that I have to accept that somehow it works out on
              * real hardware.
              */
-            LOG_ERROR("PVR2: re-opening polython type %s after it was already "
-                      "submitted?\n", pvr2_poly_type_name(poly_type));
+            LOG_DBG("PVR2: re-opening polygon type %s after it was already "
+                    "submitted?\n", pvr2_poly_type_name(poly_type));
         }
+#endif
 
         if (ta->fifo_state.cur_poly_type == PVR2_POLY_TYPE_NONE) {
             PVR2_TRACE("Opening polygon group \"%s\"\n",
