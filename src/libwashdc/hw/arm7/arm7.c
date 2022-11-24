@@ -262,9 +262,11 @@ void arm7_reset(struct arm7 *arm7, bool val) {
     arm7->enabled = val;
 }
 
-// B or BL instruction
-#define MASK_B BIT_RANGE(25, 27)
+#define MASK_B BIT_RANGE(24, 27)
 #define VAL_B  0x0a000000
+
+#define MASK_BL BIT_RANGE(24, 27)
+#define VAL_BL  0x0b000000
 
 #define MASK_LDR (BIT_RANGE(26, 27) | (1 << 20))
 #define VAL_LDR ((1 << 20) | 0x04000000)
@@ -599,34 +601,39 @@ uint32_t arm7_pc_next(struct arm7 *arm7) {
     return arm7->pipeline_pc[1];
 }
 
-// branch (with or without link)
-#define DEF_BRANCH_INST(cond)                                           \
-    static unsigned                                                     \
-    arm7_inst_branch_##cond(struct arm7 *arm7, arm7_inst inst) {        \
-        uint32_t offs = inst & ((1 << 24) - 1);                         \
-        if (offs & (1 << 23))                                           \
-            offs |= 0xff000000;                                         \
-        offs <<= 2;                                                     \
-                                                                        \
-        if (inst & (1 << 24)) {                                         \
-            /* link bit */                                              \
-            *arm7_gen_reg(arm7, 14) = arm7->reg[ARM7_REG_PC] - 4;       \
-        }                                                               \
-                                                                        \
-        uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];                \
-                                                                        \
-        arm7->reg[ARM7_REG_PC] = pc_new;                                \
-        arm7_reset_pipeline(arm7);                                      \
-                                                                        \
-        goto the_end;                                                   \
-                                                              \
-        arm7_next_inst(arm7);                                                \
-    the_end:                                                            \
-        return 2 * S_CYCLE + 1 * N_CYCLE;                               \
-    }
+// branch without
+static unsigned
+arm7_inst_branch_al(struct arm7 *arm7, arm7_inst inst) {
+    uint32_t offs = inst & ((1 << 24) - 1);
+    if (offs & (1 << 23))
+        offs |= 0xff000000;
+    offs <<= 2;
 
-DEF_BRANCH_INST(al)
+    uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];
 
+    arm7->reg[ARM7_REG_PC] = pc_new;
+    arm7_reset_pipeline(arm7);
+
+    return 2 * S_CYCLE + 1 * N_CYCLE;
+}
+
+// branck with link
+static unsigned
+arm7_inst_branch_link_al(struct arm7 *arm7, arm7_inst inst) {
+    uint32_t offs = inst & ((1 << 24) - 1);
+    if (offs & (1 << 23))
+        offs |= 0xff000000;
+    offs <<= 2;
+
+    *arm7_gen_reg(arm7, 14) = arm7->reg[ARM7_REG_PC] - 4;
+
+    uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];
+
+    arm7->reg[ARM7_REG_PC] = pc_new;
+    arm7_reset_pipeline(arm7);
+
+    return 2 * S_CYCLE + 1 * N_CYCLE;
+}
 
 #define DEF_LDR_INST(cond)                                              \
     static unsigned                                                     \
@@ -1364,6 +1371,8 @@ DEF_SWAP_INST(al)
 arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     if ((inst & MASK_B) == VAL_B) {
         return arm7_inst_branch_al;
+    } else if ((inst & MASK_BL) == VAL_BL) {
+        return arm7_inst_branch_link_al;
     } else if ((inst & MASK_LDR) == VAL_LDR) {
         return arm7_inst_ldr_al;
     } else if ((inst & MASK_STR) == VAL_STR) {
