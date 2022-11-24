@@ -285,8 +285,8 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MSR_SPSR INST_MASK
 #define VAL_MSR_SPSR  (0x01200000 | (1<<22))
 
-#define MASK_MSR_FLAGS (BIT_RANGE(12, 21) | BIT_RANGE(23, 24) | BIT_RANGE(26, 27))
-#define VAL_MSR_FLAGS ((0x28f << 12) | (2 << 23))
+#define MASK_MSR_FLAGS (BIT_RANGE(20, 21) | BIT_RANGE(23, 24) | BIT_RANGE(26, 27))
+#define VAL_MSR_FLAGS ((2 << 20) | (2 << 23))
 
 // data processing opcodes
 #define MASK_ORR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
