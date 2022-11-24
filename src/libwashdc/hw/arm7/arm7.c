@@ -228,9 +228,14 @@ static void arm7_cpsr_mode_change(struct arm7 *arm7, uint32_t new_val) {
 
 static struct error_callback arm7_error_callback;
 
+static void arm7_init_inst_lut(struct arm7 *arm7);
+
 void arm7_init(struct arm7 *arm7,
                struct dc_clock *clk, struct aica_wave_mem *inst_mem) {
     memset(arm7, 0, sizeof(*arm7));
+
+    arm7_init_inst_lut(arm7);
+
     arm7->clk = clk;
     arm7->inst_mem = inst_mem;
     arm7->reg[ARM7_REG_CPSR] = ARM7_MODE_SVC;
@@ -1375,7 +1380,35 @@ DEF_SWI_INST(al)
 
 DEF_SWAP_INST(al)
 
+static DEF_ERROR_U32_ATTR(inst_hash)
+
+static unsigned inst_hash(arm7_inst inst) {
+    return (((inst >> 20) & 0xff) << 4) |
+        ((inst >> 4) & 0xf);
+}
+
+static unsigned
+arm7_invalid_instruction(struct arm7 *arm7, arm7_inst inst) {
+    error_set_arm7_inst(inst);
+    error_set_arm7_pc(arm7->reg[ARM7_REG_PC]);
+    error_set_inst_hash(inst_hash(inst));
+    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+}
+
+static arm7_op_fn inst_lut[1<<12];
+
+static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst);
+
+static void arm7_init_inst_lut(struct arm7 *arm7) {
+    unsigned key;
+    for (key = 0; key < (1<<12); key++)
+        inst_lut[key] = arm7_decode_slow(arm7, ((key & 0xf) << 4) | ((key & 0xff0) << 16));
+}
 arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
+    return inst_lut[inst_hash(inst)];
+}
+
+static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst) {
     if ((inst & MASK_B) == VAL_B) {
         return arm7_inst_branch_al;
     } else if ((inst & MASK_BL) == VAL_BL) {
@@ -1432,9 +1465,7 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
         return arm7_inst_swap_al;
     }
 
-    error_set_arm7_inst(inst);
-    error_set_arm7_pc(arm7->reg[ARM7_REG_PC]);
-    RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    return arm7_invalid_instruction;
 }
 
 static inline uint32_t ror(uint32_t in, unsigned n_bits) {
