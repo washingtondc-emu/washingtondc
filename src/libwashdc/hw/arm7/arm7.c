@@ -279,8 +279,11 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MRS INST_MASK
 #define VAL_MRS  0x01000000
 
-#define MASK_MSR (BIT_RANGE(23, 27) | BIT_RANGE(4, 21))
-#define VAL_MSR  (0x0129f000)
+#define MASK_MSR_CPSR INST_MASK
+#define VAL_MSR_CPSR  0x01200000
+
+#define MASK_MSR_SPSR INST_MASK
+#define VAL_MSR_SPSR  (0x01200000 | (1<<22))
 
 #define MASK_MSR_FLAGS (BIT_RANGE(12, 21) | BIT_RANGE(23, 24) | BIT_RANGE(26, 27))
 #define VAL_MSR_FLAGS ((0x28f << 12) | (2 << 23))
@@ -1117,28 +1120,30 @@ DEF_MRS_INST(al)
 
 /*
  * MSR
- * Copy a register to CPSR (or SPSR)
+ * Copy a register to CPSR
  */
-#define DEF_MSR_INST(cond)                                      \
-    static unsigned                                             \
-    arm7_inst_msr_##cond(struct arm7 *arm7, arm7_inst inst) {   \
-        bool dst_psr = (1 << 22) & inst;                        \
-                                                                \
-        unsigned src_reg = inst & 0xff;                         \
-        if (dst_psr) {                                          \
-            uint32_t *dst_p = arm7->reg + arm7_spsr_idx(arm7);  \
-            *dst_p = *arm7_gen_reg(arm7, src_reg);              \
-        } else {                                                \
-            arm7_cpsr_mode_change(arm7, *arm7_gen_reg(arm7, src_reg));\
-        }                                                       \
-                                                                \
-                                                                \
-                                                      \
-        arm7_next_inst(arm7);                                        \
-        return 1 * S_CYCLE;                                     \
-    }
+static unsigned
+arm7_inst_msr_cpsr_al(struct arm7 *arm7, arm7_inst inst) {
+    unsigned src_reg = inst & 0xff;
+    arm7_cpsr_mode_change(arm7, *arm7_gen_reg(arm7, src_reg));
 
-DEF_MSR_INST(al)
+    arm7_next_inst(arm7);
+    return 1 * S_CYCLE;
+}
+
+/*
+ * MSR
+ * Copy a register to SPSR
+ */
+static unsigned
+arm7_inst_msr_spsr_al(struct arm7 *arm7, arm7_inst inst) {
+    unsigned src_reg = inst & 0xff;
+    uint32_t *dst_p = arm7->reg + arm7_spsr_idx(arm7);
+    *dst_p = *arm7_gen_reg(arm7, src_reg);
+
+    arm7_next_inst(arm7);
+    return 1 * S_CYCLE;
+}
 
 /*
  * MSR_FLAGS
@@ -1383,8 +1388,10 @@ arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
         return arm7_inst_block_xfer_al;
     } else if ((inst & MASK_MRS) == VAL_MRS) {
         return arm7_inst_mrs_al;
-    } else if ((inst & MASK_MSR) == VAL_MSR) {
-        return arm7_inst_msr_al;
+    } else if ((inst & MASK_MSR_CPSR) == VAL_MSR_CPSR) {
+        return arm7_inst_msr_cpsr_al;
+    } else if ((inst & MASK_MSR_SPSR) == VAL_MSR_SPSR) {
+        return arm7_inst_msr_spsr_al;
     } else if ((inst & MASK_MSR_FLAGS) == VAL_MSR_FLAGS) {
         return arm7_inst_msr_flags_al;
     } else if ((inst & MASK_MUL) == VAL_MUL) {
