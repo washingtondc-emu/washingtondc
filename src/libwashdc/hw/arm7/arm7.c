@@ -645,194 +645,182 @@ arm7_inst_branch_link_al(struct arm7 *arm7, arm7_inst inst) {
     return 2 * S_CYCLE + 1 * N_CYCLE;
 }
 
-#define DEF_LDR_INST(cond)                                              \
-    static unsigned                                                     \
-    arm7_inst_ldr_##cond(struct arm7 *arm7, arm7_inst inst) {           \
-        unsigned rn = (inst >> 16) & 0xf;                               \
-        unsigned rd = (inst >> 12) & 0xf;                               \
-                                                                        \
-        bool writeback = inst & (1 << 21);                              \
-        int len = (inst & (1 << 22)) ? 1 : 4;                           \
-        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
-        bool pre = inst & (1 << 24);                                    \
-        bool offs_reg = inst & (1 << 25);                               \
-        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
-                                                                        \
-        uint32_t offs;                                                  \
-                                                                        \
-        if (offs_reg) {                                                 \
-            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
-        } else {                                                        \
-            offs = inst & ((1 << 12) - 1);                              \
-        }                                                               \
-                                                                        \
-        /* TODO: should this instruction update the carry flag? */      \
-                                                                        \
-        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
-                                                                        \
-        if (pre) {                                                      \
-            if (sign < 0)                                               \
-                addr -= offs;                                           \
-            else                                                        \
-                addr += offs;                                           \
-        }                                                               \
-                                                                        \
-                                                                        \
-        if (len == 4) {                                                 \
-            if (addr % 4) {                                             \
-                /* Log this case, it's got some pretty fucked up */     \
-                /* handling for loads (see below).  Stores appear */    \
-                /* to only clear the lower two bits, but Imust */       \
-                /* tread carefully; this would not be the first time I */ \
-                /* misinterpreted an obscure corner-case in ARM7DI's */ \
-                /* CPU manual.*/                                        \
-                LOG_DBG("ARM7 Unaligned memory load at PC=0x%08x\n",      \
-                        (unsigned)arm7->reg[ARM7_REG_PC]);              \
-            }                                                           \
-            uint32_t addr_read = addr & ~3;                             \
-            uint32_t val = memory_map_read_32(arm7->map, addr_read);    \
-                                                                        \
-            /* Deal with unaligned offsets.  It does the load */        \
-            /* from the aligned address (ie address with bits */        \
-            /* 0 and 1 cleared) and then right-rotates so that */       \
-            /* the LSB corresponds to the original unalgined address */ \
-            switch (addr % 4) {                                         \
-            case 3:                                                     \
-                val = ((val >> 24) & 0xffffff) | (val << 8);            \
-                break;                                                  \
-            case 2:                                                     \
-                val = ((val >> 16) & 0xffffff) | (val << 16);           \
-                break;                                                  \
-            case 1:                                                     \
-                val = ((val >> 8) & 0xffffff) | (val << 24);            \
-                break;                                                  \
-            }                                                           \
-            *arm7_gen_reg(arm7, rd) = val;                              \
-        } else {                                                        \
-            *arm7_gen_reg(arm7, rd) =                                   \
-                (uint32_t)memory_map_read_8(arm7->map, addr);           \
-        }                                                               \
-                                                                        \
-        if (!pre) {                                                     \
-            if (writeback) {                                            \
-                /* docs say the writeback is implied when the */        \
-                /* pre bit is not set, and that the writeback */        \
-                /* bit should be zero in this case. */                  \
-                error_set_arm7_inst(inst);                              \
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
-            }                                                           \
-            writeback = true;                                           \
-            if (sign < 0)                                               \
-                addr -= offs;                                           \
-            else                                                        \
-                addr += offs;                                           \
-        }                                                               \
-                                                                        \
-        /* ldr ignores writeback when rn == rd because the */           \
-        /* writeback happens before the load is complete */             \
-        if (writeback && rn != rd) {                                    \
-            if (rn == 15)                                               \
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
-            *arm7_gen_reg(arm7, rn) = addr;                             \
-        }                                                               \
-                                                                        \
-        if (rd == 15) {                                                 \
-            arm7_reset_pipeline(arm7);                                  \
-            goto the_end;                                               \
-        }                                                               \
-                                                              \
-        arm7_next_inst(arm7);                                                \
-    the_end:                                                            \
-        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
+static unsigned
+arm7_inst_ldr_al(struct arm7 *arm7, arm7_inst inst) {
+    unsigned rn = (inst >> 16) & 0xf;
+    unsigned rd = (inst >> 12) & 0xf;
+
+    bool writeback = inst & (1 << 21);
+    int len = (inst & (1 << 22)) ? 1 : 4;
+    int sign = (inst & (1 << 23)) ? 1 : -1;
+    bool pre = inst & (1 << 24);
+    bool offs_reg = inst & (1 << 25);
+    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
+
+    uint32_t offs;
+
+    if (offs_reg) {
+        offs = decode_shift_ldr_str(arm7, inst, &carry);
+    } else {
+        offs = inst & ((1 << 12) - 1);
     }
 
-DEF_LDR_INST(al)
+    /* TODO: should this instruction update the carry flag? */
+    uint32_t addr = *arm7_gen_reg(arm7, rn);
 
-#define DEF_STR_INST(cond)                                              \
-    static unsigned                                                     \
-    arm7_inst_str_##cond(struct arm7 *arm7, arm7_inst inst) {           \
-        unsigned rn = (inst >> 16) & 0xf;                               \
-        unsigned rd = (inst >> 12) & 0xf;                               \
-                                                                        \
-        bool writeback = inst & (1 << 21);                              \
-        int len = (inst & (1 << 22)) ? 1 : 4;                           \
-        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
-        bool pre = inst & (1 << 24);                                    \
-        bool offs_reg = inst & (1 << 25);                               \
-        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
-                                                                        \
-        uint32_t offs;                                                  \
-                                                                        \
-        if (offs_reg) {                                                 \
-            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
-        } else {                                                        \
-            offs = inst & ((1 << 12) - 1);                              \
-        }                                                               \
-                                                                        \
-        /* TODO: should this instruction update the carry flag? */      \
-                                                                        \
-        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
-                                                                        \
-        if (pre) {                                                      \
-            if (sign < 0)                                               \
-                addr -= offs;                                           \
-            else                                                        \
-                addr += offs;                                           \
-        }                                                               \
-                                                                        \
-                                                                        \
-        if (len == 4) {                                                 \
-            if (addr % 4) {                                             \
-                /* Log this case, it's got some pretty fucked up */     \
-                /* handling for loads (see below).  Stores appear */    \
-                /* to only clear the lower two bits, but Imust */       \
-                /* tread carefully; this would not be the first time I */ \
-                /* misinterpreted an obscure corner-case in ARM7DI's */ \
-                /* CPU manual.*/                                        \
-                LOG_DBG("ARM7 Unaligned memory store at PC=0x%08x\n",   \
-                        (unsigned)arm7->reg[ARM7_REG_PC]);              \
-            }                                                           \
-            uint32_t val = *arm7_gen_reg(arm7, rd);                     \
-            if (rd == 15)                                               \
-                val += 4;                                               \
-            addr &= ~3;                                                 \
-            memory_map_write_32(arm7->map, addr, val);                  \
-        } else {                                                        \
-            uint32_t val = *arm7_gen_reg(arm7, rd);                     \
-            if (rd == 15)                                               \
-                val += 4;                                               \
-            memory_map_write_8(arm7->map, addr, val);                   \
-        }                                                               \
-                                                                        \
-        if (!pre) {                                                     \
-            if (writeback) {                                            \
-                /* docs say the writeback is implied when the */        \
-                /* pre bit is not set, and that the writeback */        \
-                /* bit should be zero in this case. */                  \
-                error_set_arm7_inst(inst);                              \
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
-            }                                                           \
-            writeback = true;                                           \
-            if (sign < 0)                                               \
-                addr -= offs;                                           \
-            else                                                        \
-                addr += offs;                                           \
-        }                                                               \
-                                                                        \
-        /* ldr ignores writeback when rn == rd because the */           \
-        /* writeback happens before the load is complete */             \
-        if (writeback) {                                                \
-            if (rn == 15)                                               \
-                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
-            *arm7_gen_reg(arm7, rn) = addr;                             \
-        }                                                               \
-                                                                        \
-                                                              \
-        arm7_next_inst(arm7);                                                \
-        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
+    if (pre) {
+        if (sign < 0)
+            addr -= offs;
+        else
+            addr += offs;
     }
 
-DEF_STR_INST(al)
+    if (len == 4) {
+        if (addr % 4) {
+            /* Log this case, it's got some pretty fucked up */
+            /* handling for loads (see below).  Stores appear */
+            /* to only clear the lower two bits, but Imust */
+            /* tread carefully; this would not be the first time I */
+            /* misinterpreted an obscure corner-case in ARM7DI's */
+            /* CPU manual.*/
+            LOG_DBG("ARM7 Unaligned memory load at PC=0x%08x\n",
+                    (unsigned)arm7->reg[ARM7_REG_PC]);
+        }
+        uint32_t addr_read = addr & ~3;
+        uint32_t val = memory_map_read_32(arm7->map, addr_read);
+
+        /* Deal with unaligned offsets.  It does the load */
+        /* from the aligned address (ie address with bits */
+        /* 0 and 1 cleared) and then right-rotates so that */
+        /* the LSB corresponds to the original unalgined address */
+        switch (addr % 4) {
+        case 3:
+            val = ((val >> 24) & 0xffffff) | (val << 8);
+            break;
+        case 2:
+            val = ((val >> 16) & 0xffffff) | (val << 16);
+            break;
+        case 1:
+            val = ((val >> 8) & 0xffffff) | (val << 24);
+            break;
+        }
+        *arm7_gen_reg(arm7, rd) = val;
+    } else {
+        *arm7_gen_reg(arm7, rd) =
+            (uint32_t)memory_map_read_8(arm7->map, addr);
+    }
+
+    if (!pre) {
+        if (writeback) {
+            /* docs say the writeback is implied when the */
+            /* pre bit is not set, and that the writeback */
+            /* bit should be zero in this case. */
+            error_set_arm7_inst(inst);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        writeback = true;
+        if (sign < 0)
+            addr -= offs;
+        else
+            addr += offs;
+    }
+
+    /* ldr ignores writeback when rn == rd because the */
+    /* writeback happens before the load is complete */
+    if (writeback && rn != rd) {
+        if (rn == 15)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        *arm7_gen_reg(arm7, rn) = addr;
+    }
+
+    if (rd == 15) {
+        arm7_reset_pipeline(arm7);
+        goto the_end;
+    }
+
+    arm7_next_inst(arm7);
+ the_end:
+    return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
+}
+
+static unsigned
+arm7_inst_str_al(struct arm7 *arm7, arm7_inst inst) {
+    unsigned rn = (inst >> 16) & 0xf;
+    unsigned rd = (inst >> 12) & 0xf;
+
+    bool writeback = inst & (1 << 21);
+    int len = (inst & (1 << 22)) ? 1 : 4;
+    int sign = (inst & (1 << 23)) ? 1 : -1;
+    bool pre = inst & (1 << 24);
+    bool offs_reg = inst & (1 << 25);
+    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
+
+    uint32_t offs;
+
+    if (offs_reg) {
+        offs = decode_shift_ldr_str(arm7, inst, &carry);
+    } else {
+        offs = inst & ((1 << 12) - 1);
+    }
+
+    /* TODO: should this instruction update the carry flag? */
+
+    uint32_t addr = *arm7_gen_reg(arm7, rn);
+
+    if (pre) {
+        if (sign < 0)
+            addr -= offs;
+        else
+            addr += offs;
+    }
+
+    if (len == 4) {
+        if (addr % 4) {
+            /* Log this case, it's got some pretty fucked up */
+            /* handling for loads (see below).  Stores appear */
+            /* to only clear the lower two bits, but Imust */
+            /* tread carefully; this would not be the first time I */
+            /* misinterpreted an obscure corner-case in ARM7DI's */
+            /* CPU manual.*/
+            LOG_DBG("ARM7 Unaligned memory store at PC=0x%08x\n",
+                    (unsigned)arm7->reg[ARM7_REG_PC]);
+        }
+        uint32_t val = *arm7_gen_reg(arm7, rd);
+        if (rd == 15)
+            val += 4;
+        addr &= ~3;
+        memory_map_write_32(arm7->map, addr, val);
+    } else {
+        uint32_t val = *arm7_gen_reg(arm7, rd);
+        if (rd == 15)
+            val += 4;
+        memory_map_write_8(arm7->map, addr, val);
+    }
+
+    if (!pre) {
+        if (writeback) {
+            /* docs say the writeback is implied when the */
+            /* pre bit is not set, and that the writeback */
+            /* bit should be zero in this case. */
+            error_set_arm7_inst(inst);
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        }
+        writeback = true;
+        if (sign < 0)
+            addr -= offs;
+        else
+            addr += offs;
+    }
+
+    if (writeback) {
+        if (rn == 15)
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);
+        *arm7_gen_reg(arm7, rn) = addr;
+    }
+
+    arm7_next_inst(arm7);
+    return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
+}
 
 #ifdef INVARIANTS
 #define BASEPTR_SANITY_OPEN do {                \
