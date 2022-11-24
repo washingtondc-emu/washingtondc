@@ -262,6 +262,8 @@ void arm7_reset(struct arm7 *arm7, bool val) {
     arm7->enabled = val;
 }
 
+#define INST_MASK (BIT_RANGE(20, 27) | BIT_RANGE(4,7))
+
 #define MASK_B BIT_RANGE(24, 27)
 #define VAL_B  0x0a000000
 
@@ -274,8 +276,8 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_STR (BIT_RANGE(26, 27) | (1 << 20))
 #define VAL_STR 0x04000000
 
-#define MASK_MRS (BIT_RANGE(23, 27) | BIT_RANGE(16, 21) | BIT_RANGE(0, 11))
-#define VAL_MRS  0x010f0000
+#define MASK_MRS INST_MASK
+#define VAL_MRS  0x01000000
 
 #define MASK_MSR (BIT_RANGE(23, 27) | BIT_RANGE(4, 21))
 #define VAL_MSR  (0x0129f000)
