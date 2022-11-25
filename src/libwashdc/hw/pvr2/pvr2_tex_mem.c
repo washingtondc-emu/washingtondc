@@ -427,8 +427,23 @@ void pvr2_tex_mem_64bit_write_dwords(struct pvr2 *pvr2,
         RAISE_ERROR(ERROR_INTEGRITY);
     }
 
+    /*
+     * every other DWORD goes to a separate bank
+     *
+     * ergo there are two regions of writes, each of which is n_dwords/2 length
+     * (we add +1 in case of odd number of DWORDs)
+     */
+    unsigned offs1 = pvr2_tex_mem_addr_64_to_32(addr);
+    unsigned offs2 = pvr2_tex_mem_addr_64_to_32(addr + 4);
+    pvr2_tex_mem_notify_writes(pvr2, offs1, 4 * (n_dwords / 2 + 1));
+    pvr2_tex_mem_notify_writes(pvr2, offs2, 4 * (n_dwords / 2 + 1));
+
     while (n_dwords--) {
-        pvr2_tex_mem_64bit_write32(pvr2, addr, *srcp++);
+        uint32_t val = *srcp++;
+
+        unsigned offs = pvr2_tex_mem_addr_64_to_32(addr);
+        memcpy(pvr2->mem.tex32 + offs, &val, sizeof(val));
+
         addr += 4;
     }
 }
