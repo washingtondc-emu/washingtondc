@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -45,25 +45,18 @@ struct pvr2_tex_mem {
 static inline unsigned
 pvr2_tex_mem_addr_32_to_64(unsigned offs) {
     unsigned offs32 = offs & 0x007ffffc;
-    unsigned offs64;
-
-    if (offs32 >= PVR2_TEX_MEM_BANK_SIZE)
-        offs64 = (offs32 - PVR2_TEX_MEM_BANK_SIZE) * 2 + 4;
-    else
-        offs64 = offs32 * 2;
-
+    unsigned bank_idx = !!(offs32 >= PVR2_TEX_MEM_BANK_SIZE);
+    unsigned offs64 = 2 * (offs32 - PVR2_TEX_MEM_BANK_SIZE * bank_idx +
+                           2 * bank_idx);
     return offs64 | (offs & 3);
 }
 
 static inline unsigned
 pvr2_tex_mem_addr_64_to_32(unsigned offs) {
     unsigned offs64 = offs & 0x007ffffc;
-    unsigned offs32;
-
-    if (offs64 % 8)
-        offs32 = ((offs64 - 4) / 2) + PVR2_TEX_MEM_BANK_SIZE;
-    else
-        offs32 = offs64 / 2;
+    unsigned bank_idx = !!(offs64 % 8);
+    unsigned offs32 = (offs64 - 4 * bank_idx) / 2 +
+        bank_idx * PVR2_TEX_MEM_BANK_SIZE;
 
     return offs32 | (offs & 3);
 }
