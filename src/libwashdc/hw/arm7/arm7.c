@@ -303,97 +303,167 @@ void arm7_reset(struct arm7 *arm7, bool val) {
  * START OF DATA PROCESSING INSTRUCTIONS
  */
 
-#define MASK_ORR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_ORR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_ORR (12 << 21)
 
-#define MASK_EOR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_EOR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_EOR (1 << 21)
 
-#define MASK_AND (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_AND (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_AND 0
 
-#define MASK_BIC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_BIC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_BIC (14 << 21)
 
-#define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_MOV (13 << 21)
 
-#define MASK_ADD (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_ADD (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_ADD (4 << 21)
 
-#define MASK_ADC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_ADC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_ADC (5 << 21)
 
-#define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_SUB (2 << 21)
 
-#define MASK_SBC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_SBC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_SBC (6 << 21)
 
-#define MASK_RSB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_RSB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_RSB (3 << 21)
 
-#define MASK_RSC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_RSC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_RSC (7 << 21)
 
-#define MASK_CMP (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25))
-#define VAL_CMP ((10 << 21) | (1 << 20))
-
-#define MASK_TST (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25))
-#define VAL_TST ((8 << 21) | (1 << 20))
-
-#define MASK_MVN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_MVN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_MVN (15 << 21)
 
-#define MASK_CMN (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25))
-#define VAL_CMN ((11 << 21) | (1 << 20))
-
-
-#define MASK_ORR_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_ORR_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_ORR_I ((12 << 21) | (1 << 25))
 
-#define MASK_EOR_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_EOR_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_EOR_I ((1 << 21) | (1 << 25))
 
-#define MASK_AND_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_AND_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_AND_I (1 << 25)
 
-#define MASK_BIC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_BIC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_BIC_I ((14 << 21) | (1 << 25))
 
-#define MASK_MOV_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_MOV_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_MOV_I ((13 << 21) | (1 << 25))
 
-#define MASK_ADD_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_ADD_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_ADD_I ((4 << 21) | (1 << 25))
 
-#define MASK_ADC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_ADC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_ADC_I ((5 << 21) | (1 << 25))
 
-#define MASK_SUB_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_SUB_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_SUB_I ((2 << 21) | (1 << 25))
 
-#define MASK_SBC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_SBC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_SBC_I ((6 << 21) | (1 << 25))
 
-#define MASK_RSB_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_RSB_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_RSB_I ((3 << 21) | (1 << 25))
 
-#define MASK_RSC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_RSC_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_RSC_I ((7 << 21) | (1 << 25))
 
-#define MASK_CMP_I (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25))
-#define VAL_CMP_I ((10 << 21) | (1 << 20) | (1 << 25))
-
-#define MASK_TST_I (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25))
-#define VAL_TST_I ((8 << 21) | (1 << 20) | (1 << 25))
-
-#define MASK_MVN_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25))
+#define MASK_MVN_I (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
 #define VAL_MVN_I ((15 << 21) | (1 << 25))
 
-#define MASK_CMN_I (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25))
-#define VAL_CMN_I ((11 << 21) | (1 << 20) | (1 << 25))
+#define MASK_ORR_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_ORR_S ((12 << 21) | (1 << 20))
 
+#define MASK_EOR_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_EOR_S ((1 << 21) | (1 << 20))
+
+#define MASK_AND_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_AND_S (1 << 20)
+
+#define MASK_BIC_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_BIC_S ((14 << 21) | (1 << 20))
+
+#define MASK_MOV_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_MOV_S ((13 << 21) | (1 << 20))
+
+#define MASK_ADD_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_ADD_S ((4 << 21) | (1 << 20))
+
+#define MASK_ADC_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_ADC_S ((5 << 21) | (1 << 20))
+
+#define MASK_SUB_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_SUB_S ((2 << 21) | (1 << 20))
+
+#define MASK_SBC_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_SBC_S ((6 << 21) | (1 << 20))
+
+#define MASK_RSB_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_RSB_S ((3 << 21) | (1 << 20))
+
+#define MASK_RSC_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_RSC_S ((7 << 21) | (1 << 20))
+
+#define MASK_CMP_S (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_CMP_S ((10 << 21) | (1 << 20))
+
+#define MASK_TST_S (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_TST_S ((8 << 21) | (1 << 20))
+
+#define MASK_MVN_S (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_MVN_S ((15 << 21) | (1 << 20))
+
+#define MASK_CMN_S (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_CMN_S ((11 << 21) | (1 << 20))
+
+#define MASK_ORR_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_ORR_IS ((12 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_EOR_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_EOR_IS ((1 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_AND_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_AND_IS ((1 << 25) | (1 << 20))
+
+#define MASK_BIC_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_BIC_IS ((14 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_MOV_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_MOV_IS ((13 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_ADD_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_ADD_IS ((4 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_ADC_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_ADC_IS ((5 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_SUB_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_SUB_IS ((2 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_SBC_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_SBC_IS ((6 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_RSB_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_RSB_IS ((3 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_RSC_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_RSC_IS ((7 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_CMP_IS (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_CMP_IS ((10 << 21) | (1 << 20) | (1 << 25))
+
+#define MASK_TST_IS (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_TST_IS ((8 << 21) | (1 << 20) | (1 << 25))
+
+#define MASK_MVN_IS (BIT_RANGE(21, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_MVN_IS ((15 << 21) | (1 << 25) | (1 << 20))
+
+#define MASK_CMN_IS (BIT_RANGE(20, 24) | BIT_RANGE(26, 27) | (1 << 25) | (1 << 20))
+#define VAL_CMN_IS ((11 << 21) | (1 << 20) | (1 << 25))
 
 /*
  * END OF DATA PROCESSING INSTRUCTIONS
@@ -1323,9 +1393,13 @@ DEF_MUL_INST(al)
 #define DEF_DATA_OP_INST(op_name, cond, is_logic, require_s, write_result) \
     static unsigned                                                     \
     arm7_inst_##op_name##_##cond(struct arm7 *arm7, arm7_inst inst) {   \
-        bool s_flag = inst & (1 << 20);                                 \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        if (require_s) {                                                \
+            error_set_arm7_inst(inst);                                  \
+            RAISE_ERROR(ERROR_INTEGRITY);                               \
+        }                                                               \
                                                                         \
         bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
         bool n_out, c_out, z_out, v_out;                                \
@@ -1341,32 +1415,6 @@ DEF_MUL_INST(al)
         uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
                                                   carry_in, &n_out,     \
                                                   &c_out, &z_out, &v_out); \
-        if (s_flag && rd != 15) {                                       \
-            if (is_logic) {                                             \
-                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
-                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
-                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
-                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
-                                              ARM7_CPSR_N_MASK |        \
-                                              ARM7_CPSR_C_MASK);        \
-                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag | c_flag); \
-            } else {                                                    \
-                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
-                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
-                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
-                uint32_t v_flag = v_out ? ARM7_CPSR_V_MASK : 0;         \
-                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
-                                              ARM7_CPSR_N_MASK |        \
-                                              ARM7_CPSR_C_MASK |        \
-                                              ARM7_CPSR_V_MASK);        \
-                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
-                                             c_flag | v_flag);          \
-            }                                                           \
-        } else if (s_flag && rd == 15) {                                \
-            arm7_cpsr_mode_change(arm7, arm7->reg[arm7_spsr_idx(arm7)]); \
-        } else if (require_s) {                                         \
-            RAISE_ERROR(ERROR_INTEGRITY);                               \
-        }                                                               \
                                                                         \
         if (write_result) {                                             \
             *arm7_gen_reg(arm7, rd) = res;                              \
@@ -1385,9 +1433,13 @@ DEF_MUL_INST(al)
 #define DEF_DATA_OP_INST_I(op_name, cond, is_logic, require_s, write_result) \
     static unsigned                                                     \
     arm7_inst_##op_name##_##cond##_i(struct arm7 *arm7, arm7_inst inst) { \
-        bool s_flag = inst & (1 << 20);                                 \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        if (require_s) {                                                \
+            error_set_arm7_inst(inst);                                  \
+            RAISE_ERROR(ERROR_INTEGRITY);                               \
+        }                                                               \
                                                                         \
         bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
         bool n_out, c_out, z_out, v_out;                                \
@@ -1401,7 +1453,41 @@ DEF_MUL_INST(al)
         uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
                                                   carry_in, &n_out,     \
                                                   &c_out, &z_out, &v_out); \
-        if (s_flag && rd != 15) {                                       \
+                                                                        \
+        if (write_result) {                                             \
+            *arm7_gen_reg(arm7, rd) = res;                              \
+            if (rd == 15) {                                             \
+                arm7_reset_pipeline(arm7);                              \
+                goto the_end;                                           \
+            }                                                           \
+        }                                                               \
+                                                                        \
+        arm7_next_inst(arm7);                                           \
+    the_end:                                                            \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                               \
+    }
+
+#define DEF_DATA_OP_INST_S(op_name, cond, is_logic, require_s, write_result) \
+    static unsigned                                                     \
+    arm7_inst_##op_name##_##cond##_s(struct arm7 *arm7, arm7_inst inst) { \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
+        bool n_out, c_out, z_out, v_out;                                \
+                                                                        \
+        uint32_t input_1 = *arm7_gen_reg(arm7, rn);                     \
+        uint32_t input_2;                                               \
+                                                                        \
+        c_out = carry_in;                                               \
+        input_2 = decode_shift(arm7, inst, &c_out);                     \
+        if ((inst & (1 << 4)) && rn == 15)                              \
+            input_1 += 4;                                               \
+                                                                        \
+        uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
+                                                  carry_in, &n_out,     \
+                                                  &c_out, &z_out, &v_out); \
+        if (rd != 15) {                                                 \
             if (is_logic) {                                             \
                 uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
                 uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
@@ -1422,10 +1508,65 @@ DEF_MUL_INST(al)
                 arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
                                              c_flag | v_flag);          \
             }                                                           \
-        } else if (s_flag && rd == 15) {                                \
+        } else if (rd == 15) {                                          \
             arm7_cpsr_mode_change(arm7, arm7->reg[arm7_spsr_idx(arm7)]); \
-        } else if (require_s) {                                         \
-            RAISE_ERROR(ERROR_INTEGRITY);                               \
+        }                                                               \
+                                                                        \
+        if (write_result) {                                             \
+            *arm7_gen_reg(arm7, rd) = res;                              \
+            if (rd == 15) {                                             \
+                arm7_reset_pipeline(arm7);                              \
+                goto the_end;                                           \
+            }                                                           \
+        }                                                               \
+                                                                        \
+                                                                        \
+        arm7_next_inst(arm7);                                           \
+    the_end:                                                            \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                               \
+    }
+
+#define DEF_DATA_OP_INST_IS(op_name, cond, is_logic, require_s, write_result) \
+    static unsigned                                                     \
+    arm7_inst_##op_name##_##cond##_is(struct arm7 *arm7, arm7_inst inst) { \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
+        bool n_out, c_out, z_out, v_out;                                \
+                                                                        \
+        uint32_t input_1 = *arm7_gen_reg(arm7, rn);                     \
+        uint32_t input_2;                                               \
+                                                                        \
+        c_out = carry_in;                                               \
+        input_2 = decode_immed(inst);                                   \
+                                                                        \
+        uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
+                                                  carry_in, &n_out,     \
+                                                  &c_out, &z_out, &v_out); \
+        if (rd != 15) {                                                 \
+            if (is_logic) {                                             \
+                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
+                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
+                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
+                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
+                                              ARM7_CPSR_N_MASK |        \
+                                              ARM7_CPSR_C_MASK);        \
+                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag | c_flag); \
+            } else {                                                    \
+                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
+                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
+                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
+                uint32_t v_flag = v_out ? ARM7_CPSR_V_MASK : 0;         \
+                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
+                                              ARM7_CPSR_N_MASK |        \
+                                              ARM7_CPSR_C_MASK |        \
+                                              ARM7_CPSR_V_MASK);        \
+                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
+                                             c_flag | v_flag);          \
+            }                                                           \
+        } else if (rd == 15) {                                          \
+            arm7_cpsr_mode_change(arm7, arm7->reg[arm7_spsr_idx(arm7)]); \
         }                                                               \
                                                                         \
         if (write_result) {                                             \
@@ -1442,8 +1583,14 @@ DEF_MUL_INST(al)
     }
 
 #define DEF_DATA_OP_INST_ALL(op_name, is_logic, require_s, write_result) \
-    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, al, is_logic, require_s, write_result)
+    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)     \
+    DEF_DATA_OP_INST_I(op_name, al, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, al, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, al, is_logic, require_s, write_result)
+
+#define DEF_DATA_OP_INST_REQUIRE_S(op_name, is_logic, write_result) \
+    DEF_DATA_OP_INST_S(op_name, al, is_logic, true, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, al, is_logic, true, write_result)
 
 DEF_DATA_OP_INST_ALL(orr, true, false, true)
 DEF_DATA_OP_INST_ALL(eor, true, false, true)
@@ -1456,10 +1603,11 @@ DEF_DATA_OP_INST_ALL(sub, false, false, true)
 DEF_DATA_OP_INST_ALL(sbc, false, false, true)
 DEF_DATA_OP_INST_ALL(rsb, false, false, true)
 DEF_DATA_OP_INST_ALL(rsc, false, false, true)
-DEF_DATA_OP_INST_ALL(cmp, false, true, false)
-DEF_DATA_OP_INST_ALL(tst, true, true, false)
 DEF_DATA_OP_INST_ALL(mvn, true, false, true)
-DEF_DATA_OP_INST_ALL(cmn, false, true, false)
+
+DEF_DATA_OP_INST_REQUIRE_S(cmn, false, false)
+DEF_DATA_OP_INST_REQUIRE_S(cmp, false, false)
+DEF_DATA_OP_INST_REQUIRE_S(tst, true, false)
 
 #define DEF_SWI_INST(cond)                                              \
     static unsigned                                                     \
@@ -1579,15 +1727,8 @@ static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst) {
         return arm7_inst_rsb_al;
     } else if ((inst & MASK_RSC) == VAL_RSC) {
         return arm7_inst_rsc_al;
-    } else if ((inst & MASK_CMP) == VAL_CMP) {
-        return arm7_inst_cmp_al;
-    } else if ((inst & MASK_TST) == VAL_TST) {
-        return arm7_inst_tst_al;
     } else if ((inst & MASK_MVN) == VAL_MVN) {
         return arm7_inst_mvn_al;
-    } else if ((inst & MASK_CMN) == VAL_CMN) {
-        return arm7_inst_cmn_al;
-
     } else if ((inst & MASK_ORR_I) == VAL_ORR_I) {
         return arm7_inst_orr_al_i;
     } else if ((inst & MASK_EOR_I) == VAL_EOR_I) {
@@ -1610,15 +1751,68 @@ static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst) {
         return arm7_inst_rsb_al_i;
     } else if ((inst & MASK_RSC_I) == VAL_RSC_I) {
         return arm7_inst_rsc_al_i;
-    } else if ((inst & MASK_CMP_I) == VAL_CMP_I) {
-        return arm7_inst_cmp_al_i;
-    } else if ((inst & MASK_TST_I) == VAL_TST_I) {
-        return arm7_inst_tst_al_i;
     } else if ((inst & MASK_MVN_I) == VAL_MVN_I) {
         return arm7_inst_mvn_al_i;
-    } else if ((inst & MASK_CMN_I) == VAL_CMN_I) {
-        return arm7_inst_cmn_al_i;
-
+    } else if ((inst & MASK_ORR_S) == VAL_ORR_S) {
+        return arm7_inst_orr_al_s;
+    } else if ((inst & MASK_EOR_S) == VAL_EOR_S) {
+        return arm7_inst_eor_al_s;
+    } else if ((inst & MASK_AND_S) == VAL_AND_S) {
+        return arm7_inst_and_al_s;
+    } else if ((inst & MASK_BIC_S) == VAL_BIC_S) {
+        return arm7_inst_bic_al_s;
+    } else if ((inst & MASK_MOV_S) == VAL_MOV_S) {
+        return arm7_inst_mov_al_s;
+    } else if ((inst & MASK_ADD_S) == VAL_ADD_S) {
+        return arm7_inst_add_al_s;
+    } else if ((inst & MASK_ADC_S) == VAL_ADC_S) {
+        return arm7_inst_adc_al_s;
+    } else if ((inst & MASK_SUB_S) == VAL_SUB_S) {
+        return arm7_inst_sub_al_s;
+    } else if ((inst & MASK_SBC_S) == VAL_SBC_S) {
+        return arm7_inst_sbc_al_s;
+    } else if ((inst & MASK_RSB_S) == VAL_RSB_S) {
+        return arm7_inst_rsb_al_s;
+    } else if ((inst & MASK_RSC_S) == VAL_RSC_S) {
+        return arm7_inst_rsc_al_s;
+    } else if ((inst & MASK_CMP_S) == VAL_CMP_S) {
+        return arm7_inst_cmp_al_s;
+    } else if ((inst & MASK_TST_S) == VAL_TST_S) {
+        return arm7_inst_tst_al_s;
+    } else if ((inst & MASK_MVN_S) == VAL_MVN_S) {
+        return arm7_inst_mvn_al_s;
+    } else if ((inst & MASK_CMN_S) == VAL_CMN_S) {
+        return arm7_inst_cmn_al_s;
+    } else if ((inst & MASK_ORR_IS) == VAL_ORR_IS) {
+        return arm7_inst_orr_al_is;
+    } else if ((inst & MASK_EOR_IS) == VAL_EOR_IS) {
+        return arm7_inst_eor_al_is;
+    } else if ((inst & MASK_AND_IS) == VAL_AND_IS) {
+        return arm7_inst_and_al_is;
+    } else if ((inst & MASK_BIC_IS) == VAL_BIC_IS) {
+        return arm7_inst_bic_al_is;
+    } else if ((inst & MASK_MOV_IS) == VAL_MOV_IS) {
+        return arm7_inst_mov_al_is;
+    } else if ((inst & MASK_ADD_IS) == VAL_ADD_IS) {
+        return arm7_inst_add_al_is;
+    } else if ((inst & MASK_ADC_IS) == VAL_ADC_IS) {
+        return arm7_inst_adc_al_is;
+    } else if ((inst & MASK_SUB_IS) == VAL_SUB_IS) {
+        return arm7_inst_sub_al_is;
+    } else if ((inst & MASK_SBC_IS) == VAL_SBC_IS) {
+        return arm7_inst_sbc_al_is;
+    } else if ((inst & MASK_RSB_IS) == VAL_RSB_IS) {
+        return arm7_inst_rsb_al_is;
+    } else if ((inst & MASK_RSC_IS) == VAL_RSC_IS) {
+        return arm7_inst_rsc_al_is;
+    } else if ((inst & MASK_CMP_IS) == VAL_CMP_IS) {
+        return arm7_inst_cmp_al_is;
+    } else if ((inst & MASK_TST_IS) == VAL_TST_IS) {
+        return arm7_inst_tst_al_is;
+    } else if ((inst & MASK_MVN_IS) == VAL_MVN_IS) {
+        return arm7_inst_mvn_al_is;
+    } else if ((inst & MASK_CMN_IS) == VAL_CMN_IS) {
+        return arm7_inst_cmn_al_is;
     } else if ((inst & MASK_SWI) == VAL_SWI) {
         return arm7_inst_swi_al;
     } else if ((inst & MASK_SWAP) == VAL_SWAP) {
