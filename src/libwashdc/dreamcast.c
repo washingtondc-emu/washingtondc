@@ -1075,15 +1075,10 @@ static bool run_to_next_arm7_event(void *ctxt) {
             int extra_cycles;
             arm7_inst inst = arm7_fetch_inst(&arm7, &extra_cycles);
             dc_cycle_stamp_t cycles_adv;
-            if (arm7_cond(&arm7, inst)) {
-                arm7_op_fn handler = arm7_decode(&arm7, inst);
-                unsigned inst_cycles = handler(&arm7, inst);
-                cycles_adv =
-                    (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
-            } else {
-                arm7_next_inst(&arm7);
-                cycles_adv = (1 + extra_cycles) * ARM7_CLOCK_SCALE;
-            }
+            arm7_op_fn handler = arm7_decode(&arm7, inst);
+            unsigned inst_cycles = handler(&arm7, inst);
+            cycles_adv =
+                (inst_cycles + extra_cycles) * ARM7_CLOCK_SCALE;
 
             if (cycles_adv >= clock_countdown(&arm7_clock)) {
                 cycles_after = clock_target_stamp(&arm7_clock);

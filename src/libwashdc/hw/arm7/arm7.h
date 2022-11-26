@@ -170,10 +170,11 @@ typedef unsigned(*arm7_op_fn)(struct arm7*,arm7_inst);
 
 static inline unsigned arm7_inst_hash(arm7_inst inst) {
     return (((inst >> 20) & 0xff) << 4) |
-        ((inst >> 4) & 0xf);
+        ((inst >> 4) & 0xf) |
+        ((inst >> 28) << 12);
 }
 
-extern arm7_op_fn arm7_inst_lut[1<<12];
+extern arm7_op_fn arm7_inst_lut[1<<16];
 static inline arm7_op_fn arm7_decode(struct arm7 *arm7, arm7_inst inst) {
     return arm7_inst_lut[arm7_inst_hash(inst)];
 }

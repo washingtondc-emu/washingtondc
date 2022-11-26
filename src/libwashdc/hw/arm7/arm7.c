@@ -659,327 +659,455 @@ uint32_t arm7_pc_next(struct arm7 *arm7) {
     return arm7->pipeline_pc[1];
 }
 
-// branch without
-static unsigned
-arm7_inst_branch_al(struct arm7 *arm7, arm7_inst inst) {
-    uint32_t offs = inst & ((1 << 24) - 1);
-    if (offs & (1 << 23))
-        offs |= 0xff000000;
-    offs <<= 2;
+#define EVAL_COND(cond) if (!arm7_cond_##cond(arm7)) goto cond_fail;
 
-    uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];
+#define DEF_BRANCH_INST(cond)                                       \
+    /* branch without link */                                       \
+    static unsigned                                                 \
+    arm7_inst_branch_##cond(struct arm7 *arm7, arm7_inst inst) {    \
+        EVAL_COND(cond);                                            \
+        uint32_t offs = inst & ((1 << 24) - 1);                     \
+        if (offs & (1 << 23))                                       \
+            offs |= 0xff000000;                                     \
+        offs <<= 2;                                                 \
+                                                                    \
+        uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];            \
+                                                                    \
+        arm7->reg[ARM7_REG_PC] = pc_new;                            \
+        arm7_reset_pipeline(arm7);                                  \
+                                                                    \
+        goto the_end;                                               \
+    cond_fail:                                                      \
+        arm7_next_inst(arm7);                                       \
+    the_end:                                                        \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                           \
+    }                                                               \
 
-    arm7->reg[ARM7_REG_PC] = pc_new;
-    arm7_reset_pipeline(arm7);
+DEF_BRANCH_INST(eq)
+DEF_BRANCH_INST(ne)
+DEF_BRANCH_INST(cs)
+DEF_BRANCH_INST(cc)
+DEF_BRANCH_INST(mi)
+DEF_BRANCH_INST(pl)
+DEF_BRANCH_INST(vs)
+DEF_BRANCH_INST(vc)
+DEF_BRANCH_INST(hi)
+DEF_BRANCH_INST(ls)
+DEF_BRANCH_INST(ge)
+DEF_BRANCH_INST(lt)
+DEF_BRANCH_INST(gt)
+DEF_BRANCH_INST(le)
+DEF_BRANCH_INST(al)
+DEF_BRANCH_INST(nv)
 
-    return 2 * S_CYCLE + 1 * N_CYCLE;
-}
+#define DEF_BRANCH_LINK_INST(cond)                                      \
+    /* branck with link */                                              \
+    static unsigned                                                     \
+    arm7_inst_branch_link_##cond(struct arm7 *arm7, arm7_inst inst) {   \
+        EVAL_COND(cond);                                                \
+        uint32_t offs = inst & ((1 << 24) - 1);                         \
+        if (offs & (1 << 23))                                           \
+            offs |= 0xff000000;                                         \
+        offs <<= 2;                                                     \
+                                                                        \
+        *arm7_gen_reg(arm7, 14) = arm7->reg[ARM7_REG_PC] - 4;           \
+                                                                        \
+        uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];                \
+                                                                        \
+        arm7->reg[ARM7_REG_PC] = pc_new;                                \
+        arm7_reset_pipeline(arm7);                                      \
+                                                                        \
+        goto the_end;                                                   \
+    cond_fail:                                                          \
+        arm7_next_inst(arm7);                                           \
+    the_end:                                                            \
+        return 2 * S_CYCLE + 1 * N_CYCLE;                               \
+    }                                                                   \
 
-// branck with link
-static unsigned
-arm7_inst_branch_link_al(struct arm7 *arm7, arm7_inst inst) {
-    uint32_t offs = inst & ((1 << 24) - 1);
-    if (offs & (1 << 23))
-        offs |= 0xff000000;
-    offs <<= 2;
+DEF_BRANCH_LINK_INST(eq)
+DEF_BRANCH_LINK_INST(ne)
+DEF_BRANCH_LINK_INST(cs)
+DEF_BRANCH_LINK_INST(cc)
+DEF_BRANCH_LINK_INST(mi)
+DEF_BRANCH_LINK_INST(pl)
+DEF_BRANCH_LINK_INST(vs)
+DEF_BRANCH_LINK_INST(vc)
+DEF_BRANCH_LINK_INST(hi)
+DEF_BRANCH_LINK_INST(ls)
+DEF_BRANCH_LINK_INST(ge)
+DEF_BRANCH_LINK_INST(lt)
+DEF_BRANCH_LINK_INST(gt)
+DEF_BRANCH_LINK_INST(le)
+DEF_BRANCH_LINK_INST(al)
+DEF_BRANCH_LINK_INST(nv)
 
-    *arm7_gen_reg(arm7, 14) = arm7->reg[ARM7_REG_PC] - 4;
+#define DEF_LDR_INST(cond)                                              \
+    static unsigned                                                     \
+    arm7_inst_ldr_##cond(struct arm7 *arm7, arm7_inst inst) {           \
+        EVAL_COND(cond);                                                \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool writeback = inst & (1 << 21);                              \
+        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
+        bool pre = inst & (1 << 24);                                    \
+        bool offs_reg = inst & (1 << 25);                               \
+        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
+                                                                        \
+        uint32_t offs;                                                  \
+                                                                        \
+        if (offs_reg) {                                                 \
+            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
+        } else {                                                        \
+            offs = inst & ((1 << 12) - 1);                              \
+        }                                                               \
+                                                                        \
+        /* TODO: should this instruction update the carry flag? */      \
+        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
+                                                                        \
+        if (pre) {                                                      \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        if (addr % 4) {                                                 \
+            /* Log this case, it's got some pretty fucked up */         \
+            /* handling for loads (see below).  Stores appear */        \
+            /* to only clear the lower two bits, but Imust */           \
+            /* tread carefully; this would not be the first time I */   \
+            /* misinterpreted an obscure corner-case in ARM7DI's */     \
+            /* CPU manual.*/                                            \
+            LOG_DBG("ARM7 Unaligned memory load at PC=0x%08x\n",        \
+                    (unsigned)arm7->reg[ARM7_REG_PC]);                  \
+        }                                                               \
+        uint32_t addr_read = addr & ~3;                                 \
+        uint32_t val = memory_map_read_32(arm7->map, addr_read);        \
+                                                                        \
+        /* Deal with unaligned offsets.  It does the load */            \
+        /* from the aligned address (ie address with bits */            \
+        /* 0 and 1 cleared) and then right-rotates so that */           \
+        /* the LSB corresponds to the original unalgined address */     \
+        switch (addr % 4) {                                             \
+        case 3:                                                         \
+            val = ((val >> 24) & 0xffffff) | (val << 8);                \
+            break;                                                      \
+        case 2:                                                         \
+            val = ((val >> 16) & 0xffffff) | (val << 16);               \
+            break;                                                      \
+        case 1:                                                         \
+            val = ((val >> 8) & 0xffffff) | (val << 24);                \
+            break;                                                      \
+        }                                                               \
+        *arm7_gen_reg(arm7, rd) = val;                                  \
+                                                                        \
+        if (!pre) {                                                     \
+            if (writeback) {                                            \
+                /* docs say the writeback is implied when the */        \
+                /* pre bit is not set, and that the writeback */        \
+                /* bit should be zero in this case. */                  \
+                error_set_arm7_inst(inst);                              \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            }                                                           \
+            writeback = true;                                           \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        /* ldr ignores writeback when rn == rd because the */           \
+        /* writeback happens before the load is complete */             \
+        if (writeback && rn != rd) {                                    \
+            if (rn == 15)                                               \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            *arm7_gen_reg(arm7, rn) = addr;                             \
+        }                                                               \
+                                                                        \
+        if (rd == 15) {                                                 \
+            arm7_reset_pipeline(arm7);                                  \
+            goto the_end;                                               \
+        }                                                               \
+                                                                        \
+    cond_fail:                                                          \
+        arm7_next_inst(arm7);                                           \
+    the_end:                                                            \
+        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
+    }                                                                   \
 
-    uint32_t pc_new = offs + arm7->reg[ARM7_REG_PC];
+DEF_LDR_INST(eq)
+DEF_LDR_INST(ne)
+DEF_LDR_INST(cs)
+DEF_LDR_INST(cc)
+DEF_LDR_INST(mi)
+DEF_LDR_INST(pl)
+DEF_LDR_INST(vs)
+DEF_LDR_INST(vc)
+DEF_LDR_INST(hi)
+DEF_LDR_INST(ls)
+DEF_LDR_INST(ge)
+DEF_LDR_INST(lt)
+DEF_LDR_INST(gt)
+DEF_LDR_INST(le)
+DEF_LDR_INST(al)
+DEF_LDR_INST(nv)
 
-    arm7->reg[ARM7_REG_PC] = pc_new;
-    arm7_reset_pipeline(arm7);
+#define DEF_LDRB_INST(cond)                                             \
+    static unsigned                                                     \
+    arm7_inst_ldrb_##cond(struct arm7 *arm7, arm7_inst inst) {          \
+        EVAL_COND(cond);                                                \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool writeback = inst & (1 << 21);                              \
+        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
+        bool pre = inst & (1 << 24);                                    \
+        bool offs_reg = inst & (1 << 25);                               \
+        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
+                                                                        \
+        uint32_t offs;                                                  \
+                                                                        \
+        if (offs_reg) {                                                 \
+            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
+        } else {                                                        \
+            offs = inst & ((1 << 12) - 1);                              \
+        }                                                               \
+                                                                        \
+        /* TODO: should this instruction update the carry flag? */      \
+        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
+                                                                        \
+        if (pre) {                                                      \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        *arm7_gen_reg(arm7, rd) =                                       \
+            (uint32_t)memory_map_read_8(arm7->map, addr);               \
+                                                                        \
+        if (!pre) {                                                     \
+            if (writeback) {                                            \
+                /* docs say the writeback is implied when the */        \
+                /* pre bit is not set, and that the writeback */        \
+                /* bit should be zero in this case. */                  \
+                error_set_arm7_inst(inst);                              \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            }                                                           \
+            writeback = true;                                           \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        /* ldr ignores writeback when rn == rd because the */           \
+        /* writeback happens before the load is complete */             \
+        if (writeback && rn != rd) {                                    \
+            if (rn == 15)                                               \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            *arm7_gen_reg(arm7, rn) = addr;                             \
+        }                                                               \
+                                                                        \
+        if (rd == 15) {                                                 \
+            arm7_reset_pipeline(arm7);                                  \
+            goto the_end;                                               \
+        }                                                               \
+                                                                        \
+cond_fail:                                                              \
+        arm7_next_inst(arm7);                                           \
+    the_end:                                                            \
+        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
+    }                                                                   \
 
-    return 2 * S_CYCLE + 1 * N_CYCLE;
-}
+DEF_LDRB_INST(eq)
+DEF_LDRB_INST(ne)
+DEF_LDRB_INST(cs)
+DEF_LDRB_INST(cc)
+DEF_LDRB_INST(mi)
+DEF_LDRB_INST(pl)
+DEF_LDRB_INST(vs)
+DEF_LDRB_INST(vc)
+DEF_LDRB_INST(hi)
+DEF_LDRB_INST(ls)
+DEF_LDRB_INST(ge)
+DEF_LDRB_INST(lt)
+DEF_LDRB_INST(gt)
+DEF_LDRB_INST(le)
+DEF_LDRB_INST(al)
+DEF_LDRB_INST(nv)
 
-static unsigned
-arm7_inst_ldr_al(struct arm7 *arm7, arm7_inst inst) {
-    unsigned rn = (inst >> 16) & 0xf;
-    unsigned rd = (inst >> 12) & 0xf;
+#define DEF_STR_INST(cond)                                              \
+    static unsigned                                                     \
+    arm7_inst_str_##cond(struct arm7 *arm7, arm7_inst inst) {           \
+        EVAL_COND(cond);                                                \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool writeback = inst & (1 << 21);                              \
+        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
+        bool pre = inst & (1 << 24);                                    \
+        bool offs_reg = inst & (1 << 25);                               \
+        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
+                                                                        \
+        uint32_t offs;                                                  \
+                                                                        \
+        if (offs_reg) {                                                 \
+            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
+        } else {                                                        \
+            offs = inst & ((1 << 12) - 1);                              \
+        }                                                               \
+                                                                        \
+        /* TODO: should this instruction update the carry flag? */      \
+                                                                        \
+        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
+                                                                        \
+        if (pre) {                                                      \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        if (addr % 4) {                                                 \
+            /* Log this case, it's got some pretty fucked up */         \
+            /* handling for loads (see below).  Stores appear */        \
+            /* to only clear the lower two bits, but Imust */           \
+            /* tread carefully; this would not be the first time I */   \
+            /* misinterpreted an obscure corner-case in ARM7DI's */     \
+            /* CPU manual.*/                                            \
+            LOG_DBG("ARM7 Unaligned memory store at PC=0x%08x\n",       \
+                    (unsigned)arm7->reg[ARM7_REG_PC]);                  \
+        }                                                               \
+        uint32_t val = *arm7_gen_reg(arm7, rd);                         \
+        if (rd == 15)                                                   \
+            val += 4;                                                   \
+        addr &= ~3;                                                     \
+        memory_map_write_32(arm7->map, addr, val);                      \
+                                                                        \
+        if (!pre) {                                                     \
+            if (writeback) {                                            \
+                /* docs say the writeback is implied when the */        \
+                /* pre bit is not set, and that the writeback */        \
+                /* bit should be zero in this case. */                  \
+                error_set_arm7_inst(inst);                              \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            }                                                           \
+            writeback = true;                                           \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        if (writeback) {                                                \
+            if (rn == 15)                                               \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            *arm7_gen_reg(arm7, rn) = addr;                             \
+        }                                                               \
+                                                                        \
+cond_fail:                                                              \
+        arm7_next_inst(arm7);                                           \
+        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
+    }                                                                   \
 
-    bool writeback = inst & (1 << 21);
-    int sign = (inst & (1 << 23)) ? 1 : -1;
-    bool pre = inst & (1 << 24);
-    bool offs_reg = inst & (1 << 25);
-    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
+DEF_STR_INST(eq)
+DEF_STR_INST(ne)
+DEF_STR_INST(cs)
+DEF_STR_INST(cc)
+DEF_STR_INST(mi)
+DEF_STR_INST(pl)
+DEF_STR_INST(vs)
+DEF_STR_INST(vc)
+DEF_STR_INST(hi)
+DEF_STR_INST(ls)
+DEF_STR_INST(ge)
+DEF_STR_INST(lt)
+DEF_STR_INST(gt)
+DEF_STR_INST(le)
+DEF_STR_INST(al)
+DEF_STR_INST(nv)
 
-    uint32_t offs;
+#define DEF_STRB_INST(cond)                                             \
+    static unsigned                                                     \
+    arm7_inst_strb_##cond(struct arm7 *arm7, arm7_inst inst) {          \
+        EVAL_COND(cond);                                                \
+        unsigned rn = (inst >> 16) & 0xf;                               \
+        unsigned rd = (inst >> 12) & 0xf;                               \
+                                                                        \
+        bool writeback = inst & (1 << 21);                              \
+        int sign = (inst & (1 << 23)) ? 1 : -1;                         \
+        bool pre = inst & (1 << 24);                                    \
+        bool offs_reg = inst & (1 << 25);                               \
+        bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK); \
+                                                                        \
+        uint32_t offs;                                                  \
+                                                                        \
+        if (offs_reg) {                                                 \
+            offs = decode_shift_ldr_str(arm7, inst, &carry);            \
+        } else {                                                        \
+            offs = inst & ((1 << 12) - 1);                              \
+        }                                                               \
+                                                                        \
+        /* TODO: should this instruction update the carry flag? */      \
+                                                                        \
+        uint32_t addr = *arm7_gen_reg(arm7, rn);                        \
+                                                                        \
+        if (pre) {                                                      \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        uint32_t val = *arm7_gen_reg(arm7, rd);                         \
+        if (rd == 15)                                                   \
+            val += 4;                                                   \
+        memory_map_write_8(arm7->map, addr, val);                       \
+                                                                        \
+        if (!pre) {                                                     \
+            if (writeback) {                                            \
+                /* docs say the writeback is implied when the */        \
+                /* pre bit is not set, and that the writeback */        \
+                /* bit should be zero in this case. */                  \
+                error_set_arm7_inst(inst);                              \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            }                                                           \
+            writeback = true;                                           \
+            if (sign < 0)                                               \
+                addr -= offs;                                           \
+            else                                                        \
+                addr += offs;                                           \
+        }                                                               \
+                                                                        \
+        if (writeback) {                                                \
+            if (rn == 15)                                               \
+                RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+            *arm7_gen_reg(arm7, rn) = addr;                             \
+        }                                                               \
+                                                                        \
+    cond_fail:                                                          \
+        arm7_next_inst(arm7);                                           \
+        return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
+    }                                                                   \
 
-    if (offs_reg) {
-        offs = decode_shift_ldr_str(arm7, inst, &carry);
-    } else {
-        offs = inst & ((1 << 12) - 1);
-    }
-
-    /* TODO: should this instruction update the carry flag? */
-    uint32_t addr = *arm7_gen_reg(arm7, rn);
-
-    if (pre) {
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    if (addr % 4) {
-        /* Log this case, it's got some pretty fucked up */
-        /* handling for loads (see below).  Stores appear */
-        /* to only clear the lower two bits, but Imust */
-        /* tread carefully; this would not be the first time I */
-        /* misinterpreted an obscure corner-case in ARM7DI's */
-        /* CPU manual.*/
-        LOG_DBG("ARM7 Unaligned memory load at PC=0x%08x\n",
-                (unsigned)arm7->reg[ARM7_REG_PC]);
-    }
-    uint32_t addr_read = addr & ~3;
-    uint32_t val = memory_map_read_32(arm7->map, addr_read);
-
-    /* Deal with unaligned offsets.  It does the load */
-    /* from the aligned address (ie address with bits */
-    /* 0 and 1 cleared) and then right-rotates so that */
-    /* the LSB corresponds to the original unalgined address */
-    switch (addr % 4) {
-    case 3:
-        val = ((val >> 24) & 0xffffff) | (val << 8);
-        break;
-    case 2:
-        val = ((val >> 16) & 0xffffff) | (val << 16);
-        break;
-    case 1:
-        val = ((val >> 8) & 0xffffff) | (val << 24);
-        break;
-    }
-    *arm7_gen_reg(arm7, rd) = val;
-
-    if (!pre) {
-        if (writeback) {
-            /* docs say the writeback is implied when the */
-            /* pre bit is not set, and that the writeback */
-            /* bit should be zero in this case. */
-            error_set_arm7_inst(inst);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        writeback = true;
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    /* ldr ignores writeback when rn == rd because the */
-    /* writeback happens before the load is complete */
-    if (writeback && rn != rd) {
-        if (rn == 15)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        *arm7_gen_reg(arm7, rn) = addr;
-    }
-
-    if (rd == 15) {
-        arm7_reset_pipeline(arm7);
-        goto the_end;
-    }
-
-    arm7_next_inst(arm7);
- the_end:
-    return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
-}
-
-static unsigned
-arm7_inst_ldrb_al(struct arm7 *arm7, arm7_inst inst) {
-    unsigned rn = (inst >> 16) & 0xf;
-    unsigned rd = (inst >> 12) & 0xf;
-
-    bool writeback = inst & (1 << 21);
-    int sign = (inst & (1 << 23)) ? 1 : -1;
-    bool pre = inst & (1 << 24);
-    bool offs_reg = inst & (1 << 25);
-    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
-
-    uint32_t offs;
-
-    if (offs_reg) {
-        offs = decode_shift_ldr_str(arm7, inst, &carry);
-    } else {
-        offs = inst & ((1 << 12) - 1);
-    }
-
-    /* TODO: should this instruction update the carry flag? */
-    uint32_t addr = *arm7_gen_reg(arm7, rn);
-
-    if (pre) {
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    *arm7_gen_reg(arm7, rd) =
-        (uint32_t)memory_map_read_8(arm7->map, addr);
-
-    if (!pre) {
-        if (writeback) {
-            /* docs say the writeback is implied when the */
-            /* pre bit is not set, and that the writeback */
-            /* bit should be zero in this case. */
-            error_set_arm7_inst(inst);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        writeback = true;
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    /* ldr ignores writeback when rn == rd because the */
-    /* writeback happens before the load is complete */
-    if (writeback && rn != rd) {
-        if (rn == 15)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        *arm7_gen_reg(arm7, rn) = addr;
-    }
-
-    if (rd == 15) {
-        arm7_reset_pipeline(arm7);
-        goto the_end;
-    }
-
-    arm7_next_inst(arm7);
- the_end:
-    return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
-}
-
-static unsigned
-arm7_inst_str_al(struct arm7 *arm7, arm7_inst inst) {
-    unsigned rn = (inst >> 16) & 0xf;
-    unsigned rd = (inst >> 12) & 0xf;
-
-    bool writeback = inst & (1 << 21);
-    int sign = (inst & (1 << 23)) ? 1 : -1;
-    bool pre = inst & (1 << 24);
-    bool offs_reg = inst & (1 << 25);
-    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
-
-    uint32_t offs;
-
-    if (offs_reg) {
-        offs = decode_shift_ldr_str(arm7, inst, &carry);
-    } else {
-        offs = inst & ((1 << 12) - 1);
-    }
-
-    /* TODO: should this instruction update the carry flag? */
-
-    uint32_t addr = *arm7_gen_reg(arm7, rn);
-
-    if (pre) {
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    if (addr % 4) {
-        /* Log this case, it's got some pretty fucked up */
-        /* handling for loads (see below).  Stores appear */
-        /* to only clear the lower two bits, but Imust */
-        /* tread carefully; this would not be the first time I */
-        /* misinterpreted an obscure corner-case in ARM7DI's */
-        /* CPU manual.*/
-        LOG_DBG("ARM7 Unaligned memory store at PC=0x%08x\n",
-                (unsigned)arm7->reg[ARM7_REG_PC]);
-    }
-    uint32_t val = *arm7_gen_reg(arm7, rd);
-    if (rd == 15)
-        val += 4;
-    addr &= ~3;
-    memory_map_write_32(arm7->map, addr, val);
-
-    if (!pre) {
-        if (writeback) {
-            /* docs say the writeback is implied when the */
-            /* pre bit is not set, and that the writeback */
-            /* bit should be zero in this case. */
-            error_set_arm7_inst(inst);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        writeback = true;
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    if (writeback) {
-        if (rn == 15)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        *arm7_gen_reg(arm7, rn) = addr;
-    }
-
-    arm7_next_inst(arm7);
-    return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
-}
-
-static unsigned
-arm7_inst_strb_al(struct arm7 *arm7, arm7_inst inst) {
-    unsigned rn = (inst >> 16) & 0xf;
-    unsigned rd = (inst >> 12) & 0xf;
-
-    bool writeback = inst & (1 << 21);
-    int sign = (inst & (1 << 23)) ? 1 : -1;
-    bool pre = inst & (1 << 24);
-    bool offs_reg = inst & (1 << 25);
-    bool carry = (bool)(arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK);
-
-    uint32_t offs;
-
-    if (offs_reg) {
-        offs = decode_shift_ldr_str(arm7, inst, &carry);
-    } else {
-        offs = inst & ((1 << 12) - 1);
-    }
-
-    /* TODO: should this instruction update the carry flag? */
-
-    uint32_t addr = *arm7_gen_reg(arm7, rn);
-
-    if (pre) {
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    uint32_t val = *arm7_gen_reg(arm7, rd);
-    if (rd == 15)
-        val += 4;
-    memory_map_write_8(arm7->map, addr, val);
-
-    if (!pre) {
-        if (writeback) {
-            /* docs say the writeback is implied when the */
-            /* pre bit is not set, and that the writeback */
-            /* bit should be zero in this case. */
-            error_set_arm7_inst(inst);
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        }
-        writeback = true;
-        if (sign < 0)
-            addr -= offs;
-        else
-            addr += offs;
-    }
-
-    if (writeback) {
-        if (rn == 15)
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);
-        *arm7_gen_reg(arm7, rn) = addr;
-    }
-
-    arm7_next_inst(arm7);
-    return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;
-}
+DEF_STRB_INST(eq)
+DEF_STRB_INST(ne)
+DEF_STRB_INST(cs)
+DEF_STRB_INST(cc)
+DEF_STRB_INST(mi)
+DEF_STRB_INST(pl)
+DEF_STRB_INST(vs)
+DEF_STRB_INST(vc)
+DEF_STRB_INST(hi)
+DEF_STRB_INST(ls)
+DEF_STRB_INST(ge)
+DEF_STRB_INST(lt)
+DEF_STRB_INST(gt)
+DEF_STRB_INST(le)
+DEF_STRB_INST(al)
+DEF_STRB_INST(nv)
 
 #ifdef INVARIANTS
 #define BASEPTR_SANITY_OPEN do {                \
@@ -1001,6 +1129,7 @@ arm7_inst_strb_al(struct arm7 *arm7, arm7_inst inst) {
 #define DEF_BLOCK_XFER_INST(cond)                                       \
     static unsigned                                                     \
     arm7_inst_block_xfer_##cond(struct arm7 *arm7, arm7_inst inst) {    \
+        EVAL_COND(cond);                                                \
         unsigned rn = (inst & BIT_RANGE(16, 19)) >> 16;                 \
         unsigned reg_list = inst & 0xffff;                              \
         bool pre = (bool)(inst & (1 << 24));                            \
@@ -1237,13 +1366,29 @@ arm7_inst_strb_al(struct arm7 *arm7, arm7_inst inst) {
             arm7_reset_pipeline(arm7);                                  \
             goto the_end;                                               \
         }                                                               \
-                                                              \
-        arm7_next_inst(arm7);                                                \
+                                                                        \
+    cond_fail:                                                          \
+            arm7_next_inst(arm7);                                       \
     the_end:                                                            \
         return 1 * S_CYCLE + 1 * N_CYCLE + 1 * I_CYCLE;                 \
     }
 
+DEF_BLOCK_XFER_INST(eq)
+DEF_BLOCK_XFER_INST(ne)
+DEF_BLOCK_XFER_INST(cs)
+DEF_BLOCK_XFER_INST(cc)
+DEF_BLOCK_XFER_INST(mi)
+DEF_BLOCK_XFER_INST(pl)
+DEF_BLOCK_XFER_INST(vs)
+DEF_BLOCK_XFER_INST(vc)
+DEF_BLOCK_XFER_INST(hi)
+DEF_BLOCK_XFER_INST(ls)
+DEF_BLOCK_XFER_INST(ge)
+DEF_BLOCK_XFER_INST(lt)
+DEF_BLOCK_XFER_INST(gt)
+DEF_BLOCK_XFER_INST(le)
 DEF_BLOCK_XFER_INST(al)
+DEF_BLOCK_XFER_INST(nv)
 
 /*
  * MRS
@@ -1252,6 +1397,7 @@ DEF_BLOCK_XFER_INST(al)
 #define DEF_MRS_INST(cond)                                      \
     static unsigned                                             \
     arm7_inst_mrs_##cond(struct arm7 *arm7, arm7_inst inst) {   \
+        EVAL_COND(cond);                                        \
         bool src_psr = (1 << 22) & inst;                        \
         unsigned dst_reg = (inst >> 12) & 0xf;                  \
                                                                 \
@@ -1263,39 +1409,96 @@ DEF_BLOCK_XFER_INST(al)
                                                                 \
         *arm7_gen_reg(arm7, dst_reg) = *src_p;                  \
                                                                 \
-                                                      \
-        arm7_next_inst(arm7);                                        \
+                                                                \
+    cond_fail:                                                  \
+        arm7_next_inst(arm7);                                   \
         return 1 * S_CYCLE;                                     \
     }                                                           \
 
+DEF_MRS_INST(eq)
+DEF_MRS_INST(ne)
+DEF_MRS_INST(cs)
+DEF_MRS_INST(cc)
+DEF_MRS_INST(mi)
+DEF_MRS_INST(pl)
+DEF_MRS_INST(vs)
+DEF_MRS_INST(vc)
+DEF_MRS_INST(hi)
+DEF_MRS_INST(ls)
+DEF_MRS_INST(ge)
+DEF_MRS_INST(lt)
+DEF_MRS_INST(gt)
+DEF_MRS_INST(le)
 DEF_MRS_INST(al)
+DEF_MRS_INST(nv)
 
 /*
  * MSR
  * Copy a register to CPSR
  */
-static unsigned
-arm7_inst_msr_cpsr_al(struct arm7 *arm7, arm7_inst inst) {
-    unsigned src_reg = inst & 0xff;
-    arm7_cpsr_mode_change(arm7, *arm7_gen_reg(arm7, src_reg));
+#define DEF_MSR_CPSR_INST(cond)                                     \
+    static unsigned                                                 \
+    arm7_inst_msr_cpsr_##cond(struct arm7 *arm7, arm7_inst inst) {  \
+        EVAL_COND(cond);                                            \
+        unsigned src_reg = inst & 0xff;                             \
+        arm7_cpsr_mode_change(arm7, *arm7_gen_reg(arm7, src_reg));  \
+                                                                    \
+    cond_fail:                                                      \
+        arm7_next_inst(arm7);                                       \
+        return 1 * S_CYCLE;                                         \
+    }                                                               \
 
-    arm7_next_inst(arm7);
-    return 1 * S_CYCLE;
-}
+DEF_MSR_CPSR_INST(eq)
+DEF_MSR_CPSR_INST(ne)
+DEF_MSR_CPSR_INST(cs)
+DEF_MSR_CPSR_INST(cc)
+DEF_MSR_CPSR_INST(mi)
+DEF_MSR_CPSR_INST(pl)
+DEF_MSR_CPSR_INST(vs)
+DEF_MSR_CPSR_INST(vc)
+DEF_MSR_CPSR_INST(hi)
+DEF_MSR_CPSR_INST(ls)
+DEF_MSR_CPSR_INST(ge)
+DEF_MSR_CPSR_INST(lt)
+DEF_MSR_CPSR_INST(gt)
+DEF_MSR_CPSR_INST(le)
+DEF_MSR_CPSR_INST(al)
+DEF_MSR_CPSR_INST(nv)
+
 
 /*
  * MSR
  * Copy a register to SPSR
  */
-static unsigned
-arm7_inst_msr_spsr_al(struct arm7 *arm7, arm7_inst inst) {
-    unsigned src_reg = inst & 0xff;
-    uint32_t *dst_p = arm7->reg + arm7_spsr_idx(arm7);
-    *dst_p = *arm7_gen_reg(arm7, src_reg);
+#define DEF_MSR_SPSR_INST(cond)                                     \
+    static unsigned                                                 \
+    arm7_inst_msr_spsr_##cond(struct arm7 *arm7, arm7_inst inst) {  \
+        EVAL_COND(cond);                                            \
+        unsigned src_reg = inst & 0xff;                             \
+        uint32_t *dst_p = arm7->reg + arm7_spsr_idx(arm7);          \
+        *dst_p = *arm7_gen_reg(arm7, src_reg);                      \
+                                                                    \
+    cond_fail:                                                      \
+        arm7_next_inst(arm7);                                       \
+        return 1 * S_CYCLE;                                         \
+    }                                                               \
 
-    arm7_next_inst(arm7);
-    return 1 * S_CYCLE;
-}
+DEF_MSR_SPSR_INST(eq)
+DEF_MSR_SPSR_INST(ne)
+DEF_MSR_SPSR_INST(cs)
+DEF_MSR_SPSR_INST(cc)
+DEF_MSR_SPSR_INST(mi)
+DEF_MSR_SPSR_INST(pl)
+DEF_MSR_SPSR_INST(vs)
+DEF_MSR_SPSR_INST(vc)
+DEF_MSR_SPSR_INST(hi)
+DEF_MSR_SPSR_INST(ls)
+DEF_MSR_SPSR_INST(ge)
+DEF_MSR_SPSR_INST(lt)
+DEF_MSR_SPSR_INST(gt)
+DEF_MSR_SPSR_INST(le)
+DEF_MSR_SPSR_INST(al)
+DEF_MSR_SPSR_INST(nv)
 
 /*
  * MSR_FLAGS
@@ -1305,6 +1508,7 @@ arm7_inst_msr_spsr_al(struct arm7 *arm7, arm7_inst inst) {
 #define DEF_MSR_FLAGS_INST(cond)                                    \
     static unsigned                                                 \
     arm7_inst_msr_flags_##cond(struct arm7 *arm7, arm7_inst inst) { \
+        EVAL_COND(cond);                                            \
         bool immed = (inst >> 25) & 1;                              \
         bool dst_psr = (1 << 22) & inst;                            \
         if (!immed && (inst & BIT_RANGE(4, 11)))                    \
@@ -1322,12 +1526,27 @@ arm7_inst_msr_spsr_al(struct arm7 *arm7, arm7_inst inst) {
         *dst_p = ((*dst_p) & (~ARM7_CPSR_NZCV_MASK)) |              \
             (val &ARM7_CPSR_NZCV_MASK);                             \
                                                                     \
-                                                          \
-        arm7_next_inst(arm7);                                            \
+    cond_fail:                                                      \
+        arm7_next_inst(arm7);                                       \
         return 1 * S_CYCLE;                                         \
     }
 
+DEF_MSR_FLAGS_INST(eq)
+DEF_MSR_FLAGS_INST(ne)
+DEF_MSR_FLAGS_INST(cs)
+DEF_MSR_FLAGS_INST(cc)
+DEF_MSR_FLAGS_INST(mi)
+DEF_MSR_FLAGS_INST(pl)
+DEF_MSR_FLAGS_INST(vs)
+DEF_MSR_FLAGS_INST(vc)
+DEF_MSR_FLAGS_INST(hi)
+DEF_MSR_FLAGS_INST(ls)
+DEF_MSR_FLAGS_INST(ge)
+DEF_MSR_FLAGS_INST(lt)
+DEF_MSR_FLAGS_INST(gt)
+DEF_MSR_FLAGS_INST(le)
 DEF_MSR_FLAGS_INST(al)
+DEF_MSR_FLAGS_INST(nv)
 
 #ifdef INVARIANTS
 #define MUL_INVARIANTS_CHECK                                            \
@@ -1337,25 +1556,26 @@ DEF_MSR_FLAGS_INST(al)
 #define MUL_INVARIANTS_CHECK
 #endif
 
-#define DEF_MUL_INST(cond)                                      \
-    static unsigned                                             \
-    arm7_inst_mul_##cond(struct arm7 *arm7, arm7_inst inst) {   \
-        bool accum = (bool)(inst & (1 << 21));                  \
-        bool set_flags = (bool)(inst & (1 << 20));              \
-        unsigned rd = (BIT_RANGE(16, 19) & inst) >> 16;         \
-        unsigned rn = (BIT_RANGE(12, 15) & inst) >> 12;         \
-        unsigned rs = (BIT_RANGE(8, 11) & inst) >> 8;           \
-        unsigned rm = BIT_RANGE(0, 3) & inst;                   \
-                                                                \
-        MUL_INVARIANTS_CHECK;                                   \
-                                                                \
-        /* doc says you can't do this */                        \
-        if (rd == rm)                                           \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
-                                                                \
-        /* doc says you can't do this either */                 \
-        if (rd == 15 || rn == 15 || rs == 15 || rm == 15)       \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
+#define DEF_MUL_INST(cond)                                              \
+    static unsigned                                                     \
+    arm7_inst_mul_##cond(struct arm7 *arm7, arm7_inst inst) {           \
+        EVAL_COND(cond);                                                \
+        bool accum = (bool)(inst & (1 << 21));                          \
+        bool set_flags = (bool)(inst & (1 << 20));                      \
+        unsigned rd = (BIT_RANGE(16, 19) & inst) >> 16;                 \
+        unsigned rn = (BIT_RANGE(12, 15) & inst) >> 12;                 \
+        unsigned rs = (BIT_RANGE(8, 11) & inst) >> 8;                   \
+        unsigned rm = BIT_RANGE(0, 3) & inst;                           \
+                                                                        \
+        MUL_INVARIANTS_CHECK;                                           \
+                                                                        \
+        /* doc says you can't do this */                                \
+        if (rd == rm)                                                   \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+                                                                        \
+        /* doc says you can't do this either */                         \
+        if (rd == 15 || rn == 15 || rs == 15 || rm == 15)               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
                                                                         \
         uint32_t val = *arm7_gen_reg(arm7, rm) * *arm7_gen_reg(arm7, rs); \
         if (accum)                                                      \
@@ -1383,16 +1603,32 @@ DEF_MSR_FLAGS_INST(al)
             arm7->reg[ARM7_REG_CPSR] = cpsr;                            \
         }                                                               \
                                                                         \
-                                                              \
-        arm7_next_inst(arm7);                                                \
+    cond_fail:                                                          \
+        arm7_next_inst(arm7);                                           \
         return 4 * S_CYCLE;                                             \
     }
 
+DEF_MUL_INST(eq)
+DEF_MUL_INST(ne)
+DEF_MUL_INST(cs)
+DEF_MUL_INST(cc)
+DEF_MUL_INST(mi)
+DEF_MUL_INST(pl)
+DEF_MUL_INST(vs)
+DEF_MUL_INST(vc)
+DEF_MUL_INST(hi)
+DEF_MUL_INST(ls)
+DEF_MUL_INST(ge)
+DEF_MUL_INST(lt)
+DEF_MUL_INST(gt)
+DEF_MUL_INST(le)
 DEF_MUL_INST(al)
+DEF_MUL_INST(nv)
 
 #define DEF_DATA_OP_INST(op_name, cond, is_logic, require_s, write_result) \
     static unsigned                                                     \
     arm7_inst_##op_name##_##cond(struct arm7 *arm7, arm7_inst inst) {   \
+        EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
                                                                         \
@@ -1424,7 +1660,7 @@ DEF_MUL_INST(al)
             }                                                           \
         }                                                               \
                                                                         \
-                                                                        \
+    cond_fail:                                                          \
         arm7_next_inst(arm7);                                           \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
@@ -1432,7 +1668,8 @@ DEF_MUL_INST(al)
 
 #define DEF_DATA_OP_INST_I(op_name, cond, is_logic, require_s, write_result) \
     static unsigned                                                     \
-    arm7_inst_##op_name##_##cond##_i(struct arm7 *arm7, arm7_inst inst) { \
+    arm7_inst_##op_name##_i_##cond(struct arm7 *arm7, arm7_inst inst) { \
+        EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
                                                                         \
@@ -1462,6 +1699,7 @@ DEF_MUL_INST(al)
             }                                                           \
         }                                                               \
                                                                         \
+    cond_fail:                                                          \
         arm7_next_inst(arm7);                                           \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
@@ -1469,7 +1707,8 @@ DEF_MUL_INST(al)
 
 #define DEF_DATA_OP_INST_S(op_name, cond, is_logic, require_s, write_result) \
     static unsigned                                                     \
-    arm7_inst_##op_name##_##cond##_s(struct arm7 *arm7, arm7_inst inst) { \
+    arm7_inst_##op_name##_s_##cond(struct arm7 *arm7, arm7_inst inst) { \
+        EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
                                                                         \
@@ -1520,7 +1759,7 @@ DEF_MUL_INST(al)
             }                                                           \
         }                                                               \
                                                                         \
-                                                                        \
+    cond_fail:                                                          \
         arm7_next_inst(arm7);                                           \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
@@ -1528,7 +1767,8 @@ DEF_MUL_INST(al)
 
 #define DEF_DATA_OP_INST_IS(op_name, cond, is_logic, require_s, write_result) \
     static unsigned                                                     \
-    arm7_inst_##op_name##_##cond##_is(struct arm7 *arm7, arm7_inst inst) { \
+    arm7_inst_##op_name##_is_##cond(struct arm7 *arm7, arm7_inst inst) { \
+        EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
                                                                         \
@@ -1577,20 +1817,142 @@ DEF_MUL_INST(al)
             }                                                           \
         }                                                               \
                                                                         \
+cond_fail:                                                              \
         arm7_next_inst(arm7);                                           \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
 #define DEF_DATA_OP_INST_ALL(op_name, is_logic, require_s, write_result) \
-    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)     \
+    DEF_DATA_OP_INST(op_name, eq, is_logic, require_s, write_result)     \
+    DEF_DATA_OP_INST_I(op_name, eq, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, eq, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, eq, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, ne, is_logic, require_s, write_result)     \
+    DEF_DATA_OP_INST_I(op_name, ne, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, ne, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, ne, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, cs, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, cs, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, cs, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, cs, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, cc, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, cc, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, cc, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, cc, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, mi, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, mi, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, mi, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, mi, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, pl, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, pl, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, pl, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, pl, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, vs, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, vs, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, vs, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, vs, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, vc, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, vc, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, vc, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, vc, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, hi, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, hi, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, hi, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, hi, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, ls, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, ls, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, ls, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, ls, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, ge, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, ge, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, ge, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, ge, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, lt, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, lt, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, lt, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, lt, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, gt, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, gt, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, gt, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, gt, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, le, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, le, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, le, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST_IS(op_name, le, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)    \
     DEF_DATA_OP_INST_I(op_name, al, is_logic, require_s, write_result)   \
     DEF_DATA_OP_INST_S(op_name, al, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, al, is_logic, require_s, write_result)
+    DEF_DATA_OP_INST_IS(op_name, al, is_logic, require_s, write_result)  \
+                                                                        \
+    DEF_DATA_OP_INST(op_name, nv, is_logic, require_s, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, nv, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, nv, is_logic, require_s, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, nv, is_logic, require_s, write_result)  \
+
 
 #define DEF_DATA_OP_INST_REQUIRE_S(op_name, is_logic, write_result) \
-    DEF_DATA_OP_INST_S(op_name, al, is_logic, true, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, al, is_logic, true, write_result)
+    DEF_DATA_OP_INST_S(op_name, eq, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, eq, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, ne, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, ne, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, cs, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, cs, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, cc, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, cc, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, mi, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, mi, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, pl, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, pl, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, vs, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, vs, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, vc, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, vc, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, hi, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, hi, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, ls, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, ls, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, ge, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, ge, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, lt, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, lt, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, gt, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, gt, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, le, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, le, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, al, is_logic, true, write_result)  \
+    DEF_DATA_OP_INST_IS(op_name, al, is_logic, true, write_result) \
+                                                                   \
+    DEF_DATA_OP_INST_S(op_name, nv, is_logic, true, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, nv, is_logic, true, write_result) \
 
 DEF_DATA_OP_INST_ALL(orr, true, false, true)
 DEF_DATA_OP_INST_ALL(eor, true, false, true)
@@ -1604,44 +1966,61 @@ DEF_DATA_OP_INST_ALL(sbc, false, false, true)
 DEF_DATA_OP_INST_ALL(rsb, false, false, true)
 DEF_DATA_OP_INST_ALL(rsc, false, false, true)
 DEF_DATA_OP_INST_ALL(mvn, true, false, true)
-
-DEF_DATA_OP_INST_REQUIRE_S(cmn, false, false)
-DEF_DATA_OP_INST_REQUIRE_S(cmp, false, false)
-DEF_DATA_OP_INST_REQUIRE_S(tst, true, false)
+DEF_DATA_OP_INST_ALL(cmn, false, true, false)
+DEF_DATA_OP_INST_ALL(cmp, false, true, false)
+DEF_DATA_OP_INST_ALL(tst, true, true, false)
 
 #define DEF_SWI_INST(cond)                                              \
     static unsigned                                                     \
     arm7_inst_swi_##cond(struct arm7 *arm7, arm7_inst inst) {           \
+        EVAL_COND(cond);                                                \
         LOG_WARN("Untested ARM7 SWI instruction used\n");               \
         arm7->excp |= ARM7_EXCP_SWI;                                    \
         arm7_excp_refresh(arm7);                                        \
         /* it is not a mistake that I have chosen */                    \
         /* to not call next_inst here */                                \
         goto the_end;                                                   \
-                                                              \
-        arm7_next_inst(arm7);                                                \
+                                                                        \
+    cond_fail:                                                          \
+arm7_next_inst(arm7);                                                   \
     the_end:                                                            \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
+DEF_SWI_INST(eq)
+DEF_SWI_INST(ne)
+DEF_SWI_INST(cs)
+DEF_SWI_INST(cc)
+DEF_SWI_INST(mi)
+DEF_SWI_INST(pl)
+DEF_SWI_INST(vs)
+DEF_SWI_INST(vc)
+DEF_SWI_INST(hi)
+DEF_SWI_INST(ls)
+DEF_SWI_INST(ge)
+DEF_SWI_INST(lt)
+DEF_SWI_INST(gt)
+DEF_SWI_INST(le)
 DEF_SWI_INST(al)
+DEF_SWI_INST(nv)
 
-#define DEF_SWAP_INST(cond)                                     \
-    static unsigned                                             \
-    arm7_inst_swap_##cond(struct arm7 *arm7, arm7_inst inst) {  \
-        unsigned n_bytes = ((inst >> 22) & 1) ? 1 : 4;          \
-        unsigned src_reg = inst & 0xf;                          \
-        unsigned dst_reg = (inst >> 12) & 0xf;                  \
-        unsigned addr_reg = (inst >> 16) & 0xf;                 \
-                                                                \
-        if (addr_reg == 15 || src_reg == 15 || dst_reg == 15)   \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                   \
-                                                                \
-        uint32_t addr = *arm7_gen_reg(arm7, addr_reg);          \
-                                                                \
-        if (n_bytes == 4 && addr % 4)                           \
-            LOG_ERROR("TODO: unaligned ARM7 word swaps");       \
-                                                                \
+#define DEF_SWAP_INST(cond)                                         \
+    static unsigned                                                 \
+    arm7_inst_swap_##cond(struct arm7 *arm7, arm7_inst inst) {      \
+        EVAL_COND(cond);                                            \
+        unsigned n_bytes = ((inst >> 22) & 1) ? 1 : 4;              \
+        unsigned src_reg = inst & 0xf;                              \
+        unsigned dst_reg = (inst >> 12) & 0xf;                      \
+        unsigned addr_reg = (inst >> 16) & 0xf;                     \
+                                                                    \
+        if (addr_reg == 15 || src_reg == 15 || dst_reg == 15)       \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                       \
+                                                                    \
+        uint32_t addr = *arm7_gen_reg(arm7, addr_reg);              \
+                                                                    \
+        if (n_bytes == 4 && addr % 4)                               \
+            LOG_ERROR("TODO: unaligned ARM7 word swaps");           \
+                                                                    \
         if (n_bytes == 4) {                                         \
             uint32_t dat_in = memory_map_read_32(arm7->map, addr);  \
             uint32_t dat_out = *arm7_gen_reg(arm7, src_reg);        \
@@ -1653,12 +2032,28 @@ DEF_SWI_INST(al)
             memory_map_write_8(arm7->map, addr, dat_out);           \
             *arm7_gen_reg(arm7, dst_reg) = dat_in;                  \
         }                                                           \
-                                                          \
-        arm7_next_inst(arm7);                                            \
+                                                                    \
+    cond_fail:                                                      \
+        arm7_next_inst(arm7);                                       \
         return 2 * S_CYCLE + 1 * N_CYCLE;                           \
     }
 
+DEF_SWAP_INST(eq)
+DEF_SWAP_INST(ne)
+DEF_SWAP_INST(cs)
+DEF_SWAP_INST(cc)
+DEF_SWAP_INST(mi)
+DEF_SWAP_INST(pl)
+DEF_SWAP_INST(vs)
+DEF_SWAP_INST(vc)
+DEF_SWAP_INST(hi)
+DEF_SWAP_INST(ls)
+DEF_SWAP_INST(ge)
+DEF_SWAP_INST(lt)
+DEF_SWAP_INST(gt)
+DEF_SWAP_INST(le)
 DEF_SWAP_INST(al)
+DEF_SWAP_INST(nv)
 
 static DEF_ERROR_U32_ATTR(arm7_inst_hash)
 
@@ -1670,153 +2065,250 @@ arm7_invalid_instruction(struct arm7 *arm7, arm7_inst inst) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-arm7_op_fn arm7_inst_lut[1<<12];
+arm7_op_fn arm7_inst_lut[1<<16];
 
 static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst);
 
 static void arm7_init_arm7_inst_lut(struct arm7 *arm7) {
     unsigned key;
-    for (key = 0; key < (1<<12); key++)
-        arm7_inst_lut[key] = arm7_decode_slow(arm7, ((key & 0xf) << 4) | ((key & 0xff0) << 16));
+    for (key = 0; key < (1<<16); key++)
+        arm7_inst_lut[key] = arm7_decode_slow(arm7, ((key & 0xf) << 4) | ((key & 0xfff0) << 16));
 }
 
+#define DEF_COND_TBL(opcode)                                    \
+    static arm7_op_fn const arm7_##opcode##_cond_tbl[16] = {    \
+        arm7_inst_##opcode##_eq,                                \
+        arm7_inst_##opcode##_ne,                                \
+        arm7_inst_##opcode##_cs,                                \
+        arm7_inst_##opcode##_cc,                                \
+        arm7_inst_##opcode##_mi,                                \
+        arm7_inst_##opcode##_pl,                                \
+        arm7_inst_##opcode##_vs,                                \
+        arm7_inst_##opcode##_vc,                                \
+        arm7_inst_##opcode##_hi,                                \
+        arm7_inst_##opcode##_ls,                                \
+        arm7_inst_##opcode##_ge,                                \
+        arm7_inst_##opcode##_lt,                                \
+        arm7_inst_##opcode##_gt,                                \
+        arm7_inst_##opcode##_le,                                \
+        arm7_inst_##opcode##_al,                                \
+        arm7_inst_##opcode##_nv                                 \
+    }
+
 static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst) {
+    DEF_COND_TBL(branch);
+    DEF_COND_TBL(branch_link);
+    DEF_COND_TBL(ldr);
+    DEF_COND_TBL(str);
+    DEF_COND_TBL(ldrb);
+    DEF_COND_TBL(strb);
+    DEF_COND_TBL(block_xfer);
+    DEF_COND_TBL(mrs);
+    DEF_COND_TBL(msr_cpsr);
+    DEF_COND_TBL(msr_spsr);
+    DEF_COND_TBL(msr_flags);
+    DEF_COND_TBL(mul);
+    DEF_COND_TBL(orr);
+    DEF_COND_TBL(eor);
+    DEF_COND_TBL(and);
+    DEF_COND_TBL(bic);
+    DEF_COND_TBL(mov);
+    DEF_COND_TBL(add);
+    DEF_COND_TBL(adc);
+    DEF_COND_TBL(sub);
+    DEF_COND_TBL(sbc);
+    DEF_COND_TBL(rsb);
+    DEF_COND_TBL(rsc);
+    DEF_COND_TBL(cmp);
+    DEF_COND_TBL(tst);
+    DEF_COND_TBL(mvn);
+    DEF_COND_TBL(cmn);
+    DEF_COND_TBL(swi);
+    DEF_COND_TBL(swap);
+    DEF_COND_TBL(orr_i);
+    DEF_COND_TBL(eor_i);
+    DEF_COND_TBL(and_i);
+    DEF_COND_TBL(bic_i);
+    DEF_COND_TBL(mov_i);
+    DEF_COND_TBL(add_i);
+    DEF_COND_TBL(adc_i);
+    DEF_COND_TBL(sub_i);
+    DEF_COND_TBL(sbc_i);
+    DEF_COND_TBL(rsb_i);
+    DEF_COND_TBL(rsc_i);
+    DEF_COND_TBL(cmp_i);
+    DEF_COND_TBL(tst_i);
+    DEF_COND_TBL(mvn_i);
+    DEF_COND_TBL(cmn_i);
+    DEF_COND_TBL(orr_s);
+    DEF_COND_TBL(eor_s);
+    DEF_COND_TBL(and_s);
+    DEF_COND_TBL(bic_s);
+    DEF_COND_TBL(mov_s);
+    DEF_COND_TBL(add_s);
+    DEF_COND_TBL(adc_s);
+    DEF_COND_TBL(sub_s);
+    DEF_COND_TBL(sbc_s);
+    DEF_COND_TBL(rsb_s);
+    DEF_COND_TBL(rsc_s);
+    DEF_COND_TBL(cmp_s);
+    DEF_COND_TBL(tst_s);
+    DEF_COND_TBL(mvn_s);
+    DEF_COND_TBL(cmn_s);
+    DEF_COND_TBL(orr_is);
+    DEF_COND_TBL(eor_is);
+    DEF_COND_TBL(and_is);
+    DEF_COND_TBL(bic_is);
+    DEF_COND_TBL(mov_is);
+    DEF_COND_TBL(add_is);
+    DEF_COND_TBL(adc_is);
+    DEF_COND_TBL(sub_is);
+    DEF_COND_TBL(sbc_is);
+    DEF_COND_TBL(rsb_is);
+    DEF_COND_TBL(rsc_is);
+    DEF_COND_TBL(cmp_is);
+    DEF_COND_TBL(tst_is);
+    DEF_COND_TBL(mvn_is);
+    DEF_COND_TBL(cmn_is);
+
+#define COND(inst) ((inst >> 28))
+
     if ((inst & MASK_B) == VAL_B) {
-        return arm7_inst_branch_al;
+        return arm7_branch_cond_tbl[COND(inst)];
     } else if ((inst & MASK_BL) == VAL_BL) {
-        return arm7_inst_branch_link_al;
+        return arm7_branch_link_cond_tbl[COND(inst)];
     } else if ((inst & MASK_LDR) == VAL_LDR) {
-        return arm7_inst_ldr_al;
+        return arm7_ldr_cond_tbl[COND(inst)];
     } else if ((inst & MASK_LDRB) == VAL_LDRB) {
-        return arm7_inst_ldrb_al;
+        return arm7_ldrb_cond_tbl[COND(inst)];
     } else if ((inst & MASK_STR) == VAL_STR) {
-        return arm7_inst_str_al;
+        return arm7_str_cond_tbl[COND(inst)];
     } else if ((inst & MASK_STRB) == VAL_STRB) {
-        return arm7_inst_strb_al;
+        return arm7_strb_cond_tbl[COND(inst)];
     } else if ((inst & MASK_BLOCK_XFER) == VAL_BLOCK_XFER) {
-        return arm7_inst_block_xfer_al;
+        return arm7_block_xfer_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MRS) == VAL_MRS) {
-        return arm7_inst_mrs_al;
+        return arm7_mrs_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MSR_CPSR) == VAL_MSR_CPSR) {
-        return arm7_inst_msr_cpsr_al;
+        return arm7_msr_cpsr_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MSR_SPSR) == VAL_MSR_SPSR) {
-        return arm7_inst_msr_spsr_al;
+        return arm7_msr_spsr_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MSR_FLAGS) == VAL_MSR_FLAGS) {
-        return arm7_inst_msr_flags_al;
+        return arm7_msr_flags_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MUL) == VAL_MUL) {
-        return arm7_inst_mul_al;
+        return arm7_mul_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ORR) == VAL_ORR) {
-        return arm7_inst_orr_al;
+        return arm7_orr_cond_tbl[COND(inst)];
     } else if ((inst & MASK_EOR) == VAL_EOR) {
-        return arm7_inst_eor_al;
+        return arm7_eor_cond_tbl[COND(inst)];
     } else if ((inst & MASK_AND) == VAL_AND) {
-        return arm7_inst_and_al;
+        return arm7_and_cond_tbl[COND(inst)];
     } else if ((inst & MASK_BIC) == VAL_BIC) {
-        return arm7_inst_bic_al;
+        return arm7_bic_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MOV) == VAL_MOV) {
-        return arm7_inst_mov_al;
+        return arm7_mov_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADD) == VAL_ADD) {
-        return arm7_inst_add_al;
+        return arm7_add_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADC) == VAL_ADC) {
-        return arm7_inst_adc_al;
+        return arm7_adc_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SUB) == VAL_SUB) {
-        return arm7_inst_sub_al;
+        return arm7_sub_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SBC) == VAL_SBC) {
-        return arm7_inst_sbc_al;
+        return arm7_sbc_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSB) == VAL_RSB) {
-        return arm7_inst_rsb_al;
+        return arm7_rsb_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSC) == VAL_RSC) {
-        return arm7_inst_rsc_al;
+        return arm7_rsc_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MVN) == VAL_MVN) {
-        return arm7_inst_mvn_al;
+        return arm7_mvn_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ORR_I) == VAL_ORR_I) {
-        return arm7_inst_orr_al_i;
+        return arm7_orr_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_EOR_I) == VAL_EOR_I) {
-        return arm7_inst_eor_al_i;
+        return arm7_eor_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_AND_I) == VAL_AND_I) {
-        return arm7_inst_and_al_i;
+        return arm7_and_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_BIC_I) == VAL_BIC_I) {
-        return arm7_inst_bic_al_i;
+        return arm7_bic_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MOV_I) == VAL_MOV_I) {
-        return arm7_inst_mov_al_i;
+        return arm7_mov_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADD_I) == VAL_ADD_I) {
-        return arm7_inst_add_al_i;
+        return arm7_add_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADC_I) == VAL_ADC_I) {
-        return arm7_inst_adc_al_i;
+        return arm7_adc_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SUB_I) == VAL_SUB_I) {
-        return arm7_inst_sub_al_i;
+        return arm7_sub_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SBC_I) == VAL_SBC_I) {
-        return arm7_inst_sbc_al_i;
+        return arm7_sbc_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSB_I) == VAL_RSB_I) {
-        return arm7_inst_rsb_al_i;
+        return arm7_rsb_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSC_I) == VAL_RSC_I) {
-        return arm7_inst_rsc_al_i;
+        return arm7_rsc_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MVN_I) == VAL_MVN_I) {
-        return arm7_inst_mvn_al_i;
+        return arm7_mvn_i_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ORR_S) == VAL_ORR_S) {
-        return arm7_inst_orr_al_s;
+        return arm7_orr_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_EOR_S) == VAL_EOR_S) {
-        return arm7_inst_eor_al_s;
+        return arm7_eor_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_AND_S) == VAL_AND_S) {
-        return arm7_inst_and_al_s;
+        return arm7_and_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_BIC_S) == VAL_BIC_S) {
-        return arm7_inst_bic_al_s;
+        return arm7_bic_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MOV_S) == VAL_MOV_S) {
-        return arm7_inst_mov_al_s;
+        return arm7_mov_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADD_S) == VAL_ADD_S) {
-        return arm7_inst_add_al_s;
+        return arm7_add_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADC_S) == VAL_ADC_S) {
-        return arm7_inst_adc_al_s;
+        return arm7_adc_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SUB_S) == VAL_SUB_S) {
-        return arm7_inst_sub_al_s;
+        return arm7_sub_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SBC_S) == VAL_SBC_S) {
-        return arm7_inst_sbc_al_s;
+        return arm7_sbc_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSB_S) == VAL_RSB_S) {
-        return arm7_inst_rsb_al_s;
+        return arm7_rsb_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSC_S) == VAL_RSC_S) {
-        return arm7_inst_rsc_al_s;
+        return arm7_rsc_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_CMP_S) == VAL_CMP_S) {
-        return arm7_inst_cmp_al_s;
+        return arm7_cmp_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_TST_S) == VAL_TST_S) {
-        return arm7_inst_tst_al_s;
+        return arm7_tst_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MVN_S) == VAL_MVN_S) {
-        return arm7_inst_mvn_al_s;
+        return arm7_mvn_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_CMN_S) == VAL_CMN_S) {
-        return arm7_inst_cmn_al_s;
+        return arm7_cmn_s_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ORR_IS) == VAL_ORR_IS) {
-        return arm7_inst_orr_al_is;
+        return arm7_orr_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_EOR_IS) == VAL_EOR_IS) {
-        return arm7_inst_eor_al_is;
+        return arm7_eor_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_AND_IS) == VAL_AND_IS) {
-        return arm7_inst_and_al_is;
+        return arm7_and_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_BIC_IS) == VAL_BIC_IS) {
-        return arm7_inst_bic_al_is;
+        return arm7_bic_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MOV_IS) == VAL_MOV_IS) {
-        return arm7_inst_mov_al_is;
+        return arm7_mov_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADD_IS) == VAL_ADD_IS) {
-        return arm7_inst_add_al_is;
+        return arm7_add_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_ADC_IS) == VAL_ADC_IS) {
-        return arm7_inst_adc_al_is;
+        return arm7_adc_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SUB_IS) == VAL_SUB_IS) {
-        return arm7_inst_sub_al_is;
+        return arm7_sub_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SBC_IS) == VAL_SBC_IS) {
-        return arm7_inst_sbc_al_is;
+        return arm7_sbc_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSB_IS) == VAL_RSB_IS) {
-        return arm7_inst_rsb_al_is;
+        return arm7_rsb_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_RSC_IS) == VAL_RSC_IS) {
-        return arm7_inst_rsc_al_is;
+        return arm7_rsc_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_CMP_IS) == VAL_CMP_IS) {
-        return arm7_inst_cmp_al_is;
+        return arm7_cmp_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_TST_IS) == VAL_TST_IS) {
-        return arm7_inst_tst_al_is;
+        return arm7_tst_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_MVN_IS) == VAL_MVN_IS) {
-        return arm7_inst_mvn_al_is;
+        return arm7_mvn_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_CMN_IS) == VAL_CMN_IS) {
-        return arm7_inst_cmn_al_is;
+        return arm7_cmn_is_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SWI) == VAL_SWI) {
-        return arm7_inst_swi_al;
+        return arm7_swi_cond_tbl[COND(inst)];
     } else if ((inst & MASK_SWAP) == VAL_SWAP) {
-        return arm7_inst_swap_al;
+        return arm7_swap_cond_tbl[COND(inst)];
     }
 
     return arm7_invalid_instruction;
