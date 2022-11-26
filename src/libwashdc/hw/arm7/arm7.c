@@ -299,21 +299,24 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_MSR_FLAGS (BIT_RANGE(20, 21) | BIT_RANGE(23, 24) | BIT_RANGE(26, 27))
 #define VAL_MSR_FLAGS ((2 << 20) | (2 << 23))
 
-// data processing opcodes
+/*
+ * START OF DATA PROCESSING INSTRUCTIONS
+ */
+
 #define MASK_ORR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_ORR (12 << 21)
 
 #define MASK_EOR (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_EOR (1 << 21)
 
+#define MASK_AND (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_AND 0
+
 #define MASK_BIC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_BIC (14 << 21)
 
-#define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_SUB (2 << 21)
-
-#define MASK_RSB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_RSB (3 << 21)
+#define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_MOV (13 << 21)
 
 #define MASK_ADD (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_ADD (4 << 21)
@@ -321,29 +324,33 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_ADC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_ADC (5 << 21)
 
+#define MASK_SUB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_SUB (2 << 21)
+
 #define MASK_SBC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_SBC (6 << 21)
+
+#define MASK_RSB (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
+#define VAL_RSB (3 << 21)
 
 #define MASK_RSC (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_RSC (7 << 21)
 
-#define MASK_TST (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
-#define VAL_TST ((8 << 21) | (1 << 20))
-
 #define MASK_CMP (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
 #define VAL_CMP ((10 << 21) | (1 << 20))
 
-#define MASK_AND (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_AND 0
-
-#define MASK_MOV (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
-#define VAL_MOV (13 << 21)
+#define MASK_TST (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
+#define VAL_TST ((8 << 21) | (1 << 20))
 
 #define MASK_MVN (BIT_RANGE(21, 24) | BIT_RANGE(26, 27))
 #define VAL_MVN (15 << 21)
 
 #define MASK_CMN (BIT_RANGE(20, 24) | BIT_RANGE(26, 27))
 #define VAL_CMN ((11 << 21) | (1 << 20))
+
+/*
+ * END OF DATA PROCESSING INSTRUCTIONS
+ */
 
 #define MASK_BLOCK_XFER BIT_RANGE(25, 27)
 #define VAL_BLOCK_XFER (4 << 25)
@@ -557,30 +564,33 @@ DEF_DATA_OP(bic) {
         uint32_t res = DATA_OP_FUNC_NAME(op_name)(input_1, input_2,     \
                                                   carry_in, &n_out,     \
                                                   &c_out, &z_out, &v_out); \
-        if (s_flag && rd != 15) {                                       \
-            if (is_logic) {                                             \
-                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
-                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
-                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
-                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
-                                              ARM7_CPSR_N_MASK |        \
-                                              ARM7_CPSR_C_MASK);        \
-                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag | c_flag); \
-            } else {                                                    \
-                uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;         \
-                uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;         \
-                uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;         \
-                uint32_t v_flag = v_out ? ARM7_CPSR_V_MASK : 0;         \
-                arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |        \
-                                              ARM7_CPSR_N_MASK |        \
-                                              ARM7_CPSR_C_MASK |        \
-                                              ARM7_CPSR_V_MASK);        \
-                arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |          \
-                                             c_flag | v_flag);          \
+        if (s_flag) {                                                   \
+            if (rd != 15) {                                             \
+                if (is_logic) {                                         \
+                    uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;     \
+                    uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;     \
+                    uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;     \
+                    arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |    \
+                                                  ARM7_CPSR_N_MASK |    \
+                                                  ARM7_CPSR_C_MASK);    \
+                    arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag | c_flag); \
+                } else {                                                \
+                    uint32_t z_flag = z_out ? ARM7_CPSR_Z_MASK : 0;     \
+                    uint32_t n_flag = n_out ? ARM7_CPSR_N_MASK : 0;     \
+                    uint32_t c_flag = c_out ? ARM7_CPSR_C_MASK : 0;     \
+                    uint32_t v_flag = v_out ? ARM7_CPSR_V_MASK : 0;     \
+                    arm7->reg[ARM7_REG_CPSR] &= ~(ARM7_CPSR_Z_MASK |    \
+                                                  ARM7_CPSR_N_MASK |    \
+                                                  ARM7_CPSR_C_MASK |    \
+                                                  ARM7_CPSR_V_MASK);    \
+                    arm7->reg[ARM7_REG_CPSR] |= (z_flag | n_flag |      \
+                                                 c_flag | v_flag);      \
+                }                                                       \
+            } else if (rd == 15) {                                      \
+                arm7_cpsr_mode_change(arm7, arm7->reg[arm7_spsr_idx(arm7)]); \
             }                                                           \
-        } else if (s_flag && rd == 15) {                                \
-            arm7_cpsr_mode_change(arm7, arm7->reg[arm7_spsr_idx(arm7)]);\
-        } else if (require_s) {                                         \
+        }                                                               \
+        else if (require_s) {                                           \
             RAISE_ERROR(ERROR_INTEGRITY);                               \
         }                                                               \
                                                                         \
