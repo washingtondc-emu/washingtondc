@@ -287,7 +287,7 @@ void arm7_reset(struct arm7 *arm7, bool val) {
 #define MASK_STRB (BIT_RANGE(26, 27) | (1 << 20) | (1 << 22))
 #define VAL_STRB (0x04000000 | (1 << 22))
 
-#define MASK_MRS INST_MASK
+#define MASK_MRS (BIT_RANGE(20, 21) | BIT_RANGE(23, 27) | BIT_RANGE(4, 7))
 #define VAL_MRS  0x01000000
 
 #define MASK_MSR_CPSR INST_MASK
