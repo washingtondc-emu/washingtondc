@@ -54,6 +54,8 @@
 #include "pvr2_tex_cache.h"
 #include "framebuffer.h"
 
+#define PVR2_TEX_MEM_MASK ((8<<20)-1)
+
 static inline void
 pvr2_tex_mem_sync_fb(struct pvr2 *pvr2, uint32_t addr_32bit, size_t n_bytes) {
     /*
@@ -174,12 +176,6 @@ void pvr2_tex_mem_32bit_read_raw(struct pvr2 *pvr2,
 
     pvr2_tex_mem_sync_fb(pvr2, addr, n_bytes);
     memcpy(dstp, srcp, n_bytes * sizeof(uint8_t));
-}
-
-static uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
-    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-
-    return pvr2_tex_mem_32bit_read8(pvr2, addr);
 }
 
 void
@@ -533,99 +529,105 @@ pvr2_tex_mem_64bit_write8(struct pvr2 *pvr2,
     memcpy(pvr2->mem.tex32 + offs, &val, sizeof(val));
 }
 
+static uint8_t pvr2_tex_mem_area32_read_8(addr32_t addr, void *ctxt) {
+    struct pvr2 *pvr2 = (struct pvr2*)ctxt;
+
+    return pvr2_tex_mem_32bit_read8(pvr2, addr & PVR2_TEX_MEM_MASK);
+}
+
 static void pvr2_tex_mem_area32_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_32bit_write8(pvr2, addr, val);
+    pvr2_tex_mem_32bit_write8(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static uint16_t pvr2_tex_mem_area32_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_32bit_read16(pvr2, addr);
+    return pvr2_tex_mem_32bit_read16(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area32_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_32bit_write16(pvr2, addr, val);
+    pvr2_tex_mem_32bit_write16(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static uint32_t pvr2_tex_mem_area32_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_32bit_read32(pvr2, addr);
+    return pvr2_tex_mem_32bit_read32(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area32_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_32bit_write32(pvr2, addr, val);
+    pvr2_tex_mem_32bit_write32(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static float pvr2_tex_mem_area32_read_float(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_32bit_read_float(pvr2, addr);
+    return pvr2_tex_mem_32bit_read_float(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area32_write_float(addr32_t addr, float val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_32bit_write_float(pvr2, addr, val);
+    pvr2_tex_mem_32bit_write_float(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static double pvr2_tex_mem_area32_read_double(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_32bit_read_double(pvr2, addr);
+    return pvr2_tex_mem_32bit_read_double(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area32_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_32bit_write_double(pvr2, addr, val);
+    pvr2_tex_mem_32bit_write_double(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static uint8_t pvr2_tex_mem_area64_read_8(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_64bit_read8(pvr2, addr);
+    return pvr2_tex_mem_64bit_read8(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area64_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_64bit_write8(pvr2, addr, val);
+    pvr2_tex_mem_64bit_write8(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static uint16_t pvr2_tex_mem_area64_read_16(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_64bit_read16(pvr2, addr);
+    return pvr2_tex_mem_64bit_read16(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area64_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_64bit_write16(pvr2, addr, val);
+    pvr2_tex_mem_64bit_write16(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static uint32_t pvr2_tex_mem_area64_read_32(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_64bit_read32(pvr2, addr);
+    return pvr2_tex_mem_64bit_read32(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area64_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_64bit_write32(pvr2, addr, val);
+    pvr2_tex_mem_64bit_write32(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static float pvr2_tex_mem_area64_read_float(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_64bit_read_float(pvr2, addr);
+    return pvr2_tex_mem_64bit_read_float(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area64_write_float(addr32_t addr, float val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_64bit_write_float(pvr2, addr, val);
+    pvr2_tex_mem_64bit_write_float(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static double pvr2_tex_mem_area64_read_double(addr32_t addr, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    return pvr2_tex_mem_64bit_read_double(pvr2, addr);
+    return pvr2_tex_mem_64bit_read_double(pvr2, addr & PVR2_TEX_MEM_MASK);
 }
 
 static void pvr2_tex_mem_area64_write_double(addr32_t addr, double val, void *ctxt) {
     struct pvr2 *pvr2 = (struct pvr2*)ctxt;
-    pvr2_tex_mem_64bit_write_double(pvr2, addr, val);
+    pvr2_tex_mem_64bit_write_double(pvr2, addr & PVR2_TEX_MEM_MASK, val);
 }
 
 static uint8_t pvr2_tex_mem_unused_read_8(addr32_t addr, void *ctxt) {

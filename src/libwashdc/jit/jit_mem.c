@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018, 2019 snickerbockers
+ *    Copyright (C) 2018, 2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ void jit_mem_read_constaddr_32(struct memory_map *map, struct il_code_block *blo
 
         struct Memory *mem = (struct Memory*)ram->ctxt;
         if (addr_first >= ram->first_addr && addr_last <= ram->last_addr) {
-            void *ptr = mem->mem + (addr & ram->mask);
+            void *ptr = mem->mem + (addr & MEMORY_MASK);
             jit_load_slot(block, slot_no, ptr);
             return;
         }
@@ -76,7 +76,7 @@ void jit_mem_read_constaddr_16(struct memory_map *map, struct il_code_block *blo
 
         struct Memory *mem = (struct Memory*)ram->ctxt;
         if (addr_first >= ram->first_addr && addr_last <= ram->last_addr) {
-            void *ptr = mem->mem + (addr & ram->mask);
+            void *ptr = mem->mem + (addr & MEMORY_MASK);
             jit_load_slot16(block, slot_no, ptr);
             return;
         }

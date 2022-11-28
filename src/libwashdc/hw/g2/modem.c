@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -26,44 +26,57 @@
 #include "washdc/error.h"
 #include "modem.h"
 #include "mem_code.h"
+#include "mem_areas.h"
+
+#define MODEM_ADDR_MASK ADDR_AREA0_MASK
 
 float modem_read_float(addr32_t addr, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     return 0.0f;
 }
 
 void modem_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     LOG_DBG("%s - Writing %f to the modem\n", __func__, (double)val);
 }
 
 double modem_read_double(addr32_t addr, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     return 0.0;
 }
 
 void modem_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     LOG_DBG("%s - Writing %f to the modem\n", __func__, val);
 }
 
 uint8_t modem_read_8(addr32_t addr, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     return 0;
 }
 
 void modem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     LOG_DBG("%s - Writing 0x%02x to the modem\n", __func__, (unsigned)val);
 }
 
 uint16_t modem_read_16(addr32_t addr, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     return 0;
 }
 
 void modem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     LOG_DBG("%s - Writing 0x%04x to the modem\n", __func__, (unsigned)val);
 }
 
 uint32_t modem_read_32(addr32_t addr, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     return 0;
 }
 
 void modem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= MODEM_ADDR_MASK;
     LOG_DBG("%s - Writing 0x%08x to the modem\n", __func__, (unsigned)val);
 }
 

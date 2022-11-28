@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -30,8 +30,11 @@
 #include "washdc/error.h"
 #include "log.h"
 #include "washdc/hostfile.h"
+#include "mem_areas.h"
 
 #include "boot_rom.h"
+
+#define BOOT_ROM_ADDR_MASK ADDR_AREA0_MASK
 
 static DEF_ERROR_U32_ATTR(max_length)
 
@@ -148,6 +151,7 @@ void boot_rom_cleanup(struct boot_rom *rom) {
 }
 
 static uint8_t boot_rom_read_8(addr32_t addr, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     struct boot_rom *rom = (struct boot_rom*)ctxt;
 
 #ifdef INVARIANTS
@@ -166,6 +170,7 @@ static uint8_t boot_rom_read_8(addr32_t addr, void *ctxt) {
     static int                                                          \
     boot_rom_try_read_##postfix(addr32_t addr,                          \
                                 type *valp, void *ctxt) {               \
+        addr &= BOOT_ROM_ADDR_MASK;                                     \
         struct boot_rom *rom = (struct boot_rom*)ctxt;                  \
         type  const *ptr = (type const*)rom->dat;                       \
         if (sizeof(type) - 1 + addr >= rom->dat_len)                    \
@@ -194,6 +199,7 @@ DEF_BOOT_ROM_TRY_WRITE_HANDLER(float, float)
 DEF_BOOT_ROM_TRY_WRITE_HANDLER(double, double)
 
 static uint16_t boot_rom_read_16(addr32_t addr, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     struct boot_rom *rom = (struct boot_rom*)ctxt;
     uint16_t const *bios16 = (uint16_t const*)rom->dat;
 
@@ -210,6 +216,7 @@ static uint16_t boot_rom_read_16(addr32_t addr, void *ctxt) {
 }
 
 static uint32_t boot_rom_read_32(addr32_t addr, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     struct boot_rom *rom = (struct boot_rom*)ctxt;
     uint32_t const *bios32 = (uint32_t const*)rom->dat;
 
@@ -226,6 +233,7 @@ static uint32_t boot_rom_read_32(addr32_t addr, void *ctxt) {
 }
 
 static float boot_rom_read_float(addr32_t addr, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     uint32_t tmp = boot_rom_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
@@ -233,12 +241,14 @@ static float boot_rom_read_float(addr32_t addr, void *ctxt) {
 }
 
 static double boot_rom_read_double(addr32_t addr, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     error_set_address(addr);
     error_set_length(8);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 static void boot_rom_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -251,6 +261,7 @@ static void boot_rom_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 }
 
 static void boot_rom_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -263,6 +274,7 @@ static void boot_rom_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 }
 
 static void boot_rom_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -275,6 +287,7 @@ static void boot_rom_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 }
 
 static void boot_rom_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...
@@ -287,6 +300,7 @@ static void boot_rom_write_float(addr32_t addr, float val, void *ctxt) {
 }
 
 static void boot_rom_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= BOOT_ROM_ADDR_MASK;
     /*
      * I'm not sure what the correct response is when guest software tries to
      * write to the boot rom...

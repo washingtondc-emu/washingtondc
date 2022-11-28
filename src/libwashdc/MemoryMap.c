@@ -195,6 +195,9 @@ memory_map_add(struct memory_map *map,
         range_mask != RANGE_MASK_EXT)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
+    if (mask != NO_MASK) // the address mask is deprecated
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
     if (map->n_regions >= MAX_MEM_MAP_REGIONS)
         RAISE_ERROR(ERROR_OVERFLOW);
 

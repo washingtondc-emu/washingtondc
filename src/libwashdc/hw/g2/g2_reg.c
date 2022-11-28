@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 
 #include "g2_reg.h"
 
+#define G2_ADDR_MASK ADDR_AREA0_MASK
 
 /*
  * The below table details the amount of time it takes for DMA transfers of
@@ -268,38 +269,45 @@ static void g2_dma_write_len(struct g2_dma_ch *ch, uint32_t val) {
 }
 
 uint8_t g2_reg_read_8(addr32_t addr, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void g2_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint16_t g2_reg_read_16(addr32_t addr, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void g2_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint32_t g2_reg_read_32(addr32_t addr, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     return mmio_region_g2_reg_32_read(&mmio_region_g2_reg_32, addr);
 }
 
 void g2_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     mmio_region_g2_reg_32_write(&mmio_region_g2_reg_32, addr, val);
 }
 
 float g2_reg_read_float(addr32_t addr, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     uint32_t tmp = mmio_region_g2_reg_32_read(&mmio_region_g2_reg_32, addr);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
@@ -307,18 +315,21 @@ float g2_reg_read_float(addr32_t addr, void *ctxt) {
 }
 
 void g2_reg_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     mmio_region_g2_reg_32_write(&mmio_region_g2_reg_32, addr, tmp);
 }
 
 double g2_reg_read_double(addr32_t addr, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void g2_reg_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= G2_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

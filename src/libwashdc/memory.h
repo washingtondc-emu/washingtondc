@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -79,30 +79,35 @@ memory_write(struct Memory *mem, void const *buf, size_t addr, size_t len) {
 static inline void
 memory_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
+    addr &= MEMORY_MASK;
     memcpy(mem->mem + addr, &val, sizeof(val));
 }
 
 static inline void
 memory_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
+    addr &= MEMORY_MASK;
     memcpy(mem->mem + addr, &val, sizeof(val));
 }
 
 static inline void
 memory_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
+    addr &= MEMORY_MASK;
     memcpy(mem->mem + addr, &val, sizeof(val));
 }
 
 static inline void
 memory_write_float(addr32_t addr, float val, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
+    addr &= MEMORY_MASK;
     memcpy(mem->mem + addr, &val, sizeof(val));
 }
 
 static inline void
 memory_write_double(addr32_t addr, double val, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
+    addr &= MEMORY_MASK;
     memcpy(mem->mem + addr, &val, sizeof(val));
 }
 
@@ -110,6 +115,7 @@ static inline uint8_t
 memory_read_8(addr32_t addr, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
     uint8_t val;
+    addr &= MEMORY_MASK;
     memcpy(&val, mem->mem + addr, sizeof(val));
     return val;
 }
@@ -118,6 +124,7 @@ static inline uint16_t
 memory_read_16(addr32_t addr, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
     uint16_t val;
+    addr &= MEMORY_MASK;
     memcpy(&val, mem->mem + addr, sizeof(val));
     return val;
 }
@@ -126,6 +133,7 @@ static inline uint32_t
 memory_read_32(addr32_t addr, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
     uint32_t val;
+    addr &= MEMORY_MASK;
     memcpy(&val, mem->mem + addr, sizeof(val));
     return val;
 }
@@ -134,6 +142,7 @@ static inline float
 memory_read_float(addr32_t addr, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
     float val;
+    addr &= MEMORY_MASK;
     memcpy(&val, mem->mem + addr, sizeof(val));
     return val;
 }
@@ -142,6 +151,7 @@ static inline double
 memory_read_double(addr32_t addr, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
     double val;
+    addr &= MEMORY_MASK;
     memcpy(&val, mem->mem + addr, sizeof(val));
     return val;
 }

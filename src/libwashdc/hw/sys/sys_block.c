@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,6 +35,8 @@
 
 #include "sys_block.h"
 
+#define SYS_ADDR_MASK ADDR_AREA0_MASK
+
 #define N_SYS_REGS (ADDR_SYS_LAST - ADDR_SYS_FIRST + 1)
 
 DEF_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
@@ -61,6 +63,7 @@ DEF_MMIO_REGION(sys_block, N_SYS_REGS, ADDR_SYS_FIRST, uint32_t)
 #define SB_IDX_SDST   SB_REG_IDX(0x5f6820)
 
 float sys_block_read_float(addr32_t addr, void *argp) {
+    addr &= SYS_ADDR_MASK;
     struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
     uint32_t tmp =
         mmio_region_sys_block_read(&ctxt->mmio_region_sys_block, addr);
@@ -70,6 +73,7 @@ float sys_block_read_float(addr32_t addr, void *argp) {
 }
 
 void sys_block_write_float(addr32_t addr, float val, void *argp) {
+    addr &= SYS_ADDR_MASK;
     struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
@@ -78,18 +82,21 @@ void sys_block_write_float(addr32_t addr, float val, void *argp) {
 }
 
 double sys_block_read_double(addr32_t addr, void *argp) {
+    addr &= SYS_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void sys_block_write_double(addr32_t addr, double val, void *argp) {
+    addr &= SYS_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint8_t sys_block_read_8(addr32_t addr, void *argp) {
+    addr &= SYS_ADDR_MASK;
     if ((addr & BIT_RANGE(0, 28)) == 0x5f689c)
         return 16; // SB_SBREV
     error_set_length(1);
@@ -98,29 +105,34 @@ uint8_t sys_block_read_8(addr32_t addr, void *argp) {
 }
 
 void sys_block_write_8(addr32_t addr, uint8_t val, void *argp) {
+    addr &= SYS_ADDR_MASK;
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint16_t sys_block_read_16(addr32_t addr, void *argp) {
+    addr &= SYS_ADDR_MASK;
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void sys_block_write_16(addr32_t addr, uint16_t val, void *argp) {
+    addr &= SYS_ADDR_MASK;
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint32_t sys_block_read_32(addr32_t addr, void *argp) {
+    addr &= SYS_ADDR_MASK;
     struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
     return mmio_region_sys_block_read(&ctxt->mmio_region_sys_block, addr);
 }
 
 void sys_block_write_32(addr32_t addr, uint32_t val, void *argp) {
+    addr &= SYS_ADDR_MASK;
     struct sys_block_ctxt *ctxt = (struct sys_block_ctxt *)argp;
     mmio_region_sys_block_write(&ctxt->mmio_region_sys_block,
                                 addr, val);

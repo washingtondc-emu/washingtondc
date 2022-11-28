@@ -705,7 +705,7 @@ static void
 emit_ram_read_float(struct memory_map_region const *region, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
     x86asm_movss_sib_xmm(REG_ARG1, 1, REG_ARG0, REG_RET_XMM);
 }
@@ -714,7 +714,7 @@ static void
 emit_ram_read_32(struct memory_map_region const *region, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
     x86asm_movl_sib_reg(REG_ARG1, 1, REG_ARG0, REG_RET);
 }
@@ -723,7 +723,7 @@ static void
 emit_ram_read_16(struct memory_map_region const *region, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
     x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_movw_sib_reg(REG_ARG1, 1, REG_ARG0, REG_RET);
@@ -733,7 +733,7 @@ static void
 emit_ram_read_8(struct memory_map_region const *region, void *ctxt) {
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_ARG1);
     x86asm_xorl_reg32_reg32(REG_RET, REG_RET);
     x86asm_movb_sib_reg(REG_ARG1, 1, REG_ARG0, REG_RET);
@@ -745,7 +745,7 @@ emit_ram_write_8(struct memory_map_region const *region, void *ctxt) {
     // address should be in EDI
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_RET);
     x86asm_mov_reg32_reg32(REG_ARG1, REG_ARG3);
     x86asm_movb_reg_sib(REG_ARG3, REG_RET, 1, REG_ARG0);
@@ -757,7 +757,7 @@ emit_ram_write_16(struct memory_map_region const *region, void *ctxt) {
     // address should be in EDI
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_RET);
     x86asm_mov_reg32_reg32(REG_ARG1, REG_ARG3);
     x86asm_movw_reg_sib(REG_ARG3, REG_RET, 1, REG_ARG0);
@@ -769,7 +769,7 @@ emit_ram_write_32(struct memory_map_region const *region, void *ctxt) {
     // address should be in EDI
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_RET);
     x86asm_movl_reg_sib(REG_ARG1, REG_RET, 1, REG_ARG0);
 }
@@ -779,7 +779,7 @@ emit_ram_write_float(struct memory_map_region const *region, void *ctxt) {
     // address should be in EDI
     struct Memory *mem = (struct Memory*)ctxt;
 
-    x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
+    x86asm_andl_imm32_reg32(MEMORY_MASK, REG_ARG0);
     x86asm_mov_imm64_reg64((uintptr_t)mem->mem, REG_RET);
 
 #if defined(ABI_MICROSOFT)

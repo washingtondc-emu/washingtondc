@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,12 +35,16 @@
 #include "maple.h"
 #include "mmio.h"
 #include "dreamcast.h"
+#include "mem_areas.h"
 
 #include "maple_reg.h"
+
+#define MAPLE_ADDR_MASK ADDR_AREA0_MASK
 
 DEF_MMIO_REGION(maple_reg, N_MAPLE_REGS, ADDR_MAPLE_FIRST, uint32_t)
 
 float maple_reg_read_float(addr32_t addr, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     struct maple *maple = (struct maple*)ctxt;
     uint32_t tmp = mmio_region_maple_reg_read(&maple->mmio_region_maple_reg, addr);
     float ret;
@@ -49,6 +53,7 @@ float maple_reg_read_float(addr32_t addr, void *ctxt) {
 }
 
 void maple_reg_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     struct maple *maple = (struct maple*)ctxt;
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
@@ -56,46 +61,54 @@ void maple_reg_write_float(addr32_t addr, float val, void *ctxt) {
 }
 
 double maple_reg_read_double(addr32_t addr, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void maple_reg_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint32_t maple_reg_read_32(addr32_t addr, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     struct maple *maple = (struct maple*)ctxt;
     return mmio_region_maple_reg_read(&maple->mmio_region_maple_reg, addr);
 }
 
 void maple_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     struct maple *maple = (struct maple*)ctxt;
     mmio_region_maple_reg_write(&maple->mmio_region_maple_reg, addr, val);
 }
 
 uint16_t maple_reg_read_16(addr32_t addr, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void maple_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     error_set_length(2);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint8_t maple_reg_read_8(addr32_t addr, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void maple_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= MAPLE_ADDR_MASK;
     error_set_length(1);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -35,8 +35,11 @@
 #include "hw/g1/g1_reg.h"
 #include "intmath.h"
 #include "compiler_bullshit.h"
+#include "mem_areas.h"
 
 #include "gdrom.h"
+
+#define GDROM_ADDR_MASK ADDR_AREA0_MASK
 
 #define GDROM_TRACE(msg, ...)                                           \
     do {                                                                \
@@ -1838,6 +1841,7 @@ static void gdrom_check_addr(addr32_t addr, size_t n_bytes) {
 }
 
 static float gdrom_reg_read_float(addr32_t addr, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     float out;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(out));
@@ -1848,6 +1852,7 @@ static float gdrom_reg_read_float(addr32_t addr, void *ctxt) {
 }
 
 static void gdrom_reg_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(val));
     memcpy(((uint8_t*)gdrom->regs) + (addr - ADDR_GDROM_FIRST), &val, sizeof(val));
@@ -1855,6 +1860,7 @@ static void gdrom_reg_write_float(addr32_t addr, float val, void *ctxt) {
 }
 
 static double gdrom_reg_read_double(addr32_t addr, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     double out;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(out));
@@ -1865,6 +1871,7 @@ static double gdrom_reg_read_double(addr32_t addr, void *ctxt) {
 }
 
 static void gdrom_reg_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(val));
     memcpy(((uint8_t*)gdrom->regs) + (addr - ADDR_GDROM_FIRST), &val, sizeof(val));
@@ -1872,6 +1879,7 @@ static void gdrom_reg_write_double(addr32_t addr, double val, void *ctxt) {
 }
 
 static uint8_t gdrom_reg_read_8(addr32_t addr, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     uint8_t out;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(out));
@@ -1882,6 +1890,7 @@ static uint8_t gdrom_reg_read_8(addr32_t addr, void *ctxt) {
 }
 
 static void gdrom_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(val));
     memcpy(((uint8_t*)gdrom->regs) + (addr - ADDR_GDROM_FIRST), &val, sizeof(val));
@@ -1889,6 +1898,7 @@ static void gdrom_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 }
 
 static uint16_t gdrom_reg_read_16(addr32_t addr, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     uint16_t out;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(out));
@@ -1899,6 +1909,7 @@ static uint16_t gdrom_reg_read_16(addr32_t addr, void *ctxt) {
 }
 
 static void gdrom_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(val));
     memcpy(((uint8_t*)gdrom->regs) + (addr - ADDR_GDROM_FIRST), &val, sizeof(val));
@@ -1906,6 +1917,7 @@ static void gdrom_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 }
 
 static uint32_t gdrom_reg_read_32(addr32_t addr, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     uint32_t out;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(out));
@@ -1916,6 +1928,7 @@ static uint32_t gdrom_reg_read_32(addr32_t addr, void *ctxt) {
 }
 
 static void gdrom_reg_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= GDROM_ADDR_MASK;
     struct gdrom_ctxt *gdrom = (struct gdrom_ctxt*)ctxt;
     gdrom_check_addr(addr, sizeof(val));
     memcpy(((uint8_t*)gdrom->regs) + (addr - ADDR_GDROM_FIRST), &val, sizeof(val));

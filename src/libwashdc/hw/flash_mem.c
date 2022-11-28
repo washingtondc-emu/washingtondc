@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2019 snickerbockers
+ *    Copyright (C) 2017-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,6 +33,8 @@
 #include "log.h"
 
 #include "flash_mem.h"
+
+#define FLASH_MEM_ADDR_MASK ADDR_AREA0_MASK
 
 /*
  * 128KB flash memory emulation
@@ -186,6 +188,7 @@ static void flash_mem_load(struct flash_mem *mem) {
 }
 
 float flash_mem_read_float(addr32_t addr, void *ctxt) {
+    addr &= FLASH_MEM_ADDR_MASK;
     uint32_t tmp = flash_mem_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
@@ -193,6 +196,7 @@ float flash_mem_read_float(addr32_t addr, void *ctxt) {
 }
 
 void flash_mem_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= FLASH_MEM_ADDR_MASK;
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(4);
     error_set_address(addr);
@@ -200,12 +204,14 @@ void flash_mem_write_float(addr32_t addr, float val, void *ctxt) {
 }
 
 double flash_mem_read_double(addr32_t addr, void *ctxt) {
+    addr &= FLASH_MEM_ADDR_MASK;
     error_set_address(addr);
     error_set_length(sizeof(double));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void flash_mem_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= FLASH_MEM_ADDR_MASK;
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(8);
     error_set_address(addr);
@@ -214,6 +220,7 @@ void flash_mem_write_double(addr32_t addr, double val, void *ctxt) {
 
 uint32_t flash_mem_read_32(addr32_t addr, void *ctxt) {
     struct flash_mem *mem = (struct flash_mem*)ctxt;
+    addr &= FLASH_MEM_ADDR_MASK;
 
     if ((addr + sizeof(uint32_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
@@ -234,6 +241,7 @@ uint32_t flash_mem_read_32(addr32_t addr, void *ctxt) {
 }
 
 void flash_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= FLASH_MEM_ADDR_MASK;
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(4);
     error_set_address(addr);
@@ -242,6 +250,7 @@ void flash_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 
 uint16_t flash_mem_read_16(addr32_t addr, void *ctxt) {
     struct flash_mem *mem = (struct flash_mem*)ctxt;
+    addr &= FLASH_MEM_ADDR_MASK;
 
     if ((addr + sizeof(uint16_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
@@ -261,6 +270,7 @@ uint16_t flash_mem_read_16(addr32_t addr, void *ctxt) {
 }
 
 void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= FLASH_MEM_ADDR_MASK;
     error_set_feature("flash memory write-lengths other than 1-byte");
     error_set_length(2);
     error_set_address(addr);
@@ -269,6 +279,7 @@ void flash_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 
 uint8_t flash_mem_read_8(addr32_t addr, void *ctxt) {
     struct flash_mem *mem = (struct flash_mem*)ctxt;
+    addr &= FLASH_MEM_ADDR_MASK;
 
     if ((addr + sizeof(uint8_t) - 1 > ADDR_FLASH_LAST) ||
         (addr < ADDR_FLASH_FIRST)) {
@@ -290,6 +301,7 @@ uint8_t flash_mem_read_8(addr32_t addr, void *ctxt) {
 
 void flash_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct flash_mem *mem = (struct flash_mem*)ctxt;
+    addr &= FLASH_MEM_ADDR_MASK;
 
     if ((addr > ADDR_FLASH_LAST) || (addr < ADDR_FLASH_FIRST)) {
         error_set_address(addr);

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include "washdc/MemoryMap.h"
 #include "dreamcast.h"
 #include "compiler_bullshit.h"
+#include "mem_areas.h"
 
 #define AICA_WAVE_MEM_LEN (0x009fffff - 0x00800000 + 1)
 
@@ -62,6 +63,7 @@ extern bool aica_log_verbose_val;
  * code calls it directly every time there's an instruction fetch.
  */
 static inline uint32_t aica_wave_mem_read_32(addr32_t addr, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
     if ((sizeof(uint32_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {

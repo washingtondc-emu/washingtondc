@@ -163,6 +163,9 @@ void memory_map_cleanup(struct memory_map *map);
 
 #define RANGE_MASK_NONE BIT_RANGE(0, 31)
 #define RANGE_MASK_EXT  BIT_RANGE(0, 28)
+
+#define NO_MASK (~0)
+
 void
 memory_map_add(struct memory_map *map,
                uint32_t addr_first,

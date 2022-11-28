@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include "log.h"
 #include "washdc/hostfile.h"
 #include "compiler_bullshit.h"
+#include "mem_areas.h"
 
 #include "aica_rtc.h"
 
@@ -44,6 +45,8 @@ static void aica_rtc_event_handler(SchedEvent *ev);
 
 static void sched_aica_rtc_event(struct aica_rtc *rtc);
 static void cancel_aica_rtc_event(struct aica_rtc *rtc);
+
+#define AICA_RTC_ADDR_MASK ADDR_AREA0_MASK
 
 #define AICA_RTC_ADDR_HIGH   0x710000
 #define AICA_RTC_ADDR_LOW    0x710004
@@ -119,6 +122,7 @@ void aica_rtc_cleanup(struct aica_rtc *rtc) {
 }
 
 float aica_rtc_read_float(addr32_t addr, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     uint32_t tmp = aica_rtc_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &tmp, sizeof(ret));
@@ -126,24 +130,28 @@ float aica_rtc_read_float(addr32_t addr, void *ctxt) {
 }
 
 void aica_rtc_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     aica_rtc_write_32(addr, tmp, ctxt);
 }
 
 double aica_rtc_read_double(addr32_t addr, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void aica_rtc_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     error_set_length(8);
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint32_t aica_rtc_read_32(addr32_t addr, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     struct aica_rtc *rtc = (struct aica_rtc*)ctxt;
 
     AICA_RTC_TRACE("Reading 4 bytes from AICA RTC address 0x%08x\n",
@@ -176,6 +184,7 @@ uint32_t aica_rtc_read_32(addr32_t addr, void *ctxt) {
 }
 
 void aica_rtc_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     struct aica_rtc *rtc = (struct aica_rtc*)ctxt;
 
     AICA_RTC_TRACE("Writing 4 bytes to address 0x%08x\n",
@@ -229,6 +238,7 @@ void aica_rtc_write_32(addr32_t addr, uint32_t val, void *ctxt) {
 }
 
 uint16_t aica_rtc_read_16(addr32_t addr, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);
@@ -237,6 +247,7 @@ uint16_t aica_rtc_read_16(addr32_t addr, void *ctxt) {
 }
 
 void aica_rtc_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);
@@ -245,6 +256,7 @@ void aica_rtc_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 }
 
 uint8_t aica_rtc_read_8(addr32_t addr, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);
@@ -253,6 +265,7 @@ uint8_t aica_rtc_read_8(addr32_t addr, void *ctxt) {
 }
 
 void aica_rtc_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= AICA_RTC_ADDR_MASK;
     error_set_feature("Whatever happens when you use an inapproriate "
                       "length while reading from an aica RTC register");
     error_set_address(addr);

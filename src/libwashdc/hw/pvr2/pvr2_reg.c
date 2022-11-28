@@ -37,8 +37,11 @@
 #include "pvr2_yuv.h"
 #include "intmath.h"
 #include "pvr2.h"
+#include "mem_areas.h"
 
 #include "pvr2_reg.h"
+
+#define PVR2_REG_ADDR_MASK ADDR_AREA0_MASK
 
 // bit in the VO_CONTROL register that causes each pixel to be sent twice
 #define PVR2_PIXEL_DOUBLE_SHIFT 8
@@ -401,6 +404,7 @@ void pvr2_reg_cleanup(struct pvr2 *pvr2) {
 }
 
 #define PVR2_REG_READ_TMPL(tp)                                          \
+    addr &= PVR2_REG_ADDR_MASK;                                         \
     if (addr % sizeof(uint32_t)) {                                      \
         error_set_feature("unaligned pvr2 register reads\n");           \
         error_set_address(addr);                                        \
@@ -410,6 +414,7 @@ void pvr2_reg_cleanup(struct pvr2 *pvr2) {
     return pvr2_reg_do_read((struct pvr2*)ctxt, addr)
 
 #define PVR2_REG_WRITE_TMPL(tp)                                         \
+    addr &= PVR2_REG_ADDR_MASK;                                         \
     if (addr % sizeof(uint32_t)) {                                      \
         error_set_feature("unaligned pvr2 register writes\n");          \
         error_set_address(addr);                                        \
@@ -419,12 +424,14 @@ void pvr2_reg_cleanup(struct pvr2 *pvr2) {
     pvr2_reg_do_write((struct pvr2*)ctxt, addr, val)
 
 double pvr2_reg_read_double(addr32_t addr, void *ctxt) {
+    addr &= PVR2_REG_ADDR_MASK;
     error_set_address(addr);
     error_set_length(sizeof(double));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void pvr2_reg_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= PVR2_REG_ADDR_MASK;
     uint32_t val32[2];
 
     static_assert(sizeof(double) == sizeof(val32),
@@ -469,12 +476,14 @@ uint16_t pvr2_reg_read_16(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_reg_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= PVR2_REG_ADDR_MASK;
     error_set_address(addr);
     error_set_length(sizeof(uint16_t));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint8_t pvr2_reg_read_8(addr32_t addr, void *ctxt) {
+    addr &= PVR2_REG_ADDR_MASK;
     unsigned offs = addr - ADDR_PVR2_FIRST;
     unsigned idx = offs / sizeof(uint32_t);
     if (idx == PVR2_REV)
@@ -485,6 +494,7 @@ uint8_t pvr2_reg_read_8(addr32_t addr, void *ctxt) {
 }
 
 void pvr2_reg_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= PVR2_REG_ADDR_MASK;
     error_set_address(addr);
     error_set_length(sizeof(uint8_t));
     RAISE_ERROR(ERROR_UNIMPLEMENTED);

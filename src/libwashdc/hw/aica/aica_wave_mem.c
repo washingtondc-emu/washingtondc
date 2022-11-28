@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ void aica_wave_mem_cleanup(struct aica_wave_mem *wm) {
 }
 
 float aica_wave_mem_read_float(addr32_t addr, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     uint32_t val = aica_wave_mem_read_32(addr, ctxt);
     float ret;
     memcpy(&ret, &val, sizeof(ret));
@@ -55,24 +56,28 @@ float aica_wave_mem_read_float(addr32_t addr, void *ctxt) {
 }
 
 void aica_wave_mem_write_float(addr32_t addr, float val, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     uint32_t tmp;
     memcpy(&tmp, &val, sizeof(tmp));
     aica_wave_mem_write_32(addr, tmp, ctxt);
 }
 
 double aica_wave_mem_read_double(addr32_t addr, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     error_set_length(sizeof(double));
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 void aica_wave_mem_write_double(addr32_t addr, double val, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     error_set_length(sizeof(double));
     error_set_address(addr);
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
 uint8_t aica_wave_mem_read_8(addr32_t addr, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
     if ((sizeof(uint8_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
@@ -97,6 +102,7 @@ uint8_t aica_wave_mem_read_8(addr32_t addr, void *ctxt) {
 }
 
 void aica_wave_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
     uint8_t *outp = ((uint8_t*)wm->mem) + addr;
@@ -121,6 +127,7 @@ void aica_wave_mem_write_8(addr32_t addr, uint8_t val, void *ctxt) {
 }
 
 uint16_t aica_wave_mem_read_16(addr32_t addr, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
     if ((sizeof(uint16_t) - 1 + addr) >= AICA_WAVE_MEM_LEN) {
@@ -146,6 +153,7 @@ uint16_t aica_wave_mem_read_16(addr32_t addr, void *ctxt) {
 }
 
 void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
 #ifdef ENABLE_LOG_DEBUG
@@ -168,6 +176,7 @@ void aica_wave_mem_write_16(addr32_t addr, uint16_t val, void *ctxt) {
 }
 
 void aica_wave_mem_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+    addr &= ADDR_AICA_WAVE_MASK;
     struct aica_wave_mem *wm = (struct aica_wave_mem*)ctxt;
 
 #ifdef ENABLE_LOG_DEBUG
