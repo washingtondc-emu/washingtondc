@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -191,6 +191,10 @@ memory_map_add(struct memory_map *map,
                enum memory_map_region_id id,
                struct memory_interface const *intf,
                void *ctxt) {
+    if (range_mask != RANGE_MASK_NONE &&
+        range_mask != RANGE_MASK_EXT)
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+
     if (map->n_regions >= MAX_MEM_MAP_REGIONS)
         RAISE_ERROR(ERROR_OVERFLOW);
 

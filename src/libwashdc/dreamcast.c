@@ -1548,10 +1548,10 @@ static void construct_arm7_mem_map(struct memory_map *map,
          * things.
          */
         memory_map_add(map, 0x00000000, 0x007fffff,
-                       0xffffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_NONE, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                        &aica_wave_mem_intf, &aica.mem);
         memory_map_add(map, 0x00800000, 0x00807fff,
-                       0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_NONE, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &aica_sys_intf, &aica);
     }
 
@@ -1573,21 +1573,21 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
      * have not also put it at the begging of the regions array.
      */
     memory_map_add(map, SH4_AREA_P4_FIRST, SH4_AREA_P4_LAST,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_NONE, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
                    &sh4_p4_intf, sh4);
 
     // Main system memory.
     memory_map_add(map, 0x0c000000, 0x0cffffff,
-                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
+                   RANGE_MASK_EXT, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
     memory_map_add(map, 0x0d000000, 0x0dffffff,
-                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
+                   RANGE_MASK_EXT, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
     memory_map_add(map, 0x0e000000, 0x0effffff,
-                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
+                   RANGE_MASK_EXT, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
     memory_map_add(map, 0x0f000000, 0x0fffffff,
-                   0x1fffffff, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
+                   RANGE_MASK_EXT, ADDR_AREA3_MASK, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
 
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
@@ -1611,59 +1611,59 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                            &pvr2_reg_intf, &dc_pvr2);
 
         memory_map_add(map, 0x04000000, 0x047fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
         memory_map_add(map, 0x05000000, 0x057fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
         memory_map_add(map, 0x06000000, 0x067fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
         memory_map_add(map, 0x07000000, 0x077fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
         memory_map_add(map, 0x10000000, 0x107fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
         memory_map_add(map, 0x10800000, 0x10ffffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_yuv_fifo_traceproxy);
         memory_map_add(map, 0x11000000, 0x117fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
         memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &pvr2_reg_traceproxy);
         memory_map_add(map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &pvr2_reg_traceproxy);
     } else {
         memory_map_add(map, 0x04000000, 0x047fffff,
-                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_tex_mem_area64_intf, &dc_pvr2);
         memory_map_add(map, 0x05000000, 0x057fffff,
-                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_tex_mem_area32_intf, &dc_pvr2);
         memory_map_add(map, 0x06000000, 0x067fffff,
-                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_tex_mem_area64_intf, &dc_pvr2);
         memory_map_add(map, 0x07000000, 0x077fffff,
-                       0x1fffffff, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, (8<<20)-1, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_tex_mem_area32_intf, &dc_pvr2);
         memory_map_add(map, 0x10000000, 0x107fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_fifo_intf, &dc_pvr2);
         memory_map_add(map, 0x10800000, 0x10ffffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
         memory_map_add(map, 0x11000000, 0x117fffff,
-                       0x1fffffff, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0x1fffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_fifo_intf, &dc_pvr2);
         memory_map_add(map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
-                       0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_reg_intf, &dc_pvr2);
         memory_map_add(map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
-                       0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_reg_intf, &dc_pvr2);
     }
 
@@ -1673,30 +1673,30 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
      */
 
     memory_map_add(map, 0x7c000000, 0x7fffffff,
-                   0xffffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_NONE, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
                    &sh4_ora_intf, sh4);
 
 
     memory_map_add(map, ADDR_BIOS_FIRST, ADDR_BIOS_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &boot_rom_intf, &firmware);
     memory_map_add(map, ADDR_FLASH_FIRST, ADDR_FLASH_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &flash_mem_intf, &flash_mem);
     memory_map_add(map, ADDR_G1_FIRST, ADDR_G1_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g1_intf, NULL);
     memory_map_add(map, ADDR_SYS_FIRST, ADDR_SYS_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &sys_block_intf, &sys_block);
     memory_map_add(map, ADDR_MAPLE_FIRST, ADDR_MAPLE_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &maple_intf, &maple);
     memory_map_add(map, ADDR_G2_FIRST, ADDR_G2_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g2_intf, NULL);
     memory_map_add(map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
 
     if (aica_trace_file != WASHDC_HOSTFILE_INVALID) {
@@ -1709,78 +1709,78 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                            0xffffffff, &aica_sys_intf, &aica);
 
         memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
-                       0x1fffffff, ~0, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, ~0, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &aica_wave_mem_trace_proxy);
         memory_map_add(map, 0x00700000, 0x00707fff,
-                       0x1fffffff, ~0, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, ~0, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &aica_sys_trace_proxy);
     } else {
         memory_map_add(map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
-                       0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                        &aica_wave_mem_intf, &aica.mem);
         memory_map_add(map, 0x00700000, 0x00707fff,
-                       0x1fffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                       RANGE_MASK_EXT, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
                        &aica_sys_intf, &aica);
     }
     memory_map_add(map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_rtc_intf, &rtc);
 
     memory_map_add(map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &gdrom_reg_intf, &gdrom);
     memory_map_add(map, ADDR_EXT_DEV_FIRST, ADDR_EXT_DEV_LAST,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &ext_dev_intf, NULL);
 
     memory_map_add(map, ADDR_BIOS_FIRST + 0x02000000, ADDR_BIOS_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &boot_rom_intf, &firmware);
     memory_map_add(map, ADDR_FLASH_FIRST + 0x02000000, ADDR_FLASH_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &flash_mem_intf, &flash_mem);
     memory_map_add(map, ADDR_G1_FIRST + 0x02000000, ADDR_G1_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g1_intf, NULL);
     memory_map_add(map, ADDR_SYS_FIRST + 0x02000000, ADDR_SYS_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &sys_block_intf, NULL);
     memory_map_add(map, ADDR_MAPLE_FIRST + 0x02000000, ADDR_MAPLE_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &maple_intf, NULL);
     memory_map_add(map, ADDR_G2_FIRST + 0x02000000, ADDR_G2_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &g2_intf, NULL);
     memory_map_add(map, ADDR_MODEM_FIRST + 0x02000000, ADDR_MODEM_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &modem_intf, NULL);
     memory_map_add(map, ADDR_AICA_WAVE_FIRST + 0x02000000, ADDR_AICA_WAVE_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AICA_WAVE_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_wave_mem_intf, &aica.mem);
     memory_map_add(map, 0x00700000 + 0x02000000, 0x00707fff + 0x02000000,
-                   0x1fffffff, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, 0xffffffff, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_sys_intf, &aica);
     memory_map_add(map, ADDR_AICA_RTC_FIRST + 0x02000000, ADDR_AICA_RTC_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &aica_rtc_intf, &rtc);
     memory_map_add(map, ADDR_GDROM_FIRST + 0x02000000, ADDR_GDROM_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &gdrom_reg_intf, &gdrom);
     memory_map_add(map, ADDR_EXT_DEV_FIRST + 0x02000000, ADDR_EXT_DEV_LAST + 0x02000000,
-                   0x1fffffff, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
+                   RANGE_MASK_EXT, ADDR_AREA0_MASK, MEMORY_MAP_REGION_UNKNOWN,
                    &ext_dev_intf, NULL);
 
     /*
      * More PowerVR2 texture regions - these don't get used much which is why
      * they're at the end (for performance reasons).
      */
-    memory_map_add(map, 0x04800000, 0x04ffffff, 0x1fffffff, 0x1fffffff,
+    memory_map_add(map, 0x04800000, 0x04ffffff, RANGE_MASK_EXT, 0x1fffffff,
                    MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(map, 0x05800000, 0x05ffffff, 0x1fffffff, 0x1fffffff,
+    memory_map_add(map, 0x05800000, 0x05ffffff, RANGE_MASK_EXT, 0x1fffffff,
                    MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(map, 0x06800000, 0x06ffffff, 0x1fffffff, 0x1fffffff,
+    memory_map_add(map, 0x06800000, 0x06ffffff, RANGE_MASK_EXT, 0x1fffffff,
                    MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(map, 0x07800000, 0x07ffffff, 0x1fffffff, 0x1fffffff,
+    memory_map_add(map, 0x07800000, 0x07ffffff, RANGE_MASK_EXT, 0x1fffffff,
                    MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
 
     map->unmap = &sh4_unmapped_mem;

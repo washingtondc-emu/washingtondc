@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2019 snickerbockers
+ *    Copyright (C) 2016-2019, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+
+#include "intmath.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -159,6 +161,8 @@ struct memory_map {
 void memory_map_init(struct memory_map *map);
 void memory_map_cleanup(struct memory_map *map);
 
+#define RANGE_MASK_NONE BIT_RANGE(0, 31)
+#define RANGE_MASK_EXT  BIT_RANGE(0, 28)
 void
 memory_map_add(struct memory_map *map,
                uint32_t addr_first,
