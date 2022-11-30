@@ -49,12 +49,11 @@ void memory_map_cleanup(struct memory_map *map) {
             if ((first_addr & range_mask) >= reg->first_addr &&         \
                 (last_addr & range_mask) <= reg->last_addr) {           \
                 struct memory_interface const *intf = reg->intf;        \
-                uint32_t mask = reg->mask;                              \
                 void *ctxt = reg->ctxt;                                 \
                                                                         \
                 CHECK_R_WATCHPOINT(addr, type);                         \
                                                                         \
-                return intf->read##type_postfix(addr & mask, ctxt);     \
+                return intf->read##type_postfix(addr, ctxt);            \
             }                                                           \
         }                                                               \
                                                                         \
@@ -88,13 +87,12 @@ MEMORY_MAP_READ_TMPL(double, double)
             if ((first_addr & range_mask) >= reg->first_addr &&         \
                 (last_addr & range_mask) <= reg->last_addr) {           \
                 struct memory_interface const *intf = reg->intf;        \
-                uint32_t mask = reg->mask;                              \
                 void *ctxt = reg->ctxt;                                 \
                 if (intf->try_read##type_postfix) {                     \
-                    return intf->try_read##type_postfix(addr & mask,    \
+                    return intf->try_read##type_postfix(addr,    \
                                                         val, ctxt);     \
                 } else {                                                \
-                    *val = intf->read##type_postfix(addr & mask, ctxt); \
+                    *val = intf->read##type_postfix(addr, ctxt); \
                 }                                                       \
                 return 0;                                               \
             }                                                           \
@@ -122,12 +120,11 @@ MEMORY_MAP_TRY_READ_TMPL(double, double)
             if ((first_addr & range_mask) >= reg->first_addr &&         \
                 (last_addr & range_mask) <= reg->last_addr) {           \
                 struct memory_interface const *intf = reg->intf;        \
-                uint32_t mask = reg->mask;                              \
                 void *ctxt = reg->ctxt;                                 \
                                                                         \
                 CHECK_W_WATCHPOINT(addr, type);                         \
                                                                         \
-                intf->write##type_postfix(addr & mask, val, ctxt);      \
+                intf->write##type_postfix(addr, val, ctxt);             \
                 return;                                                 \
             }                                                           \
         }                                                               \
@@ -162,13 +159,12 @@ MEM_MAP_WRITE_TMPL(double, double)
             if ((first_addr & range_mask) >= reg->first_addr &&         \
                 (last_addr & range_mask) <= reg->last_addr) {           \
                 struct memory_interface const *intf = reg->intf;        \
-                uint32_t mask = reg->mask;                              \
                 void *ctxt = reg->ctxt;                                 \
                 if (intf->try_write##type_postfix) {                    \
-                    return intf->try_write##type_postfix(addr & mask,   \
+                    return intf->try_write##type_postfix(addr,          \
                                                          val, ctxt);    \
                 } else {                                                \
-                    intf->write##type_postfix(addr & mask, val, ctxt);  \
+                    intf->write##type_postfix(addr, val, ctxt);         \
                 }                                                       \
                 return 0;                                               \
             }                                                           \
@@ -187,15 +183,11 @@ memory_map_add(struct memory_map *map,
                uint32_t addr_first,
                uint32_t addr_last,
                uint32_t range_mask,
-               uint32_t mask,
                enum memory_map_region_id id,
                struct memory_interface const *intf,
                void *ctxt) {
     if (range_mask != RANGE_MASK_NONE &&
         range_mask != RANGE_MASK_EXT)
-        RAISE_ERROR(ERROR_UNIMPLEMENTED);
-
-    if (mask != NO_MASK) // the address mask is deprecated
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
     if (map->n_regions >= MAX_MEM_MAP_REGIONS)
@@ -206,7 +198,6 @@ memory_map_add(struct memory_map *map,
     reg->first_addr = addr_first;
     reg->last_addr = addr_last;
     reg->range_mask = range_mask;
-    reg->mask = mask;
     reg->id = id;
     reg->intf = intf;
     reg->ctxt = ctxt;

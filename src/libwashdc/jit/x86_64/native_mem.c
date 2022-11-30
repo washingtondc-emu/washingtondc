@@ -229,7 +229,6 @@ static void* emit_native_mem_read_8(struct memory_map const *map) {
             break;
         default:
             // tail-call
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->read8, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
@@ -289,7 +288,6 @@ static void* emit_native_mem_read_16(struct memory_map const *map) {
             break;
         default:
             // tail-call
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->read16, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
@@ -350,7 +348,6 @@ static void* emit_native_mem_read_float(struct memory_map const *map) {
             break;
         default:
             // tail-call
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->readfloat, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
@@ -411,7 +408,6 @@ static void* emit_native_mem_read_32(struct memory_map const *map) {
             break;
         default:
             // tail-call
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG1);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->read32, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
@@ -472,7 +468,6 @@ static void* emit_native_mem_write_8(struct memory_map const *map) {
             break;
         default:
             // tail-call (the value to write is still in ESI)
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG2);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->write8, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
@@ -533,7 +528,6 @@ static void* emit_native_mem_write_16(struct memory_map const *map) {
             break;
         default:
             // tail-call (the value to write is still in ESI)
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG2);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->write16, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
@@ -594,7 +588,6 @@ static void* emit_native_mem_write_32(struct memory_map const *map) {
             break;
         default:
             // tail-call (the value to write is still in ESI)
-            x86asm_andl_imm32_reg32(region->mask, REG_ARG0);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, REG_ARG2);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->write32, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);
@@ -673,7 +666,6 @@ static void* emit_native_mem_write_float(struct memory_map const *map) {
             break;
         default:
             // tail-call (the value to write is still in VAL_REG)
-            x86asm_andl_imm32_reg32(region->mask, ADDR_REG);
             x86asm_mov_imm64_reg64((uintptr_t)region->ctxt, CTXT_REG);
             x86asm_mov_imm64_reg64((uintptr_t)region->intf->writefloat, func_call_reg);
             x86asm_jmpq_reg64(func_call_reg);

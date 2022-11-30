@@ -38,7 +38,6 @@
 
 struct trace_proxy {
     washdc_hostfile outfile;
-    uint32_t mask; // address mask used when we're writing to the backing
     struct memory_interface const *proxied_intf;
     void *proxied_ctxt;
     unsigned source;
@@ -48,8 +47,7 @@ struct trace_proxy {
 
 void
 trace_proxy_create(struct trace_proxy *ctxt, washdc_hostfile outfile,
-                   unsigned source,
-                   uint32_t mask, struct memory_interface const *intf,
+                   unsigned source, struct memory_interface const *intf,
                    void *proxied_ctxt);
 
 extern struct memory_interface trace_proxy_memory_interface;

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -332,7 +332,6 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
     struct memory_map_region *region =
         memory_map_get_region(sh4->mem.map,
                               transfer_dst & ~0xe0000000, total_len);
-    uint32_t addr_mask = region->mask;
     void *ctx = region->ctxt;
 
     if (total_len % 4 == 0) {
@@ -340,7 +339,7 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
         total_len /= 4;
         uint32_t const *dat32 = (uint32_t const*)dat;
         while (total_len) {
-            write32(transfer_dst & addr_mask, *dat32, ctx);
+            write32(transfer_dst, *dat32, ctx);
             transfer_dst += 4;
             dat32++;
             total_len--;
@@ -350,7 +349,7 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
         total_len /= 2;
         uint16_t const *dat16 = (uint16_t const*)dat;
         while (total_len) {
-            write16(transfer_dst & addr_mask, *dat16, ctx);
+            write16(transfer_dst, *dat16, ctx);
             transfer_dst += 2;
             dat16++;
             total_len--;
@@ -359,7 +358,7 @@ void sh4_dmac_transfer_to_mem(Sh4 *sh4, addr32_t transfer_dst, size_t unit_sz,
         memory_map_write8_func write8 = region->intf->write8;
         uint8_t const *dat8 = (uint8_t const*)dat;
         while (total_len) {
-            write8(transfer_dst & addr_mask, *dat8, ctx);
+            write8(transfer_dst, *dat8, ctx);
             transfer_dst++;
             dat8++;
             total_len--;
@@ -424,8 +423,6 @@ void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
 
     memory_map_read32_func read32 = src_region->intf->read32;
     memory_map_write32_func write32 = dst_region->intf->write32;
-    uint32_t src_mask = src_region->mask;
-    uint32_t dst_mask = dst_region->mask;
     void *src_ctx = src_region->ctxt;
     void *dst_ctx = dst_region->ctxt;
 
@@ -433,8 +430,8 @@ void sh4_dmac_transfer_words(Sh4 *sh4, addr32_t transfer_src,
         CHECK_R_WATCHPOINT(transfer_src, uint32_t);
         CHECK_W_WATCHPOINT(transfer_dst, uint32_t);
 
-        uint32_t word = read32(transfer_src & src_mask, src_ctx);
-        write32(transfer_dst & dst_mask, word, dst_ctx);
+        uint32_t word = read32(transfer_src, src_ctx);
+        write32(transfer_dst, word, dst_ctx);
 
         transfer_src += sizeof(uint32_t);
         transfer_dst += sizeof(uint32_t);

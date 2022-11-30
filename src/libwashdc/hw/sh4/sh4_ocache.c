@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020 snickerbockers
+ *    Copyright (C) 2016-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -303,27 +303,26 @@ int sh4_sq_pref(Sh4 *sh4, addr32_t addr) {
 
     if (region) {
         struct memory_interface const *intf = region->intf;
-        uint32_t mask = region->mask;
         void *ctxt = region->ctxt;
         memory_map_write32_func write32 = intf->write32;
         uint32_t *sq = sh4->ocache.sq + sq_idx;
 
         CHECK_W_WATCHPOINT(addr_actual + 0, uint32_t);
-        write32((addr_actual + 0) & mask, sq[0], ctxt);
+        write32(addr_actual + 0, sq[0], ctxt);
         CHECK_W_WATCHPOINT(addr_actual + 4, uint32_t);
-        write32((addr_actual + 4) & mask, sq[1], ctxt);
+        write32(addr_actual + 4, sq[1], ctxt);
         CHECK_W_WATCHPOINT(addr_actual + 8, uint32_t);
-        write32((addr_actual + 8) & mask, sq[2], ctxt);
+        write32(addr_actual + 8, sq[2], ctxt);
         CHECK_W_WATCHPOINT(addr_actual + 12, uint32_t);
-        write32((addr_actual + 12) & mask, sq[3], ctxt);
+        write32(addr_actual + 12, sq[3], ctxt);
         CHECK_W_WATCHPOINT(addr_actual + 16, uint32_t);
-        write32((addr_actual + 16) & mask, sq[4], ctxt);
+        write32(addr_actual + 16, sq[4], ctxt);
         CHECK_W_WATCHPOINT(addr_actual + 20, uint32_t);
-        write32((addr_actual + 20) & mask, sq[5], ctxt);
+        write32(addr_actual + 20, sq[5], ctxt);
         CHECK_W_WATCHPOINT(addr_actual + 24, uint32_t);
-        write32((addr_actual + 24) & mask, sq[6], ctxt);
+        write32(addr_actual + 24, sq[6], ctxt);
         CHECK_W_WATCHPOINT(addr_actual + 28, uint32_t);
-        write32((addr_actual + 28) & mask, sq[7], ctxt);
+        write32(addr_actual + 28, sq[7], ctxt);
 
         return MEM_ACCESS_SUCCESS;
     } else {

@@ -134,7 +134,6 @@ struct memory_interface {
 struct memory_map_region {
     uint32_t first_addr, last_addr;
     uint32_t range_mask;
-    uint32_t mask;
 
     // Pointer where regions can store whatever context they may need.
     void *ctxt;
@@ -171,7 +170,6 @@ memory_map_add(struct memory_map *map,
                uint32_t addr_first,
                uint32_t addr_last,
                uint32_t range_mask,
-               uint32_t mask,
                enum memory_map_region_id id,
                struct memory_interface const *intf, void *ctxt);
 
