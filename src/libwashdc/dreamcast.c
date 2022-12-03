@@ -89,6 +89,7 @@
 #include "trace_proxy.h"
 #include "dreamcast.h"
 #include "area0.h"
+#include "area1.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
@@ -109,6 +110,7 @@
 static struct Sh4 cpu;
 static struct Memory dc_mem;
 static struct area0 area0;
+static struct area1 area1;
 static struct memory_map mem_map;
 static struct boot_rom firmware;
 static struct flash_mem flash_mem;
@@ -863,9 +865,9 @@ dreamcast_init(char const *gdi_path,
 
     LOG_INFO("initializing memory maps...\n");
     area0_init(&area0, &firmware, &flash_mem, &sys_block, &maple,
-               &gdrom, &dc_pvr2, &aica, &rtc, pvr2_trace_file, aica_trace_file);
+        &gdrom, &dc_pvr2, &aica, &rtc, pvr2_trace_file, aica_trace_file);
+    area1_init(&area1, &dc_pvr2, pvr2_trace_file);
     construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file, aica_trace_file);
-
     sh4_set_mem_map(&cpu, &mem_map);
 
     construct_arm7_mem_map(&arm7_mem_map, aica_trace_file);
@@ -921,6 +923,7 @@ void dreamcast_cleanup() {
 #endif
 
     aica_rtc_cleanup(&rtc);
+    area1_cleanup(&area1);
     area0_cleanup(&area0);
 
     // disconnect PDTRA read/write handlers
@@ -1592,32 +1595,18 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
     memory_map_add(map, 0x0, 0x03ffffff,
                    RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
                    &area0_intf, &area0);
+    memory_map_add(map, 0x04000000, 0x07ffffff, RANGE_MASK_EXT,
+                   MEMORY_MAP_REGION_UNKNOWN,
+                   &area1_intf, &area1);
 
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
-        static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy,
-            pvr2_mem_32bit_traceproxy, pvr2_mem_64bit_traceproxy;
+        static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy;
 
         trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, TRACE_SOURCE_SH4,
                            &pvr2_ta_fifo_intf, &dc_pvr2);
         trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file, TRACE_SOURCE_SH4,
                            &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
-        trace_proxy_create(&pvr2_mem_32bit_traceproxy, pvr2_trace_file, TRACE_SOURCE_SH4,
-                           &pvr2_tex_mem_area32_intf, &dc_pvr2);
-        trace_proxy_create(&pvr2_mem_64bit_traceproxy, pvr2_trace_file, TRACE_SOURCE_SH4,
-                           &pvr2_tex_mem_area64_intf, &dc_pvr2);
 
-        memory_map_add(map, 0x04000000, 0x047fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
-        memory_map_add(map, 0x05000000, 0x057fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
-        memory_map_add(map, 0x06000000, 0x067fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
-        memory_map_add(map, 0x07000000, 0x077fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
         memory_map_add(map, 0x10000000, 0x107fffff,
                        RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
@@ -1628,18 +1617,6 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                        RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
                        &trace_proxy_memory_interface, &ta_fifo_traceproxy);
     } else {
-        memory_map_add(map, 0x04000000, 0x047fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area64_intf, &dc_pvr2);
-        memory_map_add(map, 0x05000000, 0x057fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area32_intf, &dc_pvr2);
-        memory_map_add(map, 0x06000000, 0x067fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area64_intf, &dc_pvr2);
-        memory_map_add(map, 0x07000000, 0x077fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area32_intf, &dc_pvr2);
         memory_map_add(map, 0x10000000, 0x107fffff,
                        RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
                        &pvr2_ta_fifo_intf, &dc_pvr2);
@@ -1659,19 +1636,6 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
     memory_map_add(map, 0x7c000000, 0x7fffffff,
                    RANGE_MASK_NONE, MEMORY_MAP_REGION_UNKNOWN,
                    &sh4_ora_intf, sh4);
-
-    /*
-     * More PowerVR2 texture regions - these don't get used much which is why
-     * they're at the end (for performance reasons).
-     */
-    memory_map_add(map, 0x04800000, 0x04ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(map, 0x05800000, 0x05ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(map, 0x06800000, 0x06ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(map, 0x07800000, 0x07ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
 
     map->unmap = &sh4_unmapped_mem;
 }

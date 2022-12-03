@@ -255,7 +255,9 @@ set(libwashdc_sources "${WASHDC_SOURCE_DIR}/hw/sh4/sh4.c"
                       "${WASHDC_SOURCE_DIR}/trace_proxy.h"
                       "${WASHDC_SOURCE_DIR}/trace_proxy.c"
                       "${WASHDC_SOURCE_DIR}/area0.h"
-                      "${WASHDC_SOURCE_DIR}/area0.c")
+                      "${WASHDC_SOURCE_DIR}/area0.c"
+                      "${WASHDC_SOURCE_DIR}/area1.h"
+                      "${WASHDC_SOURCE_DIR}/area1.c")
 
 if (JIT_PROFILE)
     add_definitions(-DJIT_PROFILE)
