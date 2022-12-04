@@ -90,6 +90,7 @@
 #include "dreamcast.h"
 #include "area0.h"
 #include "area1.h"
+#include "area4.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
@@ -111,6 +112,7 @@ static struct Sh4 cpu;
 static struct Memory dc_mem;
 static struct area0 area0;
 static struct area1 area1;
+static struct area4 area4;
 static struct memory_map mem_map;
 static struct boot_rom firmware;
 static struct flash_mem flash_mem;
@@ -867,6 +869,7 @@ dreamcast_init(char const *gdi_path,
     area0_init(&area0, &firmware, &flash_mem, &sys_block, &maple,
         &gdrom, &dc_pvr2, &aica, &rtc, pvr2_trace_file, aica_trace_file);
     area1_init(&area1, &dc_pvr2, pvr2_trace_file);
+    area4_init(&area4, &dc_pvr2, pvr2_trace_file);
     construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file, aica_trace_file);
     sh4_set_mem_map(&cpu, &mem_map);
 
@@ -923,6 +926,7 @@ void dreamcast_cleanup() {
 #endif
 
     aica_rtc_cleanup(&rtc);
+    area4_cleanup(&area4);
     area1_cleanup(&area1);
     area0_cleanup(&area0);
 
@@ -1592,41 +1596,34 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                    RANGE_MASK_EXT, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
 
+    // area 0
     memory_map_add(map, 0x0, 0x03ffffff,
                    RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
                    &area0_intf, &area0);
+
+    // area 1
     memory_map_add(map, 0x04000000, 0x07ffffff, RANGE_MASK_EXT,
                    MEMORY_MAP_REGION_UNKNOWN,
                    &area1_intf, &area1);
 
-    if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
-        static struct trace_proxy ta_fifo_traceproxy, ta_yuv_fifo_traceproxy;
+    // area 2 is unused
 
-        trace_proxy_create(&ta_fifo_traceproxy, pvr2_trace_file, TRACE_SOURCE_SH4,
-                           &pvr2_ta_fifo_intf, &dc_pvr2);
-        trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file, TRACE_SOURCE_SH4,
-                           &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
+    // area 3 (main memory, see above)
+    // range is 0x0c000000-0x0fffffff
 
-        memory_map_add(map, 0x10000000, 0x107fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
-        memory_map_add(map, 0x10800000, 0x10ffffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &ta_yuv_fifo_traceproxy);
-        memory_map_add(map, 0x11000000, 0x117fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
-    } else {
-        memory_map_add(map, 0x10000000, 0x107fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_ta_fifo_intf, &dc_pvr2);
-        memory_map_add(map, 0x10800000, 0x10ffffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_ta_yuv_fifo_intf, &dc_pvr2);
-        memory_map_add(map, 0x11000000, 0x117fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_ta_fifo_intf, &dc_pvr2);
-    }
+    /*
+     * area 4
+     * this one contains TA FIFO as well as two DMA-only (i think)
+     * mirrors of the 32/64-bit texture memory buses.  the lmmode0/1
+     * registers control whether the two regions map to 32-bit or
+     * 64-bit.
+     *
+     * i've only ever seen these used for DMA so i don't think they're
+     * needed here.
+     */
+    memory_map_add(map, 0x10000000, 0x13ffffff,
+                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
+                   &area4_intf, &area4);
 
     /*
      * TODO: YUV FIFO - apparently I made it a special case in the DMAC code
