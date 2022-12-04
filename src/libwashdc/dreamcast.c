@@ -1608,7 +1608,10 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
 
     // area 2 is unused
 
-    // area 3 (main memory, see above)
+    /*
+     * area 3 (main memory, see above, we put it at the beginning for
+     * perf reasons)
+     */
     // range is 0x0c000000-0x0fffffff
 
     /*
