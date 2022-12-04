@@ -1576,17 +1576,8 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                    RANGE_MASK_NONE, MEMORY_MAP_REGION_UNKNOWN,
                    &sh4_p4_intf, sh4);
 
-    // Main system memory.
-    memory_map_add(map, 0x0c000000, 0x0cffffff,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_RAM,
-                   &ram_intf, &dc_mem);
-    memory_map_add(map, 0x0d000000, 0x0dffffff,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_RAM,
-                   &ram_intf, &dc_mem);
-    memory_map_add(map, 0x0e000000, 0x0effffff,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_RAM,
-                   &ram_intf, &dc_mem);
-    memory_map_add(map, 0x0f000000, 0x0fffffff,
+    // area 3 (main system memory)
+    memory_map_add(map, 0x0c000000, 0x0fffffff,
                    RANGE_MASK_EXT, MEMORY_MAP_REGION_RAM,
                    &ram_intf, &dc_mem);
 
