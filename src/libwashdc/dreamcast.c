@@ -91,6 +91,7 @@
 #include "area0.h"
 #include "area1.h"
 #include "area4.h"
+#include "hw/sh4/area7.h"
 
 #ifdef DEEP_SYSCALL_TRACE
 #include "deep_syscall_trace.h"
@@ -113,6 +114,7 @@ static struct Memory dc_mem;
 static struct area0 area0;
 static struct area1 area1;
 static struct area4 area4;
+static struct area7 area7;
 static struct memory_map mem_map;
 static struct boot_rom firmware;
 static struct flash_mem flash_mem;
@@ -870,6 +872,7 @@ dreamcast_init(char const *gdi_path,
         &gdrom, &dc_pvr2, &aica, &rtc, pvr2_trace_file, aica_trace_file);
     area1_init(&area1, &dc_pvr2, pvr2_trace_file);
     area4_init(&area4, &dc_pvr2, pvr2_trace_file);
+    area7_init(&area7, &cpu);
     construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file, aica_trace_file);
     sh4_set_mem_map(&cpu, &mem_map);
 
@@ -926,6 +929,7 @@ void dreamcast_cleanup() {
 #endif
 
     aica_rtc_cleanup(&rtc);
+    area7_cleanup(&area7);
     area4_cleanup(&area4);
     area1_cleanup(&area1);
     area0_cleanup(&area0);
@@ -1589,7 +1593,10 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
      */
     memory_map_add(map, SH4_AREA_P4_FIRST, SH4_AREA_P4_LAST,
                    RANGE_MASK_NONE, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_p4_intf, sh4);
+                   &area7_intf, &area7);
+    memory_map_add(map, 0x1c000000, 0x1fffffff,
+                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
+                   &area7_intf, &area7);
 
     // area 3 (main system memory)
     memory_map_add(map, 0x0c000000, 0x0fffffff,
@@ -1632,10 +1639,6 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
      * TODO: YUV FIFO - apparently I made it a special case in the DMAC code
      * for some dumb reason...
      */
-
-    memory_map_add(map, 0x7c000000, 0x7fffffff,
-                   RANGE_MASK_NONE, MEMORY_MAP_REGION_UNKNOWN,
-                   &sh4_ora_intf, sh4);
 
     map->unmap = &sh4_unmapped_mem;
 }
