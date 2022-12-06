@@ -28,8 +28,10 @@
 struct pvr2;
 
 struct area1 {
-    struct memory_map map;
     struct pvr2 *pvr2;
+
+    struct memory_interface const *tex_mem_32bit_intf, *tex_mem_64bit_intf;
+    void *tex_mem_32bit_argp, *tex_mem_64bit_argp;
 };
 
 void area1_init(struct area1 *area1, struct pvr2 *pvr2,

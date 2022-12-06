@@ -21,14 +21,13 @@
 
 #include "trace_proxy.h"
 #include "hw/pvr2/pvr2_tex_mem.h"
+#include "washdc/error.h"
 
 #include "area1.h"
 
 void area1_init(struct area1 *area1, struct pvr2 *pvr2,
                 washdc_hostfile pvr2_trace_file) {
     area1->pvr2 = pvr2;
-
-    memory_map_init(&area1->map);
 
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
         static struct trace_proxy pvr2_mem_32bit_traceproxy,
@@ -37,74 +36,119 @@ void area1_init(struct area1 *area1, struct pvr2 *pvr2,
                            TRACE_SOURCE_SH4, &pvr2_tex_mem_area32_intf, pvr2);
         trace_proxy_create(&pvr2_mem_64bit_traceproxy, pvr2_trace_file,
                            TRACE_SOURCE_SH4, &pvr2_tex_mem_area64_intf, pvr2);
-        memory_map_add(&area1->map, 0x04000000, 0x047fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
-        memory_map_add(&area1->map, 0x05000000, 0x057fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
-        memory_map_add(&area1->map, 0x06000000, 0x067fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_64bit_traceproxy);
-        memory_map_add(&area1->map, 0x07000000, 0x077fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_mem_32bit_traceproxy);
-    } else {
-        memory_map_add(&area1->map, 0x04000000, 0x047fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area64_intf, pvr2);
-        memory_map_add(&area1->map, 0x05000000, 0x057fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area32_intf, pvr2);
-        memory_map_add(&area1->map, 0x06000000, 0x067fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area64_intf, pvr2);
-        memory_map_add(&area1->map, 0x07000000, 0x077fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_tex_mem_area32_intf, pvr2);
-    }
 
-    /*
-     * More PowerVR2 texture regions - these don't get used much which is why
-     * they're at the end (for performance reasons).
-     */
-    memory_map_add(&area1->map, 0x04800000, 0x04ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(&area1->map, 0x05800000, 0x05ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(&area1->map, 0x06800000, 0x06ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
-    memory_map_add(&area1->map, 0x07800000, 0x07ffffff, RANGE_MASK_EXT,
-                   MEMORY_MAP_REGION_UNKNOWN, &pvr2_tex_mem_unused_intf, NULL);
+        area1->tex_mem_32bit_intf = &trace_proxy_memory_interface;
+        area1->tex_mem_32bit_argp = &pvr2_mem_32bit_traceproxy;
+        area1->tex_mem_64bit_intf = &trace_proxy_memory_interface;
+        area1->tex_mem_64bit_argp = &pvr2_mem_64bit_traceproxy;
+    } else {
+        area1->tex_mem_32bit_intf = &pvr2_tex_mem_area32_intf;
+        area1->tex_mem_32bit_argp = pvr2;
+        area1->tex_mem_64bit_intf = &pvr2_tex_mem_area64_intf;
+        area1->tex_mem_64bit_argp = pvr2;
+    }
 }
 
 void area1_cleanup(struct area1 *area1) {
-    memory_map_cleanup(&area1->map);
 }
 
-#define AREA1_READFUNC(tp, suffix)                          \
-    static tp area1_read##suffix(uint32_t addr,             \
-                                 void *ctxt) {              \
-        struct area1 *area = ctxt;                          \
-        return memory_map_read_##suffix(&area->map, addr);  \
+#define AREA1_READFUNC(tp, suffix)                                      \
+    static tp area1_read##suffix(uint32_t addr,                         \
+                                 void *ctxt) {                          \
+        struct area1 *area = ctxt;                                      \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x04000000 && addr_ext <= 0x047fffff) ||       \
+            (addr_ext >= 0x06000000 && addr_ext <= 0x067fffff)) {       \
+            return area->tex_mem_64bit_intf->read##suffix(addr,         \
+                                                          area->tex_mem_64bit_argp); \
+        } else if ((addr_ext >= 0x05000000 && addr_ext <= 0x057fffff) || \
+                   (addr_ext >= 0x07000000 && addr_ext <= 0x077fffff)) { \
+            return area->tex_mem_32bit_intf->read##suffix(addr,         \
+                                                          area->tex_mem_32bit_argp); \
+        } else if ((addr_ext >= 0x04800000 && addr_ext <= 0x04ffffff) || \
+                   (addr_ext >= 0x05800000 && addr_ext <= 0x05ffffff) ||   \
+                   (addr_ext >= 0x06800000 && addr_ext <= 0x06ffffff) || \
+                   (addr_ext >= 0x07800000 && addr_ext <= 0x07ffffff)) { \
+            return pvr2_tex_mem_unused_intf.read##suffix(addr,NULL);   \
+        } else {                                                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(tp));                               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
-#define AREA1_TRY_READFUNC(tp, suffix)          \
+#define AREA1_TRY_READFUNC(tp, suffix)                                  \
     static int area1_try_read##suffix(uint32_t addr, tp *val, void *ctxt) { \
         struct area1 *area = ctxt;                                      \
-        return memory_map_try_read_##suffix(&area->map, addr, val);     \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x04000000 && addr_ext <= 0x047fffff) ||       \
+            (addr_ext >= 0x06000000 && addr_ext <= 0x067fffff)) {       \
+            *val = area->tex_mem_64bit_intf->read##suffix(addr,         \
+                                                          area->tex_mem_64bit_argp); \
+            return 0;                                                   \
+        } else if ((addr_ext >= 0x05000000 && addr_ext <= 0x057fffff) || \
+                   (addr_ext >= 0x07000000 && addr_ext <= 0x077fffff)) { \
+            *val = area->tex_mem_32bit_intf->read##suffix(addr,         \
+                                                          area->tex_mem_32bit_argp); \
+            return 0;                                                   \
+        } else if ((addr_ext >= 0x04800000 && addr_ext <= 0x04ffffff) || \
+                   (addr_ext >= 0x05800000 && addr_ext <= 0x05ffffff) || \
+                   (addr_ext >= 0x06800000 && addr_ext <= 0x06ffffff) || \
+                   (addr_ext >= 0x07800000 && addr_ext <= 0x07ffffff)) { \
+            *val = pvr2_tex_mem_unused_intf.read##suffix(addr,NULL);    \
+            return 0;                                                   \
+        } else {                                                        \
+            return -1;                                                  \
+        }                                                               \
     }
 
 #define AREA1_WRITEFUNC(tp, suffix)                                     \
     static void area1_write##suffix(uint32_t addr, tp val, void *ctxt) { \
         struct area1 *area = ctxt;                                      \
-        memory_map_write_##suffix(&area->map, addr, val);               \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x04000000 && addr_ext <= 0x047fffff) ||       \
+            (addr_ext >= 0x06000000 && addr_ext <= 0x067fffff)) {       \
+            area->tex_mem_64bit_intf->write##suffix(addr, val,          \
+                                                    area->tex_mem_64bit_argp); \
+        } else if ((addr_ext >= 0x05000000 && addr_ext <= 0x057fffff) || \
+                   (addr_ext >= 0x07000000 && addr_ext <= 0x077fffff)) { \
+            area->tex_mem_32bit_intf->write##suffix(addr, val,          \
+                                                    area->tex_mem_32bit_argp); \
+        } else if ((addr_ext >= 0x04800000 && addr_ext <= 0x04ffffff) || \
+                   (addr_ext >= 0x05800000 && addr_ext <= 0x05ffffff) || \
+                   (addr_ext >= 0x06800000 && addr_ext <= 0x06ffffff) || \
+                   (addr_ext >= 0x07800000 && addr_ext <= 0x07ffffff)) { \
+            pvr2_tex_mem_unused_intf.write##suffix(addr,val,NULL);      \
+        } else {                                                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(tp));                               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
 #define AREA1_TRY_WRITEFUNC(tp, suffix)                                 \
     static int area1_try_write##suffix(uint32_t addr, tp val, void *ctxt) { \
         struct area1 *area = ctxt;                                      \
-        return memory_map_try_write_##suffix(&area->map, addr, val);    \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x04000000 && addr_ext <= 0x047fffff) ||       \
+            (addr_ext >= 0x06000000 && addr_ext <= 0x067fffff)) {       \
+            area->tex_mem_64bit_intf->write##suffix(addr, val,          \
+                                                    area->tex_mem_64bit_argp); \
+            return 0;                                                   \
+        } else if ((addr_ext >= 0x05000000 && addr_ext <= 0x057fffff) || \
+                   (addr_ext >= 0x07000000 && addr_ext <= 0x077fffff)) { \
+            area->tex_mem_32bit_intf->write##suffix(addr, val,          \
+                                                    area->tex_mem_32bit_argp); \
+            return 0;                                                   \
+        } else if ((addr_ext >= 0x04800000 && addr_ext <= 0x04ffffff) || \
+                   (addr_ext >= 0x05800000 && addr_ext <= 0x05ffffff) || \
+                   (addr_ext >= 0x06800000 && addr_ext <= 0x06ffffff) || \
+                   (addr_ext >= 0x07800000 && addr_ext <= 0x07ffffff)) { \
+            pvr2_tex_mem_unused_intf.write##suffix(addr,val,NULL);      \
+            return 0;                                                   \
+        } else {                                                        \
+            return -1;                                                  \
+        }                                                               \
     }
 
 AREA1_READFUNC(double, double)
