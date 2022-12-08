@@ -19,6 +19,7 @@
  *
  ******************************************************************************/
 
+#include "washdc/error.h"
 #include "hw/pvr2/pvr2_ta.h"
 #include "hw/pvr2/pvr2_yuv.h"
 #include "trace_proxy.h"
@@ -27,8 +28,6 @@
 
 void area4_init(struct area4 *area4, struct pvr2 *pvr2,
                 washdc_hostfile pvr2_trace_file) {
-    memory_map_init(&area4->map);
-
     area4->pvr2 = pvr2;
 
     if (pvr2_trace_file != WASHDC_HOSTFILE_INVALID) {
@@ -39,55 +38,76 @@ void area4_init(struct area4 *area4, struct pvr2 *pvr2,
         trace_proxy_create(&ta_yuv_fifo_traceproxy, pvr2_trace_file,
                            TRACE_SOURCE_SH4, &pvr2_ta_yuv_fifo_intf, pvr2);
 
-        memory_map_add(&area4->map, 0x10000000, 0x107fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
-        memory_map_add(&area4->map, 0x10800000, 0x10ffffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &ta_yuv_fifo_traceproxy);
-        memory_map_add(&area4->map, 0x11000000, 0x117fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &ta_fifo_traceproxy);
+        area4->ta_fifo_intf = &ta_fifo_traceproxy;
+        area4->ta_yuv_intf = &ta_yuv_fifo_traceproxy;
     } else {
-        memory_map_add(&area4->map, 0x10000000, 0x107fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_ta_fifo_intf, pvr2);
-        memory_map_add(&area4->map, 0x10800000, 0x10ffffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_ta_yuv_fifo_intf, pvr2);
-        memory_map_add(&area4->map, 0x11000000, 0x117fffff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_ta_fifo_intf, pvr2);
+        area4->ta_fifo_intf = &pvr2_ta_fifo_intf;
+        area4->ta_yuv_intf = &pvr2_ta_yuv_fifo_intf;
     }
 }
 
 void area4_cleanup(struct area4 *area4) {
-    memory_map_cleanup(&area4->map);
 }
 
-#define AREA4_READFUNC(tp, suffix)                          \
-    static tp area4_read##suffix(uint32_t addr,             \
-                                 void *ctxt) {              \
-        struct area4 *area = ctxt;                          \
-        return memory_map_read_##suffix(&area->map, addr);  \
+#define AREA4_READFUNC(tp, suffix)                                      \
+    static tp area4_read##suffix(uint32_t addr,                         \
+                                 void *ctxt) {                          \
+        struct area4 *area4 = ctxt;                                     \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x10000000 && addr_ext <= 0x107fffff) ||       \
+            (addr_ext >= 0x11000000 && addr_ext <= 0x117fffff)) {       \
+            return area4->ta_fifo_intf->read##suffix(addr, area4->pvr2); \
+        } else if (addr_ext >= 0x10800000 && addr_ext <= 0x10ffffff) {  \
+            return area4->ta_yuv_intf->read##suffix(addr, area4->pvr2); \
+        } else {                                                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(tp));                               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
-#define AREA4_TRY_READFUNC(tp, suffix)          \
+#define AREA4_TRY_READFUNC(tp, suffix)                                  \
     static int area4_try_read##suffix(uint32_t addr, tp *val, void *ctxt) { \
         struct area4 *area = ctxt;                                      \
-        return memory_map_try_read_##suffix(&area->map, addr, val);     \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x10000000 && addr_ext <= 0x107fffff) ||       \
+            (addr_ext >= 0x11000000 && addr_ext <= 0x117fffff)) {       \
+            return area->ta_fifo_intf->try_read##suffix(addr, val, area->pvr2); \
+        } else if (addr_ext >= 0x10800000 && addr_ext <= 0x10ffffff) {  \
+            return area->ta_yuv_intf->try_read##suffix(addr, val, area->pvr2); \
+        } else {                                                        \
+            return -1;                                                  \
+        }                                                               \
     }
 
 #define AREA4_WRITEFUNC(tp, suffix)                                     \
     static void area4_write##suffix(uint32_t addr, tp val, void *ctxt) { \
-        struct area4 *area = ctxt;                                      \
-        memory_map_write_##suffix(&area->map, addr, val);               \
+        struct area4 *area4 = ctxt;                                     \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x10000000 && addr_ext <= 0x107fffff) ||       \
+            (addr_ext >= 0x11000000 && addr_ext <= 0x117fffff)) {       \
+            area4->ta_fifo_intf->write##suffix(addr, val, area4->pvr2); \
+        } else if (addr_ext >= 0x10800000 && addr_ext <= 0x10ffffff) {  \
+            area4->ta_yuv_intf->write##suffix(addr, val, area4->pvr2);  \
+        } else {                                                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(tp));                               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
 #define AREA4_TRY_WRITEFUNC(tp, suffix)                                 \
     static int area4_try_write##suffix(uint32_t addr, tp val, void *ctxt) { \
         struct area4 *area = ctxt;                                      \
-        return memory_map_try_write_##suffix(&area->map, addr, val);    \
+        uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
+        if ((addr_ext >= 0x10000000 && addr_ext <= 0x107fffff) ||       \
+            (addr_ext >= 0x11000000 && addr_ext <= 0x117fffff)) {       \
+            return area->ta_fifo_intf->try_write##suffix(addr, val, area->pvr2); \
+        } else if (addr_ext >= 0x10800000 && addr_ext <= 0x10ffffff) {  \
+            return area->ta_yuv_intf->try_write##suffix(addr, val, area->pvr2); \
+        } else {                                                        \
+            return -1;                                                  \
+        }                                                               \
     }
 
 AREA4_READFUNC(double, double)

@@ -28,8 +28,8 @@
 struct pvr2;
 
 struct area4 {
-    struct memory_map map;
     struct pvr2 *pvr2;
+    struct memory_interface const *ta_fifo_intf, *ta_yuv_intf;
 };
 
 void area4_init(struct area4 *area4, struct pvr2 *pvr2,
