@@ -47,8 +47,6 @@ void area0_init(struct area0 *area,
                 struct aica_rtc *rtc,
                 washdc_hostfile pvr2_trace_file,
                 washdc_hostfile aica_trace_file) {
-    memory_map_init(&area->map);
-
     area->bios = bios;
     area->flash = flash;
     area->sys_block = sys_block;
@@ -62,146 +60,160 @@ void area0_init(struct area0 *area,
         static struct trace_proxy pvr2_reg_traceproxy;
         trace_proxy_create(&pvr2_reg_traceproxy, pvr2_trace_file,
                            TRACE_SOURCE_SH4, &pvr2_reg_intf, pvr2);
-        memory_map_add(&area->map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_reg_traceproxy);
-        memory_map_add(&area->map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &pvr2_reg_traceproxy);
+        area->pvr2_memory_interface = &trace_proxy_memory_interface;
+        area->argp = &pvr2_reg_traceproxy;
     } else {
-        memory_map_add(&area->map, ADDR_PVR2_FIRST, ADDR_PVR2_LAST,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_reg_intf, pvr2);
-        memory_map_add(&area->map, ADDR_PVR2_FIRST + 0x02000000, ADDR_PVR2_LAST + 0x02000000,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &pvr2_reg_intf, pvr2);
+        area->pvr2_memory_interface = &pvr2_reg_intf;
+        area->argp = pvr2;
     }
-
-    if (aica_trace_file  != WASHDC_HOSTFILE_INVALID) {
-        static struct trace_proxy aica_mem_traceproxy, aica_reg_traceproxy;
-        trace_proxy_create(&aica_mem_traceproxy, aica_trace_file,
-                           TRACE_SOURCE_SH4, &aica_wave_mem_intf, &aica->mem);
-        trace_proxy_create(&aica_reg_traceproxy, aica_trace_file,
-                           TRACE_SOURCE_SH4, &aica_sys_intf, aica);
-
-        memory_map_add(&area->map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &aica_mem_traceproxy);
-        memory_map_add(&area->map, 0x00700000, 0x00707fff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &aica_reg_traceproxy);
-        memory_map_add(&area->map, ADDR_AICA_WAVE_FIRST + 0x02000000, ADDR_AICA_WAVE_LAST + 0x02000000,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &aica_mem_traceproxy);
-        memory_map_add(&area->map, 0x00700000 + 0x02000000, 0x00707fff + 0x02000000,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &trace_proxy_memory_interface, &aica_reg_traceproxy);
-    } else {
-        memory_map_add(&area->map, ADDR_AICA_WAVE_FIRST, ADDR_AICA_WAVE_LAST,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &aica_wave_mem_intf, &aica->mem);
-        memory_map_add(&area->map, 0x00700000, 0x00707fff,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &aica_sys_intf, aica);
-        memory_map_add(&area->map, ADDR_AICA_WAVE_FIRST + 0x02000000, ADDR_AICA_WAVE_LAST + 0x02000000,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &aica_wave_mem_intf, &aica->mem);
-        memory_map_add(&area->map, 0x00700000 + 0x02000000, 0x00707fff + 0x02000000,
-                       RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                       &aica_sys_intf, aica);
-    }
-
-
-    memory_map_add(&area->map, ADDR_BIOS_FIRST, ADDR_BIOS_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &boot_rom_intf, bios);
-    memory_map_add(&area->map, ADDR_FLASH_FIRST, ADDR_FLASH_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &flash_mem_intf, flash);
-    memory_map_add(&area->map, ADDR_G1_FIRST, ADDR_G1_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &g1_intf, NULL);
-    memory_map_add(&area->map, ADDR_SYS_FIRST, ADDR_SYS_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &sys_block_intf, sys_block);
-    memory_map_add(&area->map, ADDR_MAPLE_FIRST, ADDR_MAPLE_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &maple_intf, maple);
-    memory_map_add(&area->map, ADDR_G2_FIRST, ADDR_G2_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &g2_intf, NULL);
-    memory_map_add(&area->map, ADDR_MODEM_FIRST, ADDR_MODEM_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &modem_intf, NULL);
-    memory_map_add(&area->map, ADDR_AICA_RTC_FIRST, ADDR_AICA_RTC_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_rtc_intf, rtc);
-    memory_map_add(&area->map, ADDR_GDROM_FIRST, ADDR_GDROM_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &gdrom_reg_intf, gdrom);
-    memory_map_add(&area->map, ADDR_EXT_DEV_FIRST, ADDR_EXT_DEV_LAST,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &ext_dev_intf, NULL);
-
-    memory_map_add(&area->map, ADDR_BIOS_FIRST + 0x02000000, ADDR_BIOS_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &boot_rom_intf, bios);
-    memory_map_add(&area->map, ADDR_FLASH_FIRST + 0x02000000, ADDR_FLASH_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &flash_mem_intf, flash);
-    memory_map_add(&area->map, ADDR_G1_FIRST + 0x02000000, ADDR_G1_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &g1_intf, NULL);
-    memory_map_add(&area->map, ADDR_SYS_FIRST + 0x02000000, ADDR_SYS_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &sys_block_intf, NULL);
-    memory_map_add(&area->map, ADDR_MAPLE_FIRST + 0x02000000, ADDR_MAPLE_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &maple_intf, NULL);
-    memory_map_add(&area->map, ADDR_G2_FIRST + 0x02000000, ADDR_G2_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &g2_intf, NULL);
-    memory_map_add(&area->map, ADDR_MODEM_FIRST + 0x02000000, ADDR_MODEM_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &modem_intf, NULL);
-    memory_map_add(&area->map, ADDR_AICA_RTC_FIRST + 0x02000000, ADDR_AICA_RTC_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &aica_rtc_intf, rtc);
-    memory_map_add(&area->map, ADDR_GDROM_FIRST + 0x02000000, ADDR_GDROM_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &gdrom_reg_intf, gdrom);
-    memory_map_add(&area->map, ADDR_EXT_DEV_FIRST + 0x02000000, ADDR_EXT_DEV_LAST + 0x02000000,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &ext_dev_intf, NULL);
 }
 
 void area0_cleanup(struct area0 *area) {
-    memory_map_cleanup(&area->map);
 }
 
-#define AREA0_READFUNC(tp, suffix)                          \
-    static tp area0_read##suffix(uint32_t addr,             \
-                                 void *ctxt) {              \
-        struct area0 *area = ctxt;                          \
-        return memory_map_read_##suffix(&area->map, addr);  \
+#define AREA0_READFUNC(tp, suffix)                                      \
+    static tp area0_read##suffix(uint32_t addr,                         \
+                                 void *ctxt) {                          \
+        struct area0 *area = ctxt;                                      \
+        uint32_t addr_bus = addr & 0x01ffffff;                          \
+        if (addr_bus >= ADDR_PVR2_FIRST && addr_bus <= ADDR_PVR2_LAST) { \
+            return area->pvr2_memory_interface->read##suffix(addr, area->argp); \
+        } else if (addr_bus >= ADDR_BIOS_FIRST && addr_bus <= ADDR_BIOS_LAST) { \
+            return boot_rom_intf.read##suffix(addr, area->bios);        \
+        } else if (addr_bus >= ADDR_FLASH_FIRST && addr_bus <= ADDR_FLASH_LAST) { \
+            return flash_mem_intf.read##suffix(addr, area->flash);      \
+        } else if (addr_bus >= ADDR_G1_FIRST && addr_bus <= ADDR_G1_LAST) { \
+            return g1_intf.read##suffix(addr, NULL);                    \
+        } else if (addr_bus >= ADDR_SYS_FIRST && addr_bus <= ADDR_SYS_LAST) { \
+            return sys_block_intf.read##suffix(addr, area->sys_block);  \
+        } else if (addr_bus >= ADDR_MAPLE_FIRST && addr_bus <= ADDR_MAPLE_LAST) { \
+            return maple_intf.read##suffix(addr, area->maple);          \
+        } else if (addr_bus >= ADDR_G2_FIRST && addr_bus <= ADDR_G2_LAST) { \
+            return g2_intf.read##suffix(addr, NULL);                    \
+        } else if (addr_bus >= ADDR_MODEM_FIRST && addr_bus <= ADDR_MODEM_LAST) { \
+            return modem_intf.read##suffix(addr, NULL);                 \
+        } else if (addr_bus >= ADDR_AICA_WAVE_FIRST && addr_bus <= ADDR_AICA_WAVE_LAST) { \
+            return aica_wave_mem_intf.read##suffix(addr, &area->aica->mem); \
+        } else if (addr_bus >= 0x00700000 && addr_bus <= 0x00707fff) {  \
+            return aica_sys_intf.read##suffix(addr, area->aica);        \
+        } else if (addr_bus >= ADDR_AICA_RTC_FIRST && addr_bus <= ADDR_AICA_RTC_LAST) { \
+            return aica_rtc_intf.read##suffix(addr, area->rtc);         \
+        } else if (addr_bus >= ADDR_GDROM_FIRST && addr_bus <= ADDR_GDROM_LAST) { \
+            return gdrom_reg_intf.read##suffix(addr, area->gdrom);      \
+        } else if (addr_bus >= ADDR_EXT_DEV_FIRST && addr_bus <= ADDR_EXT_DEV_LAST) { \
+            return ext_dev_intf.read##suffix(addr, NULL);               \
+        } else {                                                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(tp));                               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
 #define AREA0_TRY_READFUNC(tp, suffix)          \
     static int area0_try_read##suffix(uint32_t addr, tp *val, void *ctxt) { \
         struct area0 *area = ctxt;                                      \
-        return memory_map_try_read_##suffix(&area->map, addr, val);     \
+        uint32_t addr_bus = addr & 0x01ffffff;                          \
+        if (addr_bus >= ADDR_PVR2_FIRST && addr_bus <= ADDR_PVR2_LAST) { \
+            return area->pvr2_memory_interface->try_read##suffix(addr, val, area->argp); \
+        } else if (addr_bus >= ADDR_BIOS_FIRST && addr_bus <= ADDR_BIOS_LAST) { \
+            return boot_rom_intf.try_read##suffix(addr, val, area->bios);        \
+        } else if (addr_bus >= ADDR_FLASH_FIRST && addr_bus <= ADDR_FLASH_LAST) { \
+            return flash_mem_intf.try_read##suffix(addr, val, area->flash);      \
+        } else if (addr_bus >= ADDR_G1_FIRST && addr_bus <= ADDR_G1_LAST) { \
+            return g1_intf.try_read##suffix(addr, val, NULL);                    \
+        } else if (addr_bus >= ADDR_SYS_FIRST && addr_bus <= ADDR_SYS_LAST) { \
+            return sys_block_intf.try_read##suffix(addr, val, area->sys_block);  \
+        } else if (addr_bus >= ADDR_MAPLE_FIRST && addr_bus <= ADDR_MAPLE_LAST) { \
+            return maple_intf.try_read##suffix(addr, val, area->maple);          \
+        } else if (addr_bus >= ADDR_G2_FIRST && addr_bus <= ADDR_G2_LAST) { \
+            return g2_intf.try_read##suffix(addr, val, NULL);                    \
+        } else if (addr_bus >= ADDR_MODEM_FIRST && addr_bus <= ADDR_MODEM_LAST) { \
+            return modem_intf.try_read##suffix(addr, val, NULL);                 \
+        } else if (addr_bus >= ADDR_AICA_WAVE_FIRST && addr_bus <= ADDR_AICA_WAVE_LAST) { \
+            return aica_wave_mem_intf.try_read##suffix(addr, val, &area->aica->mem); \
+        } else if (addr_bus >= 0x00700000 && addr_bus <= 0x00707fff) {  \
+            return aica_sys_intf.try_read##suffix(addr, val, area->aica);        \
+        } else if (addr_bus >= ADDR_AICA_RTC_FIRST && addr_bus <= ADDR_AICA_RTC_LAST) { \
+            return aica_rtc_intf.try_read##suffix(addr, val, area->rtc);         \
+        } else if (addr_bus >= ADDR_GDROM_FIRST && addr_bus <= ADDR_GDROM_LAST) { \
+            return gdrom_reg_intf.try_read##suffix(addr, val, area->gdrom);      \
+        } else if (addr_bus >= ADDR_EXT_DEV_FIRST && addr_bus <= ADDR_EXT_DEV_LAST) { \
+            return ext_dev_intf.try_read##suffix(addr, val, NULL);               \
+        } else {                                                        \
+            return -1;                                                  \
+        }                                                               \
     }
 
 #define AREA0_WRITEFUNC(tp, suffix)                                     \
     static void area0_write##suffix(uint32_t addr, tp val, void *ctxt) { \
         struct area0 *area = ctxt;                                      \
-        memory_map_write_##suffix(&area->map, addr, val);               \
+        uint32_t addr_bus = addr & 0x01ffffff;                          \
+        if (addr_bus >= ADDR_PVR2_FIRST && addr_bus <= ADDR_PVR2_LAST) { \
+            area->pvr2_memory_interface->write##suffix(addr, val, area->argp); \
+        } else if (addr_bus >= ADDR_BIOS_FIRST && addr_bus <= ADDR_BIOS_LAST) { \
+            boot_rom_intf.write##suffix(addr, val, area->bios);         \
+        } else if (addr_bus >= ADDR_FLASH_FIRST && addr_bus <= ADDR_FLASH_LAST) { \
+            flash_mem_intf.write##suffix(addr, val, area->flash);       \
+        } else if (addr_bus >= ADDR_G1_FIRST && addr_bus <= ADDR_G1_LAST) { \
+            g1_intf.write##suffix(addr, val, NULL);                     \
+        } else if (addr_bus >= ADDR_SYS_FIRST && addr_bus <= ADDR_SYS_LAST) { \
+            sys_block_intf.write##suffix(addr, val, area->sys_block);   \
+        } else if (addr_bus >= ADDR_MAPLE_FIRST && addr_bus <= ADDR_MAPLE_LAST) { \
+            maple_intf.write##suffix(addr, val, area->maple);           \
+        } else if (addr_bus >= ADDR_G2_FIRST && addr_bus <= ADDR_G2_LAST) { \
+            g2_intf.write##suffix(addr, val, NULL);                     \
+        } else if (addr_bus >= ADDR_MODEM_FIRST && addr_bus <= ADDR_MODEM_LAST) { \
+            modem_intf.write##suffix(addr, val, NULL);                  \
+        } else if (addr_bus >= ADDR_AICA_WAVE_FIRST && addr_bus <= ADDR_AICA_WAVE_LAST) { \
+            aica_wave_mem_intf.write##suffix(addr, val, &area->aica->mem); \
+        } else if (addr_bus >= 0x00700000 && addr_bus <= 0x00707fff) {  \
+            aica_sys_intf.write##suffix(addr, val, area->aica);         \
+        } else if (addr_bus >= ADDR_AICA_RTC_FIRST && addr_bus <= ADDR_AICA_RTC_LAST) { \
+            aica_rtc_intf.write##suffix(addr, val, area->rtc);          \
+        } else if (addr_bus >= ADDR_GDROM_FIRST && addr_bus <= ADDR_GDROM_LAST) { \
+            gdrom_reg_intf.write##suffix(addr, val, area->gdrom);       \
+        } else if (addr_bus >= ADDR_EXT_DEV_FIRST && addr_bus <= ADDR_EXT_DEV_LAST) { \
+            ext_dev_intf.write##suffix(addr, val, NULL);                \
+        } else {                                                        \
+            error_set_address(addr);                                    \
+            error_set_length(sizeof(tp));                               \
+            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
+        }                                                               \
     }
 
 #define AREA0_TRY_WRITEFUNC(tp, suffix)                                 \
     static int area0_try_write##suffix(uint32_t addr, tp val, void *ctxt) { \
         struct area0 *area = ctxt;                                      \
-        return memory_map_try_write_##suffix(&area->map, addr, val);    \
+        uint32_t addr_bus = addr & 0x01ffffff;                          \
+        if (addr_bus >= ADDR_PVR2_FIRST && addr_bus <= ADDR_PVR2_LAST) { \
+            return area->pvr2_memory_interface->try_write##suffix(addr, val, area->argp); \
+        } else if (addr_bus >= ADDR_BIOS_FIRST && addr_bus <= ADDR_BIOS_LAST) { \
+            return boot_rom_intf.try_write##suffix(addr, val, area->bios);        \
+        } else if (addr_bus >= ADDR_FLASH_FIRST && addr_bus <= ADDR_FLASH_LAST) { \
+            return flash_mem_intf.try_write##suffix(addr, val, area->flash);      \
+        } else if (addr_bus >= ADDR_G1_FIRST && addr_bus <= ADDR_G1_LAST) { \
+            return g1_intf.try_write##suffix(addr, val, NULL);                    \
+        } else if (addr_bus >= ADDR_SYS_FIRST && addr_bus <= ADDR_SYS_LAST) { \
+            return sys_block_intf.try_write##suffix(addr, val, area->sys_block);  \
+        } else if (addr_bus >= ADDR_MAPLE_FIRST && addr_bus <= ADDR_MAPLE_LAST) { \
+            return maple_intf.try_write##suffix(addr, val, area->maple);          \
+        } else if (addr_bus >= ADDR_G2_FIRST && addr_bus <= ADDR_G2_LAST) { \
+            return g2_intf.try_write##suffix(addr, val, NULL);                    \
+        } else if (addr_bus >= ADDR_MODEM_FIRST && addr_bus <= ADDR_MODEM_LAST) { \
+            return modem_intf.try_write##suffix(addr, val, NULL);                 \
+        } else if (addr_bus >= ADDR_AICA_WAVE_FIRST && addr_bus <= ADDR_AICA_WAVE_LAST) { \
+            return aica_wave_mem_intf.try_write##suffix(addr, val, &area->aica->mem); \
+        } else if (addr_bus >= 0x00700000 && addr_bus <= 0x00707fff) {  \
+            return aica_sys_intf.try_write##suffix(addr, val, area->aica);        \
+        } else if (addr_bus >= ADDR_AICA_RTC_FIRST && addr_bus <= ADDR_AICA_RTC_LAST) { \
+            return aica_rtc_intf.try_write##suffix(addr, val, area->rtc);         \
+        } else if (addr_bus >= ADDR_GDROM_FIRST && addr_bus <= ADDR_GDROM_LAST) { \
+            return gdrom_reg_intf.try_write##suffix(addr, val, area->gdrom);      \
+        } else if (addr_bus >= ADDR_EXT_DEV_FIRST && addr_bus <= ADDR_EXT_DEV_LAST) { \
+            return ext_dev_intf.try_write##suffix(addr, val, NULL);               \
+        } else {                                                        \
+            return -1;                                                  \
+        }                                                               \
     }
 
 

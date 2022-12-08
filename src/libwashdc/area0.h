@@ -34,39 +34,17 @@ struct aica;
 struct gdrom_ctxt;
 struct aica_rtc;
 
-/*
-  need:
-  boot rom
-  flash memory
-  system control reg
-  maple control reg
-  gdrom
-  g1
-  g2
-  pvr control reg
-  ta/pvr core reg
-  modem
-  g2 (again?)
-  AICA
-  ext dev
- */
-
 struct area0 {
-    struct memory_map map;
+    struct memory_interface *pvr2_memory_interface;
+    void *argp;
 
     struct boot_rom *bios;
     struct flash_mem *flash;
     struct sys_block_ctxt *sys_block;
     struct maple *maple;
     struct gdrom_ctxt *gdrom;
-    // G1 is NULL
-    // G2 is NULL
     struct pvr2 *pvr2;
-    // modem is NULL
     struct aica *aica; // sys
-    /* struct aica *aica;  // rtc */
-    /* struct aica *aica;  // memory */
-    // ext_dev is NULL
     struct aica_rtc *rtc;
 };
 
