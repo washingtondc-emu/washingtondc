@@ -83,20 +83,17 @@ void area1_cleanup(struct area1 *area1) {
         uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
         if ((addr_ext >= 0x04000000 && addr_ext <= 0x047fffff) ||       \
             (addr_ext >= 0x06000000 && addr_ext <= 0x067fffff)) {       \
-            *val = area->tex_mem_64bit_intf->read##suffix(addr,         \
-                                                          area->tex_mem_64bit_argp); \
-            return 0;                                                   \
+            return area->tex_mem_64bit_intf->try_read##suffix(addr, val,    \
+                                                              area->tex_mem_64bit_argp); \
         } else if ((addr_ext >= 0x05000000 && addr_ext <= 0x057fffff) || \
                    (addr_ext >= 0x07000000 && addr_ext <= 0x077fffff)) { \
-            *val = area->tex_mem_32bit_intf->read##suffix(addr,         \
-                                                          area->tex_mem_32bit_argp); \
-            return 0;                                                   \
+            return area->tex_mem_32bit_intf->try_read##suffix(addr, val, \
+                                                              area->tex_mem_32bit_argp); \
         } else if ((addr_ext >= 0x04800000 && addr_ext <= 0x04ffffff) || \
                    (addr_ext >= 0x05800000 && addr_ext <= 0x05ffffff) || \
                    (addr_ext >= 0x06800000 && addr_ext <= 0x06ffffff) || \
                    (addr_ext >= 0x07800000 && addr_ext <= 0x07ffffff)) { \
-            *val = pvr2_tex_mem_unused_intf.read##suffix(addr,NULL);    \
-            return 0;                                                   \
+            return pvr2_tex_mem_unused_intf.try_read##suffix(addr, val, NULL); \
         } else {                                                        \
             return -1;                                                  \
         }                                                               \
@@ -132,19 +129,17 @@ void area1_cleanup(struct area1 *area1) {
         uint32_t addr_ext = addr & RANGE_MASK_EXT;                      \
         if ((addr_ext >= 0x04000000 && addr_ext <= 0x047fffff) ||       \
             (addr_ext >= 0x06000000 && addr_ext <= 0x067fffff)) {       \
-            area->tex_mem_64bit_intf->write##suffix(addr, val,          \
-                                                    area->tex_mem_64bit_argp); \
-            return 0;                                                   \
+            return area->tex_mem_64bit_intf->try_write##suffix(addr, val, \
+                                                               area->tex_mem_64bit_argp); \
         } else if ((addr_ext >= 0x05000000 && addr_ext <= 0x057fffff) || \
                    (addr_ext >= 0x07000000 && addr_ext <= 0x077fffff)) { \
-            area->tex_mem_32bit_intf->write##suffix(addr, val,          \
-                                                    area->tex_mem_32bit_argp); \
-            return 0;                                                   \
+            return area->tex_mem_32bit_intf->try_write##suffix(addr, val, \
+                                                               area->tex_mem_32bit_argp); \
         } else if ((addr_ext >= 0x04800000 && addr_ext <= 0x04ffffff) || \
                    (addr_ext >= 0x05800000 && addr_ext <= 0x05ffffff) || \
                    (addr_ext >= 0x06800000 && addr_ext <= 0x06ffffff) || \
                    (addr_ext >= 0x07800000 && addr_ext <= 0x07ffffff)) { \
-            pvr2_tex_mem_unused_intf.write##suffix(addr,val,NULL);      \
+            return pvr2_tex_mem_unused_intf.try_write##suffix(addr,val,NULL); \
             return 0;                                                   \
         } else {                                                        \
             return -1;                                                  \
