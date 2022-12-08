@@ -26,12 +26,9 @@
 
 void area7_init(struct area7 *area7, struct Sh4 *sh4) {
     area7->sh4 = sh4;
-
-    memory_map_init(&area7->map);
 }
 
 void area7_cleanup(struct area7 *area7) {
-    memory_map_cleanup(&area7->map);
 }
 
 #define AREA7_READFUNC(tp, suffix)                                      \

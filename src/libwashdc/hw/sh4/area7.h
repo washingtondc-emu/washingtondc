@@ -35,7 +35,6 @@ struct Sh4;
  */
 
 struct area7 {
-    struct memory_map map;
     struct Sh4 *sh4;
 };
 
