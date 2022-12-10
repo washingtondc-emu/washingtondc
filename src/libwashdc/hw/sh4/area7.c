@@ -34,48 +34,26 @@ void area7_cleanup(struct area7 *area7) {
 #define AREA7_READFUNC(tp, suffix)                                      \
     static tp area7_read##suffix(uint32_t addr, void *ctxt) {           \
         struct area7 *area7 = ctxt;                                     \
-        if (addr >= SH4_AREA_P4_FIRST && addr <= SH4_AREA_P4_LAST) {    \
-            return sh4_p4_intf.read##suffix(addr, area7->sh4);          \
-        } else if (addr >= 0x7c000000 && addr <= 0x7fffffff) {          \
-            return sh4_ora_intf.read##suffix(addr, area7->sh4);         \
-        } else {                                                        \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
-        }                                                               \
+        return sh4_ora_intf.read##suffix(addr, area7->sh4);             \
     }
 
 #define AREA7_TRY_READFUNC(tp, suffix)                                  \
     static int area7_try_read##suffix(uint32_t addr, tp *val, void *ctxt) { \
         struct area7 *area7 = ctxt;                                     \
-        if (addr >= SH4_AREA_P4_FIRST && addr <= SH4_AREA_P4_LAST) {   \
-            return sh4_p4_intf.try_read##suffix(addr, val, area7->sh4); \
-        } else if (addr >= 0x7c000000 && addr <= 0x7fffffff) {         \
-            return sh4_ora_intf.try_read##suffix(addr, val, area7->sh4); \
-        } else {                                                        \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
-        }                                                               \
+        return sh4_ora_intf.try_read##suffix(addr, val, area7->sh4);    \
     }
 
 
 #define AREA7_WRITEFUNC(tp, suffix)                                     \
     static void area7_write##suffix(uint32_t addr, tp val, void *ctxt) { \
         struct area7 *area7 = ctxt;                                     \
-        if (addr >= SH4_AREA_P4_FIRST && addr <= SH4_AREA_P4_LAST) {   \
-            sh4_p4_intf.write##suffix(addr, val, area7->sh4);           \
-        } else if (addr >= 0x7c000000 && addr <= 0x7fffffff) {          \
-            sh4_ora_intf.write##suffix(addr, val, area7->sh4);          \
-        }                                                               \
+        sh4_ora_intf.write##suffix(addr, val, area7->sh4);              \
     }
 
 #define AREA7_TRY_WRITEFUNC(tp, suffix)                                 \
     static int area7_try_write##suffix(uint32_t addr, tp val, void *ctxt) { \
         struct area7 *area7 = ctxt;                                     \
-        if (addr >= SH4_AREA_P4_FIRST && addr <= SH4_AREA_P4_LAST) {   \
-            return sh4_p4_intf.try_write##suffix(addr, val, area7->sh4); \
-        } else if (addr >= 0x7c000000 && addr <= 0x7fffffff) {         \
-            return sh4_ora_intf.try_write##suffix(addr, val, area7->sh4); \
-        } else {                                                        \
-            RAISE_ERROR(ERROR_UNIMPLEMENTED);                           \
-        }                                                               \
+        return sh4_ora_intf.try_write##suffix(addr, val, area7->sh4);   \
     }
 
 AREA7_READFUNC(double, double)

@@ -1593,10 +1593,7 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
      */
     memory_map_add(map, SH4_AREA_P4_FIRST, SH4_AREA_P4_LAST,
                    RANGE_MASK_NONE, MEMORY_MAP_REGION_UNKNOWN,
-                   &area7_intf, &area7);
-    memory_map_add(map, 0x1c000000, 0x1fffffff,
-                   RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
-                   &area7_intf, &area7);
+                   &sh4_p4_intf, &cpu);
 
     // area 3 (main system memory)
     memory_map_add(map, 0x0c000000, 0x0fffffff,
@@ -1635,6 +1632,10 @@ static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                    RANGE_MASK_EXT, MEMORY_MAP_REGION_UNKNOWN,
                    &area4_intf, &area4);
 
+    // area 7
+    memory_map_add(map, 0x7c000000, 0x7fffffff,
+                   RANGE_MASK_NONE, MEMORY_MAP_REGION_UNKNOWN,
+                   &area7_intf, &area7);
     /*
      * TODO: YUV FIFO - apparently I made it a special case in the DMAC code
      * for some dumb reason...

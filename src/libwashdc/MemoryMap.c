@@ -89,10 +89,10 @@ MEMORY_MAP_READ_TMPL(double, double)
                 struct memory_interface const *intf = reg->intf;        \
                 void *ctxt = reg->ctxt;                                 \
                 if (intf->try_read##type_postfix) {                     \
-                    return intf->try_read##type_postfix(addr,    \
+                    return intf->try_read##type_postfix(addr,           \
                                                         val, ctxt);     \
                 } else {                                                \
-                    *val = intf->read##type_postfix(addr, ctxt); \
+                    *val = intf->read##type_postfix(addr, ctxt);        \
                 }                                                       \
                 return 0;                                               \
             }                                                           \
