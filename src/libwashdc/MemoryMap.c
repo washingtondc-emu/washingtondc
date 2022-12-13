@@ -190,7 +190,7 @@ memory_map_add(struct memory_map *map,
         range_mask != RANGE_MASK_EXT)
         RAISE_ERROR(ERROR_UNIMPLEMENTED);
 
-    if (map->n_regions >= MAX_MEM_MAP_REGIONS)
+    if (map->n_regions >= MEM_MAP_REGION_COUNT)
         RAISE_ERROR(ERROR_OVERFLOW);
 
     struct memory_map_region *reg = map->regions + map->n_regions++;

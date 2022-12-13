@@ -143,10 +143,14 @@ struct memory_map_region {
     struct memory_interface const *intf;
 };
 
-#define MAX_MEM_MAP_REGIONS 64
+#define MEM_MAP_REGION_BITS 8
+#define MEM_MAP_REGION_TBL_LEN (1<<MEM_MAP_REGION_BITS)
+#define MEM_MAP_REGION_SHIFT (32 - MEM_MAP_REGION_BITS)
+#define MEM_MAP_REGION_MASK ((MEM_MAP_REGION_TBL_LEN-1)<<MEM_MAP_REGION_SHIFT)
+#define MEM_MAP_REGION_COUNT (1 << MEM_MAP_REGION_BITS)
 
 struct memory_map {
-    struct memory_map_region regions[MAX_MEM_MAP_REGIONS];
+    struct memory_map_region regions[MEM_MAP_REGION_COUNT];
     unsigned n_regions;
 
     /*

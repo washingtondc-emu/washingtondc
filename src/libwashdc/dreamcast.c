@@ -1544,6 +1544,15 @@ void dc_tex_cache_read(void **tex_dat_out, size_t *n_bytes_out,
     pvr2_tex_cache_read(&dc_pvr2, tex_dat_out, n_bytes_out, meta);
 }
 
+/*
+ * ARM7 EXTERNAL ADDRESS SPACE
+ *
+ * RAM:  0x00000000-0x007fffff
+ * AICA: 0x00800000-0x00807fff
+ *
+ * bit 23 is the decider
+ * if bit 23 = 0: RAM, else AICA
+ */
 static void construct_arm7_mem_map(struct memory_map *map,
                                    washdc_hostfile aica_trace_file) {
 
@@ -1577,6 +1586,43 @@ static void construct_arm7_mem_map(struct memory_map *map,
     map->unmap = &arm7_unmapped_mem;
 }
 
+/*
+ * SUPERH4 EXTERNAL ADDRESS SPACE
+ * area 0:
+ * 00000000-03ffffff
+ * exclusive upper-bytes: 00, 01, 02, 03
+ *
+ * area 1:
+ * 04000000-07ffffff
+ * exclusive upper-bytes: 04, 05, 06, 07
+ *
+ * area 2:
+ * 08000000-0bffffff
+ * exclusive upper-bytes: 08, 09, 0a, 0b
+ *
+ * area 3:
+ * 0c000000-0fffffff
+ * exclusive upper-bytes: 0c, 0d, 0e, 0f
+ *
+ * area 4:
+ * 10000000-13ffffff
+ * exclusive upper-bytes: 10, 11, 12, 13
+ *
+ * area 5:
+ * 14000000-17ffffff
+ * exclusive upper-bytes: 14, 15, 16, 17
+ *
+ * area 6:
+ * 18000000-1bffffff
+ * exclusive upper-bytes: 18, 19, 1a, 1b
+ *
+ * area 7:
+ * 1c000000-1fffffff
+ * exclusive upper-bytes: 1c, 1d, 1e, 1f
+ *
+ * Note that the upper-three bits will be duplicated 7 times for all
+ * areas.  when upper-three bits are all 1 then it will map to the P4 area.
+ */
 static void construct_sh4_mem_map(struct Sh4 *sh4, struct memory_map *map,
                                   washdc_hostfile pvr2_trace_file,
                                   washdc_hostfile aica_trace_file) {
