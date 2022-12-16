@@ -631,22 +631,28 @@ dreamcast_init(char const *gdi_path,
 
     // initialize host windowing, graphics and sound systems
     /* win_init(win_width, win_height); */
+    LOG_INFO("initializing gfx...\n");
     gfx_init(gfx_if);
+    LOG_INFO("initializing sound...\n");
     dc_sound_init(snd_intf);
 
     memory_map_init(&mem_map);
     memory_map_init(&arm7_mem_map);
 
 #ifdef DEEP_SYSCALL_TRACE
+    LOG_INFO("initializing deep-system-call tracing...\n");
     deep_syscall_trace_init(&mem_map);
 #endif
 
     memory_init(&dc_mem);
+    LOG_INFO("initializing flash memory...\n");
     flash_mem_init(&flash_mem, config_get_dc_flash_path(), flash_mem_writeable);
+    LOG_INFO("initializing firmware...\n");
     boot_rom_init(&firmware, config_get_dc_bios_path());
 
     int boot_mode = config_get_boot_mode();
     if (boot_mode == (int)DC_BOOT_DIRECT) {
+        LOG_INFO("direct-boot requested\n");
         long len_1st_read_bin;
         char const *exec_bin_path = config_get_exec_bin_path();
         char const *ext = strrchr(exec_bin_path, '.');
@@ -746,11 +752,16 @@ dreamcast_init(char const *gdi_path,
             memory_write_32((*pair)[0] & ADDR_AREA3_MASK, (*pair)[1], &dc_mem);
             pair++;
         }
+    } else {
+        LOG_INFO("LLE boot requested\n");
     }
 
+    LOG_INFO("initializing clocks...\n");
     dc_clock_init(&sh4_clock);
     dc_clock_init(&arm7_clock);
+    LOG_INFO("initializing SuperH-4...\n");
     sh4_init(&cpu, &sh4_clock);
+    LOG_INFO("initializing ARM7DI...\n");
     arm7_init(&arm7, &arm7_clock, &aica.mem);
 
     if (boot_mode == (int)DC_BOOT_DIRECT) {
@@ -774,6 +785,7 @@ dreamcast_init(char const *gdi_path,
 
 #ifdef ENABLE_JIT_X86_64
     if (config_get_native_jit()) {
+        LOG_INFO("initializing x86-64 JIT backend...\n");
         jit_x86_64_backend_init();
         exec_mem_init();
         sh4_jit_set_native_dispatch_meta(&sh4_native_dispatch_meta);
@@ -782,21 +794,36 @@ dreamcast_init(char const *gdi_path,
         native_mem_init();
     }
 #endif
+    LOG_INFO("initializing JIT...\n");
     jit_init(&sh4_clock);
 
+    LOG_INFO("initializing G1 bus...\n");
     g1_init();
+
+    LOG_INFO("initializing G2 bus...\n");
     g2_init();
+
+    LOG_INFO("initializing AICA...\n");
     aica_init(&aica, &arm7, &arm7_clock, &sh4_clock);
+
+    LOG_INFO("initializing PowerVR2...\n");
     void(*pvr2_int_cb)(HollyNrmInt);
     if (pvr2_tracefile)
         pvr2_int_cb = trace_pvr2_irq_callback;
     else
         pvr2_int_cb = holly_raise_nrm_int;
     pvr2_init(&dc_pvr2, &sh4_clock, &maple, pvr2_int_cb);
+
+    LOG_INFO("initializing system block...\n");
     sys_block_init(&sys_block, &sh4_clock, &cpu, &dc_mem, &dc_pvr2);
+
+    LOG_INFO("initializing GD-ROM...\n");
     gdrom_init(&gdrom, &sh4_clock);
+
+    LOG_INFO("initializing maple bus...\n");
     maple_init(&maple, &sh4_clock);
 
+    LOG_INFO("initializing maple units...\n");
     unsigned port;
     for (port = 0; port < 4; port++) {
         struct washdc_controller_dev unit0 = controllers[port][0];
@@ -829,6 +856,7 @@ dreamcast_init(char const *gdi_path,
     sh4_register_pdtra_read_handler(&cpu, on_pdtra_read);
     sh4_register_pdtra_write_handler(&cpu, on_pdtra_write);
 
+    LOG_INFO("initializing memory maps...\n");
     construct_sh4_mem_map(&cpu, &mem_map, pvr2_trace_file, aica_trace_file);
     sh4_set_mem_map(&cpu, &mem_map);
 
@@ -840,10 +868,12 @@ dreamcast_init(char const *gdi_path,
         native_mem_register(cpu.mem.map);
 #endif
 
+    LOG_INFO("initializing real-time clock...\n");
     aica_rtc_init(&rtc, &sh4_clock, config_get_dc_path_rtc());
 
 #ifdef ENABLE_DEBUGGER
     if (config_get_dbg_enable()) {
+        LOG_INFO("debugger enabled - transition to DC_STATE_RUNNING\n");
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
         goto init_complete;
     }
@@ -856,6 +886,7 @@ dreamcast_init(char const *gdi_path,
          * attached, then leave the system in DC_STATE_NOT_RUNNING until the
          * user executes the begin-execution command.
          */
+        LOG_INFO("transition to DC_STATE_RUNNING\n");
         dc_state_transition(DC_STATE_RUNNING, DC_STATE_NOT_RUNNING);
     }
 
@@ -867,6 +898,7 @@ init_complete:
     lmmode1 = 0;
 
     init_complete = true;
+    LOG_INFO("initialization of WashingtonDC is complete.\n");
 
     return &dccons;
 }
@@ -1012,6 +1044,7 @@ static cpu_backend_func select_arm7_backend(void) {
 }
 
 void dreamcast_run() {
+    LOG_INFO("%s - beginning execution\n", __func__);
     signal(SIGINT, dc_sigint_handler);
 
     if (config_get_ser_srv_enable())
@@ -1042,7 +1075,9 @@ void dreamcast_run() {
     arm7_clock.dispatch = select_arm7_backend();
     arm7_clock.dispatch_ctxt = &arm7;
 
+    LOG_INFO("%s - entering main loop\n", __func__);
     main_loop_sched();
+    LOG_INFO("%s - main loop exited.\n", __func__);
 
     dc_print_perf_stats();
 
