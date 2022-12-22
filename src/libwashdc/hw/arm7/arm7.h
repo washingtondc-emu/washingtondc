@@ -206,7 +206,7 @@ static inline void arm7_reset_pipeline(struct arm7 *arm7) {
 }
 
 static inline uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
-    if (addr <= 0x007fffff)
+    if ((addr & (1 << 23)) == 0)
         return aica_wave_mem_read_32(addr & 0x001fffff, arm7->inst_mem);
     return ~0;
 }
