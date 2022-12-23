@@ -68,6 +68,26 @@ static uint32_t
 decode_shift_by_immediate(struct arm7 *arm7, unsigned shift_fn,
                           unsigned val_reg, unsigned shift_amt, bool *carry);
 
+static inline uint32_t
+arm7_read32(struct arm7 *arm7, uint32_t addr) {
+    return memory_map_read_32(arm7->map, addr);
+}
+
+static inline uint8_t
+arm7_read8(struct arm7 *arm7, uint32_t addr) {
+    return memory_map_read_8(arm7->map, addr);
+}
+
+static inline void
+arm7_write32(struct arm7 *arm7, uint32_t addr, uint32_t val) {
+    memory_map_write_32(arm7->map, addr, val);
+}
+
+static inline void
+arm7_write8(struct arm7 *arm7, uint32_t addr, uint8_t val) {
+    memory_map_write_8(arm7->map, addr, val);
+}
+
 inline static uint32_t *
 arm7_gen_reg_bank(struct arm7 *arm7, unsigned reg, unsigned bank) {
     unsigned curmode = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_M_MASK;
@@ -783,7 +803,7 @@ DEF_BRANCH_LINK_INST(nv)
                     (unsigned)arm7->reg[ARM7_REG_PC]);                  \
         }                                                               \
         uint32_t addr_read = addr & ~3;                                 \
-        uint32_t val = memory_map_read_32(arm7->map, addr_read);        \
+        uint32_t val = arm7_read32(arm7, addr_read);                    \
                                                                         \
         /* Deal with unaligned offsets.  It does the load */            \
         /* from the aligned address (ie address with bits */            \
@@ -885,7 +905,7 @@ DEF_LDR_INST(nv)
         }                                                               \
                                                                         \
         *arm7_gen_reg(arm7, rd) =                                       \
-            (uint32_t)memory_map_read_8(arm7->map, addr);               \
+            (uint32_t)arm7_read8(arm7, addr);                           \
                                                                         \
         if (!pre) {                                                     \
             if (writeback) {                                            \
@@ -984,7 +1004,7 @@ DEF_LDRB_INST(nv)
         if (rd == 15)                                                   \
             val += 4;                                                   \
         addr &= ~3;                                                     \
-        memory_map_write_32(arm7->map, addr, val);                      \
+        arm7_write32(arm7, addr, val);                                  \
                                                                         \
         if (!pre) {                                                     \
             if (writeback) {                                            \
@@ -1064,7 +1084,7 @@ DEF_STR_INST(nv)
         uint32_t val = *arm7_gen_reg(arm7, rd);                         \
         if (rd == 15)                                                   \
             val += 4;                                                   \
-        memory_map_write_8(arm7->map, addr, val);                       \
+        arm7_write8(arm7, addr, val);                                   \
                                                                         \
         if (!pre) {                                                     \
             if (writeback) {                                            \
@@ -1225,10 +1245,10 @@ DEF_STRB_INST(nv)
                         if (bank == ARM7_MODE_USER) {                   \
                             *arm7_gen_reg_bank(arm7, reg_no,            \
                                                ARM7_MODE_USER) =        \
-                                memory_map_read_32(arm7->map, base);    \
+                                arm7_read32(arm7, base);                \
                         } else {                                        \
                             *arm7_gen_reg(arm7, reg_no) =               \
-                                memory_map_read_32(arm7->map, base);    \
+                                arm7_read32(arm7, base);                \
                         }                                               \
                         if (!pre)                                       \
                             base += 4;                                  \
@@ -1246,7 +1266,7 @@ DEF_STRB_INST(nv)
                     if (pre)                                            \
                         base += 4;                                      \
                     arm7->reg[ARM7_REG_PC] =                            \
-                        memory_map_read_32(arm7->map, base);            \
+                        arm7_read32(arm7, base);                        \
                     if (!pre)                                           \
                         base += 4;                                      \
                 }                                                       \
@@ -1257,14 +1277,13 @@ DEF_STRB_INST(nv)
                         if (pre)                                        \
                             base += 4;                                  \
                         if (bank == ARM7_MODE_USER) {                   \
-                            memory_map_write_32(arm7->map, base,        \
+                            arm7_write32(arm7, base,                    \
                                 *arm7_gen_reg_bank(arm7,                \
                                 reg_no,                                 \
                                 ARM7_MODE_USER));                       \
                         } else {                                        \
-                            memory_map_write_32(arm7->map, base,        \
-                                                *arm7_gen_reg(arm7,     \
-                                                              reg_no)); \
+                            arm7_write32(arm7, base,                    \
+                                         *arm7_gen_reg(arm7, reg_no));  \
                         }                                               \
                         if (!pre)                                       \
                             base += 4;                                  \
@@ -1273,8 +1292,8 @@ DEF_STRB_INST(nv)
                 if (reg_list & (1 << 15)) {                             \
                     if (pre)                                            \
                         base += 4;                                      \
-                    memory_map_write_32(arm7->map, base,                \
-                                        arm7->reg[ARM7_REG_PC] + 4);    \
+                    arm7_write32(arm7, base,                            \
+                                 arm7->reg[ARM7_REG_PC] + 4);           \
                     if (!pre)                                           \
                         base += 4;                                      \
                 }                                                       \
@@ -1303,7 +1322,7 @@ DEF_STRB_INST(nv)
                     if (pre)                                            \
                         base -= 4;                                      \
                     arm7->reg[ARM7_REG_PC] =                            \
-                        memory_map_read_32(arm7->map, base);            \
+                        arm7_read32(arm7, base);                        \
                     if (!pre)                                           \
                         base -= 4;                                      \
                 }                                                       \
@@ -1313,10 +1332,10 @@ DEF_STRB_INST(nv)
                             base -= 4;                                  \
                         if (bank == ARM7_MODE_USER) {                   \
                             *arm7_gen_reg_bank(arm7, reg_no, ARM7_MODE_USER) = \
-                                memory_map_read_32(arm7->map, base);    \
+                                arm7_read32(arm7, base);    \
                         } else {                                        \
                             *arm7_gen_reg(arm7, reg_no) =               \
-                                memory_map_read_32(arm7->map, base);    \
+                                arm7_read32(arm7, base);    \
                         }                                               \
                         if (!pre)                                       \
                             base -= 4;                                  \
@@ -1328,8 +1347,7 @@ DEF_STRB_INST(nv)
                         RAISE_ERROR(ERROR_UNIMPLEMENTED);               \
                     if (pre)                                            \
                         base -= 4;                                      \
-                    memory_map_write_32(arm7->map, base,                \
-                                        arm7->reg[ARM7_REG_PC] + 4);    \
+                    arm7_write32(arm7, base, arm7->reg[ARM7_REG_PC] + 4); \
                     if (!pre)                                           \
                         base -= 4;                                      \
                 }                                                       \
@@ -1339,14 +1357,12 @@ DEF_STRB_INST(nv)
                         if (pre)                                        \
                             base -= 4;                                  \
                         if (bank == ARM7_MODE_USER) {                   \
-                            memory_map_write_32(arm7->map, base,        \
-                                                *arm7_gen_reg_bank(arm7, \
-                                                                   reg_no, \
-                                                                   ARM7_MODE_USER)); \
+                            arm7_write32(arm7, base,                    \
+                                         *arm7_gen_reg_bank(arm7, reg_no, \
+                                                            ARM7_MODE_USER)); \
                         } else {                                        \
-                            memory_map_write_32(arm7->map, base,        \
-                                                *arm7_gen_reg(arm7,     \
-                                                              reg_no)); \
+                            arm7_write32(arm7, base,                    \
+                                         *arm7_gen_reg(arm7, reg_no));  \
                         }                                               \
                         if (!pre)                                       \
                             base -= 4;                                  \
@@ -2022,14 +2038,14 @@ DEF_SWI_INST(nv)
             LOG_ERROR("TODO: unaligned ARM7 word swaps");           \
                                                                     \
         if (n_bytes == 4) {                                         \
-            uint32_t dat_in = memory_map_read_32(arm7->map, addr);  \
+            uint32_t dat_in = arm7_read32(arm7, addr);  \
             uint32_t dat_out = *arm7_gen_reg(arm7, src_reg);        \
-            memory_map_write_32(arm7->map, addr, dat_out);          \
+            arm7_write32(arm7, addr, dat_out);                      \
             *arm7_gen_reg(arm7, dst_reg) = dat_in;                  \
         } else {                                                    \
-            uint8_t dat_in = memory_map_read_8(arm7->map, addr);    \
+            uint8_t dat_in = arm7_read8(arm7, addr);                \
             uint8_t dat_out = *arm7_gen_reg(arm7, src_reg);         \
-            memory_map_write_8(arm7->map, addr, dat_out);           \
+            arm7_write8(arm7, addr, dat_out);                       \
             *arm7_gen_reg(arm7, dst_reg) = dat_in;                  \
         }                                                           \
                                                                     \
