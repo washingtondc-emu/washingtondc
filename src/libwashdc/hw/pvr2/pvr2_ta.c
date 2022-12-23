@@ -764,7 +764,9 @@ on_pkt_vtx_received(struct pvr2 *pvr2, struct pvr2_pkt const *pkt) {
          * ideally want to let that through.
          */
         float depth = vtx->pos[2];
-        if (!isinf(depth) && !isnan(depth) && fabsf(depth) < 1024 * 1024) {
+        if (ta->fifo_state.cur_poly_type != PVR2_POLY_TYPE_OPAQUE_MOD &&
+            ta->fifo_state.cur_poly_type != PVR2_POLY_TYPE_TRANS_MOD &&
+            !isinf(depth) && !isnan(depth) && fabsf(depth) < 1024 * 1024) {
             if (depth < cur_list->clip_min)
                 cur_list->clip_min = depth;
             if (depth > cur_list->clip_max)
