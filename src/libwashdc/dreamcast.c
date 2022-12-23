@@ -762,7 +762,7 @@ dreamcast_init(char const *gdi_path,
     LOG_INFO("initializing SuperH-4...\n");
     sh4_init(&cpu, &sh4_clock);
     LOG_INFO("initializing ARM7DI...\n");
-    arm7_init(&arm7, &arm7_clock, &aica.mem);
+    arm7_init(&arm7, &arm7_clock, &aica.mem, &aica);
 
     if (boot_mode == (int)DC_BOOT_DIRECT) {
         /*

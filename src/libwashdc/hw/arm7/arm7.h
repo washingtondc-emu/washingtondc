@@ -108,7 +108,11 @@ typedef uint32_t arm7_inst;
 
 typedef bool(*arm7_irq_fn)(void *dat);
 
+struct aica;
+
 struct arm7 {
+    struct aica *aica;
+
     /*
      * For the sake of instruction-fetching, ARM7 disregards the memory_map and
      * goes straight here.  This is less modular than going to the memory_map
@@ -148,7 +152,8 @@ struct arm7 {
     bool fiq_line;
 };
 
-void arm7_init(struct arm7 *arm7, struct dc_clock *clk, struct aica_wave_mem *inst_mem);
+void arm7_init(struct arm7 *arm7, struct dc_clock *clk,
+               struct aica_wave_mem *inst_mem, struct aica *aica);
 void arm7_cleanup(struct arm7 *arm7);
 
 void arm7_set_mem_map(struct arm7 *arm7, struct memory_map *arm7_mem_map);
@@ -207,7 +212,7 @@ static inline void arm7_reset_pipeline(struct arm7 *arm7) {
 
 static inline uint32_t arm7_do_fetch_inst(struct arm7 *arm7, uint32_t addr) {
     if ((addr & (1 << 23)) == 0)
-        return aica_wave_mem_read_32(addr & 0x001fffff, arm7->inst_mem);
+        return aica_wave_mem_read_32(addr & AICA_WAVE_MEM_MASK, arm7->inst_mem);
     return ~0;
 }
 

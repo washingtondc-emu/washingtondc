@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -198,12 +198,12 @@ static float aica_sys_read_float(addr32_t addr, void *ctxt);
 static void aica_sys_write_float(addr32_t addr, float val, void *ctxt);
 static double aica_sys_read_double(addr32_t addr, void *ctxt);
 static void aica_sys_write_double(addr32_t addr, double val, void *ctxt);
-static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt);
-static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt);
+uint32_t aica_sys_read_32(addr32_t addr, void *ctxt);
+void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt);
 static uint16_t aica_sys_read_16(addr32_t addr, void *ctxt);
 static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt);
-static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt);
-static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt);
+uint8_t aica_sys_read_8(addr32_t addr, void *ctxt);
+void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt);
 
 static void aica_sys_channel_read(struct aica *aica, void *dst,
                                   uint32_t addr, unsigned len);
@@ -940,7 +940,7 @@ static void aica_dsp_reg_write(struct aica *aica, void const *src,
     memcpy(((uint8_t*)aica->sys_reg) + addr, src, len);
 }
 
-static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
+uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
@@ -978,7 +978,7 @@ static uint32_t aica_sys_read_32(addr32_t addr, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-static void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
+void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
@@ -1082,7 +1082,7 @@ static void aica_sys_write_16(addr32_t addr, uint16_t val, void *ctxt) {
     }
 }
 
-static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
+uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 
@@ -1120,7 +1120,7 @@ static uint8_t aica_sys_read_8(addr32_t addr, void *ctxt) {
     RAISE_ERROR(ERROR_UNIMPLEMENTED);
 }
 
-static void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
+void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt) {
     struct aica *aica = (struct aica*)ctxt;
     bool from_sh4 = (addr & 0x00f00000) == 0x00700000;
 

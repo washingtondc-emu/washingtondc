@@ -28,6 +28,7 @@
 #include "washdc/error.h"
 #include "intmath.h"
 #include "compiler_bullshit.h"
+#include "hw/aica/aica.h"
 
 #include "arm7.h"
 
@@ -70,22 +71,34 @@ decode_shift_by_immediate(struct arm7 *arm7, unsigned shift_fn,
 
 static inline uint32_t
 arm7_read32(struct arm7 *arm7, uint32_t addr) {
-    return memory_map_read_32(arm7->map, addr);
+    if ((addr & (1 << 23)) == 0)
+        return aica_wave_mem_read_32(addr & AICA_WAVE_MEM_MASK, &arm7->aica->mem);
+    else
+        return aica_sys_read_32(addr, arm7->aica);
 }
 
 static inline uint8_t
 arm7_read8(struct arm7 *arm7, uint32_t addr) {
-    return memory_map_read_8(arm7->map, addr);
+    if ((addr & (1 << 23)) == 0)
+        return aica_wave_mem_read_8(addr & AICA_WAVE_MEM_MASK, &arm7->aica->mem);
+    else
+        return aica_sys_read_8(addr, arm7->aica);
 }
 
 static inline void
 arm7_write32(struct arm7 *arm7, uint32_t addr, uint32_t val) {
-    memory_map_write_32(arm7->map, addr, val);
+    if ((addr & (1 << 23)) == 0)
+        aica_wave_mem_write_32(addr & AICA_WAVE_MEM_MASK, val, &arm7->aica->mem);
+    else
+        aica_sys_write_32(addr, val, arm7->aica);
 }
 
 static inline void
 arm7_write8(struct arm7 *arm7, uint32_t addr, uint8_t val) {
-    memory_map_write_8(arm7->map, addr, val);
+    if ((addr & (1 << 23)) == 0)
+        aica_wave_mem_write_8(addr & AICA_WAVE_MEM_MASK, val, &arm7->aica->mem);
+    else
+        aica_sys_write_8(addr, val, arm7->aica);
 }
 
 inline static uint32_t *
@@ -251,11 +264,13 @@ static struct error_callback arm7_error_callback;
 static void arm7_init_arm7_inst_lut(struct arm7 *arm7);
 
 void arm7_init(struct arm7 *arm7,
-               struct dc_clock *clk, struct aica_wave_mem *inst_mem) {
+               struct dc_clock *clk, struct aica_wave_mem *inst_mem,
+               struct aica *aica) {
     memset(arm7, 0, sizeof(*arm7));
 
     arm7_init_arm7_inst_lut(arm7);
 
+    arm7->aica = aica;
     arm7->clk = clk;
     arm7->inst_mem = inst_mem;
     arm7->reg[ARM7_REG_CPSR] = ARM7_MODE_SVC;

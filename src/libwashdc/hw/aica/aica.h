@@ -219,6 +219,10 @@ void aica_init(struct aica *aica, struct arm7 *arm7,
                struct dc_clock *clk, struct dc_clock *sh4_clk);
 void aica_cleanup(struct aica *aica);
 
+uint32_t aica_sys_read_32(addr32_t addr, void *ctxt);
+void aica_sys_write_32(addr32_t addr, uint32_t val, void *ctxt);
+uint8_t aica_sys_read_8(addr32_t addr, void *ctxt);
+void aica_sys_write_8(addr32_t addr, uint8_t val, void *ctxt);
 extern struct memory_interface aica_sys_intf;
 
 extern bool aica_log_verbose_val;
