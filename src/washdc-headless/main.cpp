@@ -394,7 +394,7 @@ static void print_usage(char const *cmd) {
             "\t-t\t\testablish serial server over TCP port 1998\n"
             "\t-h\t\tdisplay this message and exit\n"
             "\t-l\t\tdump logs to stdout\n"
-            "\t-n\t\tdon't inline memory reads/writes into the jit\n"
+            "\t-n\t\tdon't inline memory reads/writes into the jit (deprecated)\n"
             "\t-p\t\tdisable the dynarec and enable the interpreter instead\n"
             "\t-j\t\tenable dynamic recompiler (as opposed to interpreter)\n"
             "\t-v\t\tenable verbose logging\n"

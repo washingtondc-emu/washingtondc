@@ -271,8 +271,6 @@ if (ENABLE_JIT_X86_64)
                                               "${WASHDC_SOURCE_DIR}/jit/x86_64/exec_mem.c"
                                               "${WASHDC_SOURCE_DIR}/jit/x86_64/native_dispatch.h"
                                               "${WASHDC_SOURCE_DIR}/jit/x86_64/native_dispatch.c"
-                                              "${WASHDC_SOURCE_DIR}/jit/x86_64/native_mem.h"
-                                              "${WASHDC_SOURCE_DIR}/jit/x86_64/native_mem.c"
                                               "${WASHDC_SOURCE_DIR}/jit/x86_64/abi.h"
                                               "${WASHDC_SOURCE_DIR}/jit/x86_64/register_set.h"
                                               "${WASHDC_SOURCE_DIR}/jit/x86_64/register_set.c")

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2020, 2022 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -36,7 +36,6 @@
 #include "exec_mem.h"
 #include "dreamcast.h"
 #include "native_dispatch.h"
-#include "native_mem.h"
 #include "abi.h"
 #include "config.h"
 #include "washdc/cpu.h"
@@ -1079,17 +1078,12 @@ static void emit_read_16_constaddr(struct code_block_x86_64 *blk,
     // call memory_map_read_16(vaddr)
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
-        native_mem_read_16(blk, map);
-    } else {
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        x86asm_mov_imm32_reg32(vaddr, REG_ARG1);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_read_16);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    x86asm_mov_imm32_reg32(vaddr, REG_ARG1);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_read_16);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1140,17 +1134,12 @@ static void emit_read_32_constaddr(struct code_block_x86_64 *blk,
 
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        x86asm_mov_imm32_reg32(vaddr, REG_ARG0);
-        native_mem_read_32(blk, map);
-    } else {
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        x86asm_mov_imm32_reg32(vaddr, REG_ARG1);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_read_32);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    x86asm_mov_imm32_reg32(vaddr, REG_ARG1);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_read_32);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1172,19 +1161,13 @@ static void emit_read_8_slot(struct code_block_x86_64 *blk,
     // call memory_map_read_8(*addr_slot)
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG0);
-        native_mem_read_8(blk, map);
-    } else {
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_read_8);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_read_8);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1206,19 +1189,13 @@ static void emit_read_16_slot(struct code_block_x86_64 *blk,
     // call memory_map_read_16(*addr_slot)
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG0);
-        native_mem_read_16(blk, map);
-    } else {
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_read_16);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_read_16);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1240,19 +1217,13 @@ static void emit_read_32_slot(struct code_block_x86_64 *blk,
     // call memory_map_read_32(*addr_slot)
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG0);
-        native_mem_read_32(blk, map);
-    } else {
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_read_32);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_read_32);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1273,27 +1244,17 @@ static void emit_write_8_slot(struct code_block_x86_64 *blk,
 
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        move_slot_to_reg(blk, src_slot, REG_ARG1);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    move_slot_to_reg(blk, src_slot, REG_ARG2);
 
-        evict_register(blk, &gen_reg_state, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG2);
 
-        native_mem_write_8(blk, map);
-    } else {
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        move_slot_to_reg(blk, src_slot, REG_ARG2);
-
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        evict_register(blk, &gen_reg_state, REG_ARG2);
-
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_write_8);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_write_8);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1310,27 +1271,17 @@ static void emit_write_16_slot(struct code_block_x86_64 *blk,
 
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        move_slot_to_reg(blk, src_slot, REG_ARG1);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    move_slot_to_reg(blk, src_slot, REG_ARG2);
 
-        evict_register(blk, &gen_reg_state, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG2);
 
-        native_mem_write_16(blk, map);
-    } else {
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        move_slot_to_reg(blk, src_slot, REG_ARG2);
-
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        evict_register(blk, &gen_reg_state, REG_ARG2);
-
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_write_16);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_write_16);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1347,27 +1298,17 @@ static void emit_write_32_slot(struct code_block_x86_64 *blk,
 
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        move_slot_to_reg(blk, src_slot, REG_ARG1);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    move_slot_to_reg(blk, src_slot, REG_ARG2);
 
-        evict_register(blk, &gen_reg_state, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG2);
 
-        native_mem_write_32(blk, map);
-    } else {
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        move_slot_to_reg(blk, src_slot, REG_ARG2);
-
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        evict_register(blk, &gen_reg_state, REG_ARG2);
-
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_write_32);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_write_32);
+    ms_shadow_close();
 
     postfunc();
 
@@ -1384,53 +1325,29 @@ static void emit_write_float_slot(struct code_block_x86_64 *blk,
 
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        static unsigned const addr_reg_arg = REG_ARG0;
 #if defined(ABI_MICROSOFT)
-        /*
-         * microsoft's ABI treats the XMM registers and the general-purpose
-         * registers as if they're mutually-exclusive even though they're
-         * obviously not.
-         */
-        static unsigned const xmm_reg_arg = REG_ARG1_XMM;
+    /*
+     * microsoft's ABI treats the XMM registers and the general-purpose
+     * registers as if they're mutually-exclusive even though they're
+     * obviously not.
+     */
+    static unsigned const xmm_reg_arg = REG_ARG2_XMM;
 #elif defined(ABI_UNIX)
-        static unsigned const xmm_reg_arg = REG_ARG0_XMM;
+    static unsigned const xmm_reg_arg = REG_ARG0_XMM;
 #else
 #error unknown abi
 #endif
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    move_slot_to_reg(blk, src_slot, xmm_reg_arg);
 
-        move_slot_to_reg(blk, addr_slot, addr_reg_arg);
-        move_slot_to_reg(blk, src_slot, xmm_reg_arg);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    evict_register(blk, &xmm_reg_state, xmm_reg_arg);
 
-        evict_register(blk, &gen_reg_state, addr_reg_arg);
-        evict_register(blk, &xmm_reg_state, xmm_reg_arg);
-
-        native_mem_write_float(blk, map);
-    } else {
-#if defined(ABI_MICROSOFT)
-        /*
-         * microsoft's ABI treats the XMM registers and the general-purpose
-         * registers as if they're mutually-exclusive even though they're
-         * obviously not.
-         */
-        static unsigned const xmm_reg_arg = REG_ARG2_XMM;
-#elif defined(ABI_UNIX)
-        static unsigned const xmm_reg_arg = REG_ARG0_XMM;
-#else
-#error unknown abi
-#endif
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        move_slot_to_reg(blk, src_slot, xmm_reg_arg);
-
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        evict_register(blk, &xmm_reg_state, xmm_reg_arg);
-
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_write_float);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_write_float);
+    ms_shadow_close();
 
     postfunc();
     ungrab_register(&gen_reg_state.set, REG_RET);
@@ -2171,19 +2088,13 @@ static void emit_read_float_slot(struct code_block_x86_64 *blk,
     // call memory_map_read_float(*addr_slot)
     prefunc(blk);
 
-    if (config_get_inline_mem()) {
-        move_slot_to_reg(blk, addr_slot, REG_ARG0);
-        evict_register(blk, &gen_reg_state, REG_ARG0);
-        native_mem_read_float(blk, map);
-    } else {
-        x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
-        move_slot_to_reg(blk, addr_slot, REG_ARG1);
-        evict_register(blk, &gen_reg_state, REG_ARG1);
-        ms_shadow_open(blk);
-        x86_64_align_stack(blk);
-        x86asm_call_ptr(memory_map_read_float);
-        ms_shadow_close();
-    }
+    x86asm_mov_imm64_reg64((uint64_t)map, REG_ARG0);
+    move_slot_to_reg(blk, addr_slot, REG_ARG1);
+    evict_register(blk, &gen_reg_state, REG_ARG1);
+    ms_shadow_open(blk);
+    x86_64_align_stack(blk);
+    x86asm_call_ptr(memory_map_read_float);
+    ms_shadow_close();
 
     postfunc_float();
 

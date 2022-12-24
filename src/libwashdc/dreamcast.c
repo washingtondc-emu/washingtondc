@@ -98,7 +98,6 @@
 
 #ifdef ENABLE_JIT_X86_64
 #include "jit/x86_64/native_dispatch.h"
-#include "jit/x86_64/native_mem.h"
 #include "jit/x86_64/exec_mem.h"
 #endif
 
@@ -791,8 +790,6 @@ dreamcast_init(char const *gdi_path,
         sh4_jit_set_native_dispatch_meta(&sh4_native_dispatch_meta);
         sh4_native_dispatch_meta.clk = &sh4_clock;
         native_dispatch_init(&sh4_native_dispatch_meta, &cpu);
-        if (config_get_inline_mem())
-            native_mem_init();
     }
 #endif
     LOG_INFO("initializing JIT...\n");
@@ -864,11 +861,6 @@ dreamcast_init(char const *gdi_path,
     construct_arm7_mem_map(&arm7_mem_map, aica_trace_file);
     arm7_set_mem_map(&arm7, &arm7_mem_map);
 
-#ifdef ENABLE_JIT_X86_64
-    if (config_get_native_jit() && config_get_inline_mem())
-        native_mem_register(cpu.mem.map);
-#endif
-
     LOG_INFO("initializing real-time clock...\n");
     aica_rtc_init(&rtc, &sh4_clock, config_get_dc_path_rtc());
 
@@ -934,8 +926,6 @@ void dreamcast_cleanup() {
     jit_cleanup();
 #ifdef ENABLE_JIT_X86_64
     if (config_get_native_jit()) {
-        if (config_get_inline_mem())
-            native_mem_cleanup();
         native_dispatch_cleanup(&sh4_native_dispatch_meta);
         exec_mem_cleanup();
         jit_x86_64_backend_cleanup();
