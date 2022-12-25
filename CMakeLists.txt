@@ -45,6 +45,7 @@ set(CPACK_PACKAGE_VERSION_PATCH 0)
 set(CPACK_GENERATOR "TGZ")
 set(CPACK_SOURCE_GENERATOR "TGZ")
 set(CPACK_PACKAGE_CONTACT "snickerbockers@washemu.org")
+set(CPACK_SOURCE_IGNORE_FILES "build" ".git" ".github" ".gitignore" ".gitmodules")
 
 if (Unix AND CMAKE_SYSTEM_NAME MATCHES Linux)
   list(APPEND CPACK_GENERATOR "DEB")
