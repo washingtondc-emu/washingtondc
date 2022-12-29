@@ -1,3 +1,5 @@
 *.~undo-tree~
 *~
 wash.log
+build
+coverity_build
