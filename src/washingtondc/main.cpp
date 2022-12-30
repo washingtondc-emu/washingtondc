@@ -185,11 +185,11 @@ static struct washdc_controller_dev parse_controller(char const *dev) {
         n_chars = strlen(dev);
 
     struct washdc_controller_dev ret;
+    memset(&ret, 0, sizeof(ret));
 
     if (strncmp(dev, "vmu", n_chars) == 0) {
         ret.tp = WASHDC_CONTROLLER_TP_VMU;
 
-        memset(ret.image_path, 0, sizeof(ret.image_path));
         if (first_space && *first_space) {
             while (isspace(*first_space))
                 first_space++;
