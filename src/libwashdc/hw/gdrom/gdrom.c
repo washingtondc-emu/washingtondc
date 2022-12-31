@@ -1243,6 +1243,17 @@ static void gdrom_input_read_subcode_packet(struct gdrom_ctxt *gdrom) {
     struct gdrom_bufq_node *node =
         (struct gdrom_bufq_node*)malloc(sizeof(struct gdrom_bufq_node));
 
+    if (!node) {
+        error_set_length(sizeof(struct gdrom_bufq_node));
+        RAISE_ERROR(ERROR_FAILED_ALLOC);
+    }
+
+    if (len > sizeof(node->dat)) {
+        LOG_ERROR("%s - read_subcode packet length truncated from %u to %u\n",
+                  __func__, len, (unsigned)sizeof(node->dat));
+        len = sizeof(node->dat);
+    }
+
     node->idx = 0;
     node->len = len;
 
