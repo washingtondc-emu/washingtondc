@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020, 2022 snickerbockers
+ *    Copyright (C) 2018-2020, 2022, 2023 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -1625,17 +1625,12 @@ DEF_MUL_INST(le)
 DEF_MUL_INST(al)
 DEF_MUL_INST(nv)
 
-#define DEF_DATA_OP_INST(op_name, cond, is_logic, require_s, write_result) \
+#define DEF_DATA_OP_INST(op_name, cond, is_logic, write_result) \
     static unsigned                                                     \
     arm7_inst_##op_name##_##cond(struct arm7 *arm7, arm7_inst inst) {   \
         EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
-                                                                        \
-        if (require_s) {                                                \
-            error_set_arm7_inst(inst);                                  \
-            RAISE_ERROR(ERROR_INTEGRITY);                               \
-        }                                                               \
                                                                         \
         bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
         bool n_out, c_out, z_out, v_out;                                \
@@ -1666,17 +1661,12 @@ DEF_MUL_INST(nv)
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
-#define DEF_DATA_OP_INST_I(op_name, cond, is_logic, require_s, write_result) \
+#define DEF_DATA_OP_INST_I(op_name, cond, is_logic, write_result) \
     static unsigned                                                     \
     arm7_inst_##op_name##_i_##cond(struct arm7 *arm7, arm7_inst inst) { \
         EVAL_COND(cond);                                                \
         unsigned rn = (inst >> 16) & 0xf;                               \
         unsigned rd = (inst >> 12) & 0xf;                               \
-                                                                        \
-        if (require_s) {                                                \
-            error_set_arm7_inst(inst);                                  \
-            RAISE_ERROR(ERROR_INTEGRITY);                               \
-        }                                                               \
                                                                         \
         bool carry_in = arm7->reg[ARM7_REG_CPSR] & ARM7_CPSR_C_MASK;    \
         bool n_out, c_out, z_out, v_out;                                \
@@ -1705,7 +1695,7 @@ DEF_MUL_INST(nv)
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
-#define DEF_DATA_OP_INST_S(op_name, cond, is_logic, require_s, write_result) \
+#define DEF_DATA_OP_INST_S(op_name, cond, is_logic, write_result) \
     static unsigned                                                     \
     arm7_inst_##op_name##_s_##cond(struct arm7 *arm7, arm7_inst inst) { \
         EVAL_COND(cond);                                                \
@@ -1765,7 +1755,7 @@ DEF_MUL_INST(nv)
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
-#define DEF_DATA_OP_INST_IS(op_name, cond, is_logic, require_s, write_result) \
+#define DEF_DATA_OP_INST_IS(op_name, cond, is_logic, write_result)      \
     static unsigned                                                     \
     arm7_inst_##op_name##_is_##cond(struct arm7 *arm7, arm7_inst inst) { \
         EVAL_COND(cond);                                                \
@@ -1823,152 +1813,152 @@ cond_fail:                                                              \
         return 2 * S_CYCLE + 1 * N_CYCLE;                               \
     }
 
-#define DEF_DATA_OP_INST_ALL(op_name, is_logic, require_s, write_result) \
-    DEF_DATA_OP_INST(op_name, eq, is_logic, require_s, write_result)     \
-    DEF_DATA_OP_INST_I(op_name, eq, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, eq, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, eq, is_logic, require_s, write_result)  \
+#define DEF_DATA_OP_INST_ALL(op_name, is_logic, write_result) \
+    DEF_DATA_OP_INST(op_name, eq, is_logic, write_result)     \
+    DEF_DATA_OP_INST_I(op_name, eq, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, eq, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, eq, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, ne, is_logic, require_s, write_result)     \
-    DEF_DATA_OP_INST_I(op_name, ne, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, ne, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, ne, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, ne, is_logic, write_result)     \
+    DEF_DATA_OP_INST_I(op_name, ne, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, ne, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, ne, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, cs, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, cs, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, cs, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, cs, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, cs, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, cs, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, cs, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, cs, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, cc, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, cc, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, cc, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, cc, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, cc, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, cc, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, cc, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, cc, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, mi, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, mi, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, mi, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, mi, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, mi, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, mi, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, mi, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, mi, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, pl, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, pl, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, pl, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, pl, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, pl, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, pl, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, pl, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, pl, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, vs, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, vs, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, vs, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, vs, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, vs, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, vs, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, vs, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, vs, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, vc, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, vc, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, vc, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, vc, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, vc, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, vc, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, vc, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, vc, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, hi, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, hi, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, hi, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, hi, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, hi, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, hi, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, hi, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, hi, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, ls, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, ls, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, ls, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, ls, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, ls, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, ls, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, ls, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, ls, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, ge, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, ge, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, ge, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, ge, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, ge, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, ge, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, ge, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, ge, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, lt, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, lt, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, lt, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, lt, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, lt, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, lt, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, lt, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, lt, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, gt, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, gt, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, gt, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, gt, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, gt, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, gt, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, gt, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, gt, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, le, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, le, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, le, is_logic, require_s, write_result)  \
-    DEF_DATA_OP_INST_IS(op_name, le, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, le, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, le, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, le, is_logic, write_result)  \
+    DEF_DATA_OP_INST_IS(op_name, le, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, al, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, al, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, al, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, al, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, al, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, al, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, al, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, al, is_logic, write_result)  \
                                                                         \
-    DEF_DATA_OP_INST(op_name, nv, is_logic, require_s, write_result)    \
-    DEF_DATA_OP_INST_I(op_name, nv, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_S(op_name, nv, is_logic, require_s, write_result)   \
-    DEF_DATA_OP_INST_IS(op_name, nv, is_logic, require_s, write_result)  \
+    DEF_DATA_OP_INST(op_name, nv, is_logic, write_result)    \
+    DEF_DATA_OP_INST_I(op_name, nv, is_logic, write_result)   \
+    DEF_DATA_OP_INST_S(op_name, nv, is_logic, write_result)   \
+    DEF_DATA_OP_INST_IS(op_name, nv, is_logic, write_result)  \
 
 
 #define DEF_DATA_OP_INST_REQUIRE_S(op_name, is_logic, write_result) \
-    DEF_DATA_OP_INST_S(op_name, eq, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, eq, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, eq, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, eq, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, ne, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, ne, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, ne, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, ne, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, cs, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, cs, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, cs, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, cs, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, cc, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, cc, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, cc, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, cc, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, mi, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, mi, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, mi, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, mi, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, pl, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, pl, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, pl, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, pl, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, vs, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, vs, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, vs, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, vs, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, vc, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, vc, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, vc, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, vc, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, hi, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, hi, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, hi, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, hi, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, ls, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, ls, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, ls, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, ls, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, ge, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, ge, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, ge, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, ge, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, lt, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, lt, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, lt, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, lt, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, gt, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, gt, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, gt, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, gt, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, le, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, le, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, le, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, le, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, al, is_logic, true, write_result)  \
-    DEF_DATA_OP_INST_IS(op_name, al, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, al, is_logic, write_result)  \
+    DEF_DATA_OP_INST_IS(op_name, al, is_logic, write_result) \
                                                                    \
-    DEF_DATA_OP_INST_S(op_name, nv, is_logic, true, write_result)       \
-    DEF_DATA_OP_INST_IS(op_name, nv, is_logic, true, write_result) \
+    DEF_DATA_OP_INST_S(op_name, nv, is_logic, write_result)       \
+    DEF_DATA_OP_INST_IS(op_name, nv, is_logic, write_result) \
 
-DEF_DATA_OP_INST_ALL(orr, true, false, true)
-DEF_DATA_OP_INST_ALL(eor, true, false, true)
-DEF_DATA_OP_INST_ALL(and, true, false, true)
-DEF_DATA_OP_INST_ALL(bic, true, false, true)
-DEF_DATA_OP_INST_ALL(mov, true, false, true)
-DEF_DATA_OP_INST_ALL(add, false, false, true)
-DEF_DATA_OP_INST_ALL(adc, false, false, true)
-DEF_DATA_OP_INST_ALL(sub, false, false, true)
-DEF_DATA_OP_INST_ALL(sbc, false, false, true)
-DEF_DATA_OP_INST_ALL(rsb, false, false, true)
-DEF_DATA_OP_INST_ALL(rsc, false, false, true)
-DEF_DATA_OP_INST_ALL(mvn, true, false, true)
-DEF_DATA_OP_INST_ALL(cmn, false, true, false)
-DEF_DATA_OP_INST_ALL(cmp, false, true, false)
-DEF_DATA_OP_INST_ALL(tst, true, true, false)
+DEF_DATA_OP_INST_ALL(orr, true, true)
+DEF_DATA_OP_INST_ALL(eor, true, true)
+DEF_DATA_OP_INST_ALL(and, true, true)
+DEF_DATA_OP_INST_ALL(bic, true, true)
+DEF_DATA_OP_INST_ALL(mov, true, true)
+DEF_DATA_OP_INST_ALL(add, false, true)
+DEF_DATA_OP_INST_ALL(adc, false, true)
+DEF_DATA_OP_INST_ALL(sub, false, true)
+DEF_DATA_OP_INST_ALL(sbc, false, true)
+DEF_DATA_OP_INST_ALL(rsb, false, true)
+DEF_DATA_OP_INST_ALL(rsc, false, true)
+DEF_DATA_OP_INST_ALL(mvn, true, true)
+DEF_DATA_OP_INST_REQUIRE_S(cmn, false, false)
+DEF_DATA_OP_INST_REQUIRE_S(cmp, false, false)
+DEF_DATA_OP_INST_REQUIRE_S(tst, true, false)
 
 #define DEF_SWI_INST(cond)                                              \
     static unsigned                                                     \
@@ -2119,10 +2109,7 @@ static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(sbc);
     DEF_COND_TBL(rsb);
     DEF_COND_TBL(rsc);
-    DEF_COND_TBL(cmp);
-    DEF_COND_TBL(tst);
     DEF_COND_TBL(mvn);
-    DEF_COND_TBL(cmn);
     DEF_COND_TBL(swi);
     DEF_COND_TBL(swap);
     DEF_COND_TBL(orr_i);
@@ -2136,10 +2123,7 @@ static arm7_op_fn arm7_decode_slow(struct arm7 *arm7, arm7_inst inst) {
     DEF_COND_TBL(sbc_i);
     DEF_COND_TBL(rsb_i);
     DEF_COND_TBL(rsc_i);
-    DEF_COND_TBL(cmp_i);
-    DEF_COND_TBL(tst_i);
     DEF_COND_TBL(mvn_i);
-    DEF_COND_TBL(cmn_i);
     DEF_COND_TBL(orr_s);
     DEF_COND_TBL(eor_s);
     DEF_COND_TBL(and_s);
