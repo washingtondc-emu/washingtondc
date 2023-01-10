@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2023 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -813,9 +813,28 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
     memcpy(chan->raw + chan_reg, src, len);
     unsigned reg_no = 4 * (chan_reg / 4);
 
-    memcpy(&tmp, src, sizeof(tmp));
+    switch (len) {
+    case 1: {
+        uint8_t tmp8;
+        memcpy(&tmp8, src, sizeof(tmp8));
+        tmp = tmp8;
+        break;
+    }
+    case 2: {
+        uint16_t tmp16;
+        memcpy(&tmp16, src, sizeof(tmp16));
+        tmp = tmp16;
+        break;
+    }
+    case 4:
+        memcpy(&tmp, src, sizeof(tmp));
+        break;
+    default:
+        error_set_length(len);
+        RAISE_ERROR(ERROR_UNIMPLEMENTED);
+    }
     LOG_DBG("AICA: write 0x%08x to channel %u register \"%s\"\n",
-             (int)tmp, chan_no, aica_chan_reg_name(reg_no));
+            (int)tmp, chan_no, aica_chan_reg_name(reg_no));
 
     switch (reg_no) {
     case AICA_CHAN_PLAY_CTRL:
@@ -872,7 +891,6 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
 #endif
         break;
     case AICA_CHAN_LFO_CTRL:
-        memcpy(&tmp, src, sizeof(tmp));
         if (tmp & (1 << 15))
             LOG_WARN("AICA: low-frequency oscillator is not implemented!\n");
         break;
@@ -892,9 +910,24 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
     case AICA_CHAN_LPF8:
         break;
     default:
-        memcpy(&tmp, src, sizeof(tmp));
-        LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u val 0x%08x\n",
-                (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
+        switch (len) {
+        case 1:
+            LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u len 1 val 0x%02x\n",
+                    (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
+            break;
+        case 2:
+            LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u len 2 val 0x%04x\n",
+                    (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
+            break;
+        case 4:
+            LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u len 4 val 0x%08x\n",
+                    (unsigned)addr, chan_no, chan_reg, (unsigned)tmp);
+            break;
+        default:
+            LOG_DBG("AICA: write to addr 0x%08x chan %u offset %u len %u val 0x%08x\n",
+                    (unsigned)addr, chan_no, chan_reg, len, (unsigned)tmp);
+        }
+
 #ifdef AICA_PEDANTIC
         if (tmp) {
             error_set_channel(chan_no);
