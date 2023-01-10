@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2016-2020, 2022 snickerbockers
+ *    Copyright (C) 2016-2020, 2022, 2023 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -655,8 +655,8 @@ dreamcast_init(char const *gdi_path,
         LOG_INFO("direct-boot requested\n");
         long len_1st_read_bin;
         char const *exec_bin_path = config_get_exec_bin_path();
-        char const *ext = strrchr(exec_bin_path, '.');
         if (exec_bin_path && strlen(exec_bin_path)) {
+            char const *ext = strrchr(exec_bin_path, '.');
             if (ext && streq_case_insensitive(ext, ".elf")) {
                 washdc_hostfile file = washdc_hostfile_open(exec_bin_path,
                                                             WASHDC_HOSTFILE_RB);
