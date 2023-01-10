@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017-2020 snickerbockers
+ *    Copyright (C) 2017-2020, 2023 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -108,7 +108,9 @@ void serial_server_cleanup(void) {
     if (srv.listener)
         evconnlistener_free(srv.listener);
 
-    memset(&srv, 0, sizeof(srv));
+    srv.listener = NULL;
+    srv.bev = NULL;
+    srv.outbound = NULL;
 }
 
 static void serial_server_attach(void) {
