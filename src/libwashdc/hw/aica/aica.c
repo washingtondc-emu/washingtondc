@@ -900,6 +900,9 @@ static void aica_sys_channel_write(struct aica *aica, void const *src,
         chan->pan = tmp & 0x1f;
         break;
     case AICA_CHAN_DSP_SEND:
+        memcpy(&tmp, chan->raw + AICA_CHAN_DSP_SEND, sizeof(tmp));
+        chan->dsp_vol = (tmp >> 4) & 0xf;
+        break;
     case AICA_CHAN_LPF1_VOL:
     case AICA_CHAN_LPF2:
     case AICA_CHAN_LPF3:
@@ -1673,12 +1676,28 @@ static aica_atten atten_scale(unsigned atten) {
     return scale;
 }
 
+/*
+ * TODO: FOR EACH CHANNEL:
+ *
+ * SCALE OUTPUT BY DISDL, (DirectPanVolSend reg) ADJUST OUTPUT BY DIPAN TO EACH
+ * STEREO SPEAKER (also DirectPanVolSend reg).
+ *
+ * IN PARALELL, SCALE ANOTHER COPY OF THE CHANNEL'S SAMPLE OUTPUT BY LEVEL IN
+ * DSPChannelSend REGISTER.  THIS IS SENT TO THE DSP VIA ONE OF THE MIXS
+ * REGISTERS (determined by DSPChannelSend).  OUTPUT OF DSP IS SCALED BY EFSDL
+ * (DSP output mixer registers), THEN PANNED BETWEEN L AND R STEREO CHANNELS
+ * (also DSP output mixer registers) THEN ADDED WITH ALL THE DIRECT SEND
+ * CHANNEL OUTPUTS (ie the process done above in parallel) THEN THE COMBINED
+ * OUTPUTS FOR L AND R ARE SCALED BY MVOL (MasterVolume register) THEN OUTPUT
+ * TO THE STEREO AUDIO BACKEND.
+ */
 static void aica_process_sample(struct aica *aica) {
     unsigned chan_no;
 
-    int32_t sample_total = 0;
+    int32_t direct_sample_stereo[2] = { 0, 0 };
 
     for (chan_no = 0; chan_no < AICA_CHAN_COUNT; chan_no++) {
+        int32_t this_chan_sample;
         struct aica_chan *chan = aica->channels + chan_no;
 
         if (!chan->playing)
@@ -1696,8 +1715,10 @@ static void aica_process_sample(struct aica *aica) {
                 (int32_t)(int16_t)aica_wave_mem_read_16(chan->addr_cur,
                                                         &aica->mem);
             // TODO: linear interpolation
-            if (!chan->is_muted)
-                sample_total = add_sample32(sample_total, sample);
+            if (chan->is_muted)
+                this_chan_sample = 0;
+            else
+                this_chan_sample = sample;
 
             chan->sample_partial += sample_rate;
             while (chan->sample_partial >= AICA_SAMPLE_POS_UNIT) {
@@ -1713,8 +1734,10 @@ static void aica_process_sample(struct aica *aica) {
             sample = sat_shift(sample, 8);
 
             // TODO: linear interpolation
-            if (!chan->is_muted)
-                sample_total = add_sample32(sample_total, sample);
+            if (chan->is_muted)
+                this_chan_sample = 0;
+            else
+                this_chan_sample = sample;
 
             chan->sample_partial += sample_rate;
             while (chan->sample_partial >= AICA_SAMPLE_POS_UNIT) {
@@ -1738,8 +1761,10 @@ static void aica_process_sample(struct aica *aica) {
 
             int32_t sample = chan->adpcm_sample;
 
-            if (!chan->is_muted)
-                sample_total = add_sample32(sample_total, sample);
+            if (chan->is_muted)
+                this_chan_sample = 0;
+            else
+                this_chan_sample = sample;
 
             chan->sample_partial += sample_rate;
             if (chan->sample_partial >= AICA_SAMPLE_POS_UNIT) {
@@ -1752,6 +1777,37 @@ static void aica_process_sample(struct aica *aica) {
                 chan->adpcm_next_step = true;
             }
         }
+
+        // scale by DISDL
+        if (chan->volume) {
+            double direct_scale = 1.0 / (1 << (15 - chan->volume));
+            direct_sample_stereo[1] = direct_sample_stereo[0] =
+                add_sample32(direct_sample_stereo[0],
+                             direct_scale * this_chan_sample);
+        }
+
+        // scale DSP input by DSP send level
+        int32_t dsp_chan_sample;
+        double dsp_scale = 1.0 / (1 << (15 - chan->dsp_vol));
+        if (chan->dsp_vol)
+            dsp_chan_sample = dsp_scale * this_chan_sample;
+        else
+            dsp_chan_sample = 0;
+
+        /*
+         * TODO: MAP dsp_chan_sample TO DSP INPUT CHANNEL BASED ON
+         * DSPChannelSend (channel register offset 0x20).
+         *
+         * since we don't have the DSP implemented yet, we're going to instead
+         * add dsp_chan_sample to both stereo channels to simulate an "identity"
+         * DSP program that does not modify any of its inputs.
+         *
+         * Note that it's currently not possible for us to do stereo panning for
+         * dsp_chan_sample since that's implemented per DSP output; we need to
+         * have a DSP for that.
+         */
+        direct_sample_stereo[0] = add_sample32(direct_sample_stereo[0], dsp_chan_sample);
+        direct_sample_stereo[1] = add_sample32(direct_sample_stereo[1], dsp_chan_sample);
 
         if (chan->sample_pos > chan->loop_end) {
             aica_chan_reset_adpcm(chan);
@@ -1819,7 +1875,10 @@ static void aica_process_sample(struct aica *aica) {
         }
     }
 
-    dc_submit_sound_samples(&sample_total, 1);
+    // TODO: EXECUTE DSP PROGRAM HERE AND ADD IT TO THE OUTPUT
+    //       ALSO IMPLEMENT MASTER VOLUME AFTER THAT
+
+    dc_submit_sound_samples(direct_sample_stereo, 1);
 }
 
 static void raise_aica_sh4_int(struct aica *aica) {

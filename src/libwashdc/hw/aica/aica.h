@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2017, 2018 snickerbockers
+ *    Copyright (C) 2017, 2018, 2023 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -85,6 +85,9 @@ struct aica_chan {
 
     // from the DirectPanVolSend channel register (offset 0x24)
     unsigned volume, pan;
+
+    // from the DSPChannelSend channel register (offset 0x20)
+    unsigned dsp_vol;
 
     // the state of the amplitude envelope in the PlayStatus register
     enum aica_env_state atten_env_state;

@@ -2,7 +2,7 @@
  *
  *
  *    WashingtonDC Dreamcast Emulator
- *    Copyright (C) 2018-2020 snickerbockers
+ *    Copyright (C) 2018-2020, 2023 snickerbockers
  *
  *    This program is free software: you can redistribute it and/or modify
  *    it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ static washdc_cvar samples_submitted;
 
 // 1/10 of a second
 static const unsigned BUF_LEN = 4410;
-static washdc_sample_type sample_buf[BUF_LEN];
+static washdc_sample_type sample_buf_left[BUF_LEN], sample_buf_right[BUF_LEN];
 static unsigned read_buf_idx, write_buf_idx;
 static bool do_mute, have_sound_dev;
 static enum sync_mode audio_sync_mode;
@@ -124,16 +124,17 @@ static int snd_cb(const void *input, void *output,
     washdc_sample_type *outbuf = (washdc_sample_type*)output;
     unsigned long frame_no;
     for (frame_no = 0; frame_no < n_frames; frame_no++) {
-        // TODO: stereo
-        washdc_sample_type sample;
+        washdc_sample_type sample_left, sample_right;
         if (read_buf_idx != write_buf_idx) {
-            sample = sample_buf[read_buf_idx];
+            sample_left = sample_buf_left[read_buf_idx];
+            sample_right = sample_buf_right[read_buf_idx];
             read_buf_idx = (1 + read_buf_idx) % BUF_LEN;
         } else {
-            sample = 0;
+            sample_left = 0;
+            sample_right = 0;
         }
-        *outbuf++ = sample;
-        *outbuf++ = sample;
+        *outbuf++ = sample_left;
+        *outbuf++ = sample_right;
     }
     washdc_cvar_signal(&samples_submitted);
 
@@ -155,17 +156,19 @@ void submit_samples(washdc_sample_type *samples, unsigned count) {
         return;
     washdc_mutex_lock(&buffer_lock);
 
-    while (count) {
+    while (count--) {
         unsigned next_write_buf_idx = (1 + write_buf_idx) % BUF_LEN;
         if (audio_sync_mode == SYNC_MODE_NORM)
             while (next_write_buf_idx == read_buf_idx)
                 washdc_cvar_wait(&samples_submitted, &buffer_lock);
-        if (do_mute)
-            sample_buf[write_buf_idx] = 0;
-        else
-            sample_buf[write_buf_idx] = scale_sample(*samples++);
+        if (do_mute) {
+            sample_buf_left[write_buf_idx] = 0;
+            sample_buf_right[write_buf_idx] = 0;
+        } else {
+            sample_buf_left[write_buf_idx] = scale_sample(*samples++);
+            sample_buf_right[write_buf_idx] = scale_sample(*samples++);
+        }
         write_buf_idx = next_write_buf_idx;
-        count--;
     }
 
     washdc_mutex_unlock(&buffer_lock);
