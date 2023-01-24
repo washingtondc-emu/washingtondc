@@ -1781,9 +1781,37 @@ static void aica_process_sample(struct aica *aica) {
         // scale by DISDL
         if (chan->volume) {
             double direct_scale = 1.0 / (1 << (15 - chan->volume));
-            direct_sample_stereo[1] = direct_sample_stereo[0] =
+            double left_scale, right_scale;
+
+            // apply panning (stereo sound) based on DIPAN
+            if (chan->pan < 16) {
+                /*
+                 * TODO: 1.0 / (1 << 15) is so small that we might not need
+                 * this if statement.
+                 */
+                if (chan->pan == 15)
+                    left_scale = 0.0;
+                else
+                    left_scale = direct_scale / (1 << chan->pan);
+                right_scale = direct_scale;
+            } else {
+                left_scale = direct_scale;
+                /*
+                 * TODO: 1.0 / (1 << 15) is so small that we might not need
+                 * this if statement.
+                 */
+                if (chan->pan == 0x1f)
+                    right_scale = 0.0;
+                else
+                    right_scale = direct_scale / (1 << (chan->pan - 16));
+            }
+
+            direct_sample_stereo[0] =
                 add_sample32(direct_sample_stereo[0],
-                             direct_scale * this_chan_sample);
+                             left_scale * this_chan_sample);
+            direct_sample_stereo[1] =
+                add_sample32(direct_sample_stereo[1],
+                             right_scale * this_chan_sample);
         }
 
         // scale DSP input by DSP send level
