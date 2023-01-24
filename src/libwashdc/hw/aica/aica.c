@@ -285,6 +285,8 @@ void aica_init(struct aica *aica, struct arm7 *arm7,
     aica->sh4_clk = sh4_clk;
     aica->arm7 = arm7;
 
+    aica->master_volume = 15;
+
     aica->aica_sh4_raise_event.handler = post_delay_raise_aica_sh4_int;
     aica->aica_sh4_raise_event.arg_ptr = aica;
 
@@ -477,6 +479,9 @@ aica_sys_reg_post_write(struct aica *aica, unsigned idx, bool from_sh4) {
     switch (idx * 4) {
     case AICA_MASTER_VOLUME:
         LOG_DBG("Writing to AICA_MASTER_VOLUME\n");
+        memcpy(&val, aica->sys_reg + (AICA_MASTER_VOLUME/4), sizeof(val));
+        aica->disable_stereo = (val >> 15) & 1;
+        aica->master_volume = val & 0xf;
         break;
     case AICA_ARM7_RST:
         memcpy(&val, aica->sys_reg + (AICA_ARM7_RST/4), sizeof(val));
@@ -1780,30 +1785,43 @@ static void aica_process_sample(struct aica *aica) {
 
         // scale by DISDL
         if (chan->volume) {
+            /*
+             * corlett's AICA notes say that each step of DISDL, DIPAN,
+             * and master volume will increase attenuation by 3db (ie double
+             * attenuation/half the volume) but i'm not so sure that's correct.
+             * this seems to cause some channels to be silenced (good example
+             * being ambience in the menus in star wars episode I racer) so it
+             * may be that the attenuation is more gentle than that.
+             */
             double direct_scale = 1.0 / (1 << (15 - chan->volume));
             double left_scale, right_scale;
 
             // apply panning (stereo sound) based on DIPAN
-            if (chan->pan < 16) {
-                /*
-                 * TODO: 1.0 / (1 << 15) is so small that we might not need
-                 * this if statement.
-                 */
-                if (chan->pan == 15)
-                    left_scale = 0.0;
-                else
-                    left_scale = direct_scale / (1 << chan->pan);
-                right_scale = direct_scale;
+            if (aica->disable_stereo) {
+                left_scale = 1.0;
+                right_scale = 1.0;
             } else {
-                left_scale = direct_scale;
-                /*
-                 * TODO: 1.0 / (1 << 15) is so small that we might not need
-                 * this if statement.
-                 */
-                if (chan->pan == 0x1f)
-                    right_scale = 0.0;
-                else
-                    right_scale = direct_scale / (1 << (chan->pan - 16));
+                if (chan->pan < 16) {
+                    /*
+                     * TODO: 1.0 / (1 << 15) is so small that we might not need
+                     * this if statement.
+                     */
+                    if (chan->pan == 15)
+                        left_scale = 0.0;
+                    else
+                        left_scale = direct_scale / (1 << chan->pan);
+                    right_scale = direct_scale;
+                } else {
+                    left_scale = direct_scale;
+                    /*
+                     * TODO: 1.0 / (1 << 15) is so small that we might not need
+                     * this if statement.
+                     */
+                    if (chan->pan == 0x1f)
+                        right_scale = 0.0;
+                    else
+                        right_scale = direct_scale / (1 << (chan->pan - 16));
+                }
             }
 
             direct_sample_stereo[0] =
@@ -1904,7 +1922,11 @@ static void aica_process_sample(struct aica *aica) {
     }
 
     // TODO: EXECUTE DSP PROGRAM HERE AND ADD IT TO THE OUTPUT
-    //       ALSO IMPLEMENT MASTER VOLUME AFTER THAT
+
+    // master volume
+    double master_scale = 1.0 / (1 << (15 - aica->master_volume));
+    direct_sample_stereo[0] *= master_scale;
+    direct_sample_stereo[1] *= master_scale;
 
     dc_submit_sound_samples(direct_sample_stereo, 1);
 }

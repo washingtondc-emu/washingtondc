@@ -157,6 +157,9 @@ struct aica {
     struct aica_wave_mem mem;
     struct arm7 *arm7;
 
+    bool disable_stereo;
+    unsigned master_volume;
+
     // interrupt enable (SCIEB)
     uint32_t int_enable;
 
