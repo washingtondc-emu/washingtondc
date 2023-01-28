@@ -1682,7 +1682,7 @@ static aica_atten atten_scale(unsigned atten) {
 }
 
 /*
- * TODO: FOR EACH CHANNEL:
+ * FOR EACH CHANNEL:
  *
  * SCALE OUTPUT BY DISDL, (DirectPanVolSend reg) ADJUST OUTPUT BY DIPAN TO EACH
  * STEREO SPEAKER (also DirectPanVolSend reg).
@@ -1719,6 +1719,7 @@ static void aica_process_sample(struct aica *aica) {
             int32_t sample =
                 (int32_t)(int16_t)aica_wave_mem_read_16(chan->addr_cur,
                                                         &aica->mem);
+            sample = sat_shift(sample, 16);
             // TODO: linear interpolation
             if (chan->is_muted)
                 this_chan_sample = 0;
@@ -1736,7 +1737,7 @@ static void aica_process_sample(struct aica *aica) {
             int32_t sample =
                 (int32_t)(int8_t)aica_wave_mem_read_8(chan->addr_cur,
                                                       &aica->mem);
-            sample = sat_shift(sample, 8);
+            sample = sat_shift(sample, 24);
 
             // TODO: linear interpolation
             if (chan->is_muted)
@@ -1764,7 +1765,7 @@ static void aica_process_sample(struct aica *aica) {
                 chan->adpcm_next_step = false;
             }
 
-            int32_t sample = chan->adpcm_sample;
+            int32_t sample = sat_shift(chan->adpcm_sample, 16);
 
             if (chan->is_muted)
                 this_chan_sample = 0;
@@ -1785,14 +1786,6 @@ static void aica_process_sample(struct aica *aica) {
 
         // scale by DISDL
         if (chan->volume) {
-            /*
-             * corlett's AICA notes say that each step of DISDL, DIPAN,
-             * and master volume will increase attenuation by 3db (ie double
-             * attenuation/half the volume) but i'm not so sure that's correct.
-             * this seems to cause some channels to be silenced (good example
-             * being ambience in the menus in star wars episode I racer) so it
-             * may be that the attenuation is more gentle than that.
-             */
             double direct_scale = 1.0 / (1 << (15 - chan->volume));
             double left_scale, right_scale;
 

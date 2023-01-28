@@ -142,15 +142,6 @@ static int snd_cb(const void *input, void *output,
     return 0;
 }
 
-static washdc_sample_type scale_sample(washdc_sample_type sample) {
-    /*
-     * even though we use 32-bit int to store samples, we expect the emu
-     * core to submit samples that were initially 16-bit, so we have to
-     * scale them up a bit to compensate for the 16-bit to 32-bit conversion.
-     */
-    return sat_shift(sample, 8);
-}
-
 void submit_samples(washdc_sample_type *samples, unsigned count) {
     if (!have_sound_dev)
         return;
@@ -165,8 +156,8 @@ void submit_samples(washdc_sample_type *samples, unsigned count) {
             sample_buf_left[write_buf_idx] = 0;
             sample_buf_right[write_buf_idx] = 0;
         } else {
-            sample_buf_left[write_buf_idx] = scale_sample(*samples++);
-            sample_buf_right[write_buf_idx] = scale_sample(*samples++);
+            sample_buf_left[write_buf_idx] = *samples++;
+            sample_buf_right[write_buf_idx] = *samples++;
         }
         write_buf_idx = next_write_buf_idx;
     }
